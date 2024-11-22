@@ -38,7 +38,7 @@ services:
         ipv4_address: 11.11.11.101
 
   follower-geth:
-    image: ethereum/client-go:release-1.14
+    image: ethereum/client-go:release-1.13
     healthcheck:
       test: [ "CMD-SHELL", "geth attach --datadir /data --exec eth.blockNumber" ]
       interval: 10s

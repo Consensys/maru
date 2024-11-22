@@ -14,8 +14,8 @@
     "londonBlock": 0,
     "mergenetsplitblock": 5,
     "terminalTotalDifficulty": 10,
-    "shanghaiTime": 1732274179,
-    "cancunTime": 1732274179,
+    "shanghaiTime": 1732280362,
+    "cancunTime": 1732280362,
     "clique": {
       "createemptyblocks": false,
       "blockperiodseconds": 1,

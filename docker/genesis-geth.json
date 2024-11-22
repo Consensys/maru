@@ -17,8 +17,8 @@
     "MergeNetsplitBlock": 5,
     "terminalTotalDifficulty": 10,
     "terminalTotalDifficultyPassed": false,
-    "shanghaiTime": 1732274179,
-    "cancunTime": 1732274179,
+    "shanghaiTime": 1732280362,
+    "cancunTime": 1732280362,
     "clique": {
       "period": 1,
       "epoch": 1
