@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="INFO" monitorInterval="2">
   <Properties>
-    <Property name="root.log.level">INFO</Property>
+    <Property name="root.log.level">DEBUG</Property>
   </Properties>
 
   <Appenders>
@@ -38,6 +38,9 @@
       <AppenderRef ref="Console"/>
     </Logger>
     <Logger name="org.hyperledger.besu.ethereum.chain" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
+    <Logger name="org.hyperledger.besu.ethereum" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
     <Root level="${sys:root.log.level}">

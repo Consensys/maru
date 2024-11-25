@@ -9,8 +9,9 @@ docker-clean:
 	docker compose -f docker/compose.yaml rm -v
 
 patch-genesis:
-	./docker/patch_genesis.sh docker/genesis-besu.json
-	./docker/patch_genesis.sh docker/genesis-geth.json
+	cp docker/genesis-besu.json.template docker/genesis-besu.json
+	cp docker/genesis-geth.json.template docker/genesis-geth.json
+	./docker/patch_genesis.sh docker/genesis-besu.json docker/genesis-geth.json
 
 docker-clean-start:
 	make docker-clean

@@ -24,14 +24,13 @@ echo gaslimit=$gaslimit
 
 prepareDatadir $datadir $genesisfile
 
-echo "Starting geth with BOOTNODE enabled on port '30301' with '/boot.key'"
+echo "Starting geth with BOOTNODE enabled on port '30301'"
 geth --datadir $datadir \
  --networkid $networkid \
  --miner.gasprice $gasprice \
  --miner.gaslimit $gaslimit \
  --http --http.addr '0.0.0.0' --http.port 8545 --http.corsdomain '*' --http.api 'admin,engine,eth,miner,net,web3,personal,txpool,debug' --http.vhosts="*" \
  --ws --ws.addr '0.0.0.0' --ws.port 8546 --ws.origins '*' --ws.api 'admin,eth,miner,net,web3,personal,txpool,debug' \
- --nodekey "/boot.key" \
  --port 30301 \
  --ethstats "$ETHSTATS_URL" \
  --bootnodes $BOOTNODES \
