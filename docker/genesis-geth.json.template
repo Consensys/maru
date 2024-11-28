@@ -14,7 +14,7 @@
     "londonBlock": 0,
     "arrowGlacierBlock": 0,
     "grayGlacierBlock": 0,
-    "MergeNetsplitBlock": 5,
+    "MergeNetsplitBlock": 6,
     "terminalTotalDifficulty": 10,
     "terminalTotalDifficultyPassed": false,
     "shanghaiTime": %SWITCH_TIME%,

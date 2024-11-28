@@ -12,7 +12,7 @@
     "istanbulBlock": 0,
     "berlinBlock": 0,
     "londonBlock": 0,
-    "mergenetsplitblock": 5,
+    "mergenetsplitblock": 6,
     "terminalTotalDifficulty": 10,
     "shanghaiTime": %SWITCH_TIME%,
     "cancunTime": %SWITCH_TIME%,

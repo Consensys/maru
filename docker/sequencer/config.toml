@@ -34,7 +34,7 @@ metrics-host="0.0.0.0"
 metrics-port=9545
 
 # database
-data-storage-format="BONSAI"
+data-storage-format="FOREST"
 Xbonsai-limit-trie-logs-enabled=false
 bonsai-historical-block-limit=1024
 Xsnapsync-server-enabled=true

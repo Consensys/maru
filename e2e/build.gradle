@@ -1,0 +1,92 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+plugins {
+    // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
+    id "org.jetbrains.kotlin.jvm" version "2.0.21"
+    id 'idea'
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://artifacts.consensys.net/public/teku/maven/'
+        content { includeGroupAndSubgroups('tech.pegasys') }
+    }
+    // to allow locally published artifacts to be resolved uncomment enable mavenLocal() below
+    // build.linea:blob-compressor:2.0.0-SNAPSHOT
+    // useful to test WIP development versions
+    //mavenLocal() {
+    //  content {o
+    //    includeModule('build.linea', 'blob-compressor')
+    //    includeModule('build.linea', 'shnarf-calculator')
+    //  }
+    //}
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    testImplementation "tech.pegasys.teku.internal:executionclient:24.10.3"
+    implementation "org.apache.logging.log4j:log4j-api"
+    implementation "org.apache.logging.log4j:log4j-core"
+    testImplementation platform("org.junit:junit-bom:5.10.1")
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testImplementation 'org.assertj:assertj-core:3.24.2'
+    implementation "tech.pegasys.teku.internal:executionclient:24.10.3"
+    implementation "tech.pegasys.teku.internal:async:24.10.3"
+    implementation "tech.pegasys.teku.internal:time:24.10.3"
+    implementation "tech.pegasys.teku.internal:bytes:24.10.3"
+    implementation "tech.pegasys.teku.internal:ethereum-events:24.10.3"
+    implementation "tech.pegasys.teku.internal:spec:24.10.3"
+    implementation "tech.pegasys.teku.internal:unsigned:24.10.3"
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.24.2'
+    implementation "org.slf4j:slf4j-api:1.7.30"
+
+    implementation ("org.web3j:core")
+    implementation "org.jetbrains.kotlin:kotlin-test:2.0.21"
+
+    implementation 'org.awaitility:awaitility:4.2.2'
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
+}
+
+sourceSets {
+    acceptanceTest {
+        kotlin {
+            compileClasspath += main.output
+            runtimeClasspath += main.output
+        }
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+    }
+}
+
+tasks.register('acceptanceTest', Test) {
+
+    test ->
+        description = "Runs acceptance tests."
+        group = "verification"
+        useJUnitPlatform()
+
+        classpath = sourceSets.acceptanceTest.runtimeClasspath
+        testClassesDirs = sourceSets.acceptanceTest.output.classesDirs
+
+        testLogging {
+            events TestLogEvent.FAILED,
+                    TestLogEvent.SKIPPED,
+                    TestLogEvent.STANDARD_ERROR,
+                    TestLogEvent.STARTED,
+                    TestLogEvent.PASSED
+            exceptionFormat TestExceptionFormat.FULL
+            showCauses true
+            showExceptions true
+            showStackTraces true
+            // set showStandardStreams if you need to see test logs
+            showStandardStreams true
+        }
+}

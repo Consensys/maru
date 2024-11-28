@@ -25,7 +25,7 @@ echo gaslimit=$gaslimit
 prepareDatadir $datadir $genesisfile
 
 echo "Starting geth with BOOTNODE enabled on port '30301'"
-geth --datadir $datadir \
+exec geth --datadir $datadir \
  --networkid $networkid \
  --miner.gasprice $gasprice \
  --miner.gaslimit $gaslimit \
@@ -35,7 +35,7 @@ geth --datadir $datadir \
  --ethstats "$ETHSTATS_URL" \
  --bootnodes $BOOTNODES \
  --netrestrict "11.11.11.0/24" \
- --verbosity 3 \
+ --log.vmodule eth/*=5 \
  --txpool.nolocals  \
  --authrpc.port 8551 \
  --authrpc.addr=0.0.0.0 \
