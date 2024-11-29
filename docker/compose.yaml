@@ -11,7 +11,7 @@ volumes:
 
 services:
   sequencer:
-    image: hyperledger/besu:24.11-develop-27592b5
+    image: hyperledger/besu:24.10.0
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
       interval: 1s
@@ -117,7 +117,7 @@ services:
   follower-besu:
     depends_on:
       - sequencer
-    image: docker.io/hyperledger/besu:24.10.0
+    image: hyperledger/besu:24.10.0
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
       interval: 1s
