@@ -31,13 +31,15 @@ java {
 }
 
 dependencies {
-    testImplementation "tech.pegasys.teku.internal:executionclient:24.10.3"
     implementation "org.apache.logging.log4j:log4j-api"
     implementation "org.apache.logging.log4j:log4j-core"
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.24.2'
+
     testImplementation platform("org.junit:junit-bom:5.10.1")
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
     testImplementation 'org.assertj:assertj-core:3.24.2'
+
     implementation "tech.pegasys.teku.internal:executionclient:24.10.3"
     implementation "tech.pegasys.teku.internal:async:24.10.3"
     implementation "tech.pegasys.teku.internal:time:24.10.3"
@@ -45,8 +47,13 @@ dependencies {
     implementation "tech.pegasys.teku.internal:ethereum-events:24.10.3"
     implementation "tech.pegasys.teku.internal:spec:24.10.3"
     implementation "tech.pegasys.teku.internal:unsigned:24.10.3"
-    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.24.2'
     implementation "org.slf4j:slf4j-api:1.7.30"
+
+    implementation "org.hyperledger.besu.internal:rlp"
+    implementation "org.hyperledger.besu.internal:core"
+    implementation "org.hyperledger.besu:besu-datatypes"
+    implementation "org.hyperledger.besu:plugin-api"
+    implementation "org.hyperledger.besu.internal:algorithms"
 
     implementation ("org.web3j:core")
     implementation "org.jetbrains.kotlin:kotlin-test:2.0.21"

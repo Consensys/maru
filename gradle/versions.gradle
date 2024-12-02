@@ -31,6 +31,7 @@ dependencyManagement {
     dependencySet(group:'org.hyperledger.besu', version:'24.7.1') {
       entry 'besu-datatypes'
       entry 'evm'
+      entry 'plugin-api'
     }
 
     dependencySet(group:'org.hyperledger.besu.internal', version:'24.7.1') {

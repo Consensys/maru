@@ -1,7 +1,9 @@
 package maru.e2e
 
-import maru.e2e.TestEnvironment.waitForInclusion
 import com.fasterxml.jackson.databind.ObjectMapper
+import maru.e2e.Mappers.executionPayloadV1FromBlock
+import maru.e2e.Mappers.executionPayloadV3FromBlock
+import maru.e2e.TestEnvironment.waitForInclusion
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
@@ -10,7 +12,9 @@ import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.DefaultBlockParameterName
+import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -28,6 +32,7 @@ import kotlin.test.Ignore
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
+
 
 class SwitchTest {
     private val log: Logger = LogManager.getLogger(SwitchTest::class.java)
@@ -56,7 +61,7 @@ class SwitchTest {
     fun networkCanBeSwitched() {
         everyoneArePeered()
 
-//        sealPreMergeBlocks()
+        sealPreMergeBlocks()
 
         val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
 
@@ -92,13 +97,14 @@ class SwitchTest {
                 Bytes32.ZERO
             )
         )
-        val payloadId = sequencerExecutionClient.forkChoiceUpdatedV3(
+        val fcuResponse = sequencerExecutionClient.forkChoiceUpdatedV3(
             ForkChoiceStateV1(
                 lastPreMergeBlockHashBytes32,
                 lastPreMergeBlockHashBytes32,
                 lastPreMergeBlockHashBytes32
             ), payloadAttributes
-        ).get().payload.asInternalExecutionPayload().payloadId
+        ).get()
+        val payloadId = fcuResponse.payload.asInternalExecutionPayload().payloadId
         val getPayloadResponse = sequencerExecutionClient.getPayloadV3(payloadId.get()).get()
         val newExecutionPayload = getPayloadResponse.payload.executionPayload
         val newPayloadResult =
@@ -120,13 +126,10 @@ class SwitchTest {
 
         log.info("Sequencer has switched to PoS")
 
-        gethExecutuionEngineClients.map {
-            it.key to it.value.newPayloadV3(newExecutionPayload, emptyList(), Bytes32.ZERO)
-        }.forEach {
-            log.info("Sent new payload to ${it.first}, response: ${it.second.get()}")
-        }
+        sendNewPayloadToFollowers(newExecutionPayload)
 
         await().untilAsserted {
+
             fcuFollowersToBlockHash(newPayloadHash.toHexString())
             waitForAllBlockHeightsToMatch()
         }
@@ -134,13 +137,47 @@ class SwitchTest {
 
     @Ignore
     fun runFCU() {
+        val headBlockNumber = 6L
+        val currentBLock = getBlockByNumber(headBlockNumber, true)
+        val blockHash = currentBLock.hash
+
+        val getNewPayloadFromLastBlockNumber = executionPayloadV3FromBlock(currentBLock)
+        sendNewPayloadToFollowers(getNewPayloadFromLastBlockNumber)
+        fcuFollowersToBlockHash(blockHash)
+    }
+
+    @Ignore
+    fun fullSync() {
+        val target = geth1ExecutionEngineClient
+
+        val lastPreMergeBlockNumber = 5L
+        for (blockNumber in 1..lastPreMergeBlockNumber) {
+            val block = getBlockByNumber(blockNumber, true)
+
+            val newPayloadV3 = executionPayloadV1FromBlock(block)
+            target.newPayloadV1(newPayloadV3).get()
+        }
+
+        val headBlockNumber = 6L
+        for (blockNumber in lastPreMergeBlockNumber + 1..headBlockNumber) {
+            val block = getBlockByNumber(blockNumber, true)
+
+            val newPayloadV3 = executionPayloadV3FromBlock(block)
+            target.newPayloadV3(newPayloadV3, emptyList(), Bytes32.ZERO).get()
+        }
+
         val currentBLock =
             TestEnvironment.sequencerL2Client.ethGetBlockByNumber(
-                DefaultBlockParameter.valueOf(BigInteger.valueOf(5L)),
+                DefaultBlockParameter.valueOf(BigInteger.valueOf(headBlockNumber)),
                 false
             ).send()
         val blockHash = currentBLock.block.hash
-        fcuFollowersToBlockHash(blockHash)
+
+        val lastBlockHashBytes = Bytes32.fromHexString(blockHash)
+        target.forkChoiceUpdatedV3(
+            ForkChoiceStateV1(lastBlockHashBytes, lastBlockHashBytes, lastBlockHashBytes),
+            Optional.empty()
+        )
     }
 
     private fun parseCancunTimestamp(): Long {
@@ -195,7 +232,7 @@ class SwitchTest {
             .untilAsserted {
                 TestEnvironment.followerClients.map {
                     it.key to it.value.adminPeers().sendAsync()
-                }.forEach{
+                }.forEach {
                     val peersResult = it.second.get().result
                     val peers = peersResult.size
                     log.info("Peers from node ${it.first}: $peers")
@@ -204,6 +241,13 @@ class SwitchTest {
                         .isGreaterThan(0)
                 }
             }
+    }
+
+    private fun getBlockByNumber(blockNumber: Long, retreiveTransactions: Boolean = false): EthBlock.Block {
+        return TestEnvironment.sequencerL2Client.ethGetBlockByNumber(
+            DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
+            retreiveTransactions
+        ).send().block
     }
 
     private fun fcuFollowersToBlockHash(blockHash: String) {
@@ -215,6 +259,14 @@ class SwitchTest {
             it.key to it.value.forkChoiceUpdatedV3(mergeForkChoiceState, Optional.empty())
         }.forEach {
             log.info("FCU for block hash ${blockHash}, node: ${it.first} response: ${it.second.get()}")
+        }
+    }
+
+    private fun sendNewPayloadToFollowers(newPayloadV3: ExecutionPayloadV3) {
+        followerExecutionEngineClients.entries.map {
+            it.key to it.value.newPayloadV3(newPayloadV3, emptyList(), Bytes32.ZERO)
+        }.forEach {
+            log.info("New payload for node: ${it.first} response: ${it.second.get()}")
         }
     }
 }
