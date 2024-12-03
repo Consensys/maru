@@ -59,10 +59,8 @@ class SwitchTest {
 
     @Test
     fun networkCanBeSwitched() {
-        everyoneArePeered()
-
         sealPreMergeBlocks()
-
+        everyoneArePeered()
         val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
 
         await()
@@ -73,8 +71,6 @@ class SwitchTest {
                 log.info("Waiting for Cancun switch ${newBlockTimestamp.longValue() - unixTimestamp} seconds until the switch ")
                 assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
             }
-
-        waitForAllBlockHeightsToMatch()
 
         val preMergeBlock =
             TestEnvironment.sequencerL2Client.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send()
@@ -187,6 +183,10 @@ class SwitchTest {
     }
 
     private fun sealPreMergeBlocks() {
+        val sequencerBlock = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
+        if(sequencerBlock.blockNumber.compareTo(BigInteger.valueOf(5)) >= 0){
+            return
+        }
         repeat(5) { TestEnvironment.sendArbitraryTransaction().waitForInclusion() }
     }
 
@@ -207,6 +207,18 @@ class SwitchTest {
         return Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
     }
 
+    @Test
+    fun listBlockHeights(){
+        val blockHeights = TestEnvironment.followerClients.entries.map { entry ->
+            entry.key to SafeFuture.of(entry.value.ethBlockNumber().sendAsync())
+        }
+
+        blockHeights.forEach {
+                log.info("${it.first} block height is ${it.second.get().blockNumber}")
+           }
+        log.info("")
+    }
+
     private fun waitForAllBlockHeightsToMatch() {
         val sequencerBlockHeight = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
 
@@ -219,13 +231,15 @@ class SwitchTest {
 
             blockHeights.forEach {
                 assertThat(it.second.blockNumber)
-                    .withFailMessage { "Block height doesn't match for ${it.first}" }
+                    .withFailMessage { "Block height doesn't match for ${it.first}. Found ${it.second.blockNumber} while expecting ${sequencerBlockHeight.blockNumber}." }
                     .isEqualTo(sequencerBlockHeight.blockNumber)
             }
         }
     }
 
     private fun everyoneArePeered() {
+        log.info("Call add peer on all nodes and wait for peering to happen.")
+        TestEnvironment.followerClients.map { it.value.adminAddPeer("enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303").send() }
         await()
             .pollInterval(1.seconds.toJavaDuration())
             .timeout(1.minutes.toJavaDuration())

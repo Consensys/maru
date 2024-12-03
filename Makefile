@@ -8,6 +8,9 @@ docker-clean:
 	make docker-stop
 	docker compose -f docker/compose.yaml rm -v
 
+patch-genesis-windows:
+	powershell -File ./docker/windows.ps1
+
 patch-genesis:
 	cp docker/genesis-besu.json.template docker/genesis-besu.json
 	cp docker/genesis-geth.json.template docker/genesis-geth.json
@@ -16,4 +19,9 @@ patch-genesis:
 docker-clean-start:
 	make docker-clean
 	make patch-genesis
+	make docker-start
+
+docker-clean-start-windows:
+	make docker-clean
+	make patch-genesis-windows
 	make docker-start
