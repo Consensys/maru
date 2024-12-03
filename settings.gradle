@@ -6,3 +6,5 @@ rootProject.name = 'qbft'
 include ':consensus:client'
 include ':consensus:qbft'
 include ':config'
+include ':consensus:beacon'
+
