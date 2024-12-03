@@ -31,8 +31,6 @@ dependencies {
   implementation 'io.tmio:tuweni-units'
 
   implementation "org.hyperledger.besu:besu-datatypes"
-  testImplementation 'org.assertj:assertj-core'
-  testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
 configurations { testArtifacts }

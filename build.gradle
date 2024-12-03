@@ -33,6 +33,10 @@ allprojects {
   apply plugin: libs.plugins.spotless.get().getPluginId()
 
   spotless {
+    kotlin {
+      // by default the target is every '.kt' and '.kts` file in the java sourcesets
+      ktfmt("0.53").googleStyle()
+    }
     java {
       // This path needs to be relative to each project
       target 'src/**/*.java'

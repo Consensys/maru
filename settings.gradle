@@ -4,6 +4,5 @@ plugins {
 rootProject.name = 'qbft'
 
 include ':consensus:client'
-include ':consensus:qbft'
 include ':e2e'
 include ':config'
