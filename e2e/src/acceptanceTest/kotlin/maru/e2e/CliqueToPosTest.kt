@@ -33,8 +33,8 @@ import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
-class SwitchTest {
-  private val log: Logger = LogManager.getLogger(SwitchTest::class.java)
+class CliqueToPosTest {
+  private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
   private val web3jClient = createWeb3jClient("http://localhost:8550", Optional.empty())
   private val sequencerExecutionClient = Web3JExecutionEngineClient(web3jClient)
   private val jwtConfig =

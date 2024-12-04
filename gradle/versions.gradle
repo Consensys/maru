@@ -26,7 +26,8 @@ dependencyManagement {
 
 //    dependency 'com.github.ben-manes.caffeine:caffeine:3.1.8'
 
-//    dependency 'com.google.errorprone:error_prone_core:2.29.2'
+    // For java code only
+    dependency 'com.google.errorprone:error_prone_core:2.29.2'
 
 //    dependency "com.google.guava:guava:33.3.1-jre"
 
@@ -102,6 +103,8 @@ dependencyManagement {
       entry 'mockito-core'
       entry 'mockito-junit-jupiter'
     }
+
+    dependency "org.junit:junit-bom:5.11.3"
 
     dependency "org.mockito.kotlin:mockito-kotlin:5.4.0"
 
