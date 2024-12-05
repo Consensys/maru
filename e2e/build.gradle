@@ -23,7 +23,7 @@ dependencies {
 
   testImplementation 'com.palantir.docker.compose:docker-compose-rule-junit4:2.3.0'
   testImplementation 'com.palantir.docker.compose:docker-compose-junit-jupiter:2.3.0'
-  testImplementation 'org.jetbrains.kotlin:kotlin-stdlib:2.1.0'
+  implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.1.0'
 
 }
 
