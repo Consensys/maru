@@ -46,7 +46,7 @@ class CliqueToPosTest {
 
     val qbftCluster =
       DockerComposeRule.Builder()
-        .file((getRootPath().resolve("./../docker/compose.yaml")).toString())
+        .file(Path.of("./../docker/compose.yaml").toString())
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
