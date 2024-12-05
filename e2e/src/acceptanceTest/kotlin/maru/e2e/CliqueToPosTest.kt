@@ -3,14 +3,9 @@ package maru.e2e
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.palantir.docker.compose.DockerComposeRule
 import com.palantir.docker.compose.configuration.ProjectName
-import com.palantir.docker.compose.connection.waiting.HealthChecks
 import java.io.File
 import java.math.BigInteger
-import java.nio.file.Files
 import java.nio.file.Path
-import java.time.LocalDateTime
-import java.time.ZoneOffset
-import java.time.temporal.ChronoUnit
 import java.util.Optional
 import java.util.UUID
 import kotlin.io.path.Path
@@ -46,56 +41,28 @@ import tech.pegasys.teku.infrastructure.unsigned.UInt64
 class CliqueToPosTest {
 
   companion object {
-    val rule = DockerComposeRule.Builder()
-      .file((getRootPath().resolve("./../docker/compose.yaml")).toString())
-      .projectName(ProjectName.random())
-      .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
-      .build()
 
-    val zoneOffset = ZoneOffset.systemDefault().rules.getOffset(LocalDateTime.now()) ?: ZoneOffset.UTC
-    val mergeTimestamp = LocalDateTime.now()
-      .plus(1, ChronoUnit.MINUTES)
-      .toEpochSecond(zoneOffset)
-
+    val qbftCluster =
+      DockerComposeRule.Builder()
+        .file((getRootPath().resolve("./../docker/compose.yaml")).toString())
+        .projectName(ProjectName.random())
+        .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
+        .build()
 
     private fun getRootPath(): Path {
-      return Path.of(".");
-    }
-
-    fun updateFile(fileName: String) {
-      val sourcePath: Path = getRootPath().resolve("../docker/").resolve(fileName+".template")
-      val targetPath: Path = getRootPath().resolve("../docker/").resolve(fileName)
-      if (targetPath.toFile().exists()) {
-        targetPath.toFile().delete()
-      }
-      Files.copy(sourcePath, targetPath)
-      val targetFile = targetPath.toFile()
-      val updatedContent = targetFile.readLines().joinToString("\n") { line ->
-        when {
-          line.contains("\"shanghaiTime\":") -> line.replace(Regex("\"shanghaiTime\": .*,")) {
-            "\"shanghaiTime\": $mergeTimestamp,"
-          }
-          line.contains("\"cancunTime\":") -> line.replace(Regex("\"cancunTime\": .*,")) {
-            "\"cancunTime\": $mergeTimestamp,"
-          }
-          else -> line
-        }
-      }
-      targetFile.writeText(updatedContent)
+      return Path.of(".")
     }
 
     @BeforeAll
     @JvmStatic
     fun beforeAll() {
-      updateFile("genesis-besu.json")
-      updateFile("genesis-geth.json")
-      rule.before()
+      qbftCluster.before()
     }
 
     @AfterAll
     @JvmStatic
     fun afterAll() {
-      rule.after()
+      qbftCluster.after()
     }
   }
 
@@ -125,88 +92,86 @@ class CliqueToPosTest {
 
   @Test
   fun networkCanBeSwitched() {
-      sealPreMergeBlocks()
-      everyoneArePeered()
-      val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
+    sealPreMergeBlocks()
+    everyoneArePeered()
+    val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
 
-      await()
-        .timeout(1.minutes.toJavaDuration())
-        .pollInterval(5.seconds.toJavaDuration())
-        .untilAsserted {
-          val unixTimestamp = System.currentTimeMillis() / 1000
-          log.info(
-            "Waiting for Cancun switch ${newBlockTimestamp.longValue() - unixTimestamp} seconds until the switch "
-                  )
-          assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
-        }
-
-//      waitForAllBlockHeightsToMatch()
-
-      val preMergeBlock =
-        TestEnvironment.sequencerL2Client
-          .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
-          .send()
-      val lastPreMergeBlockHash = preMergeBlock.block.hash
-      val lastPreMergeBlockHashBytes32 = Bytes32.fromHexString(lastPreMergeBlockHash)
-
-      fcuFollowersToBlockHash(lastPreMergeBlockHash)
-
-      log.info("Marked last pre merge block as finalized")
-
-      // Next block's content
-      TestEnvironment.sendArbitraryTransaction()
-
-      val payloadAttributes =
-        Optional.of(
-          PayloadAttributesV3(
-            newBlockTimestamp,
-            Bytes32.ZERO,
-            Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
-            emptyList(),
-            Bytes32.ZERO,
-                             )
-                   )
-      val fcuResponse =
-        sequencerExecutionClient
-          .forkChoiceUpdatedV3(
-            ForkChoiceStateV1(
-              lastPreMergeBlockHashBytes32,
-              lastPreMergeBlockHashBytes32,
-              lastPreMergeBlockHashBytes32,
-                             ),
-            payloadAttributes,
-                              )
-          .get()
-      val payloadId = fcuResponse.payload.asInternalExecutionPayload().payloadId
-      val getPayloadResponse = sequencerExecutionClient.getPayloadV3(payloadId.get()).get()
-      val newExecutionPayload = getPayloadResponse.payload.executionPayload
-      val newPayloadResult =
-        sequencerExecutionClient.newPayloadV3(newExecutionPayload, emptyList(), Bytes32.ZERO).get()
-      val newPayloadHash = newPayloadResult.payload.asInternalExecutionPayload().latestValidHash.get()
-      val nextPayloadAttributes =
-        Optional.of(
-          PayloadAttributesV3(
-            newExecutionPayload.timestamp + 1,
-            Bytes32.ZERO,
-            Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
-            emptyList(),
-            Bytes32.ZERO,
-                             )
-                   )
-      val nextForkChoiceState = ForkChoiceStateV1(newPayloadHash, newPayloadHash, newPayloadHash)
-      sequencerExecutionClient
-        .forkChoiceUpdatedV3(nextForkChoiceState, nextPayloadAttributes)
-        .get()
-        .also { log.info("FCU of new block on Sequencer $it") }
-
-      log.info("Sequencer has switched to PoS")
-
-      sendNewPayloadToFollowers(newExecutionPayload)
-
-      await().untilAsserted {
-        fcuFollowersToBlockHash(newPayloadHash.toHexString())
-        waitForAllBlockHeightsToMatch()
+    await()
+      .timeout(1.minutes.toJavaDuration())
+      .pollInterval(5.seconds.toJavaDuration())
+      .untilAsserted {
+        val unixTimestamp = System.currentTimeMillis() / 1000
+        log.info(
+          "Waiting for Cancun switch ${newBlockTimestamp.longValue() - unixTimestamp} seconds until the switch "
+        )
+        assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
       }
+
+    val preMergeBlock =
+      TestEnvironment.sequencerL2Client
+        .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
+        .send()
+    val lastPreMergeBlockHash = preMergeBlock.block.hash
+    val lastPreMergeBlockHashBytes32 = Bytes32.fromHexString(lastPreMergeBlockHash)
+
+    fcuFollowersToBlockHash(lastPreMergeBlockHash)
+
+    log.info("Marked last pre merge block as finalized")
+
+    // Next block's content
+    TestEnvironment.sendArbitraryTransaction()
+
+    val payloadAttributes =
+      Optional.of(
+        PayloadAttributesV3(
+          newBlockTimestamp,
+          Bytes32.ZERO,
+          Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
+          emptyList(),
+          Bytes32.ZERO,
+        )
+      )
+    val fcuResponse =
+      sequencerExecutionClient
+        .forkChoiceUpdatedV3(
+          ForkChoiceStateV1(
+            lastPreMergeBlockHashBytes32,
+            lastPreMergeBlockHashBytes32,
+            lastPreMergeBlockHashBytes32,
+          ),
+          payloadAttributes,
+        )
+        .get()
+    val payloadId = fcuResponse.payload.asInternalExecutionPayload().payloadId
+    val getPayloadResponse = sequencerExecutionClient.getPayloadV3(payloadId.get()).get()
+    val newExecutionPayload = getPayloadResponse.payload.executionPayload
+    val newPayloadResult =
+      sequencerExecutionClient.newPayloadV3(newExecutionPayload, emptyList(), Bytes32.ZERO).get()
+    val newPayloadHash = newPayloadResult.payload.asInternalExecutionPayload().latestValidHash.get()
+    val nextPayloadAttributes =
+      Optional.of(
+        PayloadAttributesV3(
+          newExecutionPayload.timestamp + 1,
+          Bytes32.ZERO,
+          Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
+          emptyList(),
+          Bytes32.ZERO,
+        )
+      )
+    val nextForkChoiceState = ForkChoiceStateV1(newPayloadHash, newPayloadHash, newPayloadHash)
+    sequencerExecutionClient
+      .forkChoiceUpdatedV3(nextForkChoiceState, nextPayloadAttributes)
+      .get()
+      .also { log.info("FCU of new block on Sequencer $it") }
+
+    log.info("Sequencer has switched to PoS")
+
+    sendNewPayloadToFollowers(newExecutionPayload)
+
+    await().untilAsserted {
+      fcuFollowersToBlockHash(newPayloadHash.toHexString())
+      waitForAllBlockHeightsToMatch()
+    }
   }
 
   @Disabled
@@ -252,7 +217,7 @@ class CliqueToPosTest {
 
   private fun parseCancunTimestamp(): Long {
     val objectMapper = ObjectMapper()
-    val genesisTree = objectMapper.readTree(File("../docker/genesis-besu.json"))
+    val genesisTree = objectMapper.readTree(File("../docker/initialization/genesis-besu.json"))
     return genesisTree.at("/config/shanghaiTime").asLong()
   }
 
@@ -316,11 +281,12 @@ class CliqueToPosTest {
       .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
         TestEnvironment.followerClients
-          .map { it.key to it.value}
+          .map { it.key to it.value }
           .forEach {
-            it.second.adminAddPeer(
+            it.second
+              .adminAddPeer(
                 "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
-                           )
+              )
               .send()
             val peersResult = it.second.adminPeers().send().result
             val peers = peersResult.size
