@@ -51,10 +51,6 @@ class CliqueToPosTest {
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
 
-    private fun getRootPath(): Path {
-      return Path.of(".")
-    }
-
     @BeforeAll
     @JvmStatic
     fun beforeAll() {
