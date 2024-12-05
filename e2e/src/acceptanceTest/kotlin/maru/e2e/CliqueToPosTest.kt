@@ -109,6 +109,8 @@ class CliqueToPosTest {
         assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
       }
 
+    waitForAllBlockHeightsToMatch()
+
     val preMergeBlock =
       TestEnvironment.sequencerL2Client
         .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
@@ -283,18 +285,17 @@ class CliqueToPosTest {
       .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
         TestEnvironment.followerClients
-          .map { it.key to it.value }
           .forEach {
-            it.second
+            it.value
               .adminAddPeer(
                 "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
               )
               .send()
-            val peersResult = it.second.adminPeers().send().result
+            val peersResult = it.value.adminPeers().send().result
             val peers = peersResult.size
-            log.info("Peers from node ${it.first}: $peers")
+            log.info("Peers from node ${it.key}: $peers")
             assertThat(peers)
-              .withFailMessage("${it.first} isn't peered! Peers: $peersResult")
+              .withFailMessage("${it.key} isn't peered! Peers: $peersResult")
               .isGreaterThan(0)
           }
       }
