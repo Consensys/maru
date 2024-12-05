@@ -24,6 +24,8 @@ import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.*
 import org.awaitility.Awaitility.await
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -82,12 +84,16 @@ class CliqueToPosTest {
       targetFile.writeText(updatedContent)
     }
 
+    @BeforeAll
+    @JvmStatic
     fun beforeAll() {
       updateFile("genesis-besu.json")
       updateFile("genesis-geth.json")
       rule.before()
     }
 
+    @AfterAll
+    @JvmStatic
     fun afterAll() {
       rule.after()
     }
@@ -119,8 +125,6 @@ class CliqueToPosTest {
 
   @Test
   fun networkCanBeSwitched() {
-    try {
-      beforeAll()
       sealPreMergeBlocks()
       everyoneArePeered()
       val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
@@ -203,9 +207,6 @@ class CliqueToPosTest {
         fcuFollowersToBlockHash(newPayloadHash.toHexString())
         waitForAllBlockHeightsToMatch()
       }
-    }finally {
-        afterAll()
-    }
   }
 
   @Disabled
