@@ -1,5 +1,5 @@
 #!/bin/zsh
-cd initialization
+echo "Initialization of timestamp in genesis files for Besu and Geth."
 cp -T "genesis-besu.json.template" "genesis-besu.json"
 cp -T "genesis-geth.json.template" "genesis-geth.json"
 
