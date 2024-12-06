@@ -33,12 +33,16 @@ allprojects {
   apply plugin: libs.plugins.spotless.get().getPluginId()
 
   spotless {
+    kotlin {
+      // by default the target is every '.kt' and '.kts` file in the java sourcesets
+      ktlint().setEditorConfigPath("$rootDir/.editorconfig")
+    }
     java {
       // This path needs to be relative to each project
       target 'src/**/*.java'
       removeUnusedImports()
-      googleJavaFormat('1.23.0')
-      importOrder 'org.hyperledger', 'java', ''
+      googleJavaFormat()
+      importOrder 'build.linea', 'java', ''
       trimTrailingWhitespace()
       endWithNewline()
       // apply appropriate license header files.
