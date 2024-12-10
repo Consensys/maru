@@ -12,6 +12,7 @@ jobs:
     name: Filter commit changes
     outputs:
       consensus-client: ${{ steps.filter.outputs.consensus-client }}
+      has-changes-requiring-build: ${{ steps.filter-out.outputs.has-changes-requiring-build }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,9 +27,6 @@ jobs:
               - 'buildSrc/**'
               - 'config/**'
               - 'consensus/**'
-            e2e:
-              - 'e2e/**'
-              - 'docker/**'
 
       - name: Filter out commit changes
         uses: dorny/paths-filter@v3
@@ -40,8 +38,6 @@ jobs:
             has-changes-requiring-build:
               - '!**/*.md'
               - '!docs/**'
-          # Enables us to exclude changes in multiple file types if required
-          predicate-quantifier: 'every'
 
   testing:
     needs: [ filter-commit-changes ]
@@ -53,6 +49,7 @@ jobs:
     secrets: inherit
 
   run-e2e-tests:
+    needs: [ filter-commit-changes ]
     if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
