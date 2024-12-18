@@ -4,6 +4,7 @@ plugins {
   alias(libs.plugins.errorprone)
   alias(libs.plugins.spotless)
   alias(libs.plugins.spring.dependency.management)
+  id "jacoco"
 }
 
 subprojects.each {
