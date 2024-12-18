@@ -236,7 +236,6 @@ task jacocoAggregatedReport(type: JacocoReport) {
   executionData.from fileTree(dir: '.', includes: ['**/jacoco/*.exec'])
   reports {
     xml.required = true
-    csv.required = true
     html.destination file("build/reports/jacocoHtml")
   }
 }

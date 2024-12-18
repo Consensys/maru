@@ -51,14 +51,14 @@ jobs:
 #          ./gradlew app:integrationTestAllNeeded
       - name: Run Jacoco
         run: |
-          ./gradlew jacocoRootReport
+          ./gradlew jacocoAggregatedReport
       - name: Upload Jacoco test coverage report
         uses: actions/upload-artifact@v4
         with:
           name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
           if-no-files-found: error
           path: |
-            ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
+            ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
 #      - name: Upload coverage to Codecov
 #        uses: codecov/codecov-action@v5
 #        with:
