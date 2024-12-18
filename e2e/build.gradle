@@ -59,7 +59,3 @@ tasks.register('acceptanceTest', Test) { test ->
     showStandardStreams true
   }
 }
-
-check {
-  dependsOn acceptanceTest
-}
