@@ -4,6 +4,6 @@ plugins {
 rootProject.name = 'maru'
 
 include ':consensus:client'
+include ':consensus:core'
 include ':e2e'
 include ':config'
-include ':beacon:spec'
