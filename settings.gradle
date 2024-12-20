@@ -3,7 +3,7 @@ plugins {
 }
 rootProject.name = 'maru'
 
-include ':consensus:core'
 include ':app'
-include ':e2e'
 include ':config'
+include ':core'
+include ':e2e'
