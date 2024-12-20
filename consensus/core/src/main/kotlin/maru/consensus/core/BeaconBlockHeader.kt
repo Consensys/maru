@@ -1,6 +1,7 @@
 package maru.consensus.core
 
 data class BeaconBlockHeader (
+  val number: ULong,
   val proposer: Validator,
   val parentRoot: ByteArray,
   val stateRoot: ByteArray
@@ -11,6 +12,7 @@ data class BeaconBlockHeader (
 
     other as BeaconBlockHeader
 
+    if (number != other.number) return false
     if (proposer != other.proposer) return false
     if (!parentRoot.contentEquals(other.parentRoot)) return false
     if (!stateRoot.contentEquals(other.stateRoot)) return false
@@ -19,7 +21,8 @@ data class BeaconBlockHeader (
   }
 
   override fun hashCode(): Int {
-    var result = proposer.hashCode()
+    var result = number.hashCode()
+    result = 31 * result + proposer.hashCode()
     result = 31 * result + parentRoot.contentHashCode()
     result = 31 * result + stateRoot.contentHashCode()
     return result
