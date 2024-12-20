@@ -1,13 +1,14 @@
 package maru.consensus.core
 
 /**
- * After every BeaconBlock there is a transition in the BeaconState by applying the operations from the BeaconBlock
- * These operations could be a new execution payload, adding/removing validators etc.
+ * After every BeaconBlock there is a transition in the BeaconState by applying the operations from
+ * the BeaconBlock These operations could be a new execution payload, adding/removing validators
+ * etc.
  */
-data class BeaconState (
+data class BeaconState(
   val latestBeaconBlockHeader: BeaconBlockHeader,
   val latestBeaconBlockRoot: ByteArray,
-  val validators: Set<Validator>
+  val validators: Set<Validator>,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

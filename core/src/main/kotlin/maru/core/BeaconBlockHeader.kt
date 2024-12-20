@@ -1,11 +1,11 @@
 package maru.consensus.core
 
-data class BeaconBlockHeader (
+data class BeaconBlockHeader(
   val number: ULong,
   val round: ULong,
   val proposer: Validator,
   val parentRoot: ByteArray,
-  val stateRoot: ByteArray
+  val stateRoot: ByteArray,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

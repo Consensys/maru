@@ -6,7 +6,7 @@ import java.math.BigInteger
  * Execution Payload for the Engine API and Beacon Block
  * https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#executionpayloadv1
  */
-data class ExecutionPayload (
+data class ExecutionPayload(
   val parentHash: ByteArray,
   val stateRoot: ByteArray,
   val receiptsRoot: ByteArray,
@@ -19,7 +19,7 @@ data class ExecutionPayload (
   val extraData: ByteArray,
   val baseFeePerGas: BigInteger,
   val blockHash: ByteArray,
-  val transactions: List<ByteArray>
+  val transactions: List<ByteArray>,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
