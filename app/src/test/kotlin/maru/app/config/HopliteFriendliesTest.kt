@@ -32,9 +32,9 @@ class HopliteFriendliesTest {
     val config =
       parseJsonConfig<BeaconGenesisConfig>(
         """
-          {
-            "blockTimeMillis": 1000
-          }
+        {
+          "blockTimeMillis": 1000
+        }
         """
           .trimIndent()
       )
