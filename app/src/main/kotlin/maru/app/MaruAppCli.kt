@@ -78,7 +78,7 @@ class MaruAppCli : Callable<Int> {
             // Messages in App.stop won't appear in the logs
             Configurator.shutdown(LogManager.getContext() as LoggerContext)
           }
-        }
+        },
       )
 
     return 0
@@ -100,10 +100,13 @@ class MaruAppCli : Callable<Int> {
     return file.canRead()
   }
 
-  private fun validateParsedFile(configResult: ConfigResult<*>, validatedFile: String): Boolean {
+  private fun validateParsedFile(
+    configResult: ConfigResult<*>,
+    validatedFile: String,
+  ): Boolean {
     if (configResult.isInvalid()) {
       System.err.println(
-        "Invalid config file: $validatedFile, ${configResult.getInvalidUnsafe().description()}"
+        "Invalid config file: $validatedFile, ${configResult.getInvalidUnsafe().description()}",
       )
       return false
     }

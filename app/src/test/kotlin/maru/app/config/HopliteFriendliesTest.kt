@@ -36,7 +36,7 @@ class HopliteFriendliesTest {
           "blockTimeMillis": 1000
         }
         """
-          .trimIndent()
+          .trimIndent(),
       )
     assertThat(config.blockTimeMillis).isEqualTo(1000u)
   }
@@ -55,7 +55,7 @@ class HopliteFriendliesTest {
         [validator]
         validator-key = "0xdead"
         """
-          .trimIndent()
+          .trimIndent(),
       )
     assertThat(config)
       .isEqualTo(
@@ -64,7 +64,7 @@ class HopliteFriendliesTest {
             ExecutionClientConfig(endpoint = URI.create("https://localhost").toURL()),
           p2pConfig = P2P(port = 3322u),
           validator = ValidatorToml(validatorKey = Secret("0xdead")),
-        )
+        ),
       )
   }
 }
