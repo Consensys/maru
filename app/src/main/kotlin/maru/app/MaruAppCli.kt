@@ -31,7 +31,7 @@ class MaruAppCli : Callable<Int> {
     paramLabel = "CONFIG.toml,CONFIG.overrides.toml",
     description = ["Configuration files"],
     arity = "1..*",
-    required = true
+    required = true,
   )
   private val configFiles: List<File>? = null
 
@@ -39,7 +39,7 @@ class MaruAppCli : Callable<Int> {
     names = ["--besu-genesis-file"],
     paramLabel = "BEACON_GENESIS.json",
     description = ["Beacon chain genesis file"],
-    required = true
+    required = true,
   )
   private val genesisFile: File? = null
 
