@@ -18,7 +18,7 @@ import picocli.CommandLine.Command
   name = "maru",
   showDefaultValues = true,
   abbreviateSynopsis = true,
-  description = ["Runs Maru Linea consensus client"],
+  description = ["Runs Maru consensus client"],
   version = ["0.0.1"],
   synopsisHeading = "%n",
   descriptionHeading = "%nDescription:%n%n",
