@@ -31,6 +31,7 @@ class MaruAppCli : Callable<Int> {
     paramLabel = "CONFIG.toml,CONFIG.overrides.toml",
     description = ["Configuration files"],
     arity = "1..*",
+    required = true
   )
   private val configFiles: List<File>? = null
 
@@ -38,28 +39,29 @@ class MaruAppCli : Callable<Int> {
     names = ["--besu-genesis-file"],
     paramLabel = "BEACON_GENESIS.json",
     description = ["Beacon chain genesis file"],
+    required = true
   )
   private val genesisFile: File? = null
 
   override fun call(): Int {
     for (configFile in configFiles!!) {
       if (!validateConfigFile(configFile)) {
-        System.err.println("Failed to read config file: ${configFile.absolutePath}")
+        System.err.println("Failed to read config file: \"${configFile.path}\"")
         return 1
       }
     }
     if (!validateConfigFile(genesisFile!!)) {
-      System.err.println("Failed to read genesis file file: ${genesisFile.absolutePath}")
+      System.err.println("Failed to read genesis file file: \"${genesisFile.path}\"")
       return 1
     }
     val appConfig = loadConfig<MaruConfigDtoToml>(configFiles)
     val beaconGenesisConfig = loadConfig<BeaconGenesisConfig>(listOf(genesisFile))
 
-    if (!validateParsedFile(appConfig, configFiles.map { it.absolutePath }.toString())) {
+    if (!validateParsedFile(appConfig, "app configuration", configFiles.map { it.absolutePath }.toString())) {
       return 1
     }
 
-    if (!validateParsedFile(beaconGenesisConfig, genesisFile.absolutePath)) {
+    if (!validateParsedFile(beaconGenesisConfig, "consensus genesis", genesisFile.absolutePath)) {
       return 1
     }
 
@@ -102,11 +104,12 @@ class MaruAppCli : Callable<Int> {
 
   private fun validateParsedFile(
     configResult: ConfigResult<*>,
+    purpose: String,
     validatedFile: String,
   ): Boolean {
     if (configResult.isInvalid()) {
       System.err.println(
-        "Invalid config file: $validatedFile, ${configResult.getInvalidUnsafe().description()}",
+        "Invalid $purpose config file: $validatedFile, ${configResult.getInvalidUnsafe().description()}",
       )
       return false
     }
