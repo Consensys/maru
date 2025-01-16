@@ -18,25 +18,26 @@ package maru.database.rocksdb
 import maru.consensus.core.BeaconBlock
 import maru.consensus.core.BeaconState
 import maru.database.Database
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class RocksDBInstance : Database {
-  override fun getLatestBeaconState(): BeaconState {
+  override fun getLatestBeaconState(): SafeFuture<BeaconState> {
     TODO("Not yet implemented")
   }
 
-  override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState {
+  override fun getBeaconState(beaconBlockRoot: ByteArray): SafeFuture<BeaconState> {
     TODO("Not yet implemented")
   }
 
-  override fun storeState(beaconState: BeaconState) {
+  override fun storeState(beaconState: BeaconState): SafeFuture<Void> {
     TODO("Not yet implemented")
   }
 
-  override fun getBeaconBlock(beaconBlockRoot: ByteArray): BeaconBlock {
+  override fun getBeaconBlock(beaconBlockRoot: ByteArray): SafeFuture<BeaconBlock> {
     TODO("Not yet implemented")
   }
 
-  override fun storeBeaconBlock(beaconBlock: BeaconBlock) {
+  override fun storeBeaconBlock(beaconBlock: BeaconBlock): SafeFuture<Void> {
     TODO("Not yet implemented")
   }
 }
