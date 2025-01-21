@@ -16,7 +16,7 @@
 package maru.consensus.dummy
 
 import java.util.concurrent.TimeUnit
-import maru.core.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -32,7 +32,7 @@ class DummyConsensusEventHandler(
   private var state: DummyConsensusState,
   private val executionLayerManager: ExecutionLayerManager,
   private val blockCreator: BlockCreator,
-  private val onNewBlock: (Block) -> Unit
+  private val onNewBlock: (Block) -> Unit,
 ) : BftEventHandler {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -50,10 +50,12 @@ class DummyConsensusEventHandler(
   override fun handleBlockTimerExpiry(blockTimerExpiry: BlockTimerExpiry) {
     val roundIdentifier: ConsensusRoundIdentifier = blockTimerExpiry.roundIdentifier
     if (isMsgForCurrentHeight(roundIdentifier)) {
-      val blockCreationResult = blockCreator.createEmptyWithdrawalsBlock(
-        TimeUnit.MILLISECONDS.toSeconds(state.clock.millis()),
-        null, // Execution client is aware of the parent header
-      )
+      val blockCreationResult =
+        blockCreator.createEmptyWithdrawalsBlock(
+          TimeUnit.MILLISECONDS.toSeconds(state.clock.millis()),
+          // Execution client is aware of the parent header
+          null,
+        )
       onNewBlock(blockCreationResult.block)
     } else {
       log.trace(
@@ -68,7 +70,6 @@ class DummyConsensusEventHandler(
     TODO("No other validators are supported so nothing to do")
   }
 
-  private fun isMsgForCurrentHeight(roundIdentifier: ConsensusRoundIdentifier): Boolean {
-    return roundIdentifier.sequenceNumber.toULong() == executionLayerManager.latestBlockHeight()
-  }
+  private fun isMsgForCurrentHeight(roundIdentifier: ConsensusRoundIdentifier): Boolean =
+    roundIdentifier.sequenceNumber.toULong() == executionLayerManager.latestBlockHeight()
 }

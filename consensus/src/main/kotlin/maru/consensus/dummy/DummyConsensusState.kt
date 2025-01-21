@@ -17,7 +17,10 @@ package maru.consensus.dummy
 
 import java.time.Clock
 
-data class FinalizationState(val safeBlockHash: ByteArray, val finalizedBlockHash: ByteArray) {
+data class FinalizationState(
+  val safeBlockHash: ByteArray,
+  val finalizedBlockHash: ByteArray,
+) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -47,16 +50,12 @@ data class DummyConsensusState(
   val latestBlockHash: ByteArray get() = latestBlockHash_
 
   @Synchronized
-  fun updateFinalizationState(
-    finalizationState: FinalizationState,
-  ) {
+  fun updateFinalizationState(finalizationState: FinalizationState) {
     finalizationState_ = finalizationState
   }
 
   @Synchronized
-  fun updateLatestStatus(
-    latestBlockHash: ByteArray,
-  ) {
+  fun updateLatestStatus(latestBlockHash: ByteArray) {
     latestBlockHash_ = latestBlockHash
   }
 

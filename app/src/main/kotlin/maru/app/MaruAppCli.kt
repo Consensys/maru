@@ -1,3 +1,18 @@
+/*
+   Copyright 2025 Consensys Software Inc.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ */
 package maru.app
 
 import com.sksamuel.hoplite.ConfigLoaderBuilder
@@ -71,7 +86,8 @@ class MaruAppCli : Callable<Int> {
     val app = MaruApp(parsedAppConfig.reified(), parsedBeaconGenesisConfig)
     app.start()
 
-    Runtime.getRuntime()
+    Runtime
+      .getRuntime()
       .addShutdownHook(
         Thread {
           app.stop()
@@ -89,7 +105,10 @@ class MaruAppCli : Callable<Int> {
   @OptIn(ExperimentalHoplite::class)
   private inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
     val confBuilder: ConfigLoaderBuilder =
-      ConfigLoaderBuilder.Companion.empty().addDefaults().withExplicitSealedTypes()
+      ConfigLoaderBuilder.Companion
+        .empty()
+        .addDefaults()
+        .withExplicitSealedTypes()
     for (configFile in configFiles.reversed()) {
       // files must be added in reverse order for overriding
       confBuilder.addFileSource(configFile, false)
@@ -98,9 +117,7 @@ class MaruAppCli : Callable<Int> {
     return confBuilder.build().loadConfig<T>(emptyList())
   }
 
-  private fun validateConfigFile(file: File): Boolean {
-    return file.canRead()
-  }
+  private fun validateConfigFile(file: File): Boolean = file.canRead()
 
   private fun validateParsedFile(
     configResult: ConfigResult<*>,

@@ -15,14 +15,13 @@
  */
 package maru.consensus.core
 
-import java.math.BigInteger
-
 /**
  * Execution Payload for the Engine API and Beacon Block
  * https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#executionpayloadv1
  */
 data class ExecutionPayload(
   val parentHash: ByteArray,
+  val feeRecipient: ByteArray,
   val stateRoot: ByteArray,
   val receiptsRoot: ByteArray,
   val logsBloom: ByteArray,
@@ -32,7 +31,7 @@ data class ExecutionPayload(
   val gasUsed: ULong,
   val timestamp: ULong,
   val extraData: ByteArray,
-  val baseFeePerGas: BigInteger,
+  val baseFeePerGas: ULong,
   val blockHash: ByteArray,
   val transactions: List<ByteArray>,
 ) {

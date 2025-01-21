@@ -15,7 +15,9 @@
  */
 package maru.consensus.dummy
 
-data class DummyConsensusConfig(val blockTimeMillis: UInt) {
+data class DummyConsensusConfig(
+  val blockTimeMillis: UInt,
+) {
   init {
     require(blockTimeMillis >= 0u) { "blockTimeMillis must be greater than zero" }
   }

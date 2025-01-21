@@ -15,9 +15,10 @@
  */
 package maru.consensus.dummy
 
-class BlockTimer(val forksSchedule: ForksSchedule<DummyConsensusConfig>) {
+class BlockTimer(
+  val forksSchedule: ForksSchedule<DummyConsensusConfig>,
+) {
   fun start() {
-
   }
 
   fun cancel() {

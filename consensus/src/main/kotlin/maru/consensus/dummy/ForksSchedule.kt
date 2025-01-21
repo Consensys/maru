@@ -17,4 +17,6 @@ package maru.consensus.dummy
 
 import java.util.NavigableSet
 
-class ForksSchedule<F>(forks: NavigableSet<F>)
+class ForksSchedule<F>(
+  forks: NavigableSet<F>,
+)

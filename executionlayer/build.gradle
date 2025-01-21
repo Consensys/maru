@@ -23,4 +23,5 @@ dependencies {
   implementation "tech.pegasys.teku.internal:unsigned"
   implementation "tech.pegasys.teku.internal:bytes"
   implementation "tech.pegasys.teku.internal:executionclient"
+  implementation "tech.pegasys.teku.internal:spec"
 }
