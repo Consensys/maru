@@ -18,8 +18,9 @@ plugins {
 }
 
 dependencies {
-  implementation "tech.pegasys.teku.internal:executionclient"
-  implementation "tech.pegasys.teku.internal:bytes"
+  implementation(project(":core"))
 
-  api 'org.slf4j:slf4j-api'
+  implementation "tech.pegasys.teku.internal:unsigned"
+  implementation "tech.pegasys.teku.internal:bytes"
+  implementation "tech.pegasys.teku.internal:executionclient"
 }

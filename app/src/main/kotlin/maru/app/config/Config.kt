@@ -23,12 +23,6 @@ data class Validator(val validatorKey: ByteArray) {
   }
 }
 
-data class BeaconGenesisConfig(val blockTimeMillis: UInt) {
-  init {
-    require(blockTimeMillis >= 0u) { "blockTimeMillis must be greater than zero" }
-  }
-}
-
 data class MaruConfig(
   val executionClientConfig: ExecutionClientConfig,
   val p2pConfig: P2P?,

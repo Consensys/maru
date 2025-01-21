@@ -6,8 +6,8 @@ import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.addFileSource
 import java.io.File
 import java.util.concurrent.Callable
-import maru.app.config.BeaconGenesisConfig
 import maru.app.config.MaruConfigDtoToml
+import maru.consensus.dummy.DummyConsensusConfig
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.Configurator
@@ -55,7 +55,7 @@ class MaruAppCli : Callable<Int> {
       return 1
     }
     val appConfig = loadConfig<MaruConfigDtoToml>(configFiles)
-    val beaconGenesisConfig = loadConfig<BeaconGenesisConfig>(listOf(genesisFile))
+    val beaconGenesisConfig = loadConfig<DummyConsensusConfig>(listOf(genesisFile))
 
     if (!validateParsedFile(appConfig, "app configuration", configFiles.map { it.absolutePath }.toString())) {
       return 1

@@ -132,7 +132,7 @@ class CliqueToPosTest {
     log.info("Marked last pre merge block as finalized")
 
     // Next block's content
-    TestEnvironment.sendArbitraryTransaction()
+    val firstPosBlockTransaction = TestEnvironment.sendArbitraryTransaction()
 
     val payloadAttributes =
       Optional.of(
@@ -179,6 +179,8 @@ class CliqueToPosTest {
 
     log.info("Sequencer has switched to PoS")
 
+    firstPosBlockTransaction.waitForInclusion()
+
     sendNewPayloadToFollowers(newExecutionPayload)
 
     await().untilAsserted {
@@ -198,7 +200,7 @@ class CliqueToPosTest {
     fcuFollowersToBlockHash(blockHash)
   }
 
-  @Disabled
+  @Test
   fun fullSync() {
     val target = geth1ExecutionEngineClient
 
