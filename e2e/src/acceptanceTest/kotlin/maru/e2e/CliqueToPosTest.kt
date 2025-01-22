@@ -156,6 +156,10 @@ class CliqueToPosTest {
           payloadAttributes,
         ).get()
     val payloadId = fcuResponse.payload.asInternalExecutionPayload().payloadId
+
+    // To give EL time to execute a block
+    Thread.sleep(6000)
+
     val getPayloadResponse = sequencerExecutionClient.getPayloadV3(payloadId.get()).get()
     val newExecutionPayload = getPayloadResponse.payload.executionPayload
     val newPayloadResult =
