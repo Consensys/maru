@@ -29,7 +29,7 @@ class RocksDBInstance : Database {
     TODO("Not yet implemented")
   }
 
-  override fun storeState(beaconState: BeaconState): SafeFuture<Void> {
+  override fun storeState(beaconState: BeaconState): SafeFuture<Unit> {
     TODO("Not yet implemented")
   }
 
@@ -37,7 +37,7 @@ class RocksDBInstance : Database {
     TODO("Not yet implemented")
   }
 
-  override fun storeBeaconBlock(beaconBlock: BeaconBlock): SafeFuture<Void> {
+  override fun storeBeaconBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
     TODO("Not yet implemented")
   }
 }
