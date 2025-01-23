@@ -48,6 +48,15 @@ class EngineApiBlockCreator(
   private val state: DummyConsensusState,
   private val blockHeaderFunctions: BlockHeaderFunctions,
 ) : BlockCreator {
+  init {
+    manager
+      .setHeadAndStartBlockBuilding(
+        state.latestBlockHash,
+        state.finalizationState.safeBlockHash,
+        state.finalizationState.finalizedBlockHash,
+      )
+  }
+
   private val log = LogManager.getLogger(EngineApiBlockCreator::class.java)
 
   override fun createBlock(

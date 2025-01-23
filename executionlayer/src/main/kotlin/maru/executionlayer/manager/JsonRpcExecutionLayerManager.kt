@@ -15,7 +15,6 @@
  */
 package maru.executionlayer.manager
 
-import java.math.BigInteger
 import kotlin.jvm.optionals.getOrNull
 import maru.consensus.core.ExecutionPayload
 import maru.executionlayer.client.BlockNumberAndHash
@@ -56,7 +55,7 @@ class JsonRpcExecutionLayerManager private constructor(
   }
 
   private class ElHeightMetadata(
-    var nextBlockNumberAndHash: BlockNumberAndHash?,
+    var nextBlockNumberAndHash: BlockNumberAndHash,
     var currentBlockNumberAndHash: BlockNumberAndHash,
   ) {
     @Synchronized
@@ -66,15 +65,14 @@ class JsonRpcExecutionLayerManager private constructor(
 
     @Synchronized
     fun promoteBlockNumberAndHash() {
-      currentBlockNumberAndHash = nextBlockNumberAndHash!!
-      nextBlockNumberAndHash = null
+      currentBlockNumberAndHash = nextBlockNumberAndHash
     }
   }
 
   private var payloadId: ByteArray? = null
   private var latestBlockCache: ElHeightMetadata =
     ElHeightMetadata(
-      nextBlockNumberAndHash = null,
+      nextBlockNumberAndHash = currentBlockNumberAndHash,
       currentBlockNumberAndHash = currentBlockNumberAndHash,
     )
 
@@ -85,7 +83,7 @@ class JsonRpcExecutionLayerManager private constructor(
   ): SafeFuture<ForkChoiceUpdatedResult> {
     val payloadAttributes =
       PayloadAttributesV3(
-        UInt64.valueOf(BigInteger(newBlockTimestampProvider().toString())),
+        UInt64.fromLongBits(newBlockTimestampProvider().toLong()),
         Bytes32.ZERO,
         Bytes20(Bytes.wrap(feeRecipientProvider())),
         emptyList(),
@@ -100,6 +98,10 @@ class JsonRpcExecutionLayerManager private constructor(
         ),
         payloadAttributes,
       ).thenApply(::mapForkChoiceUpdatedResultToDomain)
+      .thenPeek {
+        latestBlockCache.promoteBlockNumberAndHash()
+        payloadId = it.payloadId
+      }
   }
 
   private fun mapForkChoiceUpdatedResultToDomain(
@@ -145,6 +147,7 @@ class JsonRpcExecutionLayerManager private constructor(
           )
           executionLayerClient.newPayload(executionPayload).thenApply { payloadStatus ->
             if (payloadStatus.isSuccess) {
+              payloadId = null // Not necessary, but it helps to reinforce the order of calls
               BlockBuildingResult(
                 executionPayloadV3ToDomain(executionPayload),
                 payloadStatus.payload
@@ -178,10 +181,27 @@ class JsonRpcExecutionLayerManager private constructor(
       gasUsed = executionPayloadV3.gasUsed.longValue().toULong(),
       timestamp = executionPayloadV3.timestamp.longValue().toULong(),
       extraData = executionPayloadV3.extraData.toArray(),
-      baseFeePerGas = executionPayloadV3.baseFeePerGas.toLong().toULong(),
+      // Intentional cropping, UInt256 doesn't fit into ULong
+      baseFeePerGas =
+        executionPayloadV3.baseFeePerGas
+          .toBigInteger()
+          .toLong()
+          .toULong(),
       blockHash = executionPayloadV3.blockHash.toArray(),
       transactions = executionPayloadV3.transactions.map { it.toArray() },
     )
 
   override fun latestBlockHeight(): ULong = latestBlockCache.currentBlockNumberAndHash.blockNumber
+
+  override fun setHead(
+    headHash: ByteArray,
+    safeHash: ByteArray,
+    finalizedHash: ByteArray,
+  ): SafeFuture<ForkChoiceUpdatedResult> {
+    TODO("Will implement once the chain following feature is implemented")
+  }
+
+  override fun importBlock(executionPayload: ExecutionPayload): ByteArray {
+    TODO("Will implement once the chain following feature is implemented")
+  }
 }

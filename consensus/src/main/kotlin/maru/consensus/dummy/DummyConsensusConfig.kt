@@ -19,6 +19,6 @@ data class DummyConsensusConfig(
   val blockTimeMillis: UInt,
 ) {
   init {
-    require(blockTimeMillis >= 0u) { "blockTimeMillis must be greater than zero" }
+    require(blockTimeMillis >= 1000u) { "blockTimeMillis must be greater than 1 second" }
   }
 }

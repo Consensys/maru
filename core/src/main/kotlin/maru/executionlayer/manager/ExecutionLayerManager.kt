@@ -107,4 +107,12 @@ interface ExecutionLayerManager {
   fun finishBlockBuilding(): SafeFuture<BlockBuildingResult>
 
   fun latestBlockHeight(): ULong
+
+  fun setHead(
+    headHash: ByteArray,
+    safeHash: ByteArray,
+    finalizedHash: ByteArray,
+  ): SafeFuture<ForkChoiceUpdatedResult>
+
+  fun importBlock(executionPayload: ExecutionPayload): ByteArray
 }
