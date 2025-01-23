@@ -15,10 +15,15 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
+  id 'java-test-fixtures'
 }
 
 dependencies {
   api 'org.slf4j:slf4j-api'
   implementation "org.hyperledger.besu.internal:rlp"
   implementation "io.tmio:tuweni-bytes"
+  implementation "org.rocksdb:rocksdbjni"
+  implementation "tech.pegasys.teku.internal:storage"
+  testImplementation "org.hyperledger.besu.internal:metrics-core"
+  testImplementation "org.hyperledger.besu:plugin-api"
 }

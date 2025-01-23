@@ -13,23 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database
+package maru.database.rocksdb
 
-import maru.core.BeaconBlock
-import maru.core.BeaconState
-import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
 
-interface Database : AutoCloseable {
-  fun getLatestBeaconState(): SafeFuture<BeaconState>
+class BytesSerializer : KvStoreSerializer<ByteArray> {
+  override fun serialize(value: ByteArray): ByteArray {
+    return value
+  }
 
-  fun getBeaconState(beaconBlockRoot: ByteArray): SafeFuture<BeaconState>
-
-  fun storeState(beaconState: BeaconState): SafeFuture<Unit>
-
-  fun getBeaconBlock(beaconBlockRoot: ByteArray): SafeFuture<BeaconBlock>
-
-  fun storeBeaconBlock(
-    beaconBlock: BeaconBlock,
-    beaconBlockRoot: ByteArray,
-  ): SafeFuture<Unit>
+  override fun deserialize(bytes: ByteArray): ByteArray {
+    return bytes
+  }
 }
