@@ -15,7 +15,7 @@
  */
 package maru.executionlayer.manager
 
-import maru.consensus.core.ExecutionPayload
+import maru.core.ExecutionPayload
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 data class BlockBuildingResult(

@@ -16,7 +16,7 @@
 package maru.executionlayer.manager
 
 import kotlin.jvm.optionals.getOrNull
-import maru.consensus.core.ExecutionPayload
+import maru.core.ExecutionPayload
 import maru.executionlayer.client.BlockNumberAndHash
 import maru.executionlayer.client.ExecutionLayerClient
 import org.apache.tuweni.bytes.Bytes
@@ -183,10 +183,7 @@ class JsonRpcExecutionLayerManager private constructor(
       extraData = executionPayloadV3.extraData.toArray(),
       // Intentional cropping, UInt256 doesn't fit into ULong
       baseFeePerGas =
-        executionPayloadV3.baseFeePerGas
-          .toBigInteger()
-          .toLong()
-          .toULong(),
+        executionPayloadV3.baseFeePerGas.toBigInteger(),
       blockHash = executionPayloadV3.blockHash.toArray(),
       transactions = executionPayloadV3.transactions.map { it.toArray() },
     )

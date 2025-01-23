@@ -30,6 +30,7 @@ class ExecutionPayloadSerializerTest {
     val testValue =
       ExecutionPayload(
         parentHash = Random.nextBytes(32),
+        feeRecipient = Random.nextBytes(20),
         stateRoot = Random.nextBytes(32),
         receiptsRoot = Random.nextBytes(32),
         logsBloom = Random.nextBytes(32),
@@ -54,6 +55,7 @@ class ExecutionPayloadSerializerTest {
     val testValue =
       ExecutionPayload(
         parentHash = Random.nextBytes(32),
+        feeRecipient = Random.nextBytes(20),
         stateRoot = Random.nextBytes(32),
         receiptsRoot = Random.nextBytes(32),
         logsBloom = Random.nextBytes(32),

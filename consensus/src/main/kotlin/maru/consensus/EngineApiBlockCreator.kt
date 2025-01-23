@@ -16,8 +16,8 @@
 package maru.consensus
 
 import java.util.Optional
-import maru.consensus.core.ExecutionPayload
 import maru.consensus.dummy.DummyConsensusState
+import maru.core.ExecutionPayload
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
