@@ -15,8 +15,8 @@
  */
 package maru.database
 
-import maru.consensus.core.BeaconBlock
-import maru.consensus.core.BeaconState
+import maru.core.BeaconBlock
+import maru.core.BeaconState
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface Database {
@@ -24,9 +24,9 @@ interface Database {
 
   fun getBeaconState(beaconBlockRoot: ByteArray): SafeFuture<BeaconState>
 
-  fun storeState(beaconState: BeaconState): SafeFuture<Void>
+  fun storeState(beaconState: BeaconState): SafeFuture<Unit>
 
   fun getBeaconBlock(beaconBlockRoot: ByteArray): SafeFuture<BeaconBlock>
 
-  fun storeBeaconBlock(beaconBlock: BeaconBlock): SafeFuture<Void>
+  fun storeBeaconBlock(beaconBlock: BeaconBlock): SafeFuture<Unit>
 }

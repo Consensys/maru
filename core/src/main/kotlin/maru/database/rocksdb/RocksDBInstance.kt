@@ -15,8 +15,8 @@
  */
 package maru.database.rocksdb
 
-import maru.consensus.core.BeaconBlock
-import maru.consensus.core.BeaconState
+import maru.core.BeaconBlock
+import maru.core.BeaconState
 import maru.database.Database
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
