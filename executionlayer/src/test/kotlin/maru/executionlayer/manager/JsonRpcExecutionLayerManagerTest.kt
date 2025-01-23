@@ -97,7 +97,10 @@ class JsonRpcExecutionLayerManagerTest {
     return payloadStatus
   }
 
-  private fun mockGetPayloadWithRandomData(payloadId: Bytes8, executionPayload: ExecutionPayloadV3) {
+  private fun mockGetPayloadWithRandomData(
+    payloadId: Bytes8,
+    executionPayload: ExecutionPayloadV3,
+  ) {
     val blobsBundle = BlobsBundleV1.fromInternalBlobsBundle(dataStructureUtil.randomBlobsBundle())
     val getPayloadResponse = Response(GetPayloadV3Response(executionPayload, UInt256.ZERO, blobsBundle, false))
     whenever(executionLayerClient.getPayload(eq(payloadId)))
@@ -121,19 +124,26 @@ class JsonRpcExecutionLayerManagerTest {
     val payloadId = Bytes8(Bytes.random(8))
     val payloadStatus = mockForkChoiceUpdateWithValidStatus(payloadId)
 
-    val result = executionLayerManager
-      .setHeadAndStartBlockBuilding(
-        headHash = newHeadHash.toArray(),
-        safeHash = newSafeHash.toArray(),
-        finalizedHash = newFinalizedHash.toArray(),
-      ).get()
+    val result =
+      executionLayerManager
+        .setHeadAndStartBlockBuilding(
+          headHash = newHeadHash.toArray(),
+          safeHash = newSafeHash.toArray(),
+          finalizedHash = newFinalizedHash.toArray(),
+        ).get()
 
-    val expectedPayloadStatus = PayloadStatus(
-      executionPayloadStatus = "VALID",
-      latestValidHash = payloadStatus.asInternalExecutionPayload().latestValidHash.get().toArray(),
-      validationError = null,
-      failureCause = null,
-    )
+    val expectedPayloadStatus =
+      PayloadStatus(
+        executionPayloadStatus = "VALID",
+        latestValidHash =
+          payloadStatus
+            .asInternalExecutionPayload()
+            .latestValidHash
+            .get()
+            .toArray(),
+        validationError = null,
+        failureCause = null,
+      )
     val expectedResult = ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId.wrappedBytes.toArray())
     assertThat(result).isEqualTo(expectedResult)
 
@@ -156,19 +166,26 @@ class JsonRpcExecutionLayerManagerTest {
     val payloadId = Bytes8(Bytes.random(8))
     val payloadStatus = mockForkChoiceUpdateWithValidStatus(payloadId)
 
-    val result = executionLayerManager
-      .setHeadAndStartBlockBuilding(
-        headHash = newHeadHash.toArray(),
-        safeHash = newSafeHash.toArray(),
-        finalizedHash = newFinalizedHash.toArray(),
-      ).get()
+    val result =
+      executionLayerManager
+        .setHeadAndStartBlockBuilding(
+          headHash = newHeadHash.toArray(),
+          safeHash = newSafeHash.toArray(),
+          finalizedHash = newFinalizedHash.toArray(),
+        ).get()
 
-    val expectedPayloadStatus = PayloadStatus(
-      executionPayloadStatus = "VALID",
-      latestValidHash = payloadStatus.asInternalExecutionPayload().latestValidHash.get().toArray(),
-      validationError = null,
-      failureCause = null,
-    )
+    val expectedPayloadStatus =
+      PayloadStatus(
+        executionPayloadStatus = "VALID",
+        latestValidHash =
+          payloadStatus
+            .asInternalExecutionPayload()
+            .latestValidHash
+            .get()
+            .toArray(),
+        validationError = null,
+        failureCause = null,
+      )
     val expectedResult = ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId.wrappedBytes.toArray())
     assertThat(result).isEqualTo(expectedResult)
     verify(executionLayerClient, atLeastOnce()).forkChoiceUpdate(
