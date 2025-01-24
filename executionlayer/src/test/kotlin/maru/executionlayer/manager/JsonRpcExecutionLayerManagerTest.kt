@@ -66,7 +66,7 @@ class JsonRpcExecutionLayerManagerTest {
   @BeforeEach
   fun setUp() {
     executionLayerClient = mock()
-    executionLayerManager = createExecutionLayerClient()
+    executionLayerManager = createExecutionLayerManager()
   }
 
   @AfterEach
@@ -74,7 +74,7 @@ class JsonRpcExecutionLayerManagerTest {
     reset(executionLayerClient)
   }
 
-  private fun createExecutionLayerClient(): ExecutionLayerManager {
+  private fun createExecutionLayerManager(): ExecutionLayerManager {
     whenever(executionLayerClient.getLatestBlockMetadata()).thenReturn(
       SafeFuture.completedFuture(BlockNumberAndHash(initialBlockHeight, latestBlockHash)),
     )

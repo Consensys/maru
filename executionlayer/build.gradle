@@ -26,4 +26,5 @@ dependencies {
   implementation "tech.pegasys.teku.internal:spec"
 
   testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', classifier: 'test-fixtures')
+  testImplementation(testFixtures(project(":core")))
 }

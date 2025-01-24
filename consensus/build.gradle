@@ -27,4 +27,6 @@ dependencies {
   implementation "tech.pegasys.teku.internal:executionclient"
 
   implementation(project(":core"))
+
+  testImplementation(testFixtures(project(":core")))
 }

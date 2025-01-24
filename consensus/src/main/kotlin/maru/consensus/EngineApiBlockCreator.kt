@@ -61,26 +61,26 @@ class EngineApiBlockCreator(
 
   override fun createBlock(
     timestamp: Long,
-    parentHeader: BlockHeader,
+    parentHeader: BlockHeader?,
   ): BlockCreator.BlockCreationResult = createEmptyWithdrawalsBlock(timestamp, parentHeader)
 
   override fun createBlock(
     transactions: MutableList<Transaction>,
     ommers: MutableList<BlockHeader>,
     timestamp: Long,
-    parentHeader: BlockHeader,
+    parentHeader: BlockHeader?,
   ): BlockCreator.BlockCreationResult = createEmptyWithdrawalsBlock(timestamp, parentHeader)
 
   override fun createBlock(
     maybeTransactions: Optional<MutableList<Transaction>>,
     maybeOmmers: Optional<MutableList<BlockHeader>>,
     timestamp: Long,
-    parentHeader: BlockHeader,
+    parentHeader: BlockHeader?,
   ): BlockCreator.BlockCreationResult = createEmptyWithdrawalsBlock(timestamp, parentHeader)
 
   override fun createEmptyWithdrawalsBlock(
     timestamp: Long,
-    parentHeader: BlockHeader,
+    parentHeader: BlockHeader?,
   ): BlockCreator.BlockCreationResult {
     val blockBuildingResult = manager.finishBlockBuilding().get()
     val newHeadHash = blockBuildingResult.resultingBlockHash
@@ -96,7 +96,6 @@ class EngineApiBlockCreator(
       }.whenException {
         log.error("Error while initiating block building!", it)
       }
-    // TODO: Returned block instance will change once QBFT refactoring changes are merged
     val block = mapExecutionPayloadToBlock(blockBuildingResult.executionPayload)
     // This return type doesn't fit this case well so stubbing it with dummy values for now
     return BlockCreator.BlockCreationResult(block, null, null)
