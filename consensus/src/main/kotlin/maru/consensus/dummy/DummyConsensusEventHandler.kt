@@ -59,8 +59,9 @@ class DummyConsensusEventHandler(
       onNewBlock(blockCreationResult.block)
     } else {
       log.trace(
-        "Block timer event discarded as it is not for current block height chainHeight={} eventHeight={}",
-        executionLayerManager.latestBlockHeight(),
+        "Block timer event discarded as it is not for current block height " +
+          "latestBlockMetadata={} eventHeight={}",
+        executionLayerManager.latestBlockMetadata(),
         roundIdentifier.sequenceNumber,
       )
     }
@@ -71,5 +72,5 @@ class DummyConsensusEventHandler(
   }
 
   private fun isMsgForCurrentHeight(roundIdentifier: ConsensusRoundIdentifier): Boolean =
-    roundIdentifier.sequenceNumber.toULong() == executionLayerManager.latestBlockHeight()
+    roundIdentifier.sequenceNumber.toULong() == executionLayerManager.latestBlockMetadata().blockNumber + 1.toULong()
 }

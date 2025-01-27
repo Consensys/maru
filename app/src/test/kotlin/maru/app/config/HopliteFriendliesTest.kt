@@ -22,6 +22,7 @@ import com.sksamuel.hoplite.json.JsonPropertySource
 import com.sksamuel.hoplite.toml.TomlPropertySource
 import java.net.URI
 import maru.consensus.dummy.DummyConsensusConfig
+import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -61,6 +62,8 @@ class HopliteFriendliesTest {
     val config =
       parseTomlConfig<MaruConfigDtoToml>(
         """
+        fees-recipient = "0xdeaddead"
+
         [execution-client]
         endpoint = "https://localhost"
 
@@ -76,8 +79,38 @@ class HopliteFriendliesTest {
         MaruConfigDtoToml(
           executionClient =
             ExecutionClientConfig(endpoint = URI.create("https://localhost").toURL()),
+          feesRecipient = "0xdeaddead",
           p2pConfig = P2P(port = 3322u),
           validator = ValidatorToml(validatorKey = Secret("0xdead")),
+        ),
+      )
+  }
+
+  @Test
+  fun appConfigFileIsReifiable() {
+    val config =
+      parseTomlConfig<MaruConfigDtoToml>(
+        """
+        fees-recipient = "0x0000000000000000000000000000000000000000"
+
+        [execution-client]
+        endpoint = "https://localhost"
+
+        [p2p-config]
+        port = 3322
+
+        [validator]
+        validator-key = "0xdead"
+        """.trimIndent(),
+      )
+    assertThat(config.reified())
+      .isEqualTo(
+        MaruConfig(
+          executionClientConfig =
+            ExecutionClientConfig(endpoint = URI.create("https://localhost").toURL()),
+          feesRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
+          p2pConfig = P2P(port = 3322u),
+          validator = Validator(validatorKey = Bytes.fromHexString("0xdead").toArray()),
         ),
       )
   }

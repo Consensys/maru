@@ -19,8 +19,8 @@ import java.time.Clock
 import kotlin.random.Random
 import maru.consensus.dummy.DummyConsensusState
 import maru.consensus.dummy.FinalizationState
+import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
-import maru.executionlayer.manager.BlockBuildingResult
 import maru.executionlayer.manager.DataGenerators.randomValidForkChoiceUpdatedResult
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
@@ -54,13 +54,12 @@ class EngineApiBlockCreatorTest {
 
   private fun createDummyConsensusState(finalizationState: FinalizationState): DummyConsensusState =
     DummyConsensusState(
-      mock(),
       Clock.systemUTC(),
       finalizationState,
       Random.nextBytes(32),
     )
 
-  private fun mockFinishBlockBuilding(result: BlockBuildingResult) {
+  private fun mockFinishBlockBuilding(result: ExecutionPayload) {
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(
       SafeFuture.completedFuture(result),
     )
@@ -89,11 +88,7 @@ class EngineApiBlockCreatorTest {
   fun `block creator doesn't call setHeadAndStartBlockBuilding or finishBlockBuilding twice in a row`() {
     val finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     val dummyConsensusState = createDummyConsensusState(finalizationState)
-    val expectedBlockBuildingResult =
-      BlockBuildingResult(
-        DataGenerators.randomExecutionPayload(),
-        Random.nextBytes(32),
-      )
+    val expectedBlockBuildingResult = DataGenerators.randomExecutionPayload()
     mockFinishBlockBuilding(expectedBlockBuildingResult)
     val forkChoiceUpdatedResult = randomValidForkChoiceUpdatedResult()
     mockSetHeadAndStartBlockBuilding(forkChoiceUpdatedResult)
@@ -124,11 +119,7 @@ class EngineApiBlockCreatorTest {
   fun `finalization updates are respected`() {
     val finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     val dummyConsensusState = createDummyConsensusState(finalizationState)
-    val expectedBlockBuildingResult =
-      BlockBuildingResult(
-        DataGenerators.randomExecutionPayload(),
-        Random.nextBytes(32),
-      )
+    val expectedBlockBuildingResult = DataGenerators.randomExecutionPayload()
     mockFinishBlockBuilding(expectedBlockBuildingResult)
     val forkChoiceUpdatedResult = randomValidForkChoiceUpdatedResult()
     mockSetHeadAndStartBlockBuilding(forkChoiceUpdatedResult)
@@ -136,7 +127,7 @@ class EngineApiBlockCreatorTest {
     val blockCreator = EngineApiBlockCreator(executionLayerManager, dummyConsensusState, MainnetBlockHeaderFunctions())
     blockCreator.createEmptyWithdrawalsBlock(1L, null)
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
-      eq(expectedBlockBuildingResult.resultingBlockHash),
+      eq(expectedBlockBuildingResult.blockHash),
       eq(finalizationState.safeBlockHash),
       eq(finalizationState.finalizedBlockHash),
     )
@@ -146,7 +137,7 @@ class EngineApiBlockCreatorTest {
     blockCreator.createEmptyWithdrawalsBlock(2L, null)
 
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
-      eq(expectedBlockBuildingResult.resultingBlockHash),
+      eq(expectedBlockBuildingResult.blockHash),
       eq(newFinalizationState.safeBlockHash),
       eq(newFinalizationState.finalizedBlockHash),
     )

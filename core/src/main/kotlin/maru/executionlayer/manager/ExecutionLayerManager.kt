@@ -18,29 +18,6 @@ package maru.executionlayer.manager
 import maru.core.ExecutionPayload
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-data class BlockBuildingResult(
-  val executionPayload: ExecutionPayload,
-  val resultingBlockHash: ByteArray,
-) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as BlockBuildingResult
-
-    if (executionPayload != other.executionPayload) return false
-    if (!resultingBlockHash.contentEquals(other.resultingBlockHash)) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = executionPayload.hashCode()
-    result = 31 * result + resultingBlockHash.contentHashCode()
-    return result
-  }
-}
-
 // Consider switching executionPayloadStatus to enum if it's useful
 data class PayloadStatus(
   val executionPayloadStatus: String?,
@@ -97,6 +74,32 @@ data class ForkChoiceUpdatedResult(
   }
 }
 
+data class BlockMetadata(
+  val blockNumber: ULong,
+  val blockHash: ByteArray,
+  val timestamp: ULong,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as BlockMetadata
+
+    if (blockNumber != other.blockNumber) return false
+    if (!blockHash.contentEquals(other.blockHash)) return false
+    if (timestamp != other.timestamp) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = blockNumber.hashCode()
+    result = 31 * result + blockHash.contentHashCode()
+    result = 31 * result + timestamp.hashCode()
+    return result
+  }
+}
+
 interface ExecutionLayerManager {
   fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
@@ -104,9 +107,9 @@ interface ExecutionLayerManager {
     finalizedHash: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
-  fun finishBlockBuilding(): SafeFuture<BlockBuildingResult>
+  fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
 
-  fun latestBlockHeight(): ULong
+  fun latestBlockMetadata(): BlockMetadata
 
   fun setHead(
     headHash: ByteArray,

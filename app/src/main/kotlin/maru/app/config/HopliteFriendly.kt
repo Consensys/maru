@@ -16,20 +16,20 @@
 package maru.app.config
 
 import com.sksamuel.hoplite.Masked
+import org.apache.tuweni.bytes.Bytes
 
 data class ValidatorToml(
   val validatorKey: Masked,
 ) {
-  fun reified(): Validator {
-    // TODO: This is incorrect, fix with an imported utility
-    return Validator(validatorKey.value.encodeToByteArray())
-  }
+  fun reified(): Validator = Validator(Bytes.fromHexString(validatorKey.value).toArray())
 }
 
 data class MaruConfigDtoToml(
   private val executionClient: ExecutionClientConfig,
+  private val feesRecipient: String,
   private val p2pConfig: P2P?,
   private val validator: ValidatorToml?,
 ) {
-  fun reified(): MaruConfig = MaruConfig(executionClient, p2pConfig, validator?.reified())
+  fun reified(): MaruConfig =
+    MaruConfig(executionClient, Bytes.fromHexString(feesRecipient).toArray(), p2pConfig, validator?.reified())
 }

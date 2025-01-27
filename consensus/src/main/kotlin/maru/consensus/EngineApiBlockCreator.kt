@@ -83,7 +83,7 @@ class EngineApiBlockCreator(
     parentHeader: BlockHeader?,
   ): BlockCreator.BlockCreationResult {
     val blockBuildingResult = manager.finishBlockBuilding().get()
-    val newHeadHash = blockBuildingResult.resultingBlockHash
+    val newHeadHash = blockBuildingResult.blockHash
     // Mind the atomicity of finalization updates
     val finalizationState = state.finalizationState
     manager
@@ -96,7 +96,7 @@ class EngineApiBlockCreator(
       }.whenException {
         log.error("Error while initiating block building!", it)
       }
-    val block = mapExecutionPayloadToBlock(blockBuildingResult.executionPayload)
+    val block = mapExecutionPayloadToBlock(blockBuildingResult)
     // This return type doesn't fit this case well so stubbing it with dummy values for now
     return BlockCreator.BlockCreationResult(block, null, null)
   }

@@ -17,7 +17,6 @@ package maru.executionlayer.manager
 
 import kotlin.random.Random
 import kotlin.random.nextULong
-import maru.executionlayer.client.BlockNumberAndHash
 import maru.executionlayer.client.ExecutionLayerClient
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
@@ -61,7 +60,7 @@ class JsonRpcExecutionLayerManagerTest {
   private val initialBlockHeight = 1UL
 
   @Volatile
-  private var latestBlockHash = Bytes32.random()
+  private var latestBlockHash = Bytes32.random().toArray()
 
   @BeforeEach
   fun setUp() {
@@ -76,7 +75,7 @@ class JsonRpcExecutionLayerManagerTest {
 
   private fun createExecutionLayerManager(): ExecutionLayerManager {
     whenever(executionLayerClient.getLatestBlockMetadata()).thenReturn(
-      SafeFuture.completedFuture(BlockNumberAndHash(initialBlockHeight, latestBlockHash)),
+      SafeFuture.completedFuture(BlockMetadata(initialBlockHeight, latestBlockHash, timestamp)),
     )
     return JsonRpcExecutionLayerManager
       .create(
@@ -213,8 +212,8 @@ class JsonRpcExecutionLayerManagerTest {
 
   @Test
   fun `latestBlockHeight is initialized`() {
-    val result = executionLayerManager.latestBlockHeight()
-    assertThat(result).isEqualTo(initialBlockHeight)
+    val result = executionLayerManager.latestBlockMetadata()
+    assertThat(result).isEqualTo(BlockMetadata(initialBlockHeight, latestBlockHash, timestamp))
   }
 
   @Test
@@ -240,7 +239,12 @@ class JsonRpcExecutionLayerManagerTest {
     mockNewPayloadWithStatus(payloadStatus)
 
     executionLayerManager.finishBlockBuilding().get()
-    val expectedBlockNumber = executionPayload.blockNumber.longValue().toULong()
+    val expectedBlockMetadata =
+      BlockMetadata(
+        executionPayload.blockNumber.longValue().toULong(),
+        executionPayload.blockHash.toArray(),
+        executionPayload.timestamp.longValue().toULong(),
+      )
 
     executionLayerManager
       .setHeadAndStartBlockBuilding(
@@ -249,6 +253,6 @@ class JsonRpcExecutionLayerManagerTest {
         finalizedHash = Bytes32.random().toArray(),
       ).get()
 
-    assertThat(executionLayerManager.latestBlockHeight()).isEqualTo(expectedBlockNumber)
+    assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(expectedBlockMetadata)
   }
 }

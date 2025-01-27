@@ -44,6 +44,36 @@ data class Validator(
 
 data class MaruConfig(
   val executionClientConfig: ExecutionClientConfig,
+  val feesRecipient: ByteArray,
   val p2pConfig: P2P?,
   val validator: Validator?,
-)
+) {
+  init {
+    require(feesRecipient.size == 20) {
+      "feesRecipient address must be 20 bytes long, " +
+        "but it's only ${feesRecipient.size} bytes long!"
+    }
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as MaruConfig
+
+    if (executionClientConfig != other.executionClientConfig) return false
+    if (!feesRecipient.contentEquals(other.feesRecipient)) return false
+    if (p2pConfig != other.p2pConfig) return false
+    if (validator != other.validator) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = executionClientConfig.hashCode()
+    result = 31 * result + feesRecipient.contentHashCode()
+    result = 31 * result + (p2pConfig?.hashCode() ?: 0)
+    result = 31 * result + (validator?.hashCode() ?: 0)
+    return result
+  }
+}

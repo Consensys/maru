@@ -16,7 +16,33 @@
 package maru.consensus.dummy
 
 import java.util.NavigableSet
+import java.util.TreeSet
 
-class ForksSchedule<F>(
-  forks: NavigableSet<F>,
+data class ForkSpec<C>(
+  val blockNumber: ULong,
+  val configuration: C,
 )
+
+class ForksSchedule<C>(
+  forks: Collection<ForkSpec<C>>,
+) {
+  private val forks: NavigableSet<ForkSpec<C>> =
+    run {
+      val newForks =
+        TreeSet(
+          Comparator.comparing(ForkSpec<C>::blockNumber).reversed(),
+        )
+      newForks.addAll(forks)
+      newForks
+    }
+
+  fun getForkByNumber(blockNumber: ULong): C {
+    for (f in forks) {
+      if (blockNumber >= f.blockNumber) {
+        return f.configuration
+      }
+    }
+
+    return forks.first().configuration
+  }
+}
