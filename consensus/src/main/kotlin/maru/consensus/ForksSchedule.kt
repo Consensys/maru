@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.consensus
 
 import java.util.NavigableSet
 import java.util.TreeSet
@@ -45,4 +45,15 @@ class ForksSchedule<C>(
 
     return forks.first().configuration
   }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as ForksSchedule<*>
+
+    return forks == other.forks
+  }
+
+  override fun hashCode(): Int = forks.hashCode()
 }

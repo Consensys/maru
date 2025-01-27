@@ -1,0 +1,8 @@
+{
+  "config": {
+    "0": {
+      "type": "dummy",
+      "blockTimeMillis": 1000
+    }
+  }
+}

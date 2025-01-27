@@ -18,11 +18,10 @@ package maru.app
 import java.time.Clock
 import maru.app.config.ExecutionClientConfig
 import maru.consensus.EngineApiBlockCreator
+import maru.consensus.ForksSchedule
 import maru.consensus.dummy.DummyConsensusEventHandler
 import maru.consensus.dummy.DummyConsensusState
 import maru.consensus.dummy.FinalizationState
-import maru.consensus.dummy.ForkSpec
-import maru.consensus.dummy.ForksSchedule
 import maru.consensus.dummy.TimeDrivenEventProducer
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.Web3jJsonRpcExecutionLayerClient
@@ -33,13 +32,11 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 
 object DummyConsensusProtocolBuilder {
   fun build(
-    forkSpec: ForkSpec<Any>,
+    forksSchedule: ForksSchedule<Any>,
     clock: Clock,
     executionClientConfig: ExecutionClientConfig,
     feesRecipient: ByteArray,
   ): TimeDrivenEventProducer {
-    val forks = ForksSchedule(setOf(forkSpec))
-
     val web3JClient =
       Web3jClientBuilder()
         .endpoint(executionClientConfig.endpoint.toString())
@@ -73,7 +70,7 @@ object DummyConsensusProtocolBuilder {
         onNewBlock = {},
       )
     return TimeDrivenEventProducer(
-      forks,
+      forksSchedule,
       eventHandler,
       jsonRpcExecutionLayerManager::latestBlockMetadata,
       clock,

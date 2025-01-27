@@ -18,24 +18,14 @@ package maru.app.config
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.Secret
-import com.sksamuel.hoplite.json.JsonPropertySource
 import com.sksamuel.hoplite.toml.TomlPropertySource
 import java.net.URI
-import maru.consensus.dummy.DummyConsensusConfig
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
-class HopliteFriendliesTest {
-  private inline fun <reified T : Any> parseJsonConfig(json: String): T =
-    ConfigLoaderBuilder
-      .default()
-      .withExplicitSealedTypes()
-      .addSource(JsonPropertySource(json))
-      .build()
-      .loadConfigOrThrow<T>()
-
+class HopliteFriendlinessTest {
   private inline fun <reified T : Any> parseTomlConfig(toml: String): T =
     ConfigLoaderBuilder
       .default()
@@ -43,19 +33,6 @@ class HopliteFriendliesTest {
       .addSource(TomlPropertySource(toml))
       .build()
       .loadConfigOrThrow<T>()
-
-  @Test
-  fun genesisFileIsParseable() {
-    val config =
-      parseJsonConfig<DummyConsensusConfig>(
-        """
-        {
-          "blockTimeMillis": 1000
-        }
-        """.trimIndent(),
-      )
-    assertThat(config.blockTimeMillis).isEqualTo(1000u)
-  }
 
   @Test
   fun appConfigFileIsParseable() {

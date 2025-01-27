@@ -18,6 +18,7 @@ package maru.consensus.dummy
 import java.time.Clock
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
+import maru.consensus.ForksSchedule
 import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
