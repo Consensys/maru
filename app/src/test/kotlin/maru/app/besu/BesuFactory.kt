@@ -13,28 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app
+package maru.app.besu
 
-import maru.app.besu.BesuFactory
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
+import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFactory
 
-class MaruDummyConsensusTest {
-  private var besuNode: BesuNode = BesuFactory.buildTestBesu()
+object BesuFactory {
+  val threadBesuNodeRunner = ThreadBesuNodeRunner()
 
-  @BeforeEach
-  fun setUp() {
-    BesuFactory.threadBesuNodeRunner.startNode(besuNode)
-  }
-
-  @AfterEach
-  fun tearDown() {
-    besuNode.close()
-  }
-
-  @Test
-  fun `dummyConsensus works E2E with Besu`() {
-  }
+  fun buildTestBesu(): BesuNode =
+    BesuNodeFactory().createExecutionEngineGenesisNode("test node", "/e2e/config/el_prague.json")
 }

@@ -22,6 +22,7 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
+import org.apache.tuweni.units.bigints.UInt64
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.BlobGas
 import org.hyperledger.besu.datatypes.Hash
@@ -130,6 +131,7 @@ class EngineApiBlockCreator(
         /* excessBlobGas = */ BlobGas.ZERO,
         /* parentBeaconBlockRoot = TODO: use an actual beacon block root */ Bytes32.ZERO,
         /* requestsRoot = */ Hash.EMPTY,
+        /* targetBlobsPerBlock = */ UInt64.ZERO,
         /* blockHeaderFunctions = */ blockHeaderFunctions,
       )
     val blockBody = BlockBody(transactions, listOf())
