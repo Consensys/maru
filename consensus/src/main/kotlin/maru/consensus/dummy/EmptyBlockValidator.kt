@@ -13,15 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app.besu
+package maru.consensus.dummy
 
-import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
-import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
-import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFactory
+import maru.core.ExecutionPayload
+import maru.executionlayer.manager.ExecutionPayloadValidator
 
-object BesuFactory {
-  val threadBesuNodeRunner = ThreadBesuNodeRunner()
-
-  fun buildTestBesu(): BesuNode =
-    BesuNodeFactory().createExecutionEngineGenesisNode("test node", "/e2e/config/el_prague.json")
+object EmptyBlockValidator : ExecutionPayloadValidator {
+  override fun validate(executionPayload: ExecutionPayload): ExecutionPayloadValidator.ValidationResult =
+    if (executionPayload.transactions.isEmpty()) {
+      ExecutionPayloadValidator.ValidationResult.Invalid("Block ${executionPayload.blockNumber} is empty!")
+    } else {
+      ExecutionPayloadValidator.ValidationResult.Valid(executionPayload)
+    }
 }

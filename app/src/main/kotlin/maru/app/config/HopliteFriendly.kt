@@ -16,20 +16,33 @@
 package maru.app.config
 
 import com.sksamuel.hoplite.Masked
+import java.time.Duration
+import kotlin.time.toKotlinDuration
 import org.apache.tuweni.bytes.Bytes
 
-data class ValidatorToml(
+data class ValidatorDtoToml(
   val validatorKey: Masked,
 ) {
   fun reified(): Validator = Validator(Bytes.fromHexString(validatorKey.value).toArray())
 }
 
+data class DummyConsensusOptionsDtoToml(
+  val communicationTimeMargin: Duration,
+) {
+  fun reified(): DummyConsensusOptions = DummyConsensusOptions(communicationTimeMargin.toKotlinDuration())
+}
+
 data class MaruConfigDtoToml(
   private val executionClient: ExecutionClientConfig,
-  private val feesRecipient: String,
+  private val dummyConsensusOptions: DummyConsensusOptionsDtoToml?,
   private val p2pConfig: P2P?,
-  private val validator: ValidatorToml?,
+  private val validator: ValidatorDtoToml?,
 ) {
   fun reified(): MaruConfig =
-    MaruConfig(executionClient, Bytes.fromHexString(feesRecipient).toArray(), p2pConfig, validator?.reified())
+    MaruConfig(
+      executionClientConfig = executionClient,
+      dummyConsensusOptions = dummyConsensusOptions?.reified(),
+      p2pConfig = p2pConfig,
+      validator = validator?.reified(),
+    )
 }

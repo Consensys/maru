@@ -23,7 +23,7 @@ import org.apache.logging.log4j.Logger
 
 class MaruApp(
   config: MaruConfig,
-  beaconGenesisConfig: ForksSchedule<Any>,
+  beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
 ) {
   private val log: Logger = LogManager.getLogger(this::class.java)
@@ -42,7 +42,7 @@ class MaruApp(
       forksSchedule = beaconGenesisConfig,
       clock = clock,
       executionClientConfig = config.executionClientConfig,
-      feesRecipient = config.feesRecipient,
+      dummyConsensusOptions = config.dummyConsensusOptions!!,
     )
 
   fun start() {

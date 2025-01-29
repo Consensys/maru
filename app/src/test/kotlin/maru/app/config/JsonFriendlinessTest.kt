@@ -15,41 +15,38 @@
  */
 package maru.app.config
 
-import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
-import com.sksamuel.hoplite.json.JsonPropertySource
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.dummy.DummyConsensusConfig
+import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
-class JsonFriendliness {
-  private inline fun <reified T : Any> parseJsonConfig(json: String): T =
-    ConfigLoaderBuilder
-      .default()
-      .withExplicitSealedTypes()
-      .addSource(JsonPropertySource(json))
-      .build()
-      .loadConfigOrThrow<T>()
-
+class JsonFriendlinessTest {
   @Test
   fun genesisFileIsParseable() {
     val config =
-      parseJsonConfig<JsonFriendlyForksSchedule>(
+      Utils.parseJsonConfig<JsonFriendlyForksSchedule>(
         """
         {
           "config": {
             "0": {
               "type": "dummy",
-              "blockTimeMillis": 1000
+              "blockTimeMillis": 1000,
+              "feeRecipient": "0x0000000000000000000000000000000000000000"
             }
           }
         }
         """.trimIndent(),
       )
-    val expectedObject = mapOf("type" to "dummy", "blockTimeMillis" to "1000")
+    val expectedObject =
+      mapOf(
+        "type" to "dummy",
+        "blockTimeMillis" to "1000",
+        "feeRecipient" to "0x0000000000000000000000000000000000000000",
+      )
     assertThat(config).isEqualTo(
       JsonFriendlyForksSchedule(mapOf("0" to expectedObject)),
     )
@@ -58,20 +55,32 @@ class JsonFriendliness {
   @Test
   fun genesisFileIsReifiable() {
     val config =
-      parseJsonConfig<JsonFriendlyForksSchedule>(
-        """
-        {
-          "config": {
-            "0": {
-              "type": "dummy",
-              "blockTimeMillis": 1000
+      Utils
+        .parseJsonConfig<JsonFriendlyForksSchedule>(
+          """
+          {
+            "config": {
+              "0": {
+                "type": "dummy",
+                "blockTimeMillis": 1000,
+                "feeRecipient": "0x0000000000000000000000000000000000000000"
+              }
             }
           }
-        }
-        """.trimIndent(),
-      ).reified()
+          """.trimIndent(),
+        ).reified()
     assertThat(config).isEqualTo(
-      ForksSchedule(setOf(ForkSpec<Any>(0u, DummyConsensusConfig(1000u)))),
+      ForksSchedule(
+        setOf(
+          ForkSpec(
+            0u,
+            DummyConsensusConfig(
+              blockTimeMillis = 1000u,
+              feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
+            ),
+          ),
+        ),
+      ),
     )
   }
 }

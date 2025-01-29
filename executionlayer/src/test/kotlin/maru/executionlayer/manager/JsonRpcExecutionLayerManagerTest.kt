@@ -82,6 +82,7 @@ class JsonRpcExecutionLayerManagerTest {
         executionLayerClient,
         { timestamp },
         { feeRecipient },
+        NoopValidator,
       ).get()
   }
 
@@ -101,7 +102,15 @@ class JsonRpcExecutionLayerManagerTest {
     executionPayload: ExecutionPayloadV3,
   ) {
     val blobsBundle = BlobsBundleV1.fromInternalBlobsBundle(dataStructureUtil.randomBlobsBundle())
-    val getPayloadResponse = Response(GetPayloadV3Response(executionPayload, UInt256.ZERO, blobsBundle, false))
+    val getPayloadResponse =
+      Response(
+        GetPayloadV3Response(
+          /* executionPayload = */ executionPayload,
+          /* blockValue = */ UInt256.ZERO,
+          /* blobsBundle = */ blobsBundle,
+          /* shouldOverrideBuilder = */ false,
+        ),
+      )
     whenever(executionLayerClient.getPayload(eq(payloadId)))
       .thenReturn(SafeFuture.completedFuture(getPayloadResponse))
   }
@@ -203,6 +212,8 @@ class JsonRpcExecutionLayerManagerTest {
       },
     )
   }
+
+  // TODO: Add a test for validator
 
   @Test
   fun `finishBlockBuilding can't be called before setHeadAndStartBlockBuilding`() {

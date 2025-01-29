@@ -33,12 +33,12 @@ import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
 class Web3jJsonRpcExecutionLayerClient(
   private val web3jEngineClient: Web3JExecutionEngineClient,
-  private val web3jClient: Web3JClient,
+  private val web3jEthereumApiClient: Web3JClient,
 ) : ExecutionLayerClient {
   override fun getLatestBlockMetadata(): SafeFuture<BlockMetadata> =
     SafeFuture
       .of(
-        web3jClient.eth1Web3j
+        web3jEthereumApiClient.eth1Web3j
           .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false)
           .sendAsync()
           .minimalCompletionStage(),

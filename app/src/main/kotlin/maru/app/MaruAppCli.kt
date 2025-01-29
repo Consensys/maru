@@ -41,6 +41,23 @@ import picocli.CommandLine.Command
   footerHeading = "%n",
 )
 class MaruAppCli : Callable<Int> {
+  companion object {
+    @OptIn(ExperimentalHoplite::class)
+    internal inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
+      val confBuilder: ConfigLoaderBuilder =
+        ConfigLoaderBuilder.Companion
+          .empty()
+          .addDefaults()
+          .withExplicitSealedTypes()
+      for (configFile in configFiles.reversed()) {
+        // files must be added in reverse order for overriding
+        confBuilder.addFileSource(configFile, false)
+      }
+
+      return confBuilder.build().loadConfig<T>(emptyList())
+    }
+  }
+
   @CommandLine.Option(
     names = ["--config"],
     paramLabel = "CONFIG.toml,CONFIG.overrides.toml",
@@ -100,21 +117,6 @@ class MaruAppCli : Callable<Int> {
       )
 
     return 0
-  }
-
-  @OptIn(ExperimentalHoplite::class)
-  private inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
-    val confBuilder: ConfigLoaderBuilder =
-      ConfigLoaderBuilder.Companion
-        .empty()
-        .addDefaults()
-        .withExplicitSealedTypes()
-    for (configFile in configFiles.reversed()) {
-      // files must be added in reverse order for overriding
-      confBuilder.addFileSource(configFile, false)
-    }
-
-    return confBuilder.build().loadConfig<T>(emptyList())
   }
 
   private fun validateConfigFile(file: File): Boolean = file.canRead()

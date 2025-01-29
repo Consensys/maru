@@ -17,7 +17,7 @@ package maru.consensus.dummy
 
 import java.time.Clock
 import java.util.concurrent.TimeUnit
-import kotlin.math.max
+import kotlin.time.Duration
 import maru.consensus.ForksSchedule
 import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager
@@ -28,11 +28,32 @@ import org.hyperledger.besu.consensus.common.bft.statemachine.BftEventHandler
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class TimeDrivenEventProducer(
-  private val forksSchedule: ForksSchedule<Any>,
+  private val forksSchedule: ForksSchedule,
   private val eventHandler: BftEventHandler,
   private val blockMetadataProvider: () -> BlockMetadata,
   private val clock: Clock,
+  private val config: Config,
 ) {
+  companion object {
+    /** Returns required block production delay between the last block time and next block time according to the
+     * effective block period.
+     *
+     * Returns 0 if next block is overdue
+     */
+    internal fun nextBlockDelay(
+      currentTimestampMillis: Long,
+      lastBlockTimestampSeconds: Long,
+      nextBlockPeriodMillis: Int,
+    ): ULong {
+      val expiryTime = lastBlockTimestampSeconds * 1000 + nextBlockPeriodMillis
+      return (expiryTime - currentTimestampMillis).toULong()
+    }
+  }
+
+  data class Config(
+    val communicationMargin: Duration,
+  )
+
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   @Volatile
@@ -41,25 +62,37 @@ class TimeDrivenEventProducer(
   @Synchronized
   fun start() {
     if (currentTask == null) {
-      handleTick()
+      SafeFuture.runAsync {
+        // For the first ever tick EL will need some time to prepare a block in any case, thus forcing delay
+        handleTick(forceDelay = true)
+      }
     } else {
       throw IllegalStateException("Timer has already been started!")
     }
   }
 
   @Synchronized
-  private fun handleTick() {
+  private fun handleTick(forceDelay: Boolean = false) {
     val lastBlockMetadata = blockMetadataProvider()
     val nextBlockNumber = lastBlockMetadata.blockNumber + 1u
     val nextBlockConfig = forksSchedule.getForkByNumber(nextBlockNumber)
 
-    if (!currentTask!!.isDone) {
-      log.warn("Current task isn't done. Scheduling the next one, but results may be unexpected!")
+    log.debug("currentTimestamp={} nextBlockNumber={}", clock.millis(), nextBlockNumber)
+
+    if (currentTask != null) {
+      if (!currentTask!!.isDone) {
+        log.warn("Current task isn't done. Scheduling the next one, but results may be unexpected!")
+      }
+      stop()
     }
-    stop()
     when (nextBlockConfig) {
       is DummyConsensusConfig -> {
-        scheduleNextTask(lastBlockMetadata, nextBlockNumber, nextBlockConfig)
+        scheduleNextTask(
+          lastBlockMetadata = lastBlockMetadata,
+          nextBlockNumber = nextBlockNumber,
+          nextBlockConfig = nextBlockConfig,
+          forceDelay = forceDelay,
+        )
       }
 
       else -> {
@@ -72,45 +105,46 @@ class TimeDrivenEventProducer(
     lastBlockMetadata: BlockMetadata,
     nextBlockNumber: ULong,
     nextBlockConfig: DummyConsensusConfig,
+    forceDelay: Boolean,
   ) {
-    val currentTime = clock.millis().toULong()
-    val delay = nextBlockDelay(currentTime, lastBlockMetadata.timestamp, nextBlockConfig.blockTimeMillis).toLong()
+    val currentTime = clock.millis()
+
+    val delayMillis: Long =
+      if (forceDelay) {
+        nextBlockDelay(
+          currentTimestampMillis = currentTime,
+          lastBlockTimestampSeconds = (currentTime / 1000) + 1,
+          nextBlockPeriodMillis = nextBlockConfig.blockTimeMillis.toInt(),
+        ).toLong()
+      } else {
+        nextBlockDelay(
+          currentTimestampMillis = currentTime,
+          lastBlockTimestampSeconds = lastBlockMetadata.timestamp.toLong(),
+          nextBlockPeriodMillis = nextBlockConfig.blockTimeMillis.toInt(),
+        ).toLong()
+      }
+    log.debug("Next target timestamp: {}", { currentTime + delayMillis })
 
     val executor =
-      if (delay > 0) {
-        SafeFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS)
-      } else {
-        // For some reason it's not static, so it is what it is 🤷
-        SafeFuture.COMPLETE.defaultExecutor()
-      }
+      SafeFuture.delayedExecutor(delayMillis - config.communicationMargin.inWholeMilliseconds, TimeUnit.MILLISECONDS)
 
     currentTask =
-      SafeFuture.of(
-        SafeFuture
-          .runAsync(
-            {
-              val consensusRoundIdentifier =
-                ConsensusRoundIdentifier(nextBlockNumber.toLong(), nextBlockNumber.toInt())
-              eventHandler.handleBlockTimerExpiry(BlockTimerExpiry(consensusRoundIdentifier))
-              handleTick()
-            },
-            executor,
-          ).thenApply { },
-      )
-  }
-
-  /** Returns required block production delay between the last block time and next block time according to the
-   * effective block period.
-   *
-   * Returns 0 if next block is overdue
-   */
-  internal fun nextBlockDelay(
-    currentTime: ULong,
-    lastBlockTimestamp: ULong,
-    nextBlockPeriod: UInt,
-  ): ULong {
-    val expiryTime = lastBlockTimestamp + nextBlockPeriod / 1000UL
-    return max(expiryTime.toLong() - currentTime.toLong(), 0).toULong()
+      SafeFuture
+        .of(
+          SafeFuture
+            .runAsync(
+              {
+                val consensusRoundIdentifier =
+                  ConsensusRoundIdentifier(nextBlockNumber.toLong(), nextBlockNumber.toInt())
+                eventHandler.handleBlockTimerExpiry(BlockTimerExpiry(consensusRoundIdentifier))
+                handleTick()
+              },
+              executor,
+            ).thenApply { },
+        ).whenException {
+          log.error(it.message, it)
+          handleTick(forceDelay = true)
+        }
   }
 
   @Synchronized

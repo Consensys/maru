@@ -22,11 +22,11 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
-import org.apache.tuweni.units.bigints.UInt64
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.BlobGas
 import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.datatypes.Wei
+import org.hyperledger.besu.ethereum.blockcreation.BlockCreationTiming
 import org.hyperledger.besu.ethereum.blockcreation.BlockCreator
 import org.hyperledger.besu.ethereum.core.Block
 import org.hyperledger.besu.ethereum.core.BlockBody
@@ -55,7 +55,7 @@ class EngineApiBlockCreator(
         state.latestBlockHash,
         state.finalizationState.safeBlockHash,
         state.finalizationState.finalizedBlockHash,
-      )
+      ).get()
   }
 
   private val log = LogManager.getLogger(EngineApiBlockCreator::class.java)
@@ -83,23 +83,28 @@ class EngineApiBlockCreator(
     timestamp: Long,
     parentHeader: BlockHeader?,
   ): BlockCreator.BlockCreationResult {
+    val blockCreationTimings = BlockCreationTiming()
+    blockCreationTimings.register("Block creation")
     val blockBuildingResult = manager.finishBlockBuilding().get()
     val newHeadHash = blockBuildingResult.blockHash
     // Mind the atomicity of finalization updates
     val finalizationState = state.finalizationState
+    log.debug(" {}", newHeadHash)
     manager
       .setHeadAndStartBlockBuilding(
         newHeadHash,
         finalizationState.safeBlockHash,
         finalizationState.finalizedBlockHash,
       ).thenApply {
+        log.info("Updating latest state")
         state.updateLatestStatus(newHeadHash)
       }.whenException {
         log.error("Error while initiating block building!", it)
-      }
+      }.get()
     val block = mapExecutionPayloadToBlock(blockBuildingResult)
+    blockCreationTimings.register("Block creation")
     // This return type doesn't fit this case well so stubbing it with dummy values for now
-    return BlockCreator.BlockCreationResult(block, null, null)
+    return BlockCreator.BlockCreationResult(block, null, blockCreationTimings)
   }
 
   private fun mapExecutionPayloadToBlock(payload: ExecutionPayload): Block {
@@ -131,7 +136,6 @@ class EngineApiBlockCreator(
         /* excessBlobGas = */ BlobGas.ZERO,
         /* parentBeaconBlockRoot = TODO: use an actual beacon block root */ Bytes32.ZERO,
         /* requestsRoot = */ Hash.EMPTY,
-        /* targetBlobsPerBlock = */ UInt64.ZERO,
         /* blockHeaderFunctions = */ blockHeaderFunctions,
       )
     val blockBody = BlockBody(transactions, listOf())

@@ -18,25 +18,29 @@ package maru.consensus
 import java.util.NavigableSet
 import java.util.TreeSet
 
-data class ForkSpec<C>(
+interface ConsensusConfiguration {
+  val feeRecipient: ByteArray
+}
+
+data class ForkSpec(
   val blockNumber: ULong,
-  val configuration: C,
+  val configuration: ConsensusConfiguration,
 )
 
-class ForksSchedule<C>(
-  forks: Collection<ForkSpec<C>>,
+class ForksSchedule(
+  forks: Collection<ForkSpec>,
 ) {
-  private val forks: NavigableSet<ForkSpec<C>> =
+  private val forks: NavigableSet<ForkSpec> =
     run {
       val newForks =
         TreeSet(
-          Comparator.comparing(ForkSpec<C>::blockNumber).reversed(),
+          Comparator.comparing(ForkSpec::blockNumber).reversed(),
         )
       newForks.addAll(forks)
       newForks
     }
 
-  fun getForkByNumber(blockNumber: ULong): C {
+  fun getForkByNumber(blockNumber: ULong): ConsensusConfiguration {
     for (f in forks) {
       if (blockNumber >= f.blockNumber) {
         return f.configuration
@@ -50,7 +54,7 @@ class ForksSchedule<C>(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as ForksSchedule<*>
+    other as ForksSchedule
 
     return forks == other.forks
   }

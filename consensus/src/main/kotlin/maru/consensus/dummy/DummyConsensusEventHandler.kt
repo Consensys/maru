@@ -49,13 +49,16 @@ class DummyConsensusEventHandler(
 
   override fun handleBlockTimerExpiry(blockTimerExpiry: BlockTimerExpiry) {
     val roundIdentifier: ConsensusRoundIdentifier = blockTimerExpiry.roundIdentifier
+
     if (isMsgForCurrentHeight(roundIdentifier)) {
+      log.debug("Creating new block by timer {}", blockTimerExpiry.roundIdentifier)
       val blockCreationResult =
         blockCreator.createEmptyWithdrawalsBlock(
           TimeUnit.MILLISECONDS.toSeconds(state.clock.millis()),
           // Execution client is aware of the parent header
           null,
         )
+      log.debug("Block creation timings {}", blockCreationResult.blockCreationTimings)
       onNewBlock(blockCreationResult.block)
     } else {
       log.trace(

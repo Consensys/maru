@@ -18,12 +18,13 @@ package maru.app.config
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.dummy.DummyConsensusConfig
+import org.apache.tuweni.bytes.Bytes
 
 data class JsonFriendlyForksSchedule(
   val config: Map<String, Map<String, String>>,
 ) {
-  fun reified(): ForksSchedule<Any> {
-    val forkSpecs: List<ForkSpec<Any>> =
+  fun reified(): ForksSchedule {
+    val forkSpecs: List<ForkSpec> =
       config.map { (k, v) ->
         val type = v["type"].toString()
         ForkSpec(
@@ -40,7 +41,7 @@ data class JsonFriendlyForksSchedule(
   ): DummyConsensusConfig =
     when (type) {
       "dummy" -> {
-        DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt())
+        DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt(), Bytes.fromHexString(obj["feeRecipient"]!!).toArray())
       }
 
       else -> throw IllegalArgumentException("Unsupported fork type $type!")

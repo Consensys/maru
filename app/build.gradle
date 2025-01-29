@@ -8,6 +8,12 @@ dependencies {
   implementation(project(":executionlayer"))
 
   implementation "tech.pegasys.teku.internal:executionclient"
+  implementation("tech.pegasys.teku.internal:time") {
+    because "required by executionclient ^"
+  }
+  implementation("tech.pegasys.teku.internal:ethereum-events") {
+    because "required by executionclient ^"
+  }
 
   implementation("org.hyperledger.besu.internal:core")
 
@@ -17,5 +23,8 @@ dependencies {
   implementation "com.sksamuel.hoplite:hoplite-core"
 
   testImplementation "org.hyperledger.besu.internal:dsl"
+  testImplementation("org.hyperledger.besu.internal:algorithms")
   testImplementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
+
+  testImplementation("org.hyperledger.besu.internal:merge")
 }

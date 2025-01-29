@@ -15,34 +15,26 @@
  */
 package maru.app.config
 
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.Secret
-import com.sksamuel.hoplite.toml.TomlPropertySource
 import java.net.URI
+import java.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-@OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
-  private inline fun <reified T : Any> parseTomlConfig(toml: String): T =
-    ConfigLoaderBuilder
-      .default()
-      .withExplicitSealedTypes()
-      .addSource(TomlPropertySource(toml))
-      .build()
-      .loadConfigOrThrow<T>()
-
   @Test
   fun appConfigFileIsParseable() {
     val config =
-      parseTomlConfig<MaruConfigDtoToml>(
+      Utils.parseTomlConfig<MaruConfigDtoToml>(
         """
-        fees-recipient = "0xdeaddead"
-
         [execution-client]
-        endpoint = "https://localhost"
+        ethereum-json-rpc-endpoint = "http://localhost:8545"
+        engine-api-json-rpc-endpoint = "http://localhost:8555"
+
+        [dummy-consensus-options]
+        communication-time-margin=100m
 
         [p2p-config]
         port = 3322
@@ -55,10 +47,13 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfigDtoToml(
           executionClient =
-            ExecutionClientConfig(endpoint = URI.create("https://localhost").toURL()),
-          feesRecipient = "0xdeaddead",
+            ExecutionClientConfig(
+              ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
+              engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
+            ),
+          dummyConsensusOptions = DummyConsensusOptionsDtoToml(Duration.ofMillis(100)),
           p2pConfig = P2P(port = 3322u),
-          validator = ValidatorToml(validatorKey = Secret("0xdead")),
+          validator = ValidatorDtoToml(validatorKey = Secret("0xdead")),
         ),
       )
   }
@@ -66,12 +61,14 @@ class HopliteFriendlinessTest {
   @Test
   fun appConfigFileIsReifiable() {
     val config =
-      parseTomlConfig<MaruConfigDtoToml>(
+      Utils.parseTomlConfig<MaruConfigDtoToml>(
         """
-        fees-recipient = "0x0000000000000000000000000000000000000000"
-
         [execution-client]
-        endpoint = "https://localhost"
+        ethereum-json-rpc-endpoint = "http://localhost:8545"
+        engine-api-json-rpc-endpoint = "http://localhost:8555"
+
+        [dummy-consensus-options]
+        communication-time-margin=100m
 
         [p2p-config]
         port = 3322
@@ -84,8 +81,11 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfig(
           executionClientConfig =
-            ExecutionClientConfig(endpoint = URI.create("https://localhost").toURL()),
-          feesRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
+            ExecutionClientConfig(
+              engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
+              ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
+            ),
+          dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
           validator = Validator(validatorKey = Bytes.fromHexString("0xdead").toArray()),
         ),

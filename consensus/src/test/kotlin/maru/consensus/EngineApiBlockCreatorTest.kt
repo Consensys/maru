@@ -75,6 +75,7 @@ class EngineApiBlockCreatorTest {
   fun `initialization triggers setHeadAndStartBlockBuilding with latest known state`() {
     val finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     val dummyConsensusState = createDummyConsensusState(finalizationState)
+    mockSetHeadAndStartBlockBuilding(randomValidForkChoiceUpdatedResult())
     EngineApiBlockCreator(executionLayerManager, dummyConsensusState, MainnetBlockHeaderFunctions())
 
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(

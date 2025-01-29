@@ -100,6 +100,21 @@ data class BlockMetadata(
   }
 }
 
+@FunctionalInterface
+interface ExecutionPayloadValidator {
+  sealed interface ValidationResult {
+    data class Valid(
+      val payload: ExecutionPayload,
+    ) : ValidationResult
+
+    data class Invalid(
+      val reason: String,
+    ) : ValidationResult
+  }
+
+  fun validate(executionPayload: ExecutionPayload): ValidationResult
+}
+
 interface ExecutionLayerManager {
   fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,

@@ -15,26 +15,60 @@
  */
 package maru.app
 
-import maru.app.besu.BesuFactory
+import maru.testutils.MaruFactory
+import maru.testutils.TransactionsHelper
+import maru.testutils.besu.BesuFactory
+import org.apache.logging.log4j.LogManager
+import org.assertj.core.api.Assertions.assertThat
+import org.hyperledger.besu.tests.acceptance.dsl.account.Account
+import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
+import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
+import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
+import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class MaruDummyConsensusTest {
+  private val cluster = Cluster(NetConditions(NetTransactions()))
   private var besuNode: BesuNode = BesuFactory.buildTestBesu()
+  private lateinit var maruNode: MaruApp
+  private val log = LogManager.getLogger(this.javaClass)
 
   @BeforeEach
   fun setUp() {
-    BesuFactory.threadBesuNodeRunner.startNode(besuNode)
+    cluster.startNode(besuNode)
+    val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
+    val engineRpcUrl = besuNode.engineRpcUrl().get()
+    maruNode = MaruFactory.buildTestMaru(ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl, engineApiRpc = engineRpcUrl)
+    maruNode.start()
   }
 
   @AfterEach
   fun tearDown() {
     besuNode.close()
+    maruNode.stop()
+  }
+
+  private fun sendTransactionAndAssertExecution(
+    recipient: Account,
+    amount: Amount,
+  ) {
+    val transfer = TransactionsHelper.createTransfer(recipient, amount)
+    val txHash = besuNode.execute(transfer)
+    assertThat(txHash).isNotNull()
+    log.info("Sending transaction {}, transaction data ", txHash)
+    TransactionsHelper.ethConditions.expectSuccessfulTransactionReceipt(txHash.toString()).verify(besuNode)
+    log.info("Transaction {} was mined", txHash)
   }
 
   @Test
-  fun `dummyConsensus works E2E with Besu`() {
+  fun `dummyConsensus is able to produce blocks with the expected block time`() {
+    log.debug("Starting test")
+    val blocksToProduce = 10
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
   }
 }
