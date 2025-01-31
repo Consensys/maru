@@ -77,7 +77,7 @@ data class ForkChoiceUpdatedResult(
 data class BlockMetadata(
   val blockNumber: ULong,
   val blockHash: ByteArray,
-  val timestamp: ULong,
+  val unixTimestamp: Long, // Since use Java standard lib, Long is more practical than ULong
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -87,7 +87,7 @@ data class BlockMetadata(
 
     if (blockNumber != other.blockNumber) return false
     if (!blockHash.contentEquals(other.blockHash)) return false
-    if (timestamp != other.timestamp) return false
+    if (unixTimestamp != other.unixTimestamp) return false
 
     return true
   }
@@ -95,7 +95,7 @@ data class BlockMetadata(
   override fun hashCode(): Int {
     var result = blockNumber.hashCode()
     result = 31 * result + blockHash.contentHashCode()
-    result = 31 * result + timestamp.hashCode()
+    result = 31 * result + unixTimestamp.hashCode()
     return result
   }
 }
@@ -120,6 +120,7 @@ interface ExecutionLayerManager {
     headHash: ByteArray,
     safeHash: ByteArray,
     finalizedHash: ByteArray,
+    nextBlockTimestamp: Long,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>

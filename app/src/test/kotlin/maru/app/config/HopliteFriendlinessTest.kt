@@ -17,7 +17,6 @@ package maru.app.config
 
 import com.sksamuel.hoplite.Secret
 import java.net.URI
-import java.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
@@ -32,6 +31,7 @@ class HopliteFriendlinessTest {
         [execution-client]
         ethereum-json-rpc-endpoint = "http://localhost:8545"
         engine-api-json-rpc-endpoint = "http://localhost:8555"
+        min-time-between-get-payload-attempts=800m
 
         [dummy-consensus-options]
         communication-time-margin=100m
@@ -50,8 +50,9 @@ class HopliteFriendlinessTest {
             ExecutionClientConfig(
               ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
               engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
+              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
-          dummyConsensusOptions = DummyConsensusOptionsDtoToml(Duration.ofMillis(100)),
+          dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
           validator = ValidatorDtoToml(validatorKey = Secret("0xdead")),
         ),
@@ -66,6 +67,7 @@ class HopliteFriendlinessTest {
         [execution-client]
         ethereum-json-rpc-endpoint = "http://localhost:8545"
         engine-api-json-rpc-endpoint = "http://localhost:8555"
+        min-time-between-get-payload-attempts=800m
 
         [dummy-consensus-options]
         communication-time-margin=100m
@@ -84,6 +86,7 @@ class HopliteFriendlinessTest {
             ExecutionClientConfig(
               engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
               ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
+              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
           p2pConfig = P2P(port = 3322u),

@@ -15,7 +15,6 @@
  */
 package maru.consensus.dummy
 
-import java.util.concurrent.TimeUnit
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -29,9 +28,9 @@ import org.hyperledger.besu.ethereum.blockcreation.BlockCreator
 import org.hyperledger.besu.ethereum.core.Block
 
 class DummyConsensusEventHandler(
-  private var state: DummyConsensusState,
   private val executionLayerManager: ExecutionLayerManager,
   private val blockCreator: BlockCreator,
+  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val onNewBlock: (Block) -> Unit,
 ) : BftEventHandler {
   private val log: Logger = LogManager.getLogger(this::class.java)
@@ -52,9 +51,12 @@ class DummyConsensusEventHandler(
 
     if (isMsgForCurrentHeight(roundIdentifier)) {
       log.debug("Creating new block by timer {}", blockTimerExpiry.roundIdentifier)
+
+      val latestBlockMetadata = executionLayerManager.latestBlockMetadata()
+      val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata)
       val blockCreationResult =
         blockCreator.createEmptyWithdrawalsBlock(
-          TimeUnit.MILLISECONDS.toSeconds(state.clock.millis()),
+          nextBlockTimestamp,
           // Execution client is aware of the parent header
           null,
         )

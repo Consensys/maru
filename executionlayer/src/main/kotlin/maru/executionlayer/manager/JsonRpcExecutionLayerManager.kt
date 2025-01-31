@@ -38,7 +38,6 @@ object NoopValidator : ExecutionPayloadValidator {
 
 class JsonRpcExecutionLayerManager private constructor(
   private val executionLayerClient: ExecutionLayerClient,
-  private val newBlockTimestampProvider: () -> ULong,
   private val feeRecipientProvider: (ULong) -> ByteArray,
   currentBlockMetadata: BlockMetadata,
   private val payloadValidator: ExecutionPayloadValidator,
@@ -48,15 +47,13 @@ class JsonRpcExecutionLayerManager private constructor(
   companion object {
     fun create(
       executionLayerClient: ExecutionLayerClient,
-      newBlockTimestampProvider: () -> ULong,
       feeRecipientProvider: (ULong) -> ByteArray,
       payloadValidator: ExecutionPayloadValidator,
     ): SafeFuture<JsonRpcExecutionLayerManager> =
       executionLayerClient.getLatestBlockMetadata().thenApply {
-        val currentBlockMetadata = BlockMetadata(it.blockNumber, it.blockHash, it.timestamp)
+        val currentBlockMetadata = BlockMetadata(it.blockNumber, it.blockHash, it.unixTimestamp)
         JsonRpcExecutionLayerManager(
           executionLayerClient = executionLayerClient,
-          newBlockTimestampProvider = newBlockTimestampProvider,
           feeRecipientProvider = feeRecipientProvider,
           currentBlockMetadata = currentBlockMetadata,
           payloadValidator = payloadValidator,
@@ -93,8 +90,8 @@ class JsonRpcExecutionLayerManager private constructor(
     headHash: ByteArray,
     safeHash: ByteArray,
     finalizedHash: ByteArray,
+    nextBlockTimestamp: Long,
   ): SafeFuture<ForkChoiceUpdatedResult> {
-    val nextBlockTimestamp = newBlockTimestampProvider().toLong()
     log.debug(
       "Trying to create a block number {} with timestamp {}",
       latestBlockCache.currentBlockMetadata.blockNumber + 1u,
@@ -121,9 +118,8 @@ class JsonRpcExecutionLayerManager private constructor(
         log.debug("Forkchoice update response {}", response)
         if (response.isFailure) {
           throw IllegalStateException(
-            "forkChoiceUpdate request failed! currentTimestamp=${
-              newBlockTimestampProvider()
-                .toLong()
+            "forkChoiceUpdate request failed! nextBlockTimestamp=${
+              nextBlockTimestamp
             } " + response.errorMessage,
           )
         } else {
@@ -186,7 +182,7 @@ class JsonRpcExecutionLayerManager private constructor(
                     .longValue()
                     .toULong(),
                   tekuExecutionPayload.blockHash.toArray(),
-                  tekuExecutionPayload.timestamp.longValue().toULong(),
+                  tekuExecutionPayload.timestamp.longValue(),
                 ),
               )
               executionPayload

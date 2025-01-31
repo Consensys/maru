@@ -66,7 +66,7 @@ class EngineApiBlockCreatorTest {
   }
 
   private fun mockSetHeadAndStartBlockBuilding(result: ForkChoiceUpdatedResult) {
-    whenever(executionLayerManager.setHeadAndStartBlockBuilding(any(), any(), any())).thenReturn(
+    whenever(executionLayerManager.setHeadAndStartBlockBuilding(any(), any(), any(), any())).thenReturn(
       SafeFuture.completedFuture(result),
     )
   }
@@ -76,12 +76,19 @@ class EngineApiBlockCreatorTest {
     val finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     val dummyConsensusState = createDummyConsensusState(finalizationState)
     mockSetHeadAndStartBlockBuilding(randomValidForkChoiceUpdatedResult())
-    EngineApiBlockCreator(executionLayerManager, dummyConsensusState, MainnetBlockHeaderFunctions())
+    val nextTimestamp = dummyConsensusState.clock.millis()
+    EngineApiBlockCreator(
+      manager = executionLayerManager,
+      state = dummyConsensusState,
+      blockHeaderFunctions = MainnetBlockHeaderFunctions(),
+      initialBlockTimestamp = nextTimestamp,
+    )
 
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
       eq(dummyConsensusState.latestBlockHash),
       eq(finalizationState.safeBlockHash),
       eq(finalizationState.finalizedBlockHash),
+      eq(nextTimestamp),
     )
   }
 
@@ -93,8 +100,15 @@ class EngineApiBlockCreatorTest {
     mockFinishBlockBuilding(expectedBlockBuildingResult)
     val forkChoiceUpdatedResult = randomValidForkChoiceUpdatedResult()
     mockSetHeadAndStartBlockBuilding(forkChoiceUpdatedResult)
+    val nextTimestamp = dummyConsensusState.clock.millis()
 
-    val blockCreator = EngineApiBlockCreator(executionLayerManager, dummyConsensusState, MainnetBlockHeaderFunctions())
+    val blockCreator =
+      EngineApiBlockCreator(
+        manager = executionLayerManager,
+        state = dummyConsensusState,
+        blockHeaderFunctions = MainnetBlockHeaderFunctions(),
+        initialBlockTimestamp = nextTimestamp,
+      )
     blockCreator.createEmptyWithdrawalsBlock(1L, null)
     blockCreator.createEmptyWithdrawalsBlock(2L, null)
     blockCreator.createEmptyWithdrawalsBlock(3L, null)
@@ -105,10 +119,12 @@ class EngineApiBlockCreatorTest {
         any(),
         any(),
         any(),
+        any(),
       )
       inOrder.verify(executionLayerManager).finishBlockBuilding()
     }
     inOrder.verify(executionLayerManager).setHeadAndStartBlockBuilding(
+      any(),
       any(),
       any(),
       any(),
@@ -124,23 +140,34 @@ class EngineApiBlockCreatorTest {
     mockFinishBlockBuilding(expectedBlockBuildingResult)
     val forkChoiceUpdatedResult = randomValidForkChoiceUpdatedResult()
     mockSetHeadAndStartBlockBuilding(forkChoiceUpdatedResult)
+    val initialTimestamp = dummyConsensusState.clock.millis()
 
-    val blockCreator = EngineApiBlockCreator(executionLayerManager, dummyConsensusState, MainnetBlockHeaderFunctions())
-    blockCreator.createEmptyWithdrawalsBlock(1L, null)
+    val blockCreator =
+      EngineApiBlockCreator(
+        manager = executionLayerManager,
+        state = dummyConsensusState,
+        blockHeaderFunctions = MainnetBlockHeaderFunctions(),
+        initialBlockTimestamp = initialTimestamp,
+      )
+    val nextTimestamp1 = 123L
+    blockCreator.createEmptyWithdrawalsBlock(nextTimestamp1, null)
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
       eq(expectedBlockBuildingResult.blockHash),
       eq(finalizationState.safeBlockHash),
       eq(finalizationState.finalizedBlockHash),
+      eq(nextTimestamp1),
     )
     val newFinalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     dummyConsensusState.updateFinalizationState(newFinalizationState)
 
-    blockCreator.createEmptyWithdrawalsBlock(2L, null)
+    val otherTimestamp2 = 124L
+    blockCreator.createEmptyWithdrawalsBlock(otherTimestamp2, null)
 
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
       eq(expectedBlockBuildingResult.blockHash),
       eq(newFinalizationState.safeBlockHash),
       eq(newFinalizationState.finalizedBlockHash),
+      eq(otherTimestamp2),
     )
   }
 }

@@ -16,8 +16,7 @@
 package maru.app.config
 
 import com.sksamuel.hoplite.Masked
-import java.time.Duration
-import kotlin.time.toKotlinDuration
+import kotlin.time.Duration
 import org.apache.tuweni.bytes.Bytes
 
 data class ValidatorDtoToml(
@@ -29,7 +28,7 @@ data class ValidatorDtoToml(
 data class DummyConsensusOptionsDtoToml(
   val communicationTimeMargin: Duration,
 ) {
-  fun reified(): DummyConsensusOptions = DummyConsensusOptions(communicationTimeMargin.toKotlinDuration())
+  fun reified(): DummyConsensusOptions = DummyConsensusOptions(communicationTimeMargin)
 }
 
 data class MaruConfigDtoToml(

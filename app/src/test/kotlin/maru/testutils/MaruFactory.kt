@@ -31,6 +31,7 @@ object MaruFactory {
     [execution-client]
     ethereum-json-rpc-endpoint = "$ethereumJsonRpcUrl"
     engine-api-json-rpc-endpoint = "$engineApiRpc"
+    min-time-between-get-payload-attempts=800m
 
     [dummy-consensus-options]
     communication-time-margin=100m

@@ -15,6 +15,7 @@
  */
 package maru.app
 
+import java.math.BigInteger
 import maru.testutils.MaruFactory
 import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
@@ -29,16 +30,18 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.web3j.protocol.core.DefaultBlockParameter
 
 class MaruDummyConsensusTest {
   private val cluster = Cluster(NetConditions(NetTransactions()))
-  private var besuNode: BesuNode = BesuFactory.buildTestBesu()
+  private lateinit var besuNode: BesuNode
   private lateinit var maruNode: MaruApp
   private val log = LogManager.getLogger(this.javaClass)
 
   @BeforeEach
   fun setUp() {
-    cluster.startNode(besuNode)
+    besuNode = BesuFactory.buildTestBesu()
+    cluster.start(besuNode)
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
     val engineRpcUrl = besuNode.engineRpcUrl().get()
     maruNode = MaruFactory.buildTestMaru(ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl, engineApiRpc = engineRpcUrl)
@@ -47,7 +50,7 @@ class MaruDummyConsensusTest {
 
   @AfterEach
   fun tearDown() {
-    besuNode.close()
+    cluster.close()
     maruNode.stop()
   }
 
@@ -65,10 +68,53 @@ class MaruDummyConsensusTest {
 
   @Test
   fun `dummyConsensus is able to produce blocks with the expected block time`() {
-    log.debug("Starting test")
     val blocksToProduce = 10
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+
+    verifyBlockHeaders(blocksToProduce)
+  }
+
+//  @Test
+//  fun `dummyConsensus works if Besu stops mid flight`() {
+//    val blocksToProduce = 5
+//    repeat(blocksToProduce) {
+//      sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
+//    }
+//    cluster.stop()
+//    cluster.start(besuNode)
+//    repeat(blocksToProduce) {
+//      sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
+//    }
+//  }
+
+  @Test
+  fun `dummyConsensus works if Maru stops mid flight`() {
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+    maruNode.stop()
+    maruNode.start()
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+  }
+
+  private fun verifyBlockHeaders(blocksProduced: Int) {
+    val blocks = (1..blocksProduced).map {
+      besuNode.nodeRequests().eth().ethGetBlockByNumber(
+        DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
+        false,
+      ).sendAsync()
+    }.map { it.get().block }
+
+    val blockTimeSeconds = 1L
+    val timestamps = blocks.map { it.timestamp.toLong() }
+    (1.until(blocks.size)).forEach {
+      assertThat(timestamps[it - 1]).isLessThan(timestamps[it])
+      assertThat(timestamps[it] - timestamps[it - 1]).isEqualTo(blockTimeSeconds)
     }
   }
 }

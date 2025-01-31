@@ -48,13 +48,15 @@ class EngineApiBlockCreator(
   private val manager: ExecutionLayerManager,
   private val state: DummyConsensusState,
   private val blockHeaderFunctions: BlockHeaderFunctions,
+  initialBlockTimestamp: Long, // Block creation starts right after, so it's required
 ) : BlockCreator {
   init {
     manager
       .setHeadAndStartBlockBuilding(
-        state.latestBlockHash,
-        state.finalizationState.safeBlockHash,
-        state.finalizationState.finalizedBlockHash,
+        headHash = state.latestBlockHash,
+        safeHash = state.finalizationState.safeBlockHash,
+        finalizedHash = state.finalizationState.finalizedBlockHash,
+        nextBlockTimestamp = initialBlockTimestamp,
       ).get()
   }
 
@@ -79,6 +81,7 @@ class EngineApiBlockCreator(
     parentHeader: BlockHeader?,
   ): BlockCreator.BlockCreationResult = createEmptyWithdrawalsBlock(timestamp, parentHeader)
 
+  // Starts creation of the next block with timestamp, returns current block being built
   override fun createEmptyWithdrawalsBlock(
     timestamp: Long,
     parentHeader: BlockHeader?,
@@ -92,9 +95,10 @@ class EngineApiBlockCreator(
     log.debug(" {}", newHeadHash)
     manager
       .setHeadAndStartBlockBuilding(
-        newHeadHash,
-        finalizationState.safeBlockHash,
-        finalizationState.finalizedBlockHash,
+        headHash = newHeadHash,
+        safeHash = finalizationState.safeBlockHash,
+        finalizedHash = finalizationState.finalizedBlockHash,
+        nextBlockTimestamp = timestamp,
       ).thenApply {
         log.info("Updating latest state")
         state.updateLatestStatus(newHeadHash)
@@ -135,7 +139,7 @@ class EngineApiBlockCreator(
         /* blobGasUsed = */ 0,
         /* excessBlobGas = */ BlobGas.ZERO,
         /* parentBeaconBlockRoot = TODO: use an actual beacon block root */ Bytes32.ZERO,
-        /* requestsRoot = */ Hash.EMPTY,
+        /* requestsRoot = */ BodyValidation.requestsHash(listOf()),
         /* blockHeaderFunctions = */ blockHeaderFunctions,
       )
     val blockBody = BlockBody(transactions, listOf())

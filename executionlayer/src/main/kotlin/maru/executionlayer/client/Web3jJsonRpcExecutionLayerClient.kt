@@ -49,7 +49,7 @@ class Web3jJsonRpcExecutionLayerClient(
             .toLong()
             .toULong(),
           Bytes32.fromHexString(block.hash).toArray(),
-          block.timestamp.toLong().toULong(),
+          block.timestamp.toLong(),
         )
       }
 

@@ -21,6 +21,7 @@ import kotlin.time.Duration
 data class ExecutionClientConfig(
   val ethereumJsonRpcEndpoint: URL,
   val engineApiJsonRpcEndpoint: URL,
+  val minTimeBetweenGetPayloadAttempts: Duration,
 )
 
 data class P2P(
@@ -45,7 +46,7 @@ data class Validator(
 }
 
 data class DummyConsensusOptions(
-  // Since we cannot finish block production istantly at expected time, we need to set some safety margin
+  // Since we cannot finish block production instantly at expected time, we need to set some safety margin
   val communicationMargin: Duration,
 )
 

@@ -17,7 +17,6 @@ package maru.app
 
 import java.time.Clock
 import java.time.Duration
-import kotlin.math.ceil
 import maru.app.config.DummyConsensusOptions
 import maru.app.config.ExecutionClientConfig
 import maru.consensus.EngineApiBlockCreator
@@ -26,6 +25,7 @@ import maru.consensus.dummy.DummyConsensusEventHandler
 import maru.consensus.dummy.DummyConsensusState
 import maru.consensus.dummy.EmptyBlockValidator
 import maru.consensus.dummy.FinalizationState
+import maru.consensus.dummy.NextBlockTimestampProviderImpl
 import maru.consensus.dummy.TimeDrivenEventProducer
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.Web3jJsonRpcExecutionLayerClient
@@ -66,11 +66,12 @@ object DummyConsensusProtocolBuilder {
       JsonRpcExecutionLayerManager
         .create(
           executionLayerClient = executionLayerClient,
-          newBlockTimestampProvider = { ceil(clock.millis() / 1000.0).toULong() + 1UL },
           feeRecipientProvider = { forksSchedule.getForkByNumber(it).feeRecipient },
           EmptyBlockValidator,
         ).get()
-    val latestBlockHash = jsonRpcExecutionLayerManager.latestBlockMetadata().blockHash
+    val latestBlockMetadata = jsonRpcExecutionLayerManager.latestBlockMetadata()
+    val latestBlockHash = latestBlockMetadata.blockHash
+
     val finalizationState = FinalizationState(latestBlockHash, latestBlockHash)
     val dummyConsensusState =
       DummyConsensusState(
@@ -78,19 +79,32 @@ object DummyConsensusProtocolBuilder {
         finalizationState_ = finalizationState,
         latestBlockHash_ = latestBlockHash,
       )
+
+    val nextBlockTimestampProvider =
+      NextBlockTimestampProviderImpl(
+        clock = clock,
+        forksSchedule = forksSchedule,
+        minTimeTillNextBlock = executionClientConfig.minTimeBetweenGetPayloadAttempts,
+      )
     val blockCreator =
-      EngineApiBlockCreator(jsonRpcExecutionLayerManager, dummyConsensusState, MainnetBlockHeaderFunctions())
+      EngineApiBlockCreator(
+        manager = jsonRpcExecutionLayerManager,
+        state = dummyConsensusState,
+        blockHeaderFunctions = MainnetBlockHeaderFunctions(),
+        initialBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata),
+      )
     val eventHandler =
       DummyConsensusEventHandler(
-        state = dummyConsensusState,
         executionLayerManager = jsonRpcExecutionLayerManager,
         blockCreator = blockCreator,
+        nextBlockTimestampProvider = nextBlockTimestampProvider,
         onNewBlock = {},
       )
     return TimeDrivenEventProducer(
       forksSchedule = forksSchedule,
       eventHandler = eventHandler,
       blockMetadataProvider = jsonRpcExecutionLayerManager::latestBlockMetadata,
+      nextBlockTimestampProvider = nextBlockTimestampProvider,
       clock = clock,
       config = TimeDrivenEventProducer.Config(dummyConsensusOptions.communicationMargin),
     )

@@ -18,9 +18,14 @@ package maru.consensus.dummy
 import maru.consensus.ConsensusConfiguration
 
 data class DummyConsensusConfig(
-  val blockTimeMillis: UInt,
+  private val blockTimeMillis: UInt,
   override val feeRecipient: ByteArray,
 ) : ConsensusConfiguration {
+  /** Leaving blockTimeMillis in the configuration to be future-proof, exposing nextBlockPeriodSeconds to be closer
+   * to reality where block timestamp is in seconds
+   */
+  val nextBlockPeriodSeconds = blockTimeMillis.toInt() / 1000
+
   init {
     require(feeRecipient.size == 20) {
       "feesRecipient address must be 20 bytes long, " +

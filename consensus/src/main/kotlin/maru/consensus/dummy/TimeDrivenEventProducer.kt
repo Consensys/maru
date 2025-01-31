@@ -31,25 +31,10 @@ class TimeDrivenEventProducer(
   private val forksSchedule: ForksSchedule,
   private val eventHandler: BftEventHandler,
   private val blockMetadataProvider: () -> BlockMetadata,
+  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val clock: Clock,
   private val config: Config,
 ) {
-  companion object {
-    /** Returns required block production delay between the last block time and next block time according to the
-     * effective block period.
-     *
-     * Returns 0 if next block is overdue
-     */
-    internal fun nextBlockDelay(
-      currentTimestampMillis: Long,
-      lastBlockTimestampSeconds: Long,
-      nextBlockPeriodMillis: Int,
-    ): ULong {
-      val expiryTime = lastBlockTimestampSeconds * 1000 + nextBlockPeriodMillis
-      return (expiryTime - currentTimestampMillis).toULong()
-    }
-  }
-
   data class Config(
     val communicationMargin: Duration,
   )
@@ -64,7 +49,7 @@ class TimeDrivenEventProducer(
     if (currentTask == null) {
       SafeFuture.runAsync {
         // For the first ever tick EL will need some time to prepare a block in any case, thus forcing delay
-        handleTick(forceDelay = true)
+        handleTick()
       }
     } else {
       throw IllegalStateException("Timer has already been started!")
@@ -72,7 +57,7 @@ class TimeDrivenEventProducer(
   }
 
   @Synchronized
-  private fun handleTick(forceDelay: Boolean = false) {
+  private fun handleTick() {
     val lastBlockMetadata = blockMetadataProvider()
     val nextBlockNumber = lastBlockMetadata.blockNumber + 1u
     val nextBlockConfig = forksSchedule.getForkByNumber(nextBlockNumber)
@@ -85,13 +70,12 @@ class TimeDrivenEventProducer(
       }
       stop()
     }
+
     when (nextBlockConfig) {
       is DummyConsensusConfig -> {
         scheduleNextTask(
-          lastBlockMetadata = lastBlockMetadata,
           nextBlockNumber = nextBlockNumber,
-          nextBlockConfig = nextBlockConfig,
-          forceDelay = forceDelay,
+          nextTargetTimestampSeconds = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(lastBlockMetadata),
         )
       }
 
@@ -102,31 +86,17 @@ class TimeDrivenEventProducer(
   }
 
   private fun scheduleNextTask(
-    lastBlockMetadata: BlockMetadata,
     nextBlockNumber: ULong,
-    nextBlockConfig: DummyConsensusConfig,
-    forceDelay: Boolean,
+    nextTargetTimestampSeconds: Long,
   ) {
     val currentTime = clock.millis()
 
     val delayMillis: Long =
-      if (forceDelay) {
-        nextBlockDelay(
-          currentTimestampMillis = currentTime,
-          lastBlockTimestampSeconds = (currentTime / 1000) + 1,
-          nextBlockPeriodMillis = nextBlockConfig.blockTimeMillis.toInt(),
-        ).toLong()
-      } else {
-        nextBlockDelay(
-          currentTimestampMillis = currentTime,
-          lastBlockTimestampSeconds = lastBlockMetadata.timestamp.toLong(),
-          nextBlockPeriodMillis = nextBlockConfig.blockTimeMillis.toInt(),
-        ).toLong()
-      }
-    log.debug("Next target timestamp: {}", { currentTime + delayMillis })
+      nextTargetTimestampSeconds * 1000 - currentTime - config.communicationMargin.inWholeMilliseconds
+    log.debug("Next target timestamp: {}, delay until next task: {}", currentTime + delayMillis, delayMillis)
 
     val executor =
-      SafeFuture.delayedExecutor(delayMillis - config.communicationMargin.inWholeMilliseconds, TimeUnit.MILLISECONDS)
+      SafeFuture.delayedExecutor(delayMillis, TimeUnit.MILLISECONDS)
 
     currentTask =
       SafeFuture
@@ -143,7 +113,7 @@ class TimeDrivenEventProducer(
             ).thenApply { },
         ).whenException {
           log.error(it.message, it)
-          handleTick(forceDelay = true)
+          handleTick()
         }
   }
 
