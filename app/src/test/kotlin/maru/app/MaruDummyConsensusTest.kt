@@ -103,12 +103,17 @@ class MaruDummyConsensusTest {
   }
 
   private fun verifyBlockHeaders(blocksProduced: Int) {
-    val blocks = (1..blocksProduced).map {
-      besuNode.nodeRequests().eth().ethGetBlockByNumber(
-        DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
-        false,
-      ).sendAsync()
-    }.map { it.get().block }
+    val blocks =
+      (1..blocksProduced)
+        .map {
+          besuNode
+            .nodeRequests()
+            .eth()
+            .ethGetBlockByNumber(
+              DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
+              false,
+            ).sendAsync()
+        }.map { it.get().block }
 
     val blockTimeSeconds = 1L
     val timestamps = blocks.map { it.timestamp.toLong() }
