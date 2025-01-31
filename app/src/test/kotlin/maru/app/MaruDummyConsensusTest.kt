@@ -76,18 +76,18 @@ class MaruDummyConsensusTest {
     verifyBlockHeaders(blocksToProduce)
   }
 
-//  @Test
-//  fun `dummyConsensus works if Besu stops mid flight`() {
-//    val blocksToProduce = 5
-//    repeat(blocksToProduce) {
-//      sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
-//    }
-//    cluster.stop()
-//    cluster.start(besuNode)
-//    repeat(blocksToProduce) {
-//      sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
-//    }
-//  }
+  @Test
+  fun `dummyConsensus works if Besu stops mid flight`() {
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+    cluster.stop()
+    cluster.start(besuNode)
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(TransactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+  }
 
   @Test
   fun `dummyConsensus works if Maru stops mid flight`() {
