@@ -43,7 +43,7 @@ data class FinalizationState(
 data class DummyConsensusState(
   val clock: Clock,
   @Volatile private var finalizationState_: FinalizationState,
-  @Volatile private var latestBlockHash_: ByteArray,
+  @Volatile var latestBlockHash_: ByteArray,
 ) {
   val finalizationState: FinalizationState get() = finalizationState_
   val latestBlockHash: ByteArray get() = latestBlockHash_

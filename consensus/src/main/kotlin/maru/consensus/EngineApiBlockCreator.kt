@@ -139,7 +139,7 @@ class EngineApiBlockCreator(
         /* blobGasUsed = */ 0,
         /* excessBlobGas = */ BlobGas.ZERO,
         /* parentBeaconBlockRoot = TODO: use an actual beacon block root */ Bytes32.ZERO,
-        /* requestsRoot = */ BodyValidation.requestsHash(listOf()),
+        /* requestsHash = */ BodyValidation.requestsHash(listOf()),
         /* blockHeaderFunctions = */ blockHeaderFunctions,
       )
     val blockBody = BlockBody(transactions, listOf())
