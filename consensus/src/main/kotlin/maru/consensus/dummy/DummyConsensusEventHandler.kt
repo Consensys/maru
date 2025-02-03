@@ -61,7 +61,7 @@ class DummyConsensusEventHandler(
           null,
         )
       log.debug("Block creation timings {}", blockCreationResult.blockCreationTimings)
-      onNewBlock(blockCreationResult.block)
+      blockCreationResult.block?.also(onNewBlock)
     } else {
       log.trace(
         "Block timer event discarded as it is not for current block height " +

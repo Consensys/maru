@@ -29,6 +29,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
+import tech.pegasys.teku.spec.executionlayer.ExecutionPayloadStatus
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult as TekuForkChoiceUpdatedResult
 
 object NoopValidator : ExecutionPayloadValidator {
@@ -172,7 +173,13 @@ class JsonRpcExecutionLayerManager private constructor(
             throw RuntimeException(validationResult.reason)
           }
           executionLayerClient.newPayload(tekuExecutionPayload).thenApply { payloadStatus ->
-            if (payloadStatus.isSuccess) {
+            if (payloadStatus.isSuccess &&
+              payloadStatus.payload
+                .asInternalExecutionPayload()
+                .status
+                .get() ==
+              ExecutionPayloadStatus.VALID
+            ) {
               payloadId = null // Not necessary, but it helps to reinforce the order of calls
               log.debug("Unsetting payload Id, block metadata {}", latestBlockCache)
 

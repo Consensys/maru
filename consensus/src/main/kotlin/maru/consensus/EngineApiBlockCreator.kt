@@ -88,8 +88,21 @@ class EngineApiBlockCreator(
   ): BlockCreator.BlockCreationResult {
     val blockCreationTimings = BlockCreationTiming()
     blockCreationTimings.register("Block creation")
-    val blockBuildingResult = manager.finishBlockBuilding().get()
-    val newHeadHash = blockBuildingResult.blockHash
+    val blockBuildingResult =
+      try {
+        manager
+          .finishBlockBuilding()
+          .thenApply {
+            state.updateLatestStatus(it.blockHash)
+            log.info("Updating latest state")
+            it
+          }.get()
+      } catch (e: Exception) {
+        log.warn("Error during block building finish! Starting new attempt!", e)
+        null
+      }
+
+    val newHeadHash = state.latestBlockHash
     // Mind the atomicity of finalization updates
     val finalizationState = state.finalizationState
     log.debug(" {}", newHeadHash)
@@ -99,14 +112,14 @@ class EngineApiBlockCreator(
         safeHash = finalizationState.safeBlockHash,
         finalizedHash = finalizationState.finalizedBlockHash,
         nextBlockTimestamp = timestamp,
-      ).thenApply {
-        log.info("Updating latest state")
-        state.updateLatestStatus(newHeadHash)
-      }.whenException {
+      ).whenException {
         log.error("Error while initiating block building!", it)
       }.get()
-    val block = mapExecutionPayloadToBlock(blockBuildingResult)
-    blockCreationTimings.register("Block creation")
+    val block =
+      blockBuildingResult?.let {
+        mapExecutionPayloadToBlock(blockBuildingResult)
+      }
+    blockCreationTimings.end("Block creation")
     // This return type doesn't fit this case well so stubbing it with dummy values for now
     return BlockCreator.BlockCreationResult(block, null, blockCreationTimings)
   }

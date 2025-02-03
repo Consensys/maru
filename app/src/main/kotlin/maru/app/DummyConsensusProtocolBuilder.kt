@@ -48,7 +48,7 @@ object DummyConsensusProtocolBuilder {
         .endpoint(executionClientConfig.engineApiJsonRpcEndpoint.toString())
         .timeout(Duration.ofMinutes(1))
         .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-        .executionClientEventsPublisher({ })
+        .executionClientEventsPublisher { }
         .build()
     val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
 
