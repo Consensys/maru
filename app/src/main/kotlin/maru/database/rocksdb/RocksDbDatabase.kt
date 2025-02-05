@@ -15,42 +15,43 @@
  */
 package maru.database.rocksdb
 
+import encodeHex
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.database.Database
-import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreColumn
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
-import tech.pegasys.teku.storage.server.rocksdb.RocksDbInstance
 
-class RocksDbDatabase(private val rocksDbInstance: RocksDbInstance) : Database {
+class RocksDbDatabase(private val rocksDbInstance: KvStoreAccessor) :
+  Database {
   companion object {
-    object SCHEMA {
-      val BEACON_STATE_BY_BLOCK_ROOT: KvStoreColumn<ByteArray, BeaconState> =
+    object Schema {
+      val BeaconStateByBlockRoot: KvStoreColumn<ByteArray, BeaconState> =
         KvStoreColumn.create(
           1,
-          KvStoreSerializers.BYTES_SERIALIZER,
-          KvStoreSerializers.BEACON_STATE_SERIALIZER,
+          KvStoreSerializers.BytesSerializer,
+          KvStoreSerializers.BeaconStateSerializer,
         )
 
-      val BEACON_BLOCK_BY_BLOCK_ROOT: KvStoreColumn<ByteArray, BeaconBlock> =
+      val BeaconBlockByBlockRoot: KvStoreColumn<ByteArray, BeaconBlock> =
         KvStoreColumn.create(
           2,
-          KvStoreSerializers.BYTES_SERIALIZER,
-          KvStoreSerializers.BEACON_BLOCK_SERIALIZER,
+          KvStoreSerializers.BytesSerializer,
+          KvStoreSerializers.BeaconBlockSerializer,
         )
 
-      val LATEST_BEACON_STATE: KvStoreVariable<BeaconState> =
+      val LatestBeaconState: KvStoreVariable<BeaconState> =
         KvStoreVariable.create(
           1,
-          KvStoreSerializers.BEACON_STATE_SERIALIZER,
+          KvStoreSerializers.BeaconStateSerializer,
         )
     }
   }
 
   override fun getLatestBeaconState(): SafeFuture<BeaconState> {
-    val latestBeaconState = rocksDbInstance.get(SCHEMA.LATEST_BEACON_STATE)
+    val latestBeaconState = rocksDbInstance.get(Schema.LatestBeaconState)
     return if (latestBeaconState.isEmpty) {
       SafeFuture.failedFuture(RuntimeException("Could not find latest beacon state"))
     } else {
@@ -59,11 +60,13 @@ class RocksDbDatabase(private val rocksDbInstance: RocksDbInstance) : Database {
   }
 
   override fun getBeaconState(beaconBlockRoot: ByteArray): SafeFuture<BeaconState> {
-    val beaconState = rocksDbInstance.get(SCHEMA.BEACON_STATE_BY_BLOCK_ROOT, beaconBlockRoot)
+    val beaconState = rocksDbInstance.get(Schema.BeaconStateByBlockRoot, beaconBlockRoot)
     return if (beaconState.isEmpty) {
       SafeFuture.failedFuture(
         RuntimeException(
-          "Could not find beacon state for beaconBlockRoot: ${Bytes.wrap(beaconBlockRoot).toHexString()}",
+          "Could not find beacon state for beaconBlockRoot: ${
+            beaconBlockRoot.encodeHex()
+          }",
         ),
       )
     } else {
@@ -73,21 +76,18 @@ class RocksDbDatabase(private val rocksDbInstance: RocksDbInstance) : Database {
 
   override fun storeState(beaconState: BeaconState): SafeFuture<Unit> {
     rocksDbInstance.startTransaction().use { txn ->
-      txn.put(SCHEMA.BEACON_STATE_BY_BLOCK_ROOT, beaconState.latestBeaconBlockRoot, beaconState)
-      txn.put(SCHEMA.LATEST_BEACON_STATE, beaconState)
+      txn.put(Schema.BeaconStateByBlockRoot, beaconState.latestBeaconBlockRoot, beaconState)
+      txn.put(Schema.LatestBeaconState, beaconState)
       txn.commit()
     }
     return SafeFuture.completedFuture(Unit)
   }
 
-  @OptIn(ExperimentalStdlibApi::class)
   override fun getBeaconBlock(beaconBlockRoot: ByteArray): SafeFuture<BeaconBlock> {
-    val beaconBlock = rocksDbInstance.get(SCHEMA.BEACON_BLOCK_BY_BLOCK_ROOT, beaconBlockRoot)
+    val beaconBlock = rocksDbInstance.get(Schema.BeaconBlockByBlockRoot, beaconBlockRoot)
     return if (beaconBlock.isEmpty) {
       SafeFuture.failedFuture(
-        RuntimeException(
-          "Could not find beacon block for beaconBlockRoot: ${Bytes.wrap(beaconBlockRoot).toHexString()}",
-        ),
+        RuntimeException("Could not find beacon block for beaconBlockRoot: ${beaconBlockRoot.encodeHex()}"),
       )
     } else {
       SafeFuture.completedFuture(beaconBlock.get())
@@ -99,7 +99,7 @@ class RocksDbDatabase(private val rocksDbInstance: RocksDbInstance) : Database {
     beaconBlockRoot: ByteArray,
   ): SafeFuture<Unit> {
     val txn = rocksDbInstance.startTransaction()
-    txn.put(SCHEMA.BEACON_BLOCK_BY_BLOCK_ROOT, beaconBlockRoot, beaconBlock)
+    txn.put(Schema.BeaconBlockByBlockRoot, beaconBlockRoot, beaconBlock)
     txn.commit()
     return SafeFuture.completedFuture(Unit)
   }

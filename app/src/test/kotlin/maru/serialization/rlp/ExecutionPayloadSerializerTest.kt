@@ -18,7 +18,6 @@ package maru.serialization.rlp
 import java.math.BigInteger
 import kotlin.random.Random
 import kotlin.random.nextULong
-import maru.core.ExecutionPayload
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -28,7 +27,7 @@ class ExecutionPayloadSerializerTest {
   @Test
   fun `can serialize and deserialize same value`() {
     val testValue =
-      ExecutionPayload(
+      maru.core.ExecutionPayload(
         parentHash = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         receiptsRoot = Random.nextBytes(32),
@@ -52,7 +51,7 @@ class ExecutionPayloadSerializerTest {
   @Test
   fun `can serialize and deserialize execution payload with zero transactions`() {
     val testValue =
-      ExecutionPayload(
+      maru.core.ExecutionPayload(
         parentHash = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         receiptsRoot = Random.nextBytes(32),

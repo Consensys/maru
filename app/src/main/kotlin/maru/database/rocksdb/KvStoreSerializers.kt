@@ -24,15 +24,15 @@ import maru.serialization.rlp.SealSerializer
 import maru.serialization.rlp.ValidatorSerializer
 
 object KvStoreSerializers {
-  val BYTES_SERIALIZER = BytesSerializer()
-  val BEACON_STATE_SERIALIZER =
+  val BytesSerializer = BytesSerializer()
+  val BeaconStateSerializer =
     KvStoreSerializerAdapter(
       BeaconStateSerializer(
         beaconBlockHeaderSerializer = BeaconBlockHeaderSerializer(validatorSerializer = ValidatorSerializer()),
         validatorSerializer = ValidatorSerializer(),
       ),
     )
-  val BEACON_BLOCK_SERIALIZER =
+  val BeaconBlockSerializer =
     KvStoreSerializerAdapter(
       BeaconBlockSerializer(
         beaconBlockHeaderSerializer = BeaconBlockHeaderSerializer(validatorSerializer = ValidatorSerializer()),

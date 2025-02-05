@@ -15,21 +15,17 @@
  */
 package maru.database.rocksdb
 
+import encodeHex
 import java.nio.file.Path
 import java.util.Optional
 import java.util.concurrent.ExecutionException
 import kotlin.random.Random
 import maru.core.ext.DataGenerators
-import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
-import tech.pegasys.teku.storage.server.kvstore.KvStoreConfiguration
-import tech.pegasys.teku.storage.server.rocksdb.RocksDbInstance
-import tech.pegasys.teku.storage.server.rocksdb.RocksDbInstanceFactory
 
 class RocksDbDatabaseTest {
   private object RocksDbDatabaseTestMetricCategory : MetricCategory {
@@ -44,17 +40,17 @@ class RocksDbDatabaseTest {
 
   private fun createDatabase(databasePath: Path): RocksDbDatabase {
     val rocksDbInstance =
-      RocksDbInstanceFactory.create(
-        NoOpMetricsSystem(),
+      tech.pegasys.teku.storage.server.rocksdb.RocksDbInstanceFactory.create(
+        org.hyperledger.besu.metrics.noop.NoOpMetricsSystem(),
         RocksDbDatabaseTestMetricCategory,
-        KvStoreConfiguration().withDatabaseDir(databasePath),
+        tech.pegasys.teku.storage.server.kvstore.KvStoreConfiguration().withDatabaseDir(databasePath),
         listOf(
-          RocksDbDatabase.Companion.SCHEMA.BEACON_BLOCK_BY_BLOCK_ROOT,
-          RocksDbDatabase.Companion.SCHEMA.BEACON_STATE_BY_BLOCK_ROOT,
+          RocksDbDatabase.Companion.Schema.BeaconBlockByBlockRoot,
+          RocksDbDatabase.Companion.Schema.BeaconStateByBlockRoot,
         ),
         emptyList(),
       )
-    return RocksDbDatabase(rocksDbInstance as RocksDbInstance)
+    return maru.database.rocksdb.RocksDbDatabase(rocksDbInstance)
   }
 
   @Test
@@ -111,7 +107,9 @@ class RocksDbDatabaseTest {
           db.getBeaconState(randomKey).get()
         }
       assertThat(exception.cause?.message)
-        .isEqualTo("Could not find beacon state for beaconBlockRoot: ${Bytes.wrap(randomKey).toHexString()}")
+        .isEqualTo(
+          "Could not find beacon state for beaconBlockRoot: ${randomKey.encodeHex()}",
+        )
     }
   }
 

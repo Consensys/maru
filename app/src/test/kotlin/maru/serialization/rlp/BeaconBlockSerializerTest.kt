@@ -18,12 +18,6 @@ package maru.serialization.rlp
 import java.math.BigInteger
 import kotlin.random.Random
 import kotlin.random.nextULong
-import maru.core.BeaconBlock
-import maru.core.BeaconBlockBody
-import maru.core.BeaconBlockHeader
-import maru.core.ExecutionPayload
-import maru.core.Seal
-import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -44,18 +38,18 @@ class BeaconBlockSerializerTest {
   @Test
   fun `can serialize and deserialize same value`() {
     val beaconBLockHeader =
-      BeaconBlockHeader(
+      maru.core.BeaconBlockHeader(
         number = Random.nextULong(),
         round = Random.nextULong(),
-        proposer = Validator(Random.nextBytes(128)),
+        proposer = maru.core.Validator(Random.nextBytes(128)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
       )
     val beaconBlockBody =
-      BeaconBlockBody(
-        prevBlockSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+      maru.core.BeaconBlockBody(
+        prevBlockSeals = buildList(3) { maru.core.Seal(Random.nextBytes(96)) },
         executionPayload =
-          ExecutionPayload(
+          maru.core.ExecutionPayload(
             parentHash = Random.nextBytes(32),
             stateRoot = Random.nextBytes(32),
             receiptsRoot = Random.nextBytes(32),
@@ -72,7 +66,7 @@ class BeaconBlockSerializerTest {
           ),
       )
     val testValue =
-      BeaconBlock(
+      maru.core.BeaconBlock(
         beaconBlockHeader = beaconBLockHeader,
         beaconBlockBody = beaconBlockBody,
       )

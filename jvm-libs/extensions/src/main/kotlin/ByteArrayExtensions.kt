@@ -13,13 +13,13 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.rocksdb
+import java.util.HexFormat
 
-import maru.serialization.Serializer
-import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
-
-class KvStoreSerializerAdapter<T>(val serializer: Serializer<T>) : KvStoreSerializer<T> {
-  override fun deserialize(p0: ByteArray): T = serializer.deserialize(p0)
-
-  override fun serialize(p0: T): ByteArray = serializer.serialize(p0)
+fun ByteArray.encodeHex(prefix: Boolean = true): String {
+  val hexStr = HexFormat.of().formatHex(this)
+  if (prefix) {
+    return "0x$hexStr"
+  } else {
+    return hexStr
+  }
 }

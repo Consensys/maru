@@ -15,19 +15,24 @@
  */
 package maru.serialization.rlp
 
-import kotlin.random.Random
-import maru.core.Validator
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
+import maru.serialization.Serializer
+import org.hyperledger.besu.ethereum.rlp.RLP
+import org.hyperledger.besu.ethereum.rlp.RLPInput
+import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class ValidatorSerializerTest {
-  private val serializer = ValidatorSerializer()
+interface RLPSerializer<T> : Serializer<T> {
+  fun writeTo(
+    value: T,
+    rlpOutput: RLPOutput,
+  )
 
-  @Test
-  fun `can serialize and deserialize same value`() {
-    val testValue = Validator(Random.nextBytes(128))
-    val serializedData = serializer.serialize(testValue)
-    val deserializedValue = serializer.deserialize(serializedData)
-    assertThat(deserializedValue).isEqualTo(testValue)
+  fun readFrom(rlpInput: RLPInput): T
+
+  override fun serialize(value: T): ByteArray {
+    return RLP.encode { rlpOutput -> this.writeTo(value, rlpOutput) }.toArray()
+  }
+
+  override fun deserialize(bytes: ByteArray): T {
+    return this.readFrom(RLP.input(org.apache.tuweni.bytes.Bytes.wrap(bytes)))
   }
 }
