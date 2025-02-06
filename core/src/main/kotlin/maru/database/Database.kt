@@ -15,21 +15,16 @@
  */
 package maru.database
 
+import java.util.Optional
 import maru.core.BeaconBlock
 import maru.core.BeaconState
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface Database : AutoCloseable {
-  fun getLatestBeaconState(): SafeFuture<BeaconState>
+  fun getLatestBeaconState(): Optional<BeaconState>
 
-  fun getBeaconState(beaconBlockRoot: ByteArray): SafeFuture<BeaconState>
+  fun getBeaconState(beaconBlockRoot: ByteArray): Optional<BeaconState>
 
-  fun storeState(beaconState: BeaconState): SafeFuture<Unit>
+  fun getBeaconBlock(beaconBlockRoot: ByteArray): Optional<BeaconBlock>
 
-  fun getBeaconBlock(beaconBlockRoot: ByteArray): SafeFuture<BeaconBlock>
-
-  fun storeBeaconBlock(
-    beaconBlock: BeaconBlock,
-    beaconBlockRoot: ByteArray,
-  ): SafeFuture<Unit>
+  fun newUpdater(): Updater
 }

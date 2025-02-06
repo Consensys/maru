@@ -13,12 +13,17 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.rocksdb
+package maru.database
 
-import maru.serialization.rlp.RLPSerializers
+import maru.core.BeaconBlock
+import maru.core.BeaconState
 
-object KvStoreSerializers {
-  val BytesSerializer = BytesSerializer()
-  val BeaconStateSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconStateSerializer)
-  val BeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconBlockSerializer)
+interface Updater : AutoCloseable {
+  fun setBeaconState(beaconState: BeaconState): Updater
+
+  fun setBeaconBlock(beaconBlock: BeaconBlock): Updater
+
+  fun commit(): Unit
+
+  fun rollback(): Unit
 }

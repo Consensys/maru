@@ -13,12 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.rocksdb
+package maru.serialization.rlp
 
-import maru.serialization.rlp.RLPSerializers
+import maru.core.BeaconBlock
+import org.hyperledger.besu.datatypes.Hash
+import org.hyperledger.besu.ethereum.rlp.RLP
 
-object KvStoreSerializers {
-  val BytesSerializer = BytesSerializer()
-  val BeaconStateSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconStateSerializer)
-  val BeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconBlockSerializer)
+fun BeaconBlock.getRoot(): ByteArray {
+  val rlp =
+    RLP.encode {
+      RLPSerializers.BeaconBlockSerializer.writeTo(this, it)
+    }
+  return Hash.hash(rlp).toArray()
 }

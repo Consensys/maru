@@ -15,17 +15,15 @@
  */
 package maru.database.rocksdb
 
-import encodeHex
 import java.nio.file.Path
 import java.util.Optional
-import java.util.concurrent.ExecutionException
 import kotlin.random.Random
 import maru.core.ext.DataGenerators
+import maru.serialization.rlp.getRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import tech.pegasys.teku.storage.server.kvstore.KvStoreConfiguration
 import tech.pegasys.teku.storage.server.rocksdb.RocksDbInstanceFactory
@@ -59,16 +57,22 @@ class RocksDbDatabaseTest {
     val testBeaconStates = (1..10).map { DataGenerators.randomBeaconState(it.toULong()) }
     createDatabase(databasePath).use { db ->
       testBeaconStates.forEach { testBeaconState ->
-        db.storeState(testBeaconState).get()
-        val beaconState = db.getBeaconState(testBeaconState.latestBeaconBlockRoot).get()
-        assertThat(beaconState).isEqualTo(testBeaconState)
+        db.newUpdater().use {
+          it.setBeaconState(testBeaconState).commit()
+        }
+        assertThat(db.getBeaconState(testBeaconState.latestBeaconBlockRoot))
+          .isPresent()
+          .get()
+          .isEqualTo(testBeaconState)
       }
     }
 
     createDatabase(databasePath).use { db ->
       testBeaconStates.forEach { testBeaconState ->
-        val beaconState = db.getBeaconState(testBeaconState.latestBeaconBlockRoot).get()
-        assertThat(beaconState).isEqualTo(testBeaconState)
+        assertThat(db.getBeaconState(testBeaconState.latestBeaconBlockRoot))
+          .isPresent()
+          .get()
+          .isEqualTo(testBeaconState)
       }
     }
   }
@@ -80,18 +84,26 @@ class RocksDbDatabaseTest {
     val testBeaconStates = (1..10).map { DataGenerators.randomBeaconState(it.toULong()) }
     createDatabase(databasePath).use { db ->
       testBeaconStates.forEach { testBeaconState ->
-        db.storeState(testBeaconState).get()
-        val beaconState = db.getBeaconState(testBeaconState.latestBeaconBlockRoot).get()
-        assertThat(beaconState).isEqualTo(testBeaconState)
+        db.newUpdater().use {
+          it.setBeaconState(testBeaconState).commit()
+        }
+        assertThat(db.getBeaconState(testBeaconState.latestBeaconBlockRoot))
+          .isPresent()
+          .get()
+          .isEqualTo(testBeaconState)
 
-        val latestBeaconState = db.getLatestBeaconState().get()
-        assertThat(latestBeaconState).isEqualTo(testBeaconState)
+        assertThat(db.getLatestBeaconState())
+          .isPresent()
+          .get()
+          .isEqualTo(testBeaconState)
       }
     }
 
     createDatabase(databasePath).use { db ->
-      val latestBeaconState = db.getLatestBeaconState().get()
-      assertThat(latestBeaconState).isEqualTo(testBeaconStates.last())
+      assertThat(db.getLatestBeaconState())
+        .isPresent()
+        .get()
+        .isEqualTo(testBeaconStates.last())
     }
   }
 
@@ -101,14 +113,8 @@ class RocksDbDatabaseTest {
   ) {
     val randomKey = Random.nextBytes(32)
     createDatabase(databasePath).use { db ->
-      val exception =
-        assertThrows<ExecutionException> {
-          db.getBeaconState(randomKey).get()
-        }
-      assertThat(exception.cause?.message)
-        .isEqualTo(
-          "Could not find beacon state for beaconBlockRoot: ${randomKey.encodeHex()}",
-        )
+      assertThat(db.getBeaconState(randomKey)).isEmpty()
+      assertThat(db.getBeaconBlock(randomKey)).isEmpty()
     }
   }
 
@@ -116,19 +122,25 @@ class RocksDbDatabaseTest {
   fun `test read and write beacon blocks`(
     @TempDir databasePath: Path,
   ) {
-    val testBeaconBlockMap = (1..10).map { Random.nextBytes(32) to DataGenerators.randomBeaconBlock(it.toULong()) }
+    val testBeaconBlocks = (1..10).map { DataGenerators.randomBeaconBlock(it.toULong()) }
     createDatabase(databasePath).use { db ->
-      testBeaconBlockMap.forEach { (testBeaconBlockRoot, testBeaconBlock) ->
-        db.storeBeaconBlock(testBeaconBlock, testBeaconBlockRoot).get()
-        val beaconBlock = db.getBeaconBlock(testBeaconBlockRoot).get()
-        assertThat(beaconBlock).isEqualTo(testBeaconBlock)
+      testBeaconBlocks.forEach { testBeaconBlock ->
+        db.newUpdater().use {
+          it.setBeaconBlock(testBeaconBlock).commit()
+        }
+        assertThat(db.getBeaconBlock(testBeaconBlock.getRoot()))
+          .isPresent()
+          .get()
+          .isEqualTo(testBeaconBlock)
       }
     }
 
     createDatabase(databasePath).use { db ->
-      testBeaconBlockMap.forEach { (testBeaconBlockRoot, testBeaconBlock) ->
-        val beaconBlock = db.getBeaconBlock(testBeaconBlockRoot).get()
-        assertThat(beaconBlock).isEqualTo(testBeaconBlock)
+      testBeaconBlocks.forEach { testBeaconBlock ->
+        assertThat(db.getBeaconBlock(testBeaconBlock.getRoot()))
+          .isPresent()
+          .get()
+          .isEqualTo(testBeaconBlock)
       }
     }
   }
@@ -137,16 +149,61 @@ class RocksDbDatabaseTest {
   fun `test repeated write`(
     @TempDir databasePath: Path,
   ) {
-    val testBeaconBlockRoot = Random.nextBytes(32)
     val testBeaconBlock = DataGenerators.randomBeaconBlock(1uL)
     createDatabase(databasePath).use { db ->
-      db.storeBeaconBlock(testBeaconBlock, testBeaconBlockRoot)
-      db.storeBeaconBlock(testBeaconBlock, testBeaconBlockRoot)
+      db.newUpdater().use {
+        it.setBeaconBlock(testBeaconBlock).commit()
+      }
+      db.newUpdater().use {
+        it.setBeaconBlock(testBeaconBlock).commit()
+      }
     }
 
     createDatabase(databasePath).use { db ->
-      val beaconBlock = db.getBeaconBlock(testBeaconBlockRoot).get()
-      assertThat(beaconBlock).isEqualTo(testBeaconBlock)
+      assertThat(db.getBeaconBlock(testBeaconBlock.getRoot()))
+        .isPresent()
+        .get()
+        .isEqualTo(testBeaconBlock)
+    }
+  }
+
+  @Test
+  fun `test update rollback`(
+    @TempDir databasePath: Path,
+  ) {
+    val testBeaconBlock1 = DataGenerators.randomBeaconBlock(1uL)
+    val testBeaconBlock2 = DataGenerators.randomBeaconBlock(2uL)
+    createDatabase(databasePath).use { db ->
+      db.newUpdater().use {
+        it.setBeaconBlock(testBeaconBlock1).commit()
+      }
+      assertThat(db.getBeaconBlock(testBeaconBlock1.getRoot()))
+        .isPresent()
+        .get()
+        .isEqualTo(testBeaconBlock1)
+
+      assertThat(db.getBeaconBlock(testBeaconBlock2.getRoot()))
+        .isEmpty()
+
+      db.newUpdater().use { it.setBeaconBlock(testBeaconBlock2).rollback() }
+
+      assertThat(db.getBeaconBlock(testBeaconBlock1.getRoot()))
+        .isPresent()
+        .get()
+        .isEqualTo(testBeaconBlock1)
+
+      assertThat(db.getBeaconBlock(testBeaconBlock2.getRoot()))
+        .isEmpty()
+    }
+
+    createDatabase(databasePath).use { db ->
+      assertThat(db.getBeaconBlock(testBeaconBlock1.getRoot()))
+        .isPresent()
+        .get()
+        .isEqualTo(testBeaconBlock1)
+
+      assertThat(db.getBeaconBlock(testBeaconBlock2.getRoot()))
+        .isEmpty()
     }
   }
 }
