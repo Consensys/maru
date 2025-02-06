@@ -16,6 +16,7 @@
 package maru.serialization.rlp
 
 import maru.serialization.Serializer
+import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLP
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
@@ -28,11 +29,7 @@ interface RLPSerializer<T> : Serializer<T> {
 
   fun readFrom(rlpInput: RLPInput): T
 
-  override fun serialize(value: T): ByteArray {
-    return RLP.encode { rlpOutput -> this.writeTo(value, rlpOutput) }.toArray()
-  }
+  override fun serialize(value: T): ByteArray = RLP.encode { rlpOutput -> this.writeTo(value, rlpOutput) }.toArray()
 
-  override fun deserialize(bytes: ByteArray): T {
-    return this.readFrom(RLP.input(org.apache.tuweni.bytes.Bytes.wrap(bytes)))
-  }
+  override fun deserialize(bytes: ByteArray): T = this.readFrom(RLP.input(Bytes.wrap(bytes)))
 }

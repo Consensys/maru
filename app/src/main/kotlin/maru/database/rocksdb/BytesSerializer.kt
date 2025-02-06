@@ -18,11 +18,7 @@ package maru.database.rocksdb
 import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
 
 class BytesSerializer : KvStoreSerializer<ByteArray> {
-  override fun serialize(value: ByteArray): ByteArray {
-    return value
-  }
+  override fun serialize(value: ByteArray): ByteArray = value
 
-  override fun deserialize(bytes: ByteArray): ByteArray {
-    return bytes
-  }
+  override fun deserialize(bytes: ByteArray): ByteArray = bytes
 }

@@ -16,6 +16,7 @@
 package maru.serialization.rlp
 
 import kotlin.random.Random
+import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -24,7 +25,7 @@ class ValidatorSerializerTest {
 
   @Test
   fun `can serialize and deserialize same value`() {
-    val testValue = maru.core.Validator(Random.nextBytes(128))
+    val testValue = Validator(Random.nextBytes(128))
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)
     assertThat(deserializedValue).isEqualTo(testValue)

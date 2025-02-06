@@ -5,6 +5,7 @@ plugins {
 dependencies {
   implementation (project(":core"))
   implementation (project(":jvm-libs:extensions"))
+  implementation(project(":consensus"))
   implementation "info.picocli:picocli"
   implementation "io.tmio:tuweni-bytes"
   implementation "com.sksamuel.hoplite:hoplite-toml"

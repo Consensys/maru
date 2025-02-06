@@ -24,8 +24,9 @@ import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreColumn
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
 
-class RocksDbDatabase(private val rocksDbInstance: KvStoreAccessor) :
-  Database {
+class RocksDbDatabase(
+  private val rocksDbInstance: KvStoreAccessor,
+) : Database {
   companion object {
     object Schema {
       val BeaconStateByBlockRoot: KvStoreColumn<ByteArray, BeaconState> =

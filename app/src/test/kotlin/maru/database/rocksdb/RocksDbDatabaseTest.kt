@@ -22,35 +22,34 @@ import java.util.concurrent.ExecutionException
 import kotlin.random.Random
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import tech.pegasys.teku.storage.server.kvstore.KvStoreConfiguration
+import tech.pegasys.teku.storage.server.rocksdb.RocksDbInstanceFactory
 
 class RocksDbDatabaseTest {
   private object RocksDbDatabaseTestMetricCategory : MetricCategory {
-    override fun getName(): String {
-      return RocksDbDatabaseTest::class.simpleName!!
-    }
+    override fun getName(): String = RocksDbDatabaseTest::class.simpleName!!
 
-    override fun getApplicationPrefix(): Optional<String> {
-      return Optional.empty()
-    }
+    override fun getApplicationPrefix(): Optional<String> = Optional.empty()
   }
 
   private fun createDatabase(databasePath: Path): RocksDbDatabase {
     val rocksDbInstance =
-      tech.pegasys.teku.storage.server.rocksdb.RocksDbInstanceFactory.create(
-        org.hyperledger.besu.metrics.noop.NoOpMetricsSystem(),
+      RocksDbInstanceFactory.create(
+        NoOpMetricsSystem(),
         RocksDbDatabaseTestMetricCategory,
-        tech.pegasys.teku.storage.server.kvstore.KvStoreConfiguration().withDatabaseDir(databasePath),
+        KvStoreConfiguration().withDatabaseDir(databasePath),
         listOf(
           RocksDbDatabase.Companion.Schema.BeaconBlockByBlockRoot,
           RocksDbDatabase.Companion.Schema.BeaconStateByBlockRoot,
         ),
         emptyList(),
       )
-    return maru.database.rocksdb.RocksDbDatabase(rocksDbInstance)
+    return RocksDbDatabase(rocksDbInstance)
   }
 
   @Test

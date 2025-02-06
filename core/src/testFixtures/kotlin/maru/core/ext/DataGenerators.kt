@@ -55,22 +55,7 @@ object DataGenerators {
     val beaconBlockBody =
       BeaconBlockBody(
         prevBlockSeals = buildList(3) { Seal(Random.nextBytes(96)) },
-        executionPayload =
-          ExecutionPayload(
-            parentHash = Random.nextBytes(32),
-            stateRoot = Random.nextBytes(32),
-            receiptsRoot = Random.nextBytes(32),
-            logsBloom = Random.nextBytes(32),
-            prevRandao = Random.nextBytes(32),
-            blockNumber = Random.nextULong(),
-            gasLimit = Random.nextULong(),
-            gasUsed = Random.nextULong(),
-            timestamp = Random.nextULong(),
-            extraData = Random.nextBytes(32),
-            baseFeePerGas = BigInteger.valueOf(Random.nextLong()),
-            blockHash = Random.nextBytes(32),
-            transactions = buildList(3) { Random.nextBytes(100) },
-          ),
+        executionPayload = randomExecutionPayload(),
       )
 
     return BeaconBlock(
@@ -78,4 +63,22 @@ object DataGenerators {
       beaconBlockBody = beaconBlockBody,
     )
   }
+
+  fun randomExecutionPayload(): ExecutionPayload =
+    ExecutionPayload(
+      parentHash = Random.nextBytes(32),
+      feeRecipient = Random.nextBytes(20),
+      stateRoot = Random.nextBytes(32),
+      receiptsRoot = Random.nextBytes(32),
+      logsBloom = Random.nextBytes(256),
+      prevRandao = Random.nextBytes(32),
+      blockNumber = Random.nextULong(),
+      gasLimit = Random.nextULong(),
+      gasUsed = Random.nextULong(),
+      timestamp = Random.nextULong(),
+      extraData = Random.nextBytes(32),
+      baseFeePerGas = BigInteger.valueOf(Random.nextLong(0, Long.MAX_VALUE)),
+      blockHash = Random.nextBytes(32),
+      transactions = emptyList(),
+    )
 }
