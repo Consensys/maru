@@ -6,7 +6,6 @@ networks:
         - subnet: 11.11.11.0/24
 
 services:
-
   initialization:
     image: busybox:latest
     container_name: intialization_using_busybox
@@ -151,5 +150,24 @@ services:
       - "9546:8546"
       - "9550:8550"
       - "9551:8551"
+    networks:
+      - linea
+
+  follower-nethermind:
+    depends_on:
+      - sequencer
+    image: nethermind/nethermind:1.30.3
+    command: >
+      --configs-dir /config/
+      -c test
+    volumes:
+      - ./initialization/:/initialization/:ro
+      - ./nethermind/:/config/:ro
+      - ./geth/jwt:/nethermind/keystore/jwt-secret:ro
+    ports:
+      - "10545:8545"
+      - "10546:8546"
+      - "10550:8550"
+      - "10551:8551"
     networks:
       - linea

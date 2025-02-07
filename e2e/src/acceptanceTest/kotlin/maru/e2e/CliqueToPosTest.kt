@@ -23,12 +23,11 @@ import java.io.File
 import java.math.BigInteger
 import java.nio.file.Path
 import java.util.Optional
-import java.util.UUID
-import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.e2e.Mappers.executionPayloadV3FromBlock
+import maru.e2e.TestEnvironment.createWeb3jClient
 import maru.e2e.TestEnvironment.waitForInclusion
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -46,12 +45,9 @@ import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
-import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
 class CliqueToPosTest {
@@ -80,26 +76,24 @@ class CliqueToPosTest {
   private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
   private val web3jClient = createWeb3jClient("http://localhost:8550", Optional.empty())
   private val sequencerExecutionClient = Web3JExecutionEngineClient(web3jClient)
-  private val jwtConfig =
-    JwtConfig.createIfNeeded(
-      true,
-      Optional.of("../docker/geth/jwt"),
-      Optional.of(UUID.randomUUID().toString()),
-      Path("/tmp"),
-    )
   private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
-  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", jwtConfig)
-  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", jwtConfig)
+  private val nethermindFollowerExecutionEngineClient =
+    createExecutionClient(
+      "http://localhost:10550",
+      TestEnvironment.jwtConfig,
+    )
+  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", TestEnvironment.jwtConfig)
+  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", TestEnvironment.jwtConfig)
   private val gethSnapServerExecutionEngineClient =
-    createExecutionClient("http://localhost:8581", jwtConfig)
-  private val gethExecutuionEngineClients =
+    createExecutionClient("http://localhost:8581", TestEnvironment.jwtConfig)
+  private val gethExecutionEngineClients =
     mapOf(
       "geth1" to geth1ExecutionEngineClient,
       "geth2" to geth2ExecutionEngineClient,
       "gethSnapServer" to gethSnapServerExecutionEngineClient,
     )
   private val followerExecutionEngineClients =
-    mapOf("besu" to besuFollowerExecutionEngineClient) + gethExecutuionEngineClients
+    mapOf("besu" to besuFollowerExecutionEngineClient) + gethExecutionEngineClients
 
   @Test
   fun networkCanBeSwitched() {
@@ -251,18 +245,6 @@ class CliqueToPosTest {
     repeat(5) { TestEnvironment.sendArbitraryTransaction().waitForInclusion() }
   }
 
-  private fun createWeb3jClient(
-    eeEndpoint: String,
-    jwtConfig: Optional<JwtConfig>,
-  ): Web3JClient =
-    Web3jClientBuilder()
-      .timeout(1.minutes.toJavaDuration())
-      .endpoint(eeEndpoint)
-      .jwtConfigOpt(jwtConfig)
-      .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-      .executionClientEventsPublisher {}
-      .build()
-
   private fun createExecutionClient(
     eeEndpoint: String,
     jwtConfig: Optional<JwtConfig> = Optional.empty(),
@@ -276,7 +258,6 @@ class CliqueToPosTest {
       }
 
     blockHeights.forEach { log.info("${it.first} block height is ${it.second.get().blockNumber}") }
-    log.info("")
   }
 
   private fun waitForAllBlockHeightsToMatch() {
@@ -305,11 +286,19 @@ class CliqueToPosTest {
       .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
         TestEnvironment.followerClients.forEach {
-          it.value
-            .adminAddPeer(
-              "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e2" +
-                "2bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303",
-            ).send()
+          try {
+            it.value
+              .adminAddPeer(
+                "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e2" +
+                  "2bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303",
+              ).send()
+          } catch (e: Exception) {
+            if (it.key.contains("nethermind")) {
+              log.debug("Nethermind returns response to admin_addPeer that is incompatible with Web3J")
+            } else {
+              throw e
+            }
+          }
           val peersResult =
             it.value
               .adminPeers()
