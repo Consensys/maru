@@ -23,7 +23,7 @@ import org.apache.tuweni.bytes.Bytes
 data class JsonFriendlyForksSchedule(
   val config: Map<String, Map<String, String>>,
 ) {
-  fun reified(): ForksSchedule {
+  fun domainFriendly(): ForksSchedule {
     val forkSpecs: List<ForkSpec> =
       config.map { (k, v) ->
         val type = v["type"].toString()

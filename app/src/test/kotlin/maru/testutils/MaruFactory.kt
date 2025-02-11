@@ -57,6 +57,6 @@ object MaruFactory {
     val consensusGenesisResource = this::class.java.getResource("/e2e/config/dummy-consensus.json")
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
 
-    return MaruApp(appConfig.reified(), beaconGenesisConfig.getUnsafe().reified())
+    return MaruApp(appConfig.domainFriendly(), beaconGenesisConfig.getUnsafe().domainFriendly())
   }
 }

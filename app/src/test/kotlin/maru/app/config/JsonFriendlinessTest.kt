@@ -53,7 +53,7 @@ class JsonFriendlinessTest {
   }
 
   @Test
-  fun genesisFileIsReifiable() {
+  fun genesisFileIsConvertableToDomain() {
     val config =
       Utils
         .parseJsonConfig<JsonFriendlyForksSchedule>(
@@ -68,7 +68,7 @@ class JsonFriendlinessTest {
             }
           }
           """.trimIndent(),
-        ).reified()
+        ).domainFriendly()
     assertThat(config).isEqualTo(
       ForksSchedule(
         setOf(

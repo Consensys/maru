@@ -100,7 +100,7 @@ class MaruAppCli : Callable<Int> {
     val parsedAppConfig = appConfig.getUnsafe()
     val parsedBeaconGenesisConfig = beaconGenesisConfig.getUnsafe()
 
-    val app = MaruApp(parsedAppConfig.reified(), parsedBeaconGenesisConfig.reified())
+    val app = MaruApp(parsedAppConfig.domainFriendly(), parsedBeaconGenesisConfig.domainFriendly())
     app.start()
 
     Runtime

@@ -19,6 +19,7 @@ import java.time.Clock
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 import maru.consensus.ForksSchedule
+import maru.core.Protocol
 import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -34,7 +35,7 @@ class TimeDrivenEventProducer(
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val clock: Clock,
   private val config: Config,
-) {
+) : Protocol {
   data class Config(
     val communicationMargin: Duration,
   )
@@ -45,7 +46,7 @@ class TimeDrivenEventProducer(
   private var currentTask: SafeFuture<Unit>? = null
 
   @Synchronized
-  fun start() {
+  override fun start() {
     if (currentTask == null) {
       SafeFuture.runAsync {
         // For the first ever tick EL will need some time to prepare a block in any case, thus forcing delay
@@ -118,7 +119,7 @@ class TimeDrivenEventProducer(
   }
 
   @Synchronized
-  fun stop() {
+  override fun stop() {
     if (currentTask != null) {
       currentTask!!.cancel(false)
       currentTask = null

@@ -60,7 +60,7 @@ class HopliteFriendlinessTest {
   }
 
   @Test
-  fun appConfigFileIsReifiable() {
+  fun appConfigFileIsConvertableToDomain() {
     val config =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
         """
@@ -79,7 +79,7 @@ class HopliteFriendlinessTest {
         validator-key = "0xdead"
         """.trimIndent(),
       )
-    assertThat(config.reified())
+    assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
           executionClientConfig =

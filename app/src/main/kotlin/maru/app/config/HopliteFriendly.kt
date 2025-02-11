@@ -22,13 +22,13 @@ import org.apache.tuweni.bytes.Bytes
 data class ValidatorDtoToml(
   val validatorKey: Masked,
 ) {
-  fun reified(): Validator = Validator(Bytes.fromHexString(validatorKey.value).toArray())
+  fun domainFriendly(): Validator = Validator(Bytes.fromHexString(validatorKey.value).toArray())
 }
 
 data class DummyConsensusOptionsDtoToml(
   val communicationTimeMargin: Duration,
 ) {
-  fun reified(): DummyConsensusOptions = DummyConsensusOptions(communicationTimeMargin)
+  fun domainFriendly(): DummyConsensusOptions = DummyConsensusOptions(communicationTimeMargin)
 }
 
 data class MaruConfigDtoToml(
@@ -37,11 +37,11 @@ data class MaruConfigDtoToml(
   private val p2pConfig: P2P?,
   private val validator: ValidatorDtoToml?,
 ) {
-  fun reified(): MaruConfig =
+  fun domainFriendly(): MaruConfig =
     MaruConfig(
       executionClientConfig = executionClient,
-      dummyConsensusOptions = dummyConsensusOptions?.reified(),
+      dummyConsensusOptions = dummyConsensusOptions?.domainFriendly(),
       p2pConfig = p2pConfig,
-      validator = validator?.reified(),
+      validator = validator?.domainFriendly(),
     )
 }
