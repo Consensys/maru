@@ -15,9 +15,7 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
-  id 'java-test-fixtures'
 }
 
 dependencies {
-  api 'org.slf4j:slf4j-api'
 }

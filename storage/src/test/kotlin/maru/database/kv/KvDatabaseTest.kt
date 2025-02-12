@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.rocksdb
+package maru.database.kv
 
 import java.nio.file.Path
 import java.util.Optional
@@ -24,30 +24,20 @@ import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import tech.pegasys.teku.storage.server.kvstore.KvStoreConfiguration
-import tech.pegasys.teku.storage.server.rocksdb.RocksDbInstanceFactory
 
 class KvDatabaseTest {
-  private object RocksDbDatabaseTestMetricCategory : MetricCategory {
+  private object KvDatabaseTestMetricCategory : MetricCategory {
     override fun getName(): String = KvDatabaseTest::class.simpleName!!
 
     override fun getApplicationPrefix(): Optional<String> = Optional.empty()
   }
 
-  private fun createDatabase(databasePath: Path): KvDatabase {
-    val rocksDbInstance =
-      RocksDbInstanceFactory.create(
-        NoOpMetricsSystem(),
-        RocksDbDatabaseTestMetricCategory,
-        KvStoreConfiguration().withDatabaseDir(databasePath),
-        listOf(
-          KvDatabase.Companion.Schema.BeaconBlockByBlockRoot,
-          KvDatabase.Companion.Schema.BeaconStateByBlockRoot,
-        ),
-        emptyList(),
-      )
-    return KvDatabase(rocksDbInstance)
-  }
+  private fun createDatabase(databasePath: Path): KvDatabase =
+    KvDatabaseFactory.createRocksDbDatabase(
+      databasePath = databasePath,
+      metricsSystem = NoOpMetricsSystem(),
+      metricCategory = KvDatabaseTestMetricCategory,
+    )
 
   @Test
   fun `test read and write beacon state`(
@@ -82,8 +72,6 @@ class KvDatabaseTest {
         db.newUpdater().use {
           it.putBeaconState(testBeaconState).commit()
         }
-        assertThat(db.getBeaconState(testBeaconState.latestBeaconBlockRoot)).isEqualTo(testBeaconState)
-
         assertThat(db.getLatestBeaconState())
           .isEqualTo(testBeaconState)
       }

@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.rocksdb
+package maru.database.kv
 
 import kotlin.jvm.optionals.getOrNull
 import maru.core.BeaconBlock

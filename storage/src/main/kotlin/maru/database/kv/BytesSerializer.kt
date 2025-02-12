@@ -13,14 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.rocksdb
+package maru.database.kv
 
-import maru.serialization.Serializer
+import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
 
-class KvStoreSerializerAdapter<T>(
-  private val serializer: Serializer<T>,
-) : tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer<T> {
-  override fun deserialize(bytes: ByteArray): T = serializer.deserialize(bytes)
+class BytesSerializer : KvStoreSerializer<ByteArray> {
+  override fun serialize(value: ByteArray): ByteArray = value
 
-  override fun serialize(value: T): ByteArray = serializer.serialize(value)
+  override fun deserialize(bytes: ByteArray): ByteArray = bytes
 }
