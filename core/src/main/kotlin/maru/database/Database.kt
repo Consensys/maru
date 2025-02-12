@@ -15,16 +15,15 @@
  */
 package maru.database
 
-import java.util.Optional
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 
 interface Database : AutoCloseable {
-  fun getLatestBeaconState(): Optional<BeaconState>
+  fun getLatestBeaconState(): BeaconState?
 
-  fun getBeaconState(beaconBlockRoot: ByteArray): Optional<BeaconState>
+  fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState?
 
-  fun getBeaconBlock(beaconBlockRoot: ByteArray): Optional<BeaconBlock>
+  fun getBeaconBlock(beaconBlockRoot: ByteArray): BeaconBlock?
 
   fun newUpdater(): Updater
 }

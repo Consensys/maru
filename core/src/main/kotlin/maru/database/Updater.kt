@@ -19,9 +19,12 @@ import maru.core.BeaconBlock
 import maru.core.BeaconState
 
 interface Updater : AutoCloseable {
-  fun setBeaconState(beaconState: BeaconState): Updater
+  fun putBeaconState(beaconState: BeaconState): Updater
 
-  fun setBeaconBlock(beaconBlock: BeaconBlock): Updater
+  fun putBeaconBlock(
+    beaconBlock: BeaconBlock,
+    beaconBlockRoot: ByteArray,
+  ): Updater
 
   fun commit(): Unit
 

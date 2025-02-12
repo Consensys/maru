@@ -15,19 +15,18 @@
  */
 package maru.database.rocksdb
 
-import java.util.Optional
+import kotlin.jvm.optionals.getOrNull
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.database.Database
 import maru.database.Updater
-import maru.serialization.rlp.getRoot
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor.KvStoreTransaction
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreColumn
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
 
-class RocksDbDatabase(
-  private val rocksDbInstance: KvStoreAccessor,
+class KvDatabase(
+  private val kvStoreAccessor: KvStoreAccessor,
 ) : Database {
   companion object {
     object Schema {
@@ -53,33 +52,36 @@ class RocksDbDatabase(
     }
   }
 
-  override fun getLatestBeaconState(): Optional<BeaconState> = rocksDbInstance.get(Schema.LatestBeaconState)
+  override fun getLatestBeaconState(): BeaconState? = kvStoreAccessor.get(Schema.LatestBeaconState).getOrNull()
 
-  override fun getBeaconState(beaconBlockRoot: ByteArray): Optional<BeaconState> =
-    rocksDbInstance.get(Schema.BeaconStateByBlockRoot, beaconBlockRoot)
+  override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? =
+    kvStoreAccessor.get(Schema.BeaconStateByBlockRoot, beaconBlockRoot).getOrNull()
 
-  override fun getBeaconBlock(beaconBlockRoot: ByteArray): Optional<BeaconBlock> =
-    rocksDbInstance.get(Schema.BeaconBlockByBlockRoot, beaconBlockRoot)
+  override fun getBeaconBlock(beaconBlockRoot: ByteArray): BeaconBlock? =
+    kvStoreAccessor.get(Schema.BeaconBlockByBlockRoot, beaconBlockRoot).getOrNull()
 
-  override fun newUpdater(): Updater = RocksDbUpdater(this.rocksDbInstance)
+  override fun newUpdater(): Updater = KvUpdater(this.kvStoreAccessor)
 
   override fun close() {
-    rocksDbInstance.close()
+    kvStoreAccessor.close()
   }
 
-  class RocksDbUpdater(
-    rocksDbInstance: KvStoreAccessor,
+  class KvUpdater(
+    kvStoreAccessor: KvStoreAccessor,
   ) : Updater {
-    private val transaction: KvStoreTransaction = rocksDbInstance.startTransaction()
+    private val transaction: KvStoreTransaction = kvStoreAccessor.startTransaction()
 
-    override fun setBeaconState(beaconState: BeaconState): Updater {
+    override fun putBeaconState(beaconState: BeaconState): Updater {
       transaction.put(Schema.BeaconStateByBlockRoot, beaconState.latestBeaconBlockRoot, beaconState)
       transaction.put(Schema.LatestBeaconState, beaconState)
       return this
     }
 
-    override fun setBeaconBlock(beaconBlock: BeaconBlock): Updater {
-      transaction.put(Schema.BeaconBlockByBlockRoot, beaconBlock.getRoot(), beaconBlock)
+    override fun putBeaconBlock(
+      beaconBlock: BeaconBlock,
+      beaconBlockRoot: ByteArray,
+    ): Updater {
+      transaction.put(Schema.BeaconBlockByBlockRoot, beaconBlockRoot, beaconBlock)
       return this
     }
 
