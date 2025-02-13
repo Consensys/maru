@@ -20,9 +20,13 @@ import maru.app.config.MaruConfig
 import maru.consensus.ForksSchedule
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.apache.tuweni.bytes.Bytes
+import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNetworkBuilder
+import tech.pegasys.teku.networking.p2p.network.config.NetworkConfig
 
 class MaruApp(
-  config: MaruConfig,
+  val config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
 ) {
@@ -46,8 +50,30 @@ class MaruApp(
     )
 
   fun start() {
-    eventProducer.start()
-    log.info("Maru is up")
+    setupP2PNetwork()
+      .thenApply {
+        eventProducer.start()
+      }.thenApply {
+        log.info("Maru is up")
+      }.get()
+  }
+
+  private fun setupP2PNetwork(): SafeFuture<*> {
+    if (config.p2pConfig == null) {
+      return SafeFuture.completedFuture(Unit)
+    }
+    val networkConfig =
+      NetworkConfig
+        .builder()
+        .listenPort(config.p2pConfig.port.toInt())
+        .setPrivateKeySource { Bytes.wrap(config.p2pConfig.nodeKey) }
+        .build()
+    val p2pNetwork =
+      LibP2PNetworkBuilder
+        .create()
+        .config(networkConfig)
+        .build()
+    return p2pNetwork.start()
   }
 
   fun stop() {

@@ -22,6 +22,9 @@ dependencies {
   implementation "com.sksamuel.hoplite:hoplite-json"
   implementation "com.sksamuel.hoplite:hoplite-core"
 
+  implementation "io.libp2p:jvm-libp2p"
+  implementation "tech.pegasys.teku.internal:p2p"
+
   testImplementation "org.hyperledger.besu.internal:dsl"
   testImplementation "org.hyperledger.besu.internal:api"
   testImplementation("org.hyperledger.besu.internal:algorithms")

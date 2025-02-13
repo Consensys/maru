@@ -26,7 +26,26 @@ data class ExecutionClientConfig(
 
 data class P2P(
   val port: UInt = 9000u,
-)
+  val nodeKey: ByteArray = ByteArray(0),
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as P2P
+
+    if (port != other.port) return false
+    if (!nodeKey.contentEquals(other.nodeKey)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = port.hashCode()
+    result = 31 * result + nodeKey.contentHashCode()
+    return result
+  }
+}
 
 data class Validator(
   val validatorKey: ByteArray,
