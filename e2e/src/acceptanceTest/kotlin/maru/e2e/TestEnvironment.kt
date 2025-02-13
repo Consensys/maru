@@ -36,7 +36,7 @@ object TestEnvironment {
   val jwtConfig: Optional<JwtConfig> =
     JwtConfig.createIfNeeded(
       true,
-      Optional.of("../docker/geth/jwt"),
+      Optional.of("../docker/jwt"),
       Optional.of(UUID.randomUUID().toString()),
       Path("/tmp"),
     )
@@ -50,12 +50,14 @@ object TestEnvironment {
 
   // The switch doesn't work for nethermind yet
   val nethermindFollowerL2Client: Web3j = buildWeb3Client("http://localhost:10545", jwtConfig)
+  val erigonFollowerL2Client: Web3j = buildWeb3Client("http://localhost:11545")
   val followerClients =
     mapOf(
       // "geth1" to geth1L2Client,
       "geth2" to geth2L2Client,
       "gethSnapServer" to gethSnapServerL2Client,
       "besuFollower" to besuFollowerL2Client,
+      "erigonFollower" to erigonFollowerL2Client,
     )
   val transactionManager =
     let {

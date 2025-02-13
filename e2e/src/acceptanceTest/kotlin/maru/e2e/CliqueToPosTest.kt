@@ -82,6 +82,11 @@ class CliqueToPosTest {
       "http://localhost:10550",
       TestEnvironment.jwtConfig,
     )
+  private val erigonFollowerExecutionEngineClient =
+    createExecutionClient(
+      "http://localhost:11551",
+      TestEnvironment.jwtConfig,
+    )
   private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", TestEnvironment.jwtConfig)
   private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", TestEnvironment.jwtConfig)
   private val gethSnapServerExecutionEngineClient =
@@ -93,7 +98,10 @@ class CliqueToPosTest {
       "gethSnapServer" to gethSnapServerExecutionEngineClient,
     )
   private val followerExecutionEngineClients =
-    mapOf("besu" to besuFollowerExecutionEngineClient) + gethExecutionEngineClients
+    mapOf(
+      "besu" to besuFollowerExecutionEngineClient,
+      "erigon" to erigonFollowerExecutionEngineClient,
+    ) + gethExecutionEngineClients
 
   @Test
   fun networkCanBeSwitched() {
@@ -285,31 +293,32 @@ class CliqueToPosTest {
       .pollInterval(1.seconds.toJavaDuration())
       .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
-        TestEnvironment.followerClients.forEach {
-          try {
-            it.value
-              .adminAddPeer(
-                "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e2" +
-                  "2bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303",
-              ).send()
-          } catch (e: Exception) {
-            if (it.key.contains("nethermind")) {
-              log.debug("Nethermind returns response to admin_addPeer that is incompatible with Web3J")
-            } else {
-              throw e
+        TestEnvironment.followerClients
+          .forEach {
+            try {
+              it.value
+                .adminAddPeer(
+                  "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e2" +
+                    "2bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303",
+                ).send()
+            } catch (e: Exception) {
+              if (it.key.contains("nethermind")) {
+                log.debug("Nethermind returns response to admin_addPeer that is incompatible with Web3J")
+              } else {
+                throw e
+              }
             }
+            val peersResult =
+              it.value
+                .adminPeers()
+                .send()
+                .result
+            val peers = peersResult.size
+            log.info("Peers from node ${it.key}: $peers")
+            assertThat(peers)
+              .withFailMessage("${it.key} isn't peered! Peers: $peersResult")
+              .isGreaterThan(0)
           }
-          val peersResult =
-            it.value
-              .adminPeers()
-              .send()
-              .result
-          val peers = peersResult.size
-          log.info("Peers from node ${it.key}: $peers")
-          assertThat(peers)
-            .withFailMessage("${it.key} isn't peered! Peers: $peersResult")
-            .isGreaterThan(0)
-        }
       }
   }
 
