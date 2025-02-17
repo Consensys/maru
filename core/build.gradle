@@ -17,8 +17,3 @@ plugins {
   id 'maru.kotlin-library-conventions'
   id 'java-test-fixtures'
 }
-
-dependencies {
-  implementation "org.hyperledger.besu.internal:rlp"
-  implementation "io.tmio:tuweni-bytes"
-}
