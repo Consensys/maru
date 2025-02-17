@@ -13,14 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package org.hyperledger.besu.tests.acceptance.dsl.account
+package maru.executionlayer.manager
 
-import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions
-
-object AccountExt {
-  fun createByPrivateKey(
-    eth: EthTransactions,
-    name: String,
-    privateKey: String,
-  ): Account = Account.fromPrivateKey(eth, name, privateKey)
+fun interface FeeRecipientProvider {
+  fun getFeeRecipient(blockNumber: ULong): ByteArray
 }

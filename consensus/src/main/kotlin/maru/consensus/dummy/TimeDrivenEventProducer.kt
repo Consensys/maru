@@ -49,7 +49,6 @@ class TimeDrivenEventProducer(
   override fun start() {
     if (currentTask == null) {
       SafeFuture.runAsync {
-        // For the first ever tick EL will need some time to prepare a block in any case, thus forcing delay
         handleTick()
       }
     } else {
@@ -108,12 +107,12 @@ class TimeDrivenEventProducer(
                 val consensusRoundIdentifier =
                   ConsensusRoundIdentifier(nextBlockNumber.toLong(), nextBlockNumber.toInt())
                 eventHandler.handleBlockTimerExpiry(BlockTimerExpiry(consensusRoundIdentifier))
-                handleTick()
               },
               executor,
-            ).thenApply { },
-        ).whenException {
+            ),
+        ).handleException {
           log.error(it.message, it)
+        }.thenApply {
           handleTick()
         }
   }

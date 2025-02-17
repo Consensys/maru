@@ -18,9 +18,7 @@ package maru.consensus
 import java.util.NavigableSet
 import java.util.TreeSet
 
-interface ConsensusConfiguration {
-  val feeRecipient: ByteArray
-}
+interface ConsensusConfiguration
 
 data class ForkSpec(
   val blockNumber: ULong,

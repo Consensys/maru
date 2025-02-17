@@ -19,7 +19,7 @@ import maru.consensus.ConsensusConfiguration
 
 data class DummyConsensusConfig(
   private val blockTimeMillis: UInt,
-  override val feeRecipient: ByteArray,
+  val feeRecipient: ByteArray,
 ) : ConsensusConfiguration {
   /** Leaving blockTimeMillis in the configuration to be future-proof, exposing nextBlockPeriodSeconds to be closer
    * to reality where block timestamp is in seconds

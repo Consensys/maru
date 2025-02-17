@@ -16,10 +16,17 @@
 package maru.app
 
 import java.time.Clock
+import java.time.Duration
 import maru.app.config.MaruConfig
 import maru.consensus.ForksSchedule
+import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.client.Web3jJsonRpcExecutionLayerClient
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
+import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 class MaruApp(
   config: MaruConfig,
@@ -37,20 +44,56 @@ class MaruApp(
     }
   }
 
-  private val eventProducer =
-    DummyConsensusProtocolBuilder.build(
-      forksSchedule = beaconGenesisConfig,
-      clock = clock,
-      executionClientConfig = config.executionClientConfig,
-      dummyConsensusOptions = config.dummyConsensusOptions!!,
+  private val ethereumJsonRpcClient =
+    buildJsonRpcClient(
+      config.executionClientConfig.ethereumJsonRpcEndpoint
+        .toString(),
+    )
+  private val executionLayerClient =
+    buildExecutionEngineClient(
+      config.executionClientConfig.engineApiJsonRpcEndpoint
+        .toString(),
+      ethereumJsonRpcClient,
     )
 
+  private val protocolStarter =
+    ProtocolStarter(
+      forksSchedule = beaconGenesisConfig,
+      clock = clock,
+      config = config,
+      executionLayerClient = executionLayerClient,
+      ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
+    )
+
+  private fun buildExecutionEngineClient(
+    endpoint: String,
+    web3JEthereumApiClient: Web3JClient,
+  ): ExecutionLayerClient {
+    val web3JEngineApiClient: Web3JClient =
+      Web3jClientBuilder()
+        .endpoint(endpoint)
+        .timeout(Duration.ofMinutes(1))
+        .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
+        .executionClientEventsPublisher { }
+        .build()
+    val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
+    return Web3jJsonRpcExecutionLayerClient(web3jExecutionLayerClient, web3JEthereumApiClient)
+  }
+
+  private fun buildJsonRpcClient(endpoint: String): Web3JClient =
+    Web3jClientBuilder()
+      .endpoint(endpoint)
+      .timeout(Duration.ofMinutes(1))
+      .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
+      .executionClientEventsPublisher { }
+      .build()
+
   fun start() {
-    eventProducer.start()
+    protocolStarter.start()
     log.info("Maru is up")
   }
 
   fun stop() {
-    eventProducer.stop()
+    protocolStarter.stop()
   }
 }
