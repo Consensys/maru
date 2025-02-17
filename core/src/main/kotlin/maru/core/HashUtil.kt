@@ -64,7 +64,8 @@ object HashUtil {
         .map { it.address }
         .reduceOrNull { acc, bytes -> acc + bytes }
     var stateRootAsBytes =
-      headerOnChainHash(state.latestBeaconBlockHeader) + state.latestBeaconBlockRoot + (validatorsAsBytes ?: byteArrayOf())
+      headerOnChainHash(state.latestBeaconBlockHeader) + state.latestBeaconBlockRoot +
+        (validatorsAsBytes ?: byteArrayOf())
     return Hash
       .hash(
         Bytes.wrap(

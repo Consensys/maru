@@ -56,16 +56,15 @@ object DataGenerators {
     )
   }
 
-  fun randomBeaconBlockBody(): BeaconBlockBody {
-    return BeaconBlockBody(
+  fun randomBeaconBlockBody(): BeaconBlockBody =
+    BeaconBlockBody(
       prevCommitSeals = (1..3).map { Seal(Random.nextBytes(96)) },
       commitSeals = (1..3).map { Seal(Random.nextBytes(96)) },
       executionPayload = randomExecutionPayload(),
     )
-  }
 
-  fun randomBeaconBlockHeader(number: ULong): BeaconBlockHeader {
-    return BeaconBlockHeader(
+  fun randomBeaconBlockHeader(number: ULong): BeaconBlockHeader =
+    BeaconBlockHeader(
       number = number,
       round = Random.nextULong(),
       timestamp = Random.nextULong(),
@@ -75,7 +74,6 @@ object DataGenerators {
       bodyRoot = Random.nextBytes(32),
       HashUtil::headerOnChainHash,
     )
-  }
 
   fun randomExecutionPayload(): ExecutionPayload =
     ExecutionPayload(

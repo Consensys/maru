@@ -32,4 +32,15 @@ class QbftBlockHeaderAdaptor(
   override fun getCoinbase(): Address = Address.wrap(Bytes.wrap(beaconBlockHeader.proposer.address))
 
   override fun getHash(): Hash = Hash.wrap(Bytes32.wrap(beaconBlockHeader.hash()))
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is QbftBlockHeaderAdaptor) return false
+
+    if (beaconBlockHeader != other.beaconBlockHeader) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int = beaconBlockHeader.hashCode()
 }

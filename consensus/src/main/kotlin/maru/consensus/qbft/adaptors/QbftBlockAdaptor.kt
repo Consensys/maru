@@ -33,4 +33,20 @@ class QbftBlockAdaptor(
   override fun isEmpty(): Boolean =
     beaconBlock.beaconBlockBody.executionPayload.transactions
       .isEmpty()
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is QbftBlockAdaptor) return false
+
+    if (beaconBlock != other.beaconBlock) return false
+    if (qbftHeader != other.qbftHeader) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = beaconBlock.hashCode()
+    result = 31 * result + qbftHeader.hashCode()
+    return result
+  }
 }
