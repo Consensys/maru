@@ -12,15 +12,35 @@
   "params": {
     "maximumExtraDataSize": "0xffff",
     "chainId": "1337",
+
     "eip150Transition": "0x0",
+    "eip160Transition": "0x0",
+    "eip161abcTransition": "0x0",
+    "eip161dTransition": "0x0",
     "eip155Transition": "0x0",
-    "eip158Transition": "0x0",
-    "byzantiumTransition": "0x0",
-    "constantinopleTransition": "0x0",
-    "petersburgTransition": "0x0",
-    "istanbulTransition": "0x0",
-    "berlinTransition": "0x0",
-    "londonTransition": "0x0",
+    "eip140Transition": "0x0",
+    "eip211Transition": "0x0",
+    "eip214Transition": "0x0",
+    "eip658Transition": "0x0",
+    "eip145Transition": "0x0",
+    "eip1014Transition": "0x0",
+    "eip1052Transition": "0x0",
+    "eip1283Transition": "0x0",
+    "eip1283DisableTransition": "0x0",
+    "eip152Transition": "0x0",
+    "eip1108Transition": "0x0",
+    "eip1344Transition": "0x0",
+    "eip1884Transition": "0x0",
+    "eip2028Transition": "0x0",
+    "eip2200Transition": "0x0",
+    "eip2565Transition": "0x0",
+    "eip2929Transition": "0x0",
+    "eip2930Transition": "0x0",
+    "eip1559Transition": "0x0",
+    "eip1559FeeCollectorTransition": "0x0",
+    "eip3198Transition": "0x0",
+    "eip3529Transition": "0x0",
+    "eip3541Transition": "0x0",
 
     "beaconChainGenesisTimestamp": "%SWITCH_TIME%",
     "eip3651TransitionTimestamp": "%SWITCH_TIME%",
@@ -52,6 +72,101 @@
   },
   "nodes": ["enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"],
   "accounts": {
+    "0000000000000000000000000000000000000001": {
+      "balance": "0x1",
+      "builtin": {
+        "name": "ecrecover",
+        "pricing": {
+          "linear": {
+            "base": 3000,
+            "word": 0
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000002": {
+      "balance": "0x1",
+      "builtin": {
+        "name": "sha256",
+        "pricing": {
+          "linear": {
+            "base": 60,
+            "word": 12
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000003": {
+      "balance": "0x1",
+      "builtin": {
+        "name": "ripemd160",
+        "pricing": {
+          "linear": {
+            "base": 600,
+            "word": 120
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000004": {
+      "balance": "0x1",
+      "builtin": {
+        "name": "identity",
+        "pricing": {
+          "linear": {
+            "base": 15,
+            "word": 3
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000005": {
+      "balance": "0x1",
+      "builtin": {
+        "name": "modexp",
+        "pricing": {
+          "modexp": {
+            "divisor": 20
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000006": {
+      "balance": "0x1",
+      "builtin": {
+        "name": "alt_bn128_add",
+        "pricing": {
+          "linear": {
+            "base": 500,
+            "word": 0
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000007": {
+      "balance": "0x1",
+      "builtin": {
+        "name": "alt_bn128_mul",
+        "pricing": {
+          "linear": {
+            "base": 40000,
+            "word": 0
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000008": {
+      "balance": "0x1",
+      "builtin": {
+        "name": "alt_bn128_pairing",
+        "pricing": {
+          "alt_bn128_pairing": {
+            "base": 100000,
+            "pair": 80000
+          }
+        }
+      }
+    },
     "1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0": {
       "balance": "0x130EE8E7179044400000"
     },
