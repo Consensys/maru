@@ -16,15 +16,12 @@
 package maru.testutils.besu
 
 import java.util.Optional
-import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier
-import org.hyperledger.besu.ethereum.worldstate.DataStorageConfiguration
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorageFactory
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBMetricsFactory
 import org.hyperledger.besu.plugin.services.storage.rocksdb.configuration.RocksDBCLIOptions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
-import org.hyperledger.besu.tests.acceptance.dsl.node.RunnableNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFactory
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
