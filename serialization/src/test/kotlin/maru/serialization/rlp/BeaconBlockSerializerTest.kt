@@ -20,6 +20,7 @@ import kotlin.random.nextULong
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
+import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.Validator
 import maru.core.ext.DataGenerators.randomExecutionPayload
@@ -46,13 +47,17 @@ class BeaconBlockSerializerTest {
       BeaconBlockHeader(
         number = Random.nextULong(),
         round = Random.nextULong(),
+        timestamp = Random.nextULong(),
         proposer = Validator(Random.nextBytes(128)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
+        bodyRoot = Random.nextBytes(32),
+        HashUtil::headerOnChainHash,
       )
     val beaconBlockBody =
       BeaconBlockBody(
-        prevBlockSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        prevCommitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        commitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
         executionPayload = randomExecutionPayload(),
       )
     val testValue =

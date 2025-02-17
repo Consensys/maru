@@ -23,6 +23,7 @@ import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.ExecutionPayload
+import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.Validator
 
@@ -32,9 +33,12 @@ object DataGenerators {
       BeaconBlockHeader(
         number = number,
         round = Random.nextULong(),
+        timestamp = Random.nextULong(),
         proposer = Validator(Random.nextBytes(128)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
+        bodyRoot = Random.nextBytes(32),
+        HashUtil::headerOnChainHash,
       )
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
@@ -48,13 +52,17 @@ object DataGenerators {
       BeaconBlockHeader(
         number = number,
         round = Random.nextULong(),
+        timestamp = Random.nextULong(),
         proposer = Validator(Random.nextBytes(128)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
+        bodyRoot = Random.nextBytes(32),
+        HashUtil::headerOnChainHash,
       )
     val beaconBlockBody =
       BeaconBlockBody(
-        prevBlockSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        prevCommitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        commitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
         executionPayload = randomExecutionPayload(),
       )
 

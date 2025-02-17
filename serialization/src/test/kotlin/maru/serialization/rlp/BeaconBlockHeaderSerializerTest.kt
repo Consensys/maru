@@ -18,6 +18,7 @@ package maru.serialization.rlp
 import kotlin.random.Random
 import kotlin.random.nextULong
 import maru.core.BeaconBlockHeader
+import maru.core.HashUtil
 import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -34,9 +35,12 @@ class BeaconBlockHeaderSerializerTest {
       BeaconBlockHeader(
         number = Random.nextULong(),
         round = Random.nextULong(),
+        timestamp = Random.nextULong(),
         proposer = Validator(Random.nextBytes(128)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
+        bodyRoot = Random.nextBytes(32),
+        HashUtil::headerOnChainHash,
       )
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)

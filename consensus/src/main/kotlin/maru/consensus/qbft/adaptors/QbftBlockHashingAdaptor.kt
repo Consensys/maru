@@ -13,10 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.consensus.qbft.adaptors
 
-data class BeaconBlockBody(
-  val prevCommitSeals: List<Seal>,
-  val commitSeals: List<Seal>,
-  val executionPayload: ExecutionPayload,
-)
+import org.hyperledger.besu.consensus.common.bft.BftExtraData
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHashing
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
+import org.hyperledger.besu.datatypes.Hash
+
+// TODO: Remove once Besu version is updated
+class QbftBlockHashingAdaptor : QbftBlockHashing {
+  override fun calculateDataHashForCommittedSeal(
+    blockHeader: QbftBlockHeader?,
+    extraData: BftExtraData?,
+  ): Hash? {
+    TODO("Not yet implemented")
+  }
+}

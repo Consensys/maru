@@ -13,10 +13,24 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.consensus.qbft.adaptors
 
-data class BeaconBlockBody(
-  val prevCommitSeals: List<Seal>,
-  val commitSeals: List<Seal>,
-  val executionPayload: ExecutionPayload,
-)
+import maru.core.BeaconBlock
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
+
+class QbftBlockAdaptor(
+  val beaconBlock: BeaconBlock,
+) : QbftBlock {
+  val qbftHeader: QbftBlockHeader
+
+  init {
+    qbftHeader = QbftBlockHeaderAdaptor(beaconBlock.beaconBlockHeader)
+  }
+
+  override fun getHeader(): QbftBlockHeader = qbftHeader
+
+  override fun isEmpty(): Boolean =
+    beaconBlock.beaconBlockBody.executionPayload.transactions
+      .isEmpty()
+}

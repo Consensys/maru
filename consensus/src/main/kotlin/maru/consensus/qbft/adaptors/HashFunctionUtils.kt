@@ -13,10 +13,18 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.consensus.qbft.adaptors
 
-data class BeaconBlockBody(
-  val prevCommitSeals: List<Seal>,
-  val commitSeals: List<Seal>,
-  val executionPayload: ExecutionPayload,
-)
+import maru.core.HashFunction
+import maru.core.HashType
+import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
+
+object HashFunctionUtils {
+  fun toHeaderHashFunction(qbftHashMode: QbftHashMode): HashFunction = toHashType(qbftHashMode).hashFunction
+
+  fun toHashType(mode: QbftHashMode): HashType =
+    when (mode) {
+      QbftHashMode.ONCHAIN -> HashType.ON_CHAIN
+      QbftHashMode.COMMITTED_SEAL -> HashType.COMMITTED_SEAL
+    }
+}
