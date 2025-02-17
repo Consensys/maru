@@ -29,7 +29,7 @@ enum class HashType(
 
 object HashUtil {
   /**
-   * Hashes the header for onchain omitting the commit seals and round number
+   * Hashes the header for onchain omitting the round number
    */
   fun headerOnChainHash(header: BeaconBlockHeader): ByteArray {
     val headerAsBytes =
@@ -39,7 +39,7 @@ object HashUtil {
   }
 
   /**
-   * Hashes the header for the commit seal hash omitting the commit seal
+   * Hashes the header for the commit seal hash including the round number
    */
   fun headerCommittedSealHash(header: BeaconBlockHeader): ByteArray {
     val headerAsBytes =
@@ -51,19 +51,20 @@ object HashUtil {
   }
 
   fun bodyRoot(body: BeaconBlockBody): ByteArray {
+    // this deliberately does not include commit seals as a part of the body root
+    val prevCommitSeals = body.prevCommitSeals.map { it.signature }.reduceOrNull { acc, bytes -> acc + bytes }
     val bodyAsBytes =
-      body.commitSeals.map { it.signature }.reduce { acc, bytes -> acc + bytes } + body.executionPayload.blockHash
+      (prevCommitSeals ?: byteArrayOf()) + body.executionPayload.blockHash
     return Hash.hash(Bytes.wrap(bodyAsBytes)).toArray()
   }
 
   fun stateRoot(state: BeaconState): ByteArray {
-    val validatorsAsBytes =
+    var validatorsAsBytes =
       state.validators
         .map { it.address }
-        .reduce { acc, bytes -> acc + bytes }
-    val stateRootAsBytes =
-      headerOnChainHash(state.latestBeaconBlockHeader) + state.latestBeaconBlockRoot +
-        validatorsAsBytes
+        .reduceOrNull { acc, bytes -> acc + bytes }
+    var stateRootAsBytes =
+      headerOnChainHash(state.latestBeaconBlockHeader) + state.latestBeaconBlockRoot + (validatorsAsBytes ?: byteArrayOf())
     return Hash
       .hash(
         Bytes.wrap(
