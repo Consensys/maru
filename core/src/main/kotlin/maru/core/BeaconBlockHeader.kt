@@ -15,6 +15,9 @@
  */
 package maru.core
 
+import com.google.common.base.Suppliers
+import java.util.function.Supplier
+
 data class BeaconBlockHeader(
   val number: ULong,
   val round: ULong,
@@ -25,6 +28,12 @@ data class BeaconBlockHeader(
   val bodyRoot: ByteArray,
   val hashFunction: HashFunction,
 ) {
+  val hash: Supplier<ByteArray>
+
+  init {
+    hash = Suppliers.memoize { hashFunction.invoke(this) }
+  }
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -53,6 +62,5 @@ data class BeaconBlockHeader(
     return result
   }
 
-  // TODO cache hash
-  fun hash(): ByteArray = hashFunction.invoke(this)
+  fun hash(): ByteArray = hash.get()
 }
