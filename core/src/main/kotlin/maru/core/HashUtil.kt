@@ -27,6 +27,9 @@ enum class HashType(
   COMMITTED_SEAL(HashUtil::headerCommittedSealHash),
 }
 
+/**
+ * Utility class for hashing various parts of the beacon chain
+ */
 object HashUtil {
   /**
    * Hashes the header for onchain omitting the round number
@@ -51,7 +54,7 @@ object HashUtil {
   }
 
   fun bodyRoot(body: BeaconBlockBody): ByteArray {
-    // this deliberately does not include commit seals as a part of the body root
+    // this deliberately does not include commit seals as these are always excluded as part of the hash
     val prevCommitSeals = body.prevCommitSeals.map { it.signature }.reduceOrNull { acc, bytes -> acc + bytes }
     val bodyAsBytes =
       (prevCommitSeals ?: byteArrayOf()) + body.executionPayload.blockHash
@@ -63,6 +66,7 @@ object HashUtil {
       state.validators
         .map { it.address }
         .reduceOrNull { acc, bytes -> acc + bytes }
+    // onchain hash can be used as this is the latest finalized beacon block header already on chain
     var stateRootAsBytes =
       headerOnChainHash(state.latestBeaconBlockHeader) + state.latestBeaconBlockRoot +
         (validatorsAsBytes ?: byteArrayOf())

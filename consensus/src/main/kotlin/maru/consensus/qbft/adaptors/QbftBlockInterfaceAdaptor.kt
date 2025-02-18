@@ -21,6 +21,9 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockInterface
 import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
 
+/**
+ * Adaptor class for QBFT block interface, this provides a way to replace the round number in a block
+ */
 class QbftBlockInterfaceAdaptor : QbftBlockInterface {
   override fun replaceRoundInBlock(
     proposalBlock: QbftBlock,

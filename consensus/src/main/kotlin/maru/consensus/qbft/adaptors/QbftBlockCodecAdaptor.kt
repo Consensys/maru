@@ -28,6 +28,9 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
+/**
+ * Adaptor for QBFT block codec, this provides a way to serialize QBFT blocks
+ */
 class QbftBlockCodecAdaptor : QbftBlockCodec {
   private val serializer =
     BeaconBlockSerializer(

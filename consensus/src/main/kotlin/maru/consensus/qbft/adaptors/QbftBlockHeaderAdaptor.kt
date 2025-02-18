@@ -22,6 +22,9 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.Hash
 
+/**
+ * Adaptor class to convert a BeaconBlockHeader to a QBFT block header
+ */
 class QbftBlockHeaderAdaptor(
   val beaconBlockHeader: BeaconBlockHeader,
 ) : QbftBlockHeader {

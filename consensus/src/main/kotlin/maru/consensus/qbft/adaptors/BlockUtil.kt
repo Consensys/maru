@@ -21,7 +21,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 
 /**
-* Utility class to convert QBFT blocks and headers BeaconBlocks and BeaconBlockHeaders
+* Utility class to convert QBFT blocks to BeaconBlocks and QBFT headers to BeaconBlockHeaders
  */
 object BlockUtil {
   /**
