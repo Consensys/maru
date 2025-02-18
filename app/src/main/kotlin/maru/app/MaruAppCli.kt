@@ -43,7 +43,7 @@ import picocli.CommandLine.Command
 class MaruAppCli : Callable<Int> {
   companion object {
     @OptIn(ExperimentalHoplite::class)
-    internal inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
+    inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
       val confBuilder: ConfigLoaderBuilder =
         ConfigLoaderBuilder.Companion
           .empty()

@@ -15,8 +15,11 @@
  */
 package maru.app.config
 
+import kotlin.time.Duration.Companion.milliseconds
+import maru.consensus.ConsensusConfiguration
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
 import org.apache.tuweni.bytes.Bytes
 
@@ -38,10 +41,14 @@ data class JsonFriendlyForksSchedule(
   private fun mapObjectToConfiguration(
     type: String,
     obj: Map<String, String>,
-  ): DummyConsensusConfig =
+  ): ConsensusConfiguration =
     when (type) {
       "dummy" -> {
+        1.milliseconds
         DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt(), Bytes.fromHexString(obj["feeRecipient"]!!).toArray())
+      }
+      "delegated" -> {
+        ElDelegatedConsensus.Config(obj["pollPeriodMillis"]!!.toInt().milliseconds)
       }
 
       else -> throw IllegalArgumentException("Unsupported fork type $type!")

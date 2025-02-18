@@ -58,6 +58,7 @@ class ElDelegatedConsensus(
   }
 
   private fun poll(): SafeFuture<Unit> {
+    log.debug("Polling EL for new blocks")
     if (currentTask != null) {
       if (!currentTask!!.isDone) {
         log.warn("Current task isn't done. Scheduling the next one, but results may be unexpected!")

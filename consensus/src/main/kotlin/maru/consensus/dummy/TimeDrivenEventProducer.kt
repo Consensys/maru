@@ -106,6 +106,7 @@ class TimeDrivenEventProducer(
               {
                 val consensusRoundIdentifier =
                   ConsensusRoundIdentifier(nextBlockNumber.toLong(), nextBlockNumber.toInt())
+                log.debug("Triggering an event for round $consensusRoundIdentifier")
                 eventHandler.handleBlockTimerExpiry(BlockTimerExpiry(consensusRoundIdentifier))
               },
               executor,

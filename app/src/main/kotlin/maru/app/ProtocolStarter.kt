@@ -51,10 +51,12 @@ class ProtocolStarter(
 
   @Synchronized
   override fun handleNewBlock(block: Block) {
+    log.debug("New block ${block.header.number} received")
     val latestBlockNumber = block.header.number
     val nextForkSpec = forksSchedule.getForkByNumber(latestBlockNumber.toULong() + 1UL)
 
-    if (currentProtocolWithConfig.get()?.config != nextForkSpec) {
+    val currentProtocol = currentProtocolWithConfig.get()
+    if (currentProtocol?.config != nextForkSpec) {
       val newProtocol: Protocol =
         when (nextForkSpec) {
           is DummyConsensusConfig -> {
@@ -86,12 +88,16 @@ class ProtocolStarter(
           }
         }
 
-      currentProtocolWithConfig.set(
+      val newProtocolWithConfig =
         ProtocolWithConfig(
           newProtocol,
           nextForkSpec,
-        ),
+        )
+      log.debug("Switching from $currentProtocol to protocol $newProtocolWithConfig")
+      currentProtocolWithConfig.set(
+        newProtocolWithConfig,
       )
+      currentProtocol?.protocol?.stop()
       newProtocol.start()
     } else {
       log.trace("Block ${block.header.number} was produced, but the fork switch isn't required")

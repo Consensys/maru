@@ -16,8 +16,10 @@
 package maru.app.config
 
 import com.sksamuel.hoplite.ExperimentalHoplite
+import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
@@ -25,30 +27,47 @@ import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
 class JsonFriendlinessTest {
+  private val genesisConfig =
+    """
+    {
+      "config": {
+        "0": {
+          "type": "dummy",
+          "blockTimeMillis": 1000,
+          "feeRecipient": "0x0000000000000000000000000000000000000000"
+        },
+        "2": {
+          "type": "delegated",
+          "pollPeriodMillis": 2000
+        }
+      }
+    }
+    """.trimIndent()
+
   @Test
   fun genesisFileIsParseable() {
     val config =
       Utils.parseJsonConfig<JsonFriendlyForksSchedule>(
-        """
-        {
-          "config": {
-            "0": {
-              "type": "dummy",
-              "blockTimeMillis": 1000,
-              "feeRecipient": "0x0000000000000000000000000000000000000000"
-            }
-          }
-        }
-        """.trimIndent(),
+        genesisConfig,
       )
-    val expectedObject =
+    val expectedDummyConsensusMap =
       mapOf(
         "type" to "dummy",
         "blockTimeMillis" to "1000",
         "feeRecipient" to "0x0000000000000000000000000000000000000000",
       )
+    val expectedDelegatedConsensusMap =
+      mapOf(
+        "type" to "delegated",
+        "pollPeriodMillis" to "2000",
+      )
     assertThat(config).isEqualTo(
-      JsonFriendlyForksSchedule(mapOf("0" to expectedObject)),
+      JsonFriendlyForksSchedule(
+        mapOf(
+          "0" to expectedDummyConsensusMap,
+          "2" to expectedDelegatedConsensusMap,
+        ),
+      ),
     )
   }
 
@@ -57,17 +76,7 @@ class JsonFriendlinessTest {
     val config =
       Utils
         .parseJsonConfig<JsonFriendlyForksSchedule>(
-          """
-          {
-            "config": {
-              "0": {
-                "type": "dummy",
-                "blockTimeMillis": 1000,
-                "feeRecipient": "0x0000000000000000000000000000000000000000"
-              }
-            }
-          }
-          """.trimIndent(),
+          genesisConfig,
         ).domainFriendly()
     assertThat(config).isEqualTo(
       ForksSchedule(
@@ -77,6 +86,12 @@ class JsonFriendlinessTest {
             DummyConsensusConfig(
               blockTimeMillis = 1000u,
               feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
+            ),
+          ),
+          ForkSpec(
+            2u,
+            ElDelegatedConsensus.Config(
+              pollPeriod = 2000.milliseconds,
             ),
           ),
         ),
