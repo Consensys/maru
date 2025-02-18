@@ -68,12 +68,14 @@ class CliqueToPosTest {
     @JvmStatic
     fun beforeAll() {
       qbftCluster.before()
+      maru.start()
     }
 
     @AfterAll
     @JvmStatic
     fun afterAll() {
       qbftCluster.after()
+      maru.stop()
     }
   }
 
@@ -101,7 +103,6 @@ class CliqueToPosTest {
 
   @Test
   fun networkCanBeSwitched() {
-    maru.start()
     sealPreMergeBlocks()
     everyoneArePeered()
     val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
