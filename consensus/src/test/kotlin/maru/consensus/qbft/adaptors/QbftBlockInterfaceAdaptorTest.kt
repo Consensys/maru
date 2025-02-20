@@ -15,9 +15,6 @@
  */
 package maru.consensus.qbft.adaptors
 
-import maru.consensus.qbft.adaptors.BlockUtil
-import maru.consensus.qbft.adaptors.QbftBlockAdaptor
-import maru.consensus.qbft.adaptors.QbftBlockInterfaceAdaptor
 import maru.core.BeaconBlock
 import maru.core.ext.DataGenerators
 import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
