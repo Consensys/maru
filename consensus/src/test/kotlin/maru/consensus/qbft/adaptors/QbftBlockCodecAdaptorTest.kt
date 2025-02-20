@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.adaptors
+package maru.consensus.qbft.adaptors
 
 import maru.consensus.qbft.adaptors.QbftBlockAdaptor
 import maru.consensus.qbft.adaptors.QbftBlockCodecAdaptor
