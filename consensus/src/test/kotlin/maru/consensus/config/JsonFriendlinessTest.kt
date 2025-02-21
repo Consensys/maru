@@ -13,9 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app.config
+package maru.consensus.config
 
+import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
+import com.sksamuel.hoplite.json.JsonPropertySource
 import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -47,7 +49,7 @@ class JsonFriendlinessTest {
   @Test
   fun genesisFileIsParseable() {
     val config =
-      Utils.parseJsonConfig<JsonFriendlyForksSchedule>(
+      parseJsonConfig<JsonFriendlyForksSchedule>(
         genesisConfig,
       )
     val expectedDummyConsensusMap =
@@ -74,10 +76,9 @@ class JsonFriendlinessTest {
   @Test
   fun genesisFileIsConvertableToDomain() {
     val config =
-      Utils
-        .parseJsonConfig<JsonFriendlyForksSchedule>(
-          genesisConfig,
-        ).domainFriendly()
+      parseJsonConfig<JsonFriendlyForksSchedule>(
+        genesisConfig,
+      ).domainFriendly()
     assertThat(config).isEqualTo(
       ForksSchedule(
         setOf(
@@ -98,4 +99,12 @@ class JsonFriendlinessTest {
       ),
     )
   }
+
+  inline fun <reified T : Any> parseJsonConfig(json: String): T =
+    ConfigLoaderBuilder
+      .default()
+      .withExplicitSealedTypes()
+      .addSource(JsonPropertySource(json))
+      .build()
+      .loadConfigOrThrow<T>()
 }

@@ -15,6 +15,7 @@
  */
 package maru.consensus
 
+import java.util.concurrent.ConcurrentHashMap
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.ethereum.core.Block
 
@@ -23,12 +24,20 @@ fun interface NewBlockHandler {
 }
 
 class NewBlockHandlerMultiplexer(
-  private val list: List<Pair<String, NewBlockHandler>>,
+  handlersMap: Map<String, NewBlockHandler>,
 ) : NewBlockHandler {
+  private val handlersMap = ConcurrentHashMap(handlersMap)
   private val log = LogManager.getLogger(NewBlockHandlerMultiplexer::class.java)!!
 
+  fun addHandler(
+    name: String,
+    handler: NewBlockHandler,
+  ) {
+    handlersMap[name] = handler
+  }
+
   override fun handleNewBlock(block: Block) {
-    list.forEach {
+    handlersMap.forEach {
       val (handlerName, handler) = it
       try {
         handler.handleNewBlock(block)

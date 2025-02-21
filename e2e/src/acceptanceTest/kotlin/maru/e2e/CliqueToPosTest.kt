@@ -113,8 +113,8 @@ class CliqueToPosTest {
       .untilAsserted {
         val unixTimestamp = System.currentTimeMillis() / 1000
         log.info(
-          "Waiting for Cancun switch " +
-            "${newBlockTimestamp.longValue() - unixTimestamp} seconds until the switch ",
+          "Waiting for Cancun switch {} seconds until the switch ",
+          { newBlockTimestamp.longValue() - unixTimestamp },
         )
         assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
       }

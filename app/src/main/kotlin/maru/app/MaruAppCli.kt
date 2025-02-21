@@ -21,8 +21,8 @@ import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.addFileSource
 import java.io.File
 import java.util.concurrent.Callable
-import maru.app.config.JsonFriendlyForksSchedule
-import maru.app.config.MaruConfigDtoToml
+import maru.config.MaruConfigDtoToml
+import maru.consensus.config.JsonFriendlyForksSchedule
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.Configurator

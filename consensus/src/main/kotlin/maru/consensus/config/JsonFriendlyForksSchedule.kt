@@ -13,15 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app.config
+package maru.consensus.config
 
+import fromHexToByteArray
 import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ConsensusConfiguration
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
-import org.apache.tuweni.bytes.Bytes
 
 data class JsonFriendlyForksSchedule(
   val config: Map<String, Map<String, String>>,
@@ -45,7 +45,7 @@ data class JsonFriendlyForksSchedule(
     when (type) {
       "dummy" -> {
         1.milliseconds
-        DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt(), Bytes.fromHexString(obj["feeRecipient"]!!).toArray())
+        DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt(), obj["feeRecipient"]!!.fromHexToByteArray())
       }
       "delegated" -> {
         ElDelegatedConsensus.Config(obj["pollPeriodMillis"]!!.toInt().milliseconds)

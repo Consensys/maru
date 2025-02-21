@@ -31,7 +31,7 @@ data class DummyConsensusConfig(
       "feesRecipient address must be 20 bytes long, " +
         "but it's only ${feeRecipient.size} bytes long!"
     }
-    require(blockTimeMillis >= 1000u) { "blockTimeMillis must be greater than 1 second" }
+    require(blockTimeMillis >= 1000u) { "blockTimeMillis must be greater or equal to 1 second" }
   }
 
   override fun equals(other: Any?): Boolean {

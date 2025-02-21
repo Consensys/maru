@@ -80,7 +80,7 @@ class TimeDrivenEventProducer(
       }
 
       else -> {
-        log.warn("Next fork isn't a Dummy Consensus one. Stopping ${this.javaClass.name}")
+        log.warn("Next fork isn't a Dummy Consensus one. Stopping {}", this.javaClass.name)
       }
     }
   }
@@ -106,7 +106,7 @@ class TimeDrivenEventProducer(
               {
                 val consensusRoundIdentifier =
                   ConsensusRoundIdentifier(nextBlockNumber.toLong(), nextBlockNumber.toInt())
-                log.debug("Triggering an event for round $consensusRoundIdentifier")
+                log.debug("Triggering an event for round {}", consensusRoundIdentifier)
                 eventHandler.handleBlockTimerExpiry(BlockTimerExpiry(consensusRoundIdentifier))
               },
               executor,

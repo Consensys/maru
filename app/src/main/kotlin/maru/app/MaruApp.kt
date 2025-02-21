@@ -17,8 +17,12 @@ package maru.app
 
 import java.time.Clock
 import java.time.Duration
-import maru.app.config.MaruConfig
+import maru.config.MaruConfig
 import maru.consensus.ForksSchedule
+import maru.consensus.MetadataOnlyHandlerAdapter
+import maru.consensus.NewBlockHandlerMultiplexer
+import maru.consensus.OmniProtocolFactory
+import maru.consensus.ProtocolStarter
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.Web3jJsonRpcExecutionLayerClient
 import org.apache.logging.log4j.LogManager
@@ -56,14 +60,24 @@ class MaruApp(
       ethereumJsonRpcClient,
     )
 
+  private val newBlockHandlerMultiplexer = NewBlockHandlerMultiplexer(emptyMap())
+
   private val protocolStarter =
     ProtocolStarter(
       forksSchedule = beaconGenesisConfig,
-      clock = clock,
-      config = config,
+      protocolFactory =
+        OmniProtocolFactory(
+          forksSchedule = beaconGenesisConfig,
+          clock = clock,
+          config = config,
+          executionLayerClient = executionLayerClient,
+          ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
+          newBlockHandler = newBlockHandlerMultiplexer,
+        ),
       executionLayerClient = executionLayerClient,
-      ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
-    )
+    ).also {
+      newBlockHandlerMultiplexer.addHandler("protocol starter", MetadataOnlyHandlerAdapter(it))
+    }
 
   private fun buildExecutionEngineClient(
     endpoint: String,

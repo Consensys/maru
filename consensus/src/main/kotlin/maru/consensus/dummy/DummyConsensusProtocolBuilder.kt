@@ -13,21 +13,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app
+package maru.consensus.dummy
 
 import java.time.Clock
 import kotlin.time.Duration
-import maru.app.config.DummyConsensusOptions
+import maru.config.DummyConsensusOptions
 import maru.consensus.EngineApiBlockCreator
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
-import maru.consensus.dummy.DummyConsensusConfig
-import maru.consensus.dummy.DummyConsensusEventHandler
-import maru.consensus.dummy.DummyConsensusState
-import maru.consensus.dummy.EmptyBlockValidator
-import maru.consensus.dummy.FinalizationState
-import maru.consensus.dummy.NextBlockTimestampProviderImpl
-import maru.consensus.dummy.TimeDrivenEventProducer
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
