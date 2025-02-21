@@ -18,8 +18,8 @@ package maru.e2e
 import java.io.File
 import maru.app.MaruApp
 import maru.app.MaruAppCli.Companion.loadConfig
-import maru.app.config.JsonFriendlyForksSchedule
-import maru.app.config.MaruConfigDtoToml
+import maru.config.MaruConfigDtoToml
+import maru.consensus.config.JsonFriendlyForksSchedule
 
 object MaruFactory {
   fun buildTestMaru(): MaruApp {

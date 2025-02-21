@@ -8,6 +8,7 @@ plugins {
 dependencies {
   implementation project(":app")
   implementation project(":consensus")
+  implementation project(":config")
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:time"
