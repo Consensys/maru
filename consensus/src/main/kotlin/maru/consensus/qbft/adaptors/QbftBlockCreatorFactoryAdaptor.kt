@@ -16,19 +16,19 @@
 package maru.consensus.qbft.adaptors
 
 import maru.consensus.qbft.BlockCreator
-import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
+import org.hyperledger.besu.consensus.qbft.core.types.QbftExtraDataProvider
 import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorProvider
 
 class QbftBlockCreatorFactoryAdaptor(
   private val manager: ExecutionLayerManager,
-  private val beaconChain: BeaconChain,
   private val proposerSelector: ProposerSelector,
   private val validatorProvider: QbftValidatorProvider,
+  private val extraDataProvider: QbftExtraDataProvider,
 ) : QbftBlockCreatorFactory {
   override fun create(roundNumber: Int): QbftBlockCreator =
-    BlockCreator(manager, beaconChain, proposerSelector, validatorProvider, roundNumber.toULong())
+    BlockCreator(manager, proposerSelector, validatorProvider, extraDataProvider, roundNumber.toULong())
 }

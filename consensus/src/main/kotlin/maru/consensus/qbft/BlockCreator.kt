@@ -25,7 +25,6 @@ import maru.core.HashType
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.Validator
-import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -42,9 +41,9 @@ import org.hyperledger.besu.crypto.SECPSignature
  */
 class BlockCreator(
   private val manager: ExecutionLayerManager,
-  private val beaconChain: BeaconChain,
   private val proposerSelector: ProposerSelector,
   private val validatorProvider: QbftValidatorProvider,
+  private val extraDataProvider: QbftExtraDataProvider,
   private val round: ULong,
 ) : QbftBlockCreator {
   private val log = LogManager.getLogger(QbftBlockCreator::class.java)
@@ -69,20 +68,20 @@ class BlockCreator(
 
     val block =
       executionPayload?.let {
-        val latestBeaconBlockRoot = beaconChain.getLatestBeaconState()?.latestBeaconBlockRoot
-        val latestBeaconBlock =
-          latestBeaconBlockRoot?.let { beaconChain.getBeaconBlock(it) }
-            ?: throw IllegalStateException("Latest state unavailable, unable to create block")
-
+        val extraData = extraDataProvider.getExtraData(parentHeader)
         val beaconBlockBody =
-          BeaconBlockBody(latestBeaconBlock.beaconBlockBody.commitSeals, emptyList(), executionPayload)
+          BeaconBlockBody(
+            extraData.seals.map { Seal(it.encodedBytes().toArrayUnsafe()) },
+            emptyList(),
+            executionPayload,
+          )
         val bodyRoot = HashUtil.bodyRoot(beaconBlockBody)
 
-        val number = latestBeaconBlock.beaconBlockHeader.number + 1UL
+        val number = parentHeader.number + 1
         val proposer = proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(number.toLong(), round.toInt()))
         val temporaryBlockHeader =
           BeaconBlockHeader(
-            number,
+            number.toULong(),
             round,
             timestamp.toULong(),
             Validator(proposer.toArrayUnsafe()),
