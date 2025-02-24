@@ -34,10 +34,10 @@ import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class BlockCreatorTest {
-  private var executionLayerManager = Mockito.mock(ExecutionLayerManager::class.java)
-  private var proposerSelector = Mockito.mock(ProposerSelector::class.java)
-  private var validatorProvider = Mockito.mock(ValidatorProvider::class.java)
-  private var beaconChain = Mockito.mock(BeaconChain::class.java)
+  private val executionLayerManager = Mockito.mock(ExecutionLayerManager::class.java)
+  private val proposerSelector = Mockito.mock(ProposerSelector::class.java)
+  private val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
+  private val beaconChain = Mockito.mock(BeaconChain::class.java)
 
   @Test
   fun `can create block`() {
