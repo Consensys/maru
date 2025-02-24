@@ -13,18 +13,21 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adaptors
+package maru.consensus
 
-import maru.consensus.BlockCreator
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
+import maru.core.BeaconBlockHeader
+import maru.core.Validator
 
-class QbftBlockCreatorFactoryAdaptor(
-  private val blockCreator: BlockCreator,
-) : QbftBlockCreatorFactory {
-  override fun create(roundNumber: Int): QbftBlockCreator =
-    QbftBlockCreatorAdaptor(
-      blockCreator,
-      roundNumber,
-    )
+class ValidatorProvider {
+  fun getValidatorsAtHead(): Set<Validator> {
+    TODO("Not yet implemented")
+  }
+
+  fun getValidatorsAfterBlock(header: BeaconBlockHeader): Set<Validator> {
+    TODO("Not yet implemented")
+  }
+
+  fun getValidatorsForBlock(header: BeaconBlockHeader): Collection<Validator> {
+    TODO("Not yet implemented")
+  }
 }

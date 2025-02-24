@@ -172,6 +172,34 @@ class JsonRpcExecutionLayerManager private constructor(
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
             throw RuntimeException(validationResult.reason)
           }
+          SafeFuture.completedFuture(executionPayload)
+        } else {
+          SafeFuture.failedFuture(
+            IllegalStateException("engine_getPayload request failed! Cause: " + payloadResponse.errorMessage),
+          )
+        }
+      }
+  }
+
+  override fun finishBlockBuildingAndBuildNextBlock(): SafeFuture<ExecutionPayload> {
+    if (payloadId == null) {
+      return SafeFuture.failedFuture(
+        IllegalStateException(
+          "finishBlockBuilding is called before setHeadAndStartBlockBuilding was completed",
+        ),
+      )
+    }
+    return executionLayerClient
+      .getPayload(Bytes8(Bytes.wrap(payloadId!!)))
+      .thenCompose { payloadResponse ->
+        if (payloadResponse.isSuccess) {
+          val tekuExecutionPayload = payloadResponse.payload.executionPayload
+          val executionPayload = executionPayloadV3ToDomain(tekuExecutionPayload)
+          val validationResult = payloadValidator.validate(executionPayload)
+
+          if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
+            throw RuntimeException(validationResult.reason)
+          }
           executionLayerClient.newPayload(tekuExecutionPayload).thenApply { payloadStatus ->
             if (payloadStatus.isSuccess &&
               payloadStatus.payload
