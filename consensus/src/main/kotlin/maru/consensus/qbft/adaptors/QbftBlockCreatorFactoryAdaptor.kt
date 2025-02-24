@@ -19,6 +19,9 @@ import maru.consensus.BlockCreator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
 
+/**
+ * Adaptor to convert a [BlockCreator] to a [QbftBlockCreatorFactory].
+ */
 class QbftBlockCreatorFactoryAdaptor(
   private val blockCreator: BlockCreator,
 ) : QbftBlockCreatorFactory {

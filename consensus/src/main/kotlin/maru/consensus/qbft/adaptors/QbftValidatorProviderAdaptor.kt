@@ -23,6 +23,9 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorProvider
 import org.hyperledger.besu.datatypes.Address
 
+/**
+ * Adaptor to convert a [ValidatorProvider] to a [QbftValidatorProvider].
+ */
 class QbftValidatorProviderAdaptor(
   private val validatorProvider: ValidatorProvider,
 ) : QbftValidatorProvider {

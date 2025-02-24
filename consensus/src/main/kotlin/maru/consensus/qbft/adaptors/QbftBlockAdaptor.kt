@@ -20,7 +20,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 
 /**
- * Adaptor class to convert a BeaconBlock to a QBFT block
+ * Adaptor class to convert a [BeaconBlock] to a [QbftBlock].
  */
 class QbftBlockAdaptor(
   val beaconBlock: BeaconBlock,

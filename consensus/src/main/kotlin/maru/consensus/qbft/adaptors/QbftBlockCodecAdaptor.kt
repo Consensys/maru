@@ -29,7 +29,7 @@ import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 /**
- * Adaptor for QBFT block codec, this provides a way to serialize QBFT blocks
+ * Adaptor for [QbftBlockCodec], this provides a way to serialize QBFT blocks
  */
 class QbftBlockCodecAdaptor : QbftBlockCodec {
   private val serializer =

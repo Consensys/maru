@@ -23,6 +23,9 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.consensus.qbft.core.types.QbftExtraDataProvider
 import org.hyperledger.besu.crypto.SECPSignature
 
+/**
+ * Adaptor to convert a [BlockCreator] to a [QbftBlockCreator].
+ */
 class QbftBlockCreatorAdaptor(
   private val blockCreator: BlockCreator,
   private val round: Int,
