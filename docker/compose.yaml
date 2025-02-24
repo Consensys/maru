@@ -50,7 +50,8 @@ services:
 
   follower-geth:
     depends_on:
-      - sequencer
+      sequencer:
+        condition: service_healthy
     image: ethereum/client-go:release-1.14
     restart: always
     healthcheck:
@@ -74,7 +75,8 @@ services:
 
   follower-geth-2:
     depends_on:
-      - sequencer
+      sequencer:
+        condition: service_healthy
     image: ethereum/client-go:release-1.13
     restart: always
     healthcheck:
@@ -98,7 +100,8 @@ services:
 
   follower-geth-snap-server:
     depends_on:
-      - sequencer
+      sequencer:
+        condition: service_healthy
     image: ethereum/client-go:release-1.13
     restart: always
     healthcheck:
@@ -122,7 +125,8 @@ services:
 
   follower-besu:
     depends_on:
-      - sequencer
+      sequencer:
+        condition: service_healthy
     image: hyperledger/besu:24.10.0
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
@@ -152,8 +156,9 @@ services:
 
   follower-nethermind:
     depends_on:
-      - sequencer
-    image: nethermind/nethermind:1.30.3
+      sequencer:
+        condition: service_healthy
+    image: nethermindeth/nethermind:clique-merge-fix
     command: >
       --configs-dir /config/
       -c test
@@ -170,7 +175,8 @@ services:
 
   follower-erigon:
     depends_on:
-      - sequencer
+      sequencer:
+        condition: service_healthy
     image: erigontech/erigon:main-b53b94d
     entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x1C9C380",
                   "/home/erigon" ]

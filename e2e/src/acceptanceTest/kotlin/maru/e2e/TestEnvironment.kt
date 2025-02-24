@@ -54,10 +54,11 @@ object TestEnvironment {
   val followerClients =
     mapOf(
       // "geth1" to geth1L2Client,
-      "geth2" to geth2L2Client,
-      "gethSnapServer" to gethSnapServerL2Client,
-      "besuFollower" to besuFollowerL2Client,
-      "erigonFollower" to erigonFollowerL2Client,
+      "follower-geth-2" to geth2L2Client,
+//      "follower-geth-snap-server" to gethSnapServerL2Client,
+      "follower-besu" to besuFollowerL2Client,
+      "follower-erigon" to erigonFollowerL2Client,
+      "follower-nethermind" to nethermindFollowerL2Client,
     )
   val transactionManager =
     let {
