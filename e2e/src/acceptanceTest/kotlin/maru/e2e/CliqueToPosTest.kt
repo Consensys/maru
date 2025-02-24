@@ -26,7 +26,7 @@ import java.util.Optional
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.e2e.Mappers.executionPayloadV3FromBlock
+import maru.e2e.Mappers.executionPayloadV1FromBlock
 import maru.e2e.TestEnvironment.createWeb3jClient
 import maru.e2e.TestEnvironment.waitForInclusion
 import org.apache.logging.log4j.LogManager
@@ -42,9 +42,9 @@ import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
@@ -134,17 +134,15 @@ class CliqueToPosTest {
 
     val payloadAttributes =
       Optional.of(
-        PayloadAttributesV3(
+        PayloadAttributesV1(
           newBlockTimestamp,
           Bytes32.ZERO,
           Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
-          emptyList(),
-          Bytes32.ZERO,
         ),
       )
     val fcuResponse =
       sequencerExecutionClient
-        .forkChoiceUpdatedV3(
+        .forkChoiceUpdatedV1(
           ForkChoiceStateV1(
             lastPreMergeBlockHashBytes32,
             lastPreMergeBlockHashBytes32,
@@ -157,9 +155,9 @@ class CliqueToPosTest {
     // To give EL time to execute a block
     Thread.sleep(6000)
 
-    val getPayloadResponse = sequencerExecutionClient.getPayloadV3(payloadId.get()).get()
-    val newExecutionPayload = getPayloadResponse.payload.executionPayload
-    val newPayloadResult = sequencerExecutionClient.newPayloadV3(newExecutionPayload, emptyList(), Bytes32.ZERO).get()
+    val getPayloadResponse = sequencerExecutionClient.getPayloadV1(payloadId.get()).get()
+    val newExecutionPayload = getPayloadResponse.payload
+    val newPayloadResult = sequencerExecutionClient.newPayloadV1(newExecutionPayload).get()
     val newPayloadHash =
       newPayloadResult.payload
         .asInternalExecutionPayload()
@@ -167,17 +165,15 @@ class CliqueToPosTest {
         .get()
     val nextPayloadAttributes =
       Optional.of(
-        PayloadAttributesV3(
+        PayloadAttributesV1(
           newExecutionPayload.timestamp + 1,
           Bytes32.ZERO,
           Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
-          emptyList(),
-          Bytes32.ZERO,
         ),
       )
     val nextForkChoiceState = ForkChoiceStateV1(newPayloadHash, newPayloadHash, newPayloadHash)
     sequencerExecutionClient
-      .forkChoiceUpdatedV3(nextForkChoiceState, nextPayloadAttributes)
+      .forkChoiceUpdatedV1(nextForkChoiceState, nextPayloadAttributes)
       .get()
       .also { log.info("FCU of new block on Sequencer $it") }
 
@@ -199,14 +195,14 @@ class CliqueToPosTest {
     val currentBLock = getBlockByNumber(headBlockNumber, true)
     val blockHash = currentBLock.hash
 
-    val getNewPayloadFromLastBlockNumber = executionPayloadV3FromBlock(currentBLock)
+    val getNewPayloadFromLastBlockNumber = executionPayloadV1FromBlock(currentBLock)
     sendNewPayloadToFollowers(getNewPayloadFromLastBlockNumber)
     fcuFollowersToBlockHash(blockHash)
   }
 
   @Disabled
   fun fullSync() {
-    val target = geth1ExecutionEngineClient
+    val target = nethermindFollowerExecutionEngineClient
 
     val lastPreMergeBlockNumber = 5L
 
@@ -214,8 +210,8 @@ class CliqueToPosTest {
     for (blockNumber in lastPreMergeBlockNumber + 1..headBlockNumber) {
       val block = getBlockByNumber(blockNumber, true)
 
-      val newPayloadV3 = executionPayloadV3FromBlock(block)
-      target.newPayloadV3(newPayloadV3, emptyList(), Bytes32.ZERO).get()
+      val newPayloadV1 = executionPayloadV1FromBlock(block)
+      target.newPayloadV1(newPayloadV1).get()
     }
 
     val currentBLock =
@@ -227,7 +223,7 @@ class CliqueToPosTest {
     val blockHash = currentBLock.block.hash
 
     val lastBlockHashBytes = Bytes32.fromHexString(blockHash)
-    target.forkChoiceUpdatedV3(
+    target.forkChoiceUpdatedV1(
       ForkChoiceStateV1(lastBlockHashBytes, lastBlockHashBytes, lastBlockHashBytes),
       Optional.empty(),
     )
@@ -236,7 +232,8 @@ class CliqueToPosTest {
   private fun parseCancunTimestamp(): Long {
     val objectMapper = ObjectMapper()
     val genesisTree = objectMapper.readTree(File("../docker/initialization/genesis-besu.json"))
-    return genesisTree.at("/config/shanghaiTime").asLong()
+    val switchTime = genesisTree.at("/config/shanghaiTime").asLong()
+    return if (switchTime == 0L) System.currentTimeMillis() / 1000 else switchTime
   }
 
   private fun sealPreMergeBlocks() {
@@ -333,7 +330,7 @@ class CliqueToPosTest {
     followerExecutionEngineClients.entries
       .map {
         it.key to
-          it.value.forkChoiceUpdatedV3(
+          it.value.forkChoiceUpdatedV1(
             mergeForkChoiceState,
             Optional.empty(),
           )
@@ -342,14 +339,12 @@ class CliqueToPosTest {
       }
   }
 
-  private fun sendNewPayloadToFollowers(newPayloadV3: ExecutionPayloadV3) {
+  private fun sendNewPayloadToFollowers(newPayloadV1: ExecutionPayloadV1) {
     followerExecutionEngineClients.entries
       .map {
         it.key to
-          it.value.newPayloadV3(
-            newPayloadV3,
-            emptyList(),
-            Bytes32.ZERO,
+          it.value.newPayloadV1(
+            newPayloadV1,
           )
       }.forEach { log.info("New payload for node: ${it.first} response: ${it.second.get()}") }
   }
