@@ -25,11 +25,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 class QbftBlockAdaptor(
   val beaconBlock: BeaconBlock,
 ) : QbftBlock {
-  val qbftHeader: QbftBlockHeader
-
-  init {
-    qbftHeader = QbftBlockHeaderAdaptor(beaconBlock.beaconBlockHeader)
-  }
+  val qbftHeader: QbftBlockHeader = QbftBlockHeaderAdaptor(beaconBlock.beaconBlockHeader)
 
   override fun getHeader(): QbftBlockHeader = qbftHeader
 

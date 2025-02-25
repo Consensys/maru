@@ -42,7 +42,7 @@ object HashUtil {
   }
 
   /**
-   * Hashes the header for the commit seal hash including the round number
+   * Hashes the header for the current commit seal hash including the round number
    */
   fun headerCommittedSealHash(header: BeaconBlockHeader): ByteArray {
     val headerAsBytes =
