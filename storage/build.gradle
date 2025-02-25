@@ -19,7 +19,6 @@ plugins {
 
 dependencies {
   implementation (project(":core"))
-  implementation (project(":serialization"))
   implementation (project(":jvm-libs:extensions"))
   implementation "org.rocksdb:rocksdbjni"
   implementation "tech.pegasys.teku.internal:storage"

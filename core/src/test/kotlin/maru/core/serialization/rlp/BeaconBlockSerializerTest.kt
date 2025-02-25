@@ -13,27 +13,38 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.serialization.rlp
+package maru.core.serialization.rlp
 
 import kotlin.random.Random
 import kotlin.random.nextULong
+import maru.core.BeaconBlock
+import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
-import maru.core.BeaconState
 import maru.core.HashUtil
+import maru.core.Seal
 import maru.core.Validator
+import maru.core.ext.DataGenerators.randomExecutionPayload
+import maru.serialization.rlp.BeaconBlockBodySerializer
+import maru.serialization.rlp.BeaconBlockHeaderSerializer
+import maru.serialization.rlp.BeaconBlockSerializer
+import maru.serialization.rlp.ExecutionPayloadSerializer
+import maru.serialization.rlp.SealSerializer
+import maru.serialization.rlp.ValidatorSerializer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class BeaconStateSerializerTest {
-  private val validatorSerializer = ValidatorSerializer()
-  private val beaconBlockHeaderSerializer =
-    BeaconBlockHeaderSerializer(
-      validatorSerializer = validatorSerializer,
-    )
+class BeaconBlockSerializerTest {
   private val serializer =
-    BeaconStateSerializer(
-      beaconBlockHeaderSerializer = beaconBlockHeaderSerializer,
-      validatorSerializer = validatorSerializer,
+    BeaconBlockSerializer(
+      beaconBlockHeaderSerializer =
+        BeaconBlockHeaderSerializer(
+          validatorSerializer = ValidatorSerializer(),
+        ),
+      beaconBlockBodySerializer =
+        BeaconBlockBodySerializer(
+          sealSerializer = SealSerializer(),
+          executionPayloadSerializer = ExecutionPayloadSerializer(),
+        ),
     )
 
   @Test
@@ -49,11 +60,16 @@ class BeaconStateSerializerTest {
         bodyRoot = Random.nextBytes(32),
         HashUtil::headerOnChainHash,
       )
+    val beaconBlockBody =
+      BeaconBlockBody(
+        prevCommitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        commitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        executionPayload = randomExecutionPayload(),
+      )
     val testValue =
-      BeaconState(
-        latestBeaconBlockHeader = beaconBLockHeader,
-        latestBeaconBlockRoot = Random.nextBytes(32),
-        validators = buildSet(3) { Validator(Random.nextBytes(128)) },
+      BeaconBlock(
+        beaconBlockHeader = beaconBLockHeader,
+        beaconBlockBody = beaconBlockBody,
       )
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)

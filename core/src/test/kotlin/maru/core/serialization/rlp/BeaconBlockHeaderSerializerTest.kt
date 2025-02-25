@@ -13,27 +13,37 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.serialization.rlp
+package maru.core.serialization.rlp
 
-import maru.core.ext.DataGenerators.randomExecutionPayload
+import kotlin.random.Random
+import kotlin.random.nextULong
+import maru.core.BeaconBlockHeader
+import maru.core.HashUtil
+import maru.core.Validator
+import maru.serialization.rlp.BeaconBlockHeaderSerializer
+import maru.serialization.rlp.ValidatorSerializer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class ExecutionPayloadSerializerTest {
-  private val serializer = ExecutionPayloadSerializer()
+class BeaconBlockHeaderSerializerTest {
+  private val serializer =
+    BeaconBlockHeaderSerializer(
+      validatorSerializer = ValidatorSerializer(),
+    )
 
   @Test
   fun `can serialize and deserialize same value`() {
-    val testValue = randomExecutionPayload()
-    val serializedData = serializer.serialize(testValue)
-    val deserializedValue = serializer.deserialize(serializedData)
-
-    assertThat(deserializedValue).isEqualTo(testValue)
-  }
-
-  @Test
-  fun `can serialize and deserialize execution payload with zero transactions`() {
-    val testValue = randomExecutionPayload()
+    val testValue =
+      BeaconBlockHeader(
+        number = Random.nextULong(),
+        round = Random.nextULong(),
+        timestamp = Random.nextULong(),
+        proposer = Validator(Random.nextBytes(128)),
+        parentRoot = Random.nextBytes(32),
+        stateRoot = Random.nextBytes(32),
+        bodyRoot = Random.nextBytes(32),
+        HashUtil::headerOnChainHash,
+      )
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)
 

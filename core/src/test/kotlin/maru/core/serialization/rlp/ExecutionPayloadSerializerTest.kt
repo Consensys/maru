@@ -13,19 +13,28 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.serialization.rlp
+package maru.core.serialization.rlp
 
-import kotlin.random.Random
-import maru.core.Seal
+import maru.core.ext.DataGenerators.randomExecutionPayload
+import maru.serialization.rlp.ExecutionPayloadSerializer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class SealSerializerTest {
-  private val serializer = SealSerializer()
+class ExecutionPayloadSerializerTest {
+  private val serializer = ExecutionPayloadSerializer()
 
   @Test
   fun `can serialize and deserialize same value`() {
-    val testValue = Seal(Random.nextBytes(128))
+    val testValue = randomExecutionPayload()
+    val serializedData = serializer.serialize(testValue)
+    val deserializedValue = serializer.deserialize(serializedData)
+
+    assertThat(deserializedValue).isEqualTo(testValue)
+  }
+
+  @Test
+  fun `can serialize and deserialize execution payload with zero transactions`() {
+    val testValue = randomExecutionPayload()
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)
 
