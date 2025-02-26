@@ -19,6 +19,7 @@ plugins {
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":serialization"))
 
   api("org.hyperledger.besu.internal:common") {
     because("API of the BftEventHandler interface")

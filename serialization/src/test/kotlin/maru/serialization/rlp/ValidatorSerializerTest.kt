@@ -13,11 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core.serialization.rlp
+package maru.serialization.rlp
 
 import kotlin.random.Random
 import maru.core.Validator
-import maru.serialization.rlp.ValidatorSerializer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 

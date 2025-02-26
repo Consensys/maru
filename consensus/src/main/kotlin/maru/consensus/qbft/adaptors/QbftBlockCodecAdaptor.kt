@@ -16,6 +16,7 @@
 package maru.consensus.qbft.adaptors
 
 import maru.consensus.qbft.adaptors.BlockUtil.toBeaconBlock
+import maru.serialization.rlp.BeaconBlockSerializer
 import maru.serialization.rlp.RLPSerializers.BeaconBlockSerializer
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCodec

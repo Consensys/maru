@@ -13,20 +13,35 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core.serialization.rlp
+package maru.serialization.rlp
 
 import kotlin.random.Random
-import maru.core.Seal
-import maru.serialization.rlp.SealSerializer
+import kotlin.random.nextULong
+import maru.core.BeaconBlockHeader
+import maru.core.HashUtil
+import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class SealSerializerTest {
-  private val serializer = SealSerializer()
+class BeaconBlockHeaderSerializerTest {
+  private val serializer =
+    BeaconBlockHeaderSerializer(
+      validatorSerializer = ValidatorSerializer(),
+    )
 
   @Test
   fun `can serialize and deserialize same value`() {
-    val testValue = Seal(Random.nextBytes(128))
+    val testValue =
+      BeaconBlockHeader(
+        number = Random.nextULong(),
+        round = Random.nextULong(),
+        timestamp = Random.nextULong(),
+        proposer = Validator(Random.nextBytes(128)),
+        parentRoot = Random.nextBytes(32),
+        stateRoot = Random.nextBytes(32),
+        bodyRoot = Random.nextBytes(32),
+        HashUtil::headerOnChainHash,
+      )
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)
 

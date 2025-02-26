@@ -13,15 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core.serialization.rlp
+package maru.serialization.rlp
 
 import kotlin.random.Random
 import maru.core.BeaconBlockBody
 import maru.core.Seal
 import maru.core.ext.DataGenerators.randomExecutionPayload
-import maru.serialization.rlp.BeaconBlockBodySerializer
-import maru.serialization.rlp.ExecutionPayloadSerializer
-import maru.serialization.rlp.SealSerializer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
