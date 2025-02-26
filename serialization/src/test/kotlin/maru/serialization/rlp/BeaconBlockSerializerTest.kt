@@ -28,12 +28,15 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class BeaconBlockSerializerTest {
-  private val serializer =
+  private val blockHeaderSerializer =
+    BeaconBlockHeaderSerializer(
+      validatorSerializer = ValidatorSerializer(),
+      headerHashFunction = HashUtil::headerOnChainHash,
+    )
+  private val blockBodySerializer =
     BeaconBlockSerializer(
       beaconBlockHeaderSerializer =
-        BeaconBlockHeaderSerializer(
-          validatorSerializer = ValidatorSerializer(),
-        ),
+      blockHeaderSerializer,
       beaconBlockBodySerializer =
         BeaconBlockBodySerializer(
           sealSerializer = SealSerializer(),
@@ -52,7 +55,7 @@ class BeaconBlockSerializerTest {
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
-        HashUtil::headerOnChainHash,
+        headerHashFunction = HashUtil.headerOnChainHash(blockHeaderSerializer),
       )
     val beaconBlockBody =
       BeaconBlockBody(
@@ -65,8 +68,8 @@ class BeaconBlockSerializerTest {
         beaconBlockHeader = beaconBLockHeader,
         beaconBlockBody = beaconBlockBody,
       )
-    val serializedData = serializer.serialize(testValue)
-    val deserializedValue = serializer.deserialize(serializedData)
+    val serializedData = blockBodySerializer.serialize(testValue)
+    val deserializedValue = blockBodySerializer.deserialize(serializedData)
 
     assertThat(deserializedValue).isEqualTo(testValue)
   }

@@ -19,9 +19,11 @@ plugins {
 }
 
 dependencies {
-  api 'org.slf4j:slf4j-api'
   implementation "org.hyperledger.besu.internal:rlp"
   implementation "org.hyperledger.besu:besu-datatypes"
   implementation "io.tmio:tuweni-bytes"
   implementation 'com.google.guava:guava'
+
+  testImplementation(project(":serialization"))
+  testFixturesImplementation(project(":serialization"))
 }

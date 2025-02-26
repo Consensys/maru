@@ -15,17 +15,11 @@
  */
 package maru.core
 
+import maru.serialization.Serializer
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.datatypes.Hash
 
-typealias HashFunction = (BeaconBlockHeader) -> ByteArray
-
-enum class HashType(
-  val hashFunction: HashFunction,
-) {
-  ON_CHAIN(HashUtil::headerOnChainHash),
-  COMMITTED_SEAL(HashUtil::headerCommittedSealHash),
-}
+typealias HeaderHashFunction = (BeaconBlockHeader) -> ByteArray
 
 /**
  * Utility class for hashing various parts of the beacon chain
@@ -34,47 +28,52 @@ object HashUtil {
   /**
    * Hashes the header for onchain omitting the round number
    */
-  fun headerOnChainHash(header: BeaconBlockHeader): ByteArray {
-    val headerAsBytes =
-      byteArrayOf(header.number.toByte()) + header.proposer.address + header.parentRoot + header.stateRoot +
-        header.bodyRoot
-    return Hash.hash(Bytes.wrap(headerAsBytes)).toArray()
+  fun headerOnChainHash(serializer: Serializer<BeaconBlockHeader>): HeaderHashFunction =
+    { header -> headerOnChainHash(serializer, header) }
+
+  /**
+   * Hashes the header for onchain omitting the round number
+   */
+  fun headerOnChainHash(
+    serializer: Serializer<BeaconBlockHeader>,
+    header: BeaconBlockHeader,
+  ): ByteArray {
+    val headerWithoutRound = header.copy(round = 0u)
+    val headerBytes = Bytes.wrap(serializer.serialize(headerWithoutRound))
+    return Hash.hash(headerBytes).toArray()
   }
 
   /**
    * Hashes the header for the current commit seal hash including the round number
    */
-  fun headerCommittedSealHash(header: BeaconBlockHeader): ByteArray {
-    val headerAsBytes =
-      byteArrayOf(header.number.toByte()) + byteArrayOf(header.round.toByte()) + header.proposer.address +
-        header.parentRoot +
-        header.stateRoot +
-        header.bodyRoot
-    return Hash.hash(Bytes.wrap(headerAsBytes)).toArray()
+  fun headerCommittedSealHash(serializer: Serializer<BeaconBlockHeader>): HeaderHashFunction =
+    { header -> headerCommittedSealHash(serializer, header) }
+
+  /**
+   * Hashes the header for the current commit seal hash including the round number
+   */
+  fun headerCommittedSealHash(
+    serializer: Serializer<BeaconBlockHeader>,
+    header: BeaconBlockHeader,
+  ): ByteArray {
+    val headerBytes = Bytes.wrap(serializer.serialize(header))
+    return Hash.hash(headerBytes).toArray()
   }
 
-  fun bodyRoot(body: BeaconBlockBody): ByteArray {
-    // this deliberately does not include commit seals as these are always excluded as part of the hash
-    val prevCommitSeals = body.prevCommitSeals.map { it.signature }.reduceOrNull { acc, bytes -> acc + bytes }
-    val bodyAsBytes =
-      (prevCommitSeals ?: byteArrayOf()) + body.executionPayload.blockHash
-    return Hash.hash(Bytes.wrap(bodyAsBytes)).toArray()
+  fun bodyRoot(
+    serializer: Serializer<BeaconBlockBody>,
+    body: BeaconBlockBody,
+  ): ByteArray {
+    val bodyWithoutCommitSeals = body.copy(commitSeals = emptyList())
+    val bodyBytes = Bytes.wrap(serializer.serialize((bodyWithoutCommitSeals)))
+    return Hash.hash(bodyBytes).toArray()
   }
 
-  fun stateRoot(state: BeaconState): ByteArray {
-    var validatorsAsBytes =
-      state.validators
-        .map { it.address }
-        .reduceOrNull { acc, bytes -> acc + bytes }
-    // onchain hash can be used as this is the latest finalized beacon block header already on chain
-    var stateRootAsBytes =
-      headerOnChainHash(state.latestBeaconBlockHeader) + state.latestBeaconBlockRoot +
-        (validatorsAsBytes ?: byteArrayOf())
-    return Hash
-      .hash(
-        Bytes.wrap(
-          stateRootAsBytes,
-        ),
-      ).toArray()
+  fun stateRoot(
+    serializer: Serializer<BeaconState>,
+    state: BeaconState,
+  ): ByteArray {
+    val stateBytes = Bytes.wrap(serializer.serialize(state))
+    return Hash.hash(stateBytes).toArray()
   }
 }

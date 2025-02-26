@@ -26,12 +26,12 @@ data class BeaconBlockHeader(
   val parentRoot: ByteArray,
   val stateRoot: ByteArray,
   val bodyRoot: ByteArray,
-  val hashFunction: HashFunction,
+  val headerHashFunction: HeaderHashFunction,
 ) {
   val hash: Supplier<ByteArray>
 
   init {
-    hash = Suppliers.memoize { hashFunction.invoke(this) }
+    hash = Suppliers.memoize { headerHashFunction.invoke(this) }
   }
 
   override fun equals(other: Any?): Boolean {

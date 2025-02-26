@@ -26,6 +26,7 @@ import maru.core.ExecutionPayload
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.Validator
+import maru.serialization.rlp.RLPOnChainSerializers
 
 object DataGenerators {
   fun randomBeaconState(number: ULong): BeaconState {
@@ -38,7 +39,7 @@ object DataGenerators {
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
-        HashUtil::headerOnChainHash,
+        HashUtil.headerOnChainHash(RLPOnChainSerializers.BeaconBlockHeaderSerializer),
       )
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
@@ -72,7 +73,7 @@ object DataGenerators {
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
       bodyRoot = Random.nextBytes(32),
-      HashUtil::headerOnChainHash,
+      HashUtil.headerOnChainHash(RLPOnChainSerializers.BeaconBlockHeaderSerializer),
     )
 
   fun randomExecutionPayload(): ExecutionPayload =
