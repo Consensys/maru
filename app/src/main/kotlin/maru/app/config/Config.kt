@@ -26,6 +26,8 @@ data class ExecutionClientConfig(
 
 data class P2P(
   val port: UInt = 9000u,
+  val bootNodeP2PAddress: String? = null,
+  val validatorP2PAddress: List<String> = emptyList(),
 )
 
 data class Validator(
