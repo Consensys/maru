@@ -92,4 +92,6 @@ object DataGenerators {
       blockHash = Random.nextBytes(32),
       transactions = emptyList(),
     )
+
+  fun randomValidator(): Validator = Validator(Random.nextBytes(20))
 }
