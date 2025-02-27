@@ -13,17 +13,18 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database
+package maru.consensus.qbft.adaptors
 
-import maru.core.BeaconBlock
-import maru.core.BeaconState
+import maru.core.HashFunction
+import maru.core.HashType
+import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
 
-interface Database : AutoCloseable {
-  fun getLatestBeaconState(): BeaconState?
+object HashFunctionUtils {
+  fun toHeaderHashFunction(qbftHashMode: QbftHashMode): HashFunction = toHashType(qbftHashMode).hashFunction
 
-  fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState?
-
-  fun getBeaconBlock(beaconBlockRoot: ByteArray): BeaconBlock?
-
-  fun newUpdater(): Updater
+  fun toHashType(mode: QbftHashMode): HashType =
+    when (mode) {
+      QbftHashMode.ONCHAIN -> HashType.ON_CHAIN
+      QbftHashMode.COMMITTED_SEAL -> HashType.COMMITTED_SEAL
+    }
 }

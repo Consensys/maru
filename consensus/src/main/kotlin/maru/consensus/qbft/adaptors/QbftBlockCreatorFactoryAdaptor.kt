@@ -13,10 +13,21 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.consensus.qbft.adaptors
 
-data class BeaconBlockBody(
-  val prevCommitSeals: List<Seal>,
-  val commitSeals: List<Seal>,
-  val executionPayload: ExecutionPayload,
-)
+import maru.consensus.BlockCreator
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
+
+/**
+ * Adaptor to convert a [BlockCreator] to a [QbftBlockCreatorFactory].
+ */
+class QbftBlockCreatorFactoryAdaptor(
+  private val blockCreator: BlockCreator,
+) : QbftBlockCreatorFactory {
+  override fun create(roundNumber: Int): QbftBlockCreator =
+    QbftBlockCreatorAdaptor(
+      blockCreator,
+      roundNumber,
+    )
+}

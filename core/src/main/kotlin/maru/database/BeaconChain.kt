@@ -13,10 +13,17 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.database
 
-data class BeaconBlockBody(
-  val prevCommitSeals: List<Seal>,
-  val commitSeals: List<Seal>,
-  val executionPayload: ExecutionPayload,
-)
+import maru.core.BeaconBlock
+import maru.core.BeaconState
+
+interface BeaconChain : AutoCloseable {
+  fun getLatestBeaconState(): BeaconState?
+
+  fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState?
+
+  fun getBeaconBlock(beaconBlockRoot: ByteArray): BeaconBlock?
+
+  fun newUpdater(): Updater
+}

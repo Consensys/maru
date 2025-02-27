@@ -19,15 +19,19 @@ plugins {
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":serialization"))
 
   api("org.hyperledger.besu.internal:common") {
     because("API of the BftEventHandler interface")
   }
   implementation("org.hyperledger.besu.internal:core")
   implementation("org.hyperledger.besu.internal:rlp")
+  implementation("org.hyperledger.besu.internal:algorithms")
   api("org.hyperledger.besu.internal:blockcreation") {
     because("of the BlockCreator")
   }
+  implementation "org.hyperledger.besu.internal:qbft-core"
+  implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu:evm")
 
   testImplementation(testFixtures(project(":core")))

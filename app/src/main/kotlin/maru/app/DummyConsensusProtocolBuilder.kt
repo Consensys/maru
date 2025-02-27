@@ -19,11 +19,11 @@ import java.time.Clock
 import java.time.Duration
 import maru.app.config.DummyConsensusOptions
 import maru.app.config.ExecutionClientConfig
-import maru.consensus.EngineApiBlockCreator
 import maru.consensus.ForksSchedule
 import maru.consensus.dummy.DummyConsensusEventHandler
 import maru.consensus.dummy.DummyConsensusState
 import maru.consensus.dummy.EmptyBlockValidator
+import maru.consensus.dummy.EngineApiBlockCreator
 import maru.consensus.dummy.FinalizationState
 import maru.consensus.dummy.NextBlockTimestampProviderImpl
 import maru.consensus.dummy.TimeDrivenEventProducer
