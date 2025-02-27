@@ -193,6 +193,7 @@ class CliqueToPosTest {
     }
   }
 
+  // This is more of a debug method rather than an independent test. Thus disabling it
   @Disabled
   fun runFCU() {
     val headBlockNumber = 6L
@@ -204,6 +205,7 @@ class CliqueToPosTest {
     fcuFollowersToBlockHash(blockHash)
   }
 
+  // This is more of a debug method rather than an independent test. Useful to test if a node can sync from scratch
   @Disabled
   fun fullSync() {
     val target = geth1ExecutionEngineClient
