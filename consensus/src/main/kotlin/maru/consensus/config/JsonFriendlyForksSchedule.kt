@@ -44,7 +44,6 @@ data class JsonFriendlyForksSchedule(
   ): ConsensusConfiguration =
     when (type) {
       "dummy" -> {
-        1.milliseconds
         DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt(), obj["feeRecipient"]!!.fromHexToByteArray())
       }
       "delegated" -> {
