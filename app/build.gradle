@@ -68,6 +68,20 @@ tasks.register('unzipBesu', Copy) {
   dependsOn "downloadBesu"
 }
 
+application {
+  mainClass = 'maru.app.CliEntrypoint'
+}
+
+jar {
+  archiveBaseName = 'maru'
+  manifest {
+    attributes(
+      'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+      'Main-Class': 'maru.app.CliEntrypoint'
+      )
+  }
+}
+
 test {
   systemProperty("user.dir", besuDistLocation.asFile.toString())
   dependsOn "unzipBesu"
