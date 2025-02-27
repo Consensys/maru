@@ -15,12 +15,12 @@
  */
 package maru.consensus.dummy
 
-import maru.consensus.ConsensusConfiguration
+import maru.consensus.ConsensusConfig
 
 data class DummyConsensusConfig(
   private val blockTimeMillis: UInt,
   val feeRecipient: ByteArray,
-) : ConsensusConfiguration {
+) : ConsensusConfig {
   /** Leaving blockTimeMillis in the configuration to be future-proof, exposing nextBlockPeriodSeconds to be closer
    * to reality where block timestamp is in seconds
    */

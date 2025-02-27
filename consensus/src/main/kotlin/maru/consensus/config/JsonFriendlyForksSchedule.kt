@@ -17,7 +17,7 @@ package maru.consensus.config
 
 import fromHexToByteArray
 import kotlin.time.Duration.Companion.milliseconds
-import maru.consensus.ConsensusConfiguration
+import maru.consensus.ConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
@@ -41,7 +41,7 @@ data class JsonFriendlyForksSchedule(
   private fun mapObjectToConfiguration(
     type: String,
     obj: Map<String, String>,
-  ): ConsensusConfiguration =
+  ): ConsensusConfig =
     when (type) {
       "dummy" -> {
         DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt(), obj["feeRecipient"]!!.fromHexToByteArray())

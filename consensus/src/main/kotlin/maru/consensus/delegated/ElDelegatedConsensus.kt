@@ -17,7 +17,7 @@ package maru.consensus.delegated
 
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
-import maru.consensus.ConsensusConfiguration
+import maru.consensus.ConsensusConfig
 import maru.consensus.NewBlockHandler
 import maru.core.Protocol
 import org.apache.logging.log4j.LogManager
@@ -33,7 +33,7 @@ class ElDelegatedConsensus(
 ) : Protocol {
   data class Config(
     val pollPeriod: Duration,
-  ) : ConsensusConfiguration
+  ) : ConsensusConfig
 
   private val log: Logger = LogManager.getLogger(this::class.java)
 

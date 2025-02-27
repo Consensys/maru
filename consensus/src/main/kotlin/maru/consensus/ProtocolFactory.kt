@@ -25,7 +25,7 @@ import maru.executionlayer.client.ExecutionLayerClient
 import org.web3j.protocol.Web3j
 
 interface ProtocolFactory {
-  fun create(protocolConfig: ConsensusConfiguration): Protocol
+  fun create(protocolConfig: ConsensusConfig): Protocol
 }
 
 class OmniProtocolFactory(
@@ -36,7 +36,7 @@ class OmniProtocolFactory(
   private val ethereumJsonRpcClient: Web3j,
   private val newBlockHandler: NewBlockHandler,
 ) : ProtocolFactory {
-  override fun create(protocolConfig: ConsensusConfiguration): Protocol =
+  override fun create(protocolConfig: ConsensusConfig): Protocol =
     when (protocolConfig) {
       is DummyConsensusConfig -> {
         require(config.dummyConsensusOptions != null) {

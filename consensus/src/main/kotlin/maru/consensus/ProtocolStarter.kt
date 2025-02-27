@@ -45,7 +45,7 @@ class ProtocolStarter(
 ) : Protocol {
   data class ProtocolWithConfig(
     val protocol: Protocol,
-    val config: ConsensusConfiguration,
+    val config: ConsensusConfig,
   )
 
   private val log: Logger = LogManager.getLogger(this::class.java)

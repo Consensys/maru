@@ -171,12 +171,12 @@ class ProtocolStarterTest {
       }
     }
 
-  private val protocolConfig1 = object : ConsensusConfiguration {}
-  private val protocolConfig2 = object : ConsensusConfiguration {}
+  private val protocolConfig1 = object : ConsensusConfig {}
+  private val protocolConfig2 = object : ConsensusConfig {}
 
   private val protocolFactory =
     object : ProtocolFactory {
-      override fun create(protocolConfig: ConsensusConfiguration): Protocol =
+      override fun create(protocolConfig: ConsensusConfig): Protocol =
         when (protocolConfig) {
           protocolConfig1 -> protocol1
           protocolConfig2 -> protocol2
