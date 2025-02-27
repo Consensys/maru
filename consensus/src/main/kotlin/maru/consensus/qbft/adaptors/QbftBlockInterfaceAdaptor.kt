@@ -42,7 +42,7 @@ class QbftBlockInterfaceAdaptor : QbftBlockInterface {
         parentRoot = beaconBlockHeader.parentRoot,
         stateRoot = beaconBlockHeader.stateRoot,
         bodyRoot = beaconBlockHeader.bodyRoot,
-        HashUtil.headerCommittedSealHash(RLPCommitSealSerializers.BeaconBlockHeaderSerializer),
+        headerHashFunction = HashUtil.headerCommittedSealHash(RLPCommitSealSerializers.BeaconBlockHeaderSerializer),
       )
 
     return QbftBlockAdaptor(
