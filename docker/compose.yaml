@@ -52,7 +52,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: ethereum/client-go:release-1.14
+    image: ethereum/client-go:release-1.15
     restart: always
     healthcheck:
       test: [ "CMD-SHELL", "/scripts/healthcheck.sh" ]
