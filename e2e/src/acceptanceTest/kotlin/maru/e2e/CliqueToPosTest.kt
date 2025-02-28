@@ -33,7 +33,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
+import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
@@ -59,17 +59,20 @@ class CliqueToPosTest {
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
+    private val maru = MaruFactory.buildTestMaru()
 
     @BeforeAll
     @JvmStatic
     fun beforeAll() {
       qbftCluster.before()
+      maru.start()
     }
 
     @AfterAll
     @JvmStatic
     fun afterAll() {
       qbftCluster.after()
+      maru.stop()
     }
   }
 
@@ -110,13 +113,17 @@ class CliqueToPosTest {
     everyoneArePeered()
     val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
 
-    await().timeout(1.minutes.toJavaDuration()).pollInterval(5.seconds.toJavaDuration()).untilAsserted {
-      val unixTimestamp = System.currentTimeMillis() / 1000
-      log.info(
-        "Waiting for Cancun switch " + "${newBlockTimestamp.longValue() - unixTimestamp} seconds until the switch ",
-      )
-      assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
-    }
+    await
+      .timeout(1.minutes.toJavaDuration())
+      .pollInterval(5.seconds.toJavaDuration())
+      .untilAsserted {
+        val unixTimestamp = System.currentTimeMillis() / 1000
+        log.info(
+          "Waiting for Cancun switch {} seconds until the switch ",
+          { newBlockTimestamp.longValue() - unixTimestamp },
+        )
+        assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
+      }
 
     waitForAllBlockHeightsToMatch()
 
@@ -185,10 +192,16 @@ class CliqueToPosTest {
 
     firstPosBlockTransaction.waitForInclusion()
 
-    sendNewPayloadToFollowers(newExecutionPayload)
+    val postMergeBlock =
+      TestEnvironment.sequencerL2Client
+        .ethGetBlockByNumber(DefaultBlockParameter.valueOf(BigInteger.valueOf(6)), true)
+        .send()
 
-    await().untilAsserted {
-      fcuFollowersToBlockHash(newPayloadHash.toHexString())
+    sendNewPayloadToFollowers(newExecutionPayload)
+    val blockHash = postMergeBlock.block.hash
+    fcuFollowersToBlockHash(blockHash)
+
+    await.untilAsserted {
       waitForAllBlockHeightsToMatch()
     }
   }
@@ -267,7 +280,7 @@ class CliqueToPosTest {
   private fun waitForAllBlockHeightsToMatch() {
     val sequencerBlockHeight = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
 
-    await().untilAsserted {
+    await.untilAsserted {
       val blockHeights =
         TestEnvironment.followerClients.entries
           .map { entry ->
@@ -289,7 +302,7 @@ class CliqueToPosTest {
 
   private fun everyoneArePeered() {
     log.info("Call add peer on all nodes and wait for peering to happen.")
-    await().pollInterval(1.seconds.toJavaDuration()).timeout(1.minutes.toJavaDuration()).untilAsserted {
+    await.pollInterval(1.seconds.toJavaDuration()).timeout(1.minutes.toJavaDuration()).untilAsserted {
       TestEnvironment.followerClients.forEach {
         try {
           it.value
