@@ -16,7 +16,7 @@ services:
       - ./maru/genesis-besu.json:/opt/consensys/maru/configs/genesis-besu.json:ro
 
     ports:
-      # Attach the IDE's remote java debugger to localhost:5005 to debug coordinator
+      # Attach the IDE's remote java debugger to localhost:5005 to debug maru
       - "5005:5005"
 
     networks:
