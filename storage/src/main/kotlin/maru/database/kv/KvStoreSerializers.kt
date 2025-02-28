@@ -15,10 +15,10 @@
  */
 package maru.database.kv
 
-import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.RLPOnChainSerializers
 
 object KvStoreSerializers {
   val BytesSerializer = BytesSerializer()
-  val BeaconStateSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconStateSerializer)
-  val BeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconBlockSerializer)
+  val BeaconStateSerializer = KvStoreSerializerAdapter(RLPOnChainSerializers.BeaconStateSerializer)
+  val BeaconBlockSerializer = KvStoreSerializerAdapter(RLPOnChainSerializers.BeaconBlockSerializer)
 }

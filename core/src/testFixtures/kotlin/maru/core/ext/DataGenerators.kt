@@ -23,18 +23,28 @@ import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.ExecutionPayload
+import maru.core.HashUtil
+import maru.core.HeaderHashFunction
 import maru.core.Seal
 import maru.core.Validator
+import maru.serialization.rlp.RLPCommitSealSerializers
+import maru.serialization.rlp.RLPOnChainSerializers
 
 object DataGenerators {
+  val COMMITTED_SEAL_HASH = HashUtil.headerCommittedSealHash(RLPCommitSealSerializers.BeaconBlockHeaderSerializer)
+  val ONCHAIN_HASH = HashUtil.headerOnChainHash(RLPOnChainSerializers.BeaconBlockHeaderSerializer)
+
   fun randomBeaconState(number: ULong): BeaconState {
     val beaconBlockHeader =
       BeaconBlockHeader(
         number = number,
         round = Random.nextULong(),
+        timestamp = Random.nextULong(),
         proposer = Validator(Random.nextBytes(128)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
+        bodyRoot = Random.nextBytes(32),
+        ONCHAIN_HASH,
       )
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
@@ -43,26 +53,40 @@ object DataGenerators {
     )
   }
 
-  fun randomBeaconBlock(number: ULong): BeaconBlock {
-    val beaconBLockHeader =
-      BeaconBlockHeader(
-        number = number,
-        round = Random.nextULong(),
-        proposer = Validator(Random.nextBytes(128)),
-        parentRoot = Random.nextBytes(32),
-        stateRoot = Random.nextBytes(32),
-      )
-    val beaconBlockBody =
-      BeaconBlockBody(
-        prevBlockSeals = buildList(3) { Seal(Random.nextBytes(96)) },
-        executionPayload = randomExecutionPayload(),
-      )
-
+  fun randomBeaconBlock(
+    number: ULong,
+    headerHashFunction: HeaderHashFunction = ONCHAIN_HASH,
+  ): BeaconBlock {
+    val beaconBlockHeader = randomBeaconBlockHeader(number, headerHashFunction)
+    val beaconBlockBody = randomBeaconBlockBody()
     return BeaconBlock(
-      beaconBlockHeader = beaconBLockHeader,
+      beaconBlockHeader = beaconBlockHeader,
       beaconBlockBody = beaconBlockBody,
     )
   }
+
+  fun randomBeaconBlockBody(): BeaconBlockBody =
+    BeaconBlockBody(
+      prevCommitSeals = (1..3).map { Seal(Random.nextBytes(96)) },
+      commitSeals = (1..3).map { Seal(Random.nextBytes(96)) },
+      executionPayload = randomExecutionPayload(),
+    )
+
+  fun randomBeaconBlockHeader(
+    number: ULong,
+    headerHashFunction: HeaderHashFunction =
+      ONCHAIN_HASH,
+  ): BeaconBlockHeader =
+    BeaconBlockHeader(
+      number = number,
+      round = Random.nextULong(),
+      timestamp = Random.nextULong(),
+      proposer = Validator(Random.nextBytes(128)),
+      parentRoot = Random.nextBytes(32),
+      stateRoot = Random.nextBytes(32),
+      bodyRoot = Random.nextBytes(32),
+      headerHashFunction = headerHashFunction,
+    )
 
   fun randomExecutionPayload(): ExecutionPayload =
     ExecutionPayload(

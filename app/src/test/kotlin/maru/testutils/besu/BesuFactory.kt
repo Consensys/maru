@@ -56,6 +56,7 @@ object BesuFactory {
         .engineJsonRpcConfiguration(engineApiConfiguration)
         .jsonRpcDebug()
         .dataPath(besuNode.homeDirectory())
+        .dataStorageConfiguration(besuNode.dataStorageConfiguration)
         .build()
     return BesuNodeFactory().create(nodeConfiguration)
   }

@@ -33,7 +33,8 @@ class BeaconBlockBodySerializerTest {
   fun `can serialize and deserialize same value`() {
     val testValue =
       BeaconBlockBody(
-        prevBlockSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        prevCommitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        commitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
         executionPayload =
           randomExecutionPayload(),
       )

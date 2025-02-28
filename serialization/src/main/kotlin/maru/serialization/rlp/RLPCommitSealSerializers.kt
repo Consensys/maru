@@ -15,11 +15,14 @@
  */
 package maru.serialization.rlp
 
-object RLPSerializers {
+import maru.core.HashUtil
+
+object RLPCommitSealSerializers {
   val ValidatorSerializer = ValidatorSerializer()
   val BeaconBlockHeaderSerializer =
     BeaconBlockHeaderSerializer(
       validatorSerializer = ValidatorSerializer,
+      headerHashFunction = HashUtil::headerCommittedSealHash,
     )
   val SealSerializer = SealSerializer()
   val ExecutionPayloadSerializer = ExecutionPayloadSerializer()
