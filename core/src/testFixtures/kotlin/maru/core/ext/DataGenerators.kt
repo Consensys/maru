@@ -24,11 +24,15 @@ import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.ExecutionPayload
 import maru.core.HashUtil
+import maru.core.HeaderHashFunction
 import maru.core.Seal
 import maru.core.Validator
-import maru.serialization.rlp.RLPOnChainSerializers
+import maru.serialization.rlp.RLPCommitSealSerializers
 
 object DataGenerators {
+  val COMMITTED_SEAL_HASH = HashUtil.headerCommittedSealHash(RLPCommitSealSerializers.BeaconBlockHeaderSerializer)
+  val ONCHAIN_HASH = HashUtil.headerCommittedSealHash(RLPCommitSealSerializers.BeaconBlockHeaderSerializer)
+
   fun randomBeaconState(number: ULong): BeaconState {
     val beaconBlockHeader =
       BeaconBlockHeader(
@@ -39,7 +43,7 @@ object DataGenerators {
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
-        HashUtil.headerOnChainHash(RLPOnChainSerializers.BeaconBlockHeaderSerializer),
+        ONCHAIN_HASH,
       )
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
@@ -48,8 +52,11 @@ object DataGenerators {
     )
   }
 
-  fun randomBeaconBlock(number: ULong): BeaconBlock {
-    val beaconBlockHeader = randomBeaconBlockHeader(number)
+  fun randomBeaconBlock(
+    number: ULong,
+    headerHashFunction: HeaderHashFunction = ONCHAIN_HASH,
+  ): BeaconBlock {
+    val beaconBlockHeader = randomBeaconBlockHeader(number, headerHashFunction)
     val beaconBlockBody = randomBeaconBlockBody()
     return BeaconBlock(
       beaconBlockHeader = beaconBlockHeader,
@@ -64,7 +71,11 @@ object DataGenerators {
       executionPayload = randomExecutionPayload(),
     )
 
-  fun randomBeaconBlockHeader(number: ULong): BeaconBlockHeader =
+  fun randomBeaconBlockHeader(
+    number: ULong,
+    headerHashFunction: HeaderHashFunction =
+      ONCHAIN_HASH,
+  ): BeaconBlockHeader =
     BeaconBlockHeader(
       number = number,
       round = Random.nextULong(),
@@ -73,7 +84,7 @@ object DataGenerators {
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
       bodyRoot = Random.nextBytes(32),
-      HashUtil.headerOnChainHash(RLPOnChainSerializers.BeaconBlockHeaderSerializer),
+      headerHashFunction = headerHashFunction,
     )
 
   fun randomExecutionPayload(): ExecutionPayload =
