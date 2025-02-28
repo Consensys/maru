@@ -33,7 +33,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -151,7 +150,7 @@ class CliqueToPosTest {
     fcuFollowersToBlockHash(blockHash)
     val postPreMergeBlockHash = postMergeBlock.block.hash
 
-    await().untilAsserted {
+    await.untilAsserted {
       fcuFollowersToBlockHash(postPreMergeBlockHash)
       waitForAllBlockHeightsToMatch()
     }
