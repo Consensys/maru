@@ -27,9 +27,9 @@ import maru.core.HashUtil
 import maru.core.HeaderHashFunction
 import maru.core.Seal
 import maru.core.Validator
+import maru.executionlayer.manager.BlockMetadata
 import maru.serialization.rlp.RLPCommitSealSerializers
 import maru.serialization.rlp.RLPOnChainSerializers
-import maru.executionlayer.manager.BlockMetadata
 
 object DataGenerators {
   val COMMITTED_SEAL_HASH = HashUtil.headerCommittedSealHash(RLPCommitSealSerializers.BeaconBlockHeaderSerializer)
