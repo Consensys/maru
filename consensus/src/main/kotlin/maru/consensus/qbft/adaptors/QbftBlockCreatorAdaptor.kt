@@ -33,14 +33,14 @@ class QbftBlockCreatorAdaptor(
   override fun createBlock(
     headerTimeStampSeconds: Long,
     parentHeader: QbftBlockHeader,
-  ): QbftBlock? {
+  ): QbftBlock {
     val beaconBlock =
       blockCreator.createBlock(
         headerTimeStampSeconds,
         round,
         BlockUtil.toBeaconBlockHeader(parentHeader),
       )
-    return beaconBlock?.let { QbftBlockAdaptor(it) }
+    return QbftBlockAdaptor(beaconBlock)
   }
 
   override fun createSealedBlock(

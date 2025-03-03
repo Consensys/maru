@@ -25,6 +25,7 @@ import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.datatypes.Address
@@ -85,6 +86,43 @@ class BlockCreatorTest {
     )
     assertThat(blockBody.commitSeals).isEqualTo(Collections.emptyList<Seal>())
     assertThat(blockBody.executionPayload).isEqualTo(executionPayload)
+  }
+
+  @Test
+  fun `fails to create block if execution payload not available`() {
+    val parentBlock = DataGenerators.randomBeaconBlock(10U)
+    val parentHeader = parentBlock.beaconBlockHeader
+
+    whenever(
+      executionLayerManager.finishBlockBuilding(),
+    ).thenReturn(SafeFuture.failedFuture(IllegalStateException("Execution payload not available")))
+
+    val blockCreator = BlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain)
+    assertThatThrownBy({
+      blockCreator.createBlock(1000L, 1, parentHeader)
+    })
+      .isInstanceOf(
+        IllegalStateException::class.java,
+      ).hasMessage("Execution payload unavailable, unable to create block")
+  }
+
+  @Test
+  fun `fails to create block if parent beacon block not available`() {
+    val parentBlock = DataGenerators.randomBeaconBlock(10U)
+    val parentHeader = parentBlock.beaconBlockHeader
+    val executionPayload = DataGenerators.randomExecutionPayload()
+
+    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
+    whenever(beaconChain.getBeaconBlock(parentHeader.hash())).thenReturn(null)
+    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
+
+    val blockCreator = BlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain)
+    assertThatThrownBy({
+      blockCreator.createBlock(1000L, 1, parentHeader)
+    })
+      .isInstanceOf(
+        IllegalStateException::class.java,
+      ).hasMessage("Parent beacon block unavailable, unable to create block")
   }
 
   @Test

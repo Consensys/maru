@@ -49,56 +49,47 @@ class BlockCreator(
     timestamp: Long,
     roundNumber: Int,
     parentHeader: BeaconBlockHeader,
-  ): BeaconBlock? {
+  ): BeaconBlock {
     val executionPayload =
       try {
-        manager
-          .finishBlockBuilding()
-          .get()
+        manager.finishBlockBuilding().get()
       } catch (e: Exception) {
-        log.warn("Error during block building finish! Starting new attempt!", e)
-        null
+        throw IllegalStateException("Execution payload unavailable, unable to create block", e)
       }
+    val latestBeaconBlock =
+      beaconChain.getBeaconBlock(parentHeader.hash())
+        ?: throw IllegalStateException("Parent beacon block unavailable, unable to create block")
 
-    val block =
-      executionPayload?.let {
-        val latestBeaconBlock =
-          beaconChain.getBeaconBlock(parentHeader.hash())
-            ?: throw IllegalStateException("Latest state unavailable, unable to create block")
+    val beaconBlockBody =
+      BeaconBlockBody(latestBeaconBlock.beaconBlockBody.commitSeals, emptyList(), executionPayload)
+    val bodyRoot = HashUtil.bodyRoot(beaconBlockBody)
 
-        val beaconBlockBody =
-          BeaconBlockBody(latestBeaconBlock.beaconBlockBody.commitSeals, emptyList(), executionPayload)
-        val bodyRoot = HashUtil.bodyRoot(beaconBlockBody)
+    val number = parentHeader.number + 1UL
+    val proposer =
+      proposerSelector.selectProposerForRound(
+        ConsensusRoundIdentifier(number.toLong(), roundNumber.toInt()),
+      )
+    val temporaryBlockHeader =
+      BeaconBlockHeader(
+        number.toULong(),
+        roundNumber.toULong(),
+        timestamp.toULong(),
+        Validator(proposer.toArrayUnsafe()),
+        parentHeader.hash(),
+        ByteArray(32), // temporary state root to avoid circular dependency, will be replaced in final header
+        bodyRoot,
+        HashType.COMMITTED_SEAL.hashFunction,
+      )
 
-        val number = parentHeader.number + 1UL
-        val proposer =
-          proposerSelector.selectProposerForRound(
-            ConsensusRoundIdentifier(number.toLong(), roundNumber.toInt()),
-          )
-        val temporaryBlockHeader =
-          BeaconBlockHeader(
-            number.toULong(),
-            roundNumber.toULong(),
-            timestamp.toULong(),
-            Validator(proposer.toArrayUnsafe()),
-            parentHeader.hash(),
-            ByteArray(32), // temporary state root to avoid circular dependency, will be replaced in final header
-            bodyRoot,
-            HashType.COMMITTED_SEAL.hashFunction,
-          )
+    val validators =
+      validatorProvider
+        .getValidatorsAfterBlock(
+          parentHeader,
+        )
+    val stateRoot = HashUtil.stateRoot(BeaconState(temporaryBlockHeader, bodyRoot, validators))
+    val finalBlockHeader = temporaryBlockHeader.copy(stateRoot = stateRoot)
 
-        val validators =
-          validatorProvider
-            .getValidatorsAfterBlock(
-              parentHeader,
-            )
-        val stateRoot = HashUtil.stateRoot(BeaconState(temporaryBlockHeader, bodyRoot, validators))
-        val finalBlockHeader = temporaryBlockHeader.copy(stateRoot = stateRoot)
-
-        return BeaconBlock(finalBlockHeader, beaconBlockBody)
-      }
-
-    return block
+    return BeaconBlock(finalBlockHeader, beaconBlockBody)
   }
 
   /**
