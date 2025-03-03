@@ -19,16 +19,15 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.ExecutionPayload
 import maru.core.HashType
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
-import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
 
 /**
  * Responsible for beacon block creation.
@@ -39,8 +38,6 @@ class BlockCreator(
   private val validatorProvider: ValidatorProvider,
   private val beaconChain: BeaconChain,
 ) {
-  private val log = LogManager.getLogger(QbftBlockCreator::class.java)
-
   /**
    * Creates a new block with the given timestamp on of the parent header including the execution payload ready
    * to be proposed as a block in the QBFT consensus.
@@ -50,12 +47,7 @@ class BlockCreator(
     roundNumber: Int,
     parentHeader: BeaconBlockHeader,
   ): BeaconBlock {
-    val executionPayload =
-      try {
-        manager.finishBlockBuilding().get()
-      } catch (e: Exception) {
-        throw IllegalStateException("Execution payload unavailable, unable to create block", e)
-      }
+    val executionPayload = createExecutionPayload(timestamp, roundNumber)
     val latestBeaconBlock =
       beaconChain.getBeaconBlock(parentHeader.hash())
         ?: throw IllegalStateException("Parent beacon block unavailable, unable to create block")
@@ -90,6 +82,35 @@ class BlockCreator(
     val finalBlockHeader = temporaryBlockHeader.copy(stateRoot = stateRoot)
 
     return BeaconBlock(finalBlockHeader, beaconBlockBody)
+  }
+
+  private fun createExecutionPayload(
+    timestamp: Long,
+    roundNumber: Int,
+  ): ExecutionPayload {
+    if (roundNumber == 0) {
+      try {
+        return manager.finishBlockBuilding().get()
+      } catch (e: Exception) {
+        throw IllegalStateException("Execution payload unavailable, unable to create block", e)
+      }
+    } else {
+      // This is a round change block, we need to set the head and start block building as we didn't expect to create this block
+      val beaconState = beaconChain.getLatestBeaconState() ?: throw IllegalStateException("Beacon state unavailable")
+      val headHash = beaconState.latestBeaconBlockHeader.hash()
+      manager
+        .setHeadAndBuildBlockImmediately(
+          headHash = headHash,
+          safeHash = headHash,
+          finalizedHash = headHash,
+          timestamp,
+        ).get()
+      try {
+        return manager.finishBlockBuilding().get()
+      } catch (e: Exception) {
+        throw IllegalStateException("Execution payload unavailable, unable to create block", e)
+      }
+    }
   }
 
   /**

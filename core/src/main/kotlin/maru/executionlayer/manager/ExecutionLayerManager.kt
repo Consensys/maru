@@ -123,6 +123,13 @@ interface ExecutionLayerManager {
     nextBlockTimestamp: Long,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
+  fun setHeadAndBuildBlockImmediately(
+    headHash: ByteArray,
+    safeHash: ByteArray,
+    finalizedHash: ByteArray,
+    nextBlockTimestamp: Long,
+  ): SafeFuture<ExecutionPayload>
+
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
 
   fun finishBlockBuildingAndBuildNextBlock(): SafeFuture<ExecutionPayload>
