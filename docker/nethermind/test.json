@@ -5,6 +5,9 @@
     "BaseDbPath": "nethermind_db/test",
     "LogFileName": "test.logs.txt"
   },
+  "Merge": {
+    "Enabled": true
+  },
   "TxPool": {
     "BlobsSupport": "Disabled"
   },

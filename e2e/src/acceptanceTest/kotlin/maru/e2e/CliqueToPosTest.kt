@@ -33,7 +33,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
+import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
@@ -44,10 +44,8 @@ import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
 class CliqueToPosTest {
@@ -59,23 +57,24 @@ class CliqueToPosTest {
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
+    private val maru = MaruFactory.buildTestMaru()
 
     @BeforeAll
     @JvmStatic
     fun beforeAll() {
       qbftCluster.before()
+      maru.start()
     }
 
     @AfterAll
     @JvmStatic
     fun afterAll() {
       qbftCluster.after()
+      maru.stop()
     }
   }
 
   private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
-  private val web3jClient = createWeb3jClient("http://localhost:8550", Optional.empty())
-  private val sequencerExecutionClient = Web3JExecutionEngineClient(web3jClient)
   private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
   private val nethermindFollowerExecutionEngineClient =
     createExecutionClient(
@@ -108,87 +107,46 @@ class CliqueToPosTest {
   fun networkCanBeSwitched() {
     sealPreMergeBlocks()
     everyoneArePeered()
-    val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
-
-    await().timeout(1.minutes.toJavaDuration()).pollInterval(5.seconds.toJavaDuration()).untilAsserted {
-      val unixTimestamp = System.currentTimeMillis() / 1000
-      log.info(
-        "Waiting for Cancun switch " + "${newBlockTimestamp.longValue() - unixTimestamp} seconds until the switch ",
-      )
-      assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
-    }
-
-    waitForAllBlockHeightsToMatch()
+    val newBlockTimestamp = UInt64.valueOf(parseSwitchTimestamp())
 
     val preMergeBlock =
-      TestEnvironment.sequencerL2Client.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send()
+      TestEnvironment.sequencerL2Client
+        .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
+        .send()
     val lastPreMergeBlockHash = preMergeBlock.block.hash
-    val lastPreMergeBlockHashBytes32 = Bytes32.fromHexString(lastPreMergeBlockHash)
+
+    await
+      .timeout(1.minutes.toJavaDuration())
+      .pollInterval(5.seconds.toJavaDuration())
+      .untilAsserted {
+        val unixTimestamp = System.currentTimeMillis() / 1000
+        log.info(
+          "Waiting for Cancun switch {} seconds until the switch ",
+          { newBlockTimestamp.longValue() - unixTimestamp },
+        )
+        assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
+      }
 
     fcuFollowersToBlockHash(lastPreMergeBlockHash)
+    waitForAllBlockHeightsToMatch()
 
     log.info("Marked last pre merge block as finalized")
 
     // Next block's content
-    val firstPosBlockTransaction = TestEnvironment.sendArbitraryTransaction()
-
-    val payloadAttributes =
-      Optional.of(
-        PayloadAttributesV1(
-          newBlockTimestamp,
-          Bytes32.ZERO,
-          Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
-        ),
-      )
-    val fcuResponse =
-      sequencerExecutionClient
-        .forkChoiceUpdatedV1(
-          ForkChoiceStateV1(
-            lastPreMergeBlockHashBytes32,
-            lastPreMergeBlockHashBytes32,
-            lastPreMergeBlockHashBytes32,
-          ),
-          payloadAttributes,
-        ).get()
-    val payloadId = fcuResponse.payload.asInternalExecutionPayload().payloadId
-
-    // To give EL time to execute a block
-    Thread.sleep(6000)
-
-    val getPayloadResponse = sequencerExecutionClient.getPayloadV1(payloadId.get()).get()
-    val newExecutionPayload = getPayloadResponse.payload
-    val newPayloadResult = sequencerExecutionClient.newPayloadV1(newExecutionPayload).get()
-    val newPayloadHash =
-      newPayloadResult.payload
-        .asInternalExecutionPayload()
-        .latestValidHash
-        .get()
-    val nextPayloadAttributes =
-      Optional.of(
-        PayloadAttributesV1(
-          newExecutionPayload.timestamp + 1,
-          Bytes32.ZERO,
-          Bytes20.fromHexString("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
-        ),
-      )
-    val nextForkChoiceState = ForkChoiceStateV1(newPayloadHash, newPayloadHash, newPayloadHash)
-    sequencerExecutionClient
-      .forkChoiceUpdatedV1(nextForkChoiceState, nextPayloadAttributes)
-      .get()
-      .also { log.info("FCU of new block on Sequencer $it") }
+    TestEnvironment.sendArbitraryTransaction().waitForInclusion()
 
     log.info("Sequencer has switched to PoS")
 
-    firstPosBlockTransaction.waitForInclusion()
+    TestEnvironment.sendArbitraryTransaction().waitForInclusion()
 
-    sendNewPayloadToFollowers(newExecutionPayload)
+    assertSequencerBlockHeight(7)
+    setAllFollowersHeadToBlockNumber(6)
+    setAllFollowersHeadToBlockNumber(7)
 
-    await().untilAsserted {
-      fcuFollowersToBlockHash(newPayloadHash.toHexString())
-      waitForAllBlockHeightsToMatch()
-    }
+    waitForAllBlockHeightsToMatch()
   }
 
+  // This is more of a debug method rather than an independent test. Thus disabling it
   @Disabled
   fun runFCU() {
     val headBlockNumber = 6L
@@ -200,19 +158,12 @@ class CliqueToPosTest {
     fcuFollowersToBlockHash(blockHash)
   }
 
+  // This is more of a debug method rather than an independent test. Useful to test if a node can sync from scratch
   @Disabled
   fun fullSync() {
-    val target = nethermindFollowerExecutionEngineClient
+    val target = besuFollowerExecutionEngineClient
 
-    val lastPreMergeBlockNumber = 5L
-
-    val headBlockNumber = 6L
-    for (blockNumber in lastPreMergeBlockNumber + 1..headBlockNumber) {
-      val block = getBlockByNumber(blockNumber, true)
-
-      val newPayloadV1 = executionPayloadV1FromBlock(block)
-      target.newPayloadV1(newPayloadV1).get()
-    }
+    val headBlockNumber = 7L
 
     val currentBLock =
       TestEnvironment.sequencerL2Client
@@ -229,7 +180,15 @@ class CliqueToPosTest {
     )
   }
 
-  private fun parseCancunTimestamp(): Long {
+  private fun setAllFollowersHeadToBlockNumber(blockNumber: Long): String {
+    val postMergeBlock = getBlockByNumber(blockNumber, true)
+    val getNewPayloadFromPostMergeBlockNumber = executionPayloadV1FromBlock(postMergeBlock)
+    sendNewPayloadToFollowers(getNewPayloadFromPostMergeBlockNumber)
+    fcuFollowersToBlockHash(postMergeBlock.hash)
+    return postMergeBlock.hash
+  }
+
+  private fun parseSwitchTimestamp(): Long {
     val objectMapper = ObjectMapper()
     val genesisTree = objectMapper.readTree(File("../docker/initialization/genesis-besu.json"))
     val switchTime = genesisTree.at("/config/shanghaiTime").asLong()
@@ -259,10 +218,19 @@ class CliqueToPosTest {
     blockHeights.forEach { log.info("${it.first} block height is ${it.second.get().blockNumber}") }
   }
 
+  private fun assertSequencerBlockHeight(expectedBlockNumber: Long) {
+    val sequencerBlockHeight =
+      TestEnvironment.sequencerL2Client
+        .ethBlockNumber()
+        .send()
+        .blockNumber
+    assertThat(sequencerBlockHeight).isEqualTo(expectedBlockNumber)
+  }
+
   private fun waitForAllBlockHeightsToMatch() {
     val sequencerBlockHeight = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
 
-    await().untilAsserted {
+    await.untilAsserted {
       val blockHeights =
         TestEnvironment.followerClients.entries
           .map { entry ->
@@ -284,7 +252,7 @@ class CliqueToPosTest {
 
   private fun everyoneArePeered() {
     log.info("Call add peer on all nodes and wait for peering to happen.")
-    await().pollInterval(1.seconds.toJavaDuration()).timeout(1.minutes.toJavaDuration()).untilAsserted {
+    await.pollInterval(1.seconds.toJavaDuration()).timeout(1.minutes.toJavaDuration()).untilAsserted {
       TestEnvironment.followerClients.forEach {
         try {
           it.value
