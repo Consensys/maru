@@ -47,60 +47,6 @@ class BlockCreatorTest {
     val executionPayload = DataGenerators.randomExecutionPayload()
     whenever(beaconChain.getBeaconBlock(parentHeader.hash())).thenReturn(parentBlock)
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
-    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 0))).thenReturn(Address.ZERO)
-
-    val blockCreator = BlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain)
-    val block = blockCreator.createBlock(1000L, 0, parentHeader)
-
-    // block header fields
-    val blockHeader = block!!.beaconBlockHeader
-    assertThat(blockHeader.number).isEqualTo(11UL)
-    assertThat(blockHeader.round).isEqualTo(0UL)
-    assertThat(blockHeader.timestamp).isEqualTo(1000UL)
-    assertThat(blockHeader.proposer).isEqualTo(Validator(Address.ZERO.toArray()))
-
-    // block header roots
-    val stateRoot =
-      HashUtil.stateRoot(
-        BeaconState(
-          block.beaconBlockHeader.copy(stateRoot = ByteArray(32)),
-          HashUtil.bodyRoot(block.beaconBlockBody),
-          Collections.emptySet(),
-        ),
-      )
-    assertThat(
-      blockHeader.bodyRoot,
-    ).isEqualTo(
-      HashUtil.bodyRoot(block.beaconBlockBody),
-    )
-    assertThat(blockHeader.stateRoot).isEqualTo(stateRoot)
-    assertThat(blockHeader.parentRoot).isEqualTo(parentHeader.hash())
-    assertThat(block.beaconBlockHeader.hash()).isEqualTo(HashUtil.headerCommittedSealHash(block.beaconBlockHeader))
-
-    // block body fields
-    val blockBody = block.beaconBlockBody
-    assertThat(
-      blockBody.prevCommitSeals,
-    ).isEqualTo(
-      parentBlock.beaconBlockBody.commitSeals,
-    )
-    assertThat(blockBody.commitSeals).isEqualTo(Collections.emptyList<Seal>())
-    assertThat(blockBody.executionPayload).isEqualTo(executionPayload)
-  }
-
-  @Test
-  fun `can create block for round change`() {
-    val parentBlock = DataGenerators.randomBeaconBlock(10U)
-    val parentHeader = parentBlock.beaconBlockHeader
-    val executionPayload = DataGenerators.randomExecutionPayload()
-    val beaconState = DataGenerators.randomBeaconState(10U)
-    val headHash = beaconState.latestBeaconBlockHeader.hash()
-    whenever(beaconChain.getLatestBeaconState()).thenReturn(beaconState)
-    whenever(beaconChain.getBeaconBlock(parentHeader.hash())).thenReturn(parentBlock)
-    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
-    whenever(
-      executionLayerManager.setHeadAndBuildBlockImmediately(headHash, headHash, headHash, 1000L),
-    ).thenReturn(SafeFuture.completedFuture(executionPayload))
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
 
     val blockCreator = BlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain)
@@ -153,7 +99,7 @@ class BlockCreatorTest {
 
     val blockCreator = BlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain)
     assertThatThrownBy({
-      blockCreator.createBlock(1000L, 0, parentHeader)
+      blockCreator.createBlock(1000L, 1, parentHeader)
     })
       .isInstanceOf(
         IllegalStateException::class.java,
@@ -168,11 +114,11 @@ class BlockCreatorTest {
 
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
     whenever(beaconChain.getBeaconBlock(parentHeader.hash())).thenReturn(null)
-    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 0))).thenReturn(Address.ZERO)
+    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
 
     val blockCreator = BlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain)
     assertThatThrownBy({
-      blockCreator.createBlock(1000L, 0, parentHeader)
+      blockCreator.createBlock(1000L, 1, parentHeader)
     })
       .isInstanceOf(
         IllegalStateException::class.java,

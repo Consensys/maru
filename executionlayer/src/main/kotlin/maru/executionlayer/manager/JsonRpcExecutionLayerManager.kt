@@ -133,16 +133,6 @@ class JsonRpcExecutionLayerManager private constructor(
       }
   }
 
-  override fun setHeadAndBuildBlockImmediately(
-    headHash: ByteArray,
-    safeHash: ByteArray,
-    finalizedHash: ByteArray,
-    nextBlockTimestamp: Long,
-  ): SafeFuture<ExecutionPayload> =
-    setHeadAndStartBlockBuilding(headHash, safeHash, finalizedHash, nextBlockTimestamp).thenCompose {
-      finishBlockBuilding()
-    }
-
   private fun mapForkChoiceUpdatedResultToDomain(
     forkChoiceUpdatedResult: Response<TekuForkChoiceUpdatedResult>,
   ): ForkChoiceUpdatedResult {
