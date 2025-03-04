@@ -43,7 +43,7 @@ object TestEnvironment {
     )
   val sequencerL2Client: Web3j = buildWeb3Client("http://localhost:8545")
 
-  // The switch doesn't work for Geth 1.14 yet
+  // The switch doesn't work for Geth 1.15 yet
   val geth1L2Client: Web3j = buildWeb3Client("http://localhost:8555")
   val geth2L2Client: Web3j = buildWeb3Client("http://localhost:8565")
   val gethSnapServerL2Client: Web3j = buildWeb3Client("http://localhost:8575")
@@ -56,7 +56,7 @@ object TestEnvironment {
     mapOf(
       // "geth1" to geth1L2Client,
       "follower-geth-2" to geth2L2Client,
-//      "follower-geth-snap-server" to gethSnapServerL2Client,
+      "follower-geth-snap-server" to gethSnapServerL2Client,
       "follower-besu" to besuFollowerL2Client,
       "follower-erigon" to erigonFollowerL2Client,
       "follower-nethermind" to nethermindFollowerL2Client,

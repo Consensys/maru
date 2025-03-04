@@ -34,7 +34,7 @@ import org.mockito.kotlin.whenever
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -190,12 +190,10 @@ class JsonRpcExecutionLayerManagerTest {
       },
       argThat { payloadAttributes ->
         payloadAttributes ==
-          PayloadAttributesV3(
+          PayloadAttributesV1(
             UInt64.fromLongBits(nextTimestamp),
             Bytes32.ZERO,
             Bytes20(Bytes.wrap(feeRecipient)),
-            emptyList(),
-            Bytes32.ZERO,
           )
       },
     )

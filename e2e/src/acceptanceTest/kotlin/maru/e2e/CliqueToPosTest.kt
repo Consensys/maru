@@ -36,10 +36,13 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
-import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
@@ -63,57 +66,66 @@ class CliqueToPosTest {
     @JvmStatic
     fun beforeAll() {
       qbftCluster.before()
-      maru.start()
     }
 
     @AfterAll
     @JvmStatic
     fun afterAll() {
       qbftCluster.after()
-      maru.stop()
     }
+
+    private fun createExecutionClient(
+      eeEndpoint: String,
+      jwtConfig: Optional<JwtConfig> = Optional.empty(),
+    ): Web3JExecutionEngineClient = Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
+
+    private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
+    private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
+    private val nethermindFollowerExecutionEngineClient =
+      createExecutionClient(
+        "http://localhost:10550",
+        TestEnvironment.jwtConfig,
+      )
+    private val erigonFollowerExecutionEngineClient =
+      createExecutionClient(
+        "http://localhost:11551",
+        TestEnvironment.jwtConfig,
+      )
+    private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", TestEnvironment.jwtConfig)
+    private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", TestEnvironment.jwtConfig)
+    private val gethSnapServerExecutionEngineClient =
+      createExecutionClient("http://localhost:8581", TestEnvironment.jwtConfig)
+    private val gethExecutionEngineClients =
+      mapOf(
+//        "follower-geth" to geth1ExecutionEngineClient,
+        "follower-geth-2" to geth2ExecutionEngineClient,
+        "follower-geth-snap-server" to gethSnapServerExecutionEngineClient,
+      )
+    private val followerExecutionEngineClients =
+      mapOf(
+        "follower-besu" to besuFollowerExecutionEngineClient,
+        "follower-erigon" to erigonFollowerExecutionEngineClient,
+        "follower-nethermind" to nethermindFollowerExecutionEngineClient,
+      ) + gethExecutionEngineClients
+
+    @JvmStatic
+    fun followerNodes(): List<Arguments> =
+      followerExecutionEngineClients
+        .filter {
+          // Doesn't work just yet
+          !it.key.contains("nethermind")
+        }.map {
+          Arguments.of(it.key, it.value)
+        }
   }
 
-  private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
-  private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
-  private val nethermindFollowerExecutionEngineClient =
-    createExecutionClient(
-      "http://localhost:10550",
-      TestEnvironment.jwtConfig,
-    )
-  private val erigonFollowerExecutionEngineClient =
-    createExecutionClient(
-      "http://localhost:11551",
-      TestEnvironment.jwtConfig,
-    )
-  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", TestEnvironment.jwtConfig)
-  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", TestEnvironment.jwtConfig)
-  private val gethSnapServerExecutionEngineClient =
-    createExecutionClient("http://localhost:8581", TestEnvironment.jwtConfig)
-  private val gethExecutionEngineClients =
-    mapOf(
-      "follower-geth" to geth1ExecutionEngineClient,
-      "follower-geth-2" to geth2ExecutionEngineClient,
-      "follower-geth-snap-server" to gethSnapServerExecutionEngineClient,
-    )
-  private val followerExecutionEngineClients =
-    mapOf(
-      "follower-besu" to besuFollowerExecutionEngineClient,
-      "follower-erigon" to erigonFollowerExecutionEngineClient,
-      "follower-nethermind" to nethermindFollowerExecutionEngineClient,
-    ) + gethExecutionEngineClients
-
+  @Order(1)
   @Test
   fun networkCanBeSwitched() {
+    maru.start()
     sealPreMergeBlocks()
     everyoneArePeered()
     val newBlockTimestamp = UInt64.valueOf(parseSwitchTimestamp())
-
-    val preMergeBlock =
-      TestEnvironment.sequencerL2Client
-        .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
-        .send()
-    val lastPreMergeBlockHash = preMergeBlock.block.hash
 
     await
       .timeout(1.minutes.toJavaDuration())
@@ -121,14 +133,11 @@ class CliqueToPosTest {
       .untilAsserted {
         val unixTimestamp = System.currentTimeMillis() / 1000
         log.info(
-          "Waiting for Cancun switch {} seconds until the switch ",
+          "Waiting for the switch {} seconds until the switch ",
           { newBlockTimestamp.longValue() - unixTimestamp },
         )
         assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
       }
-
-    fcuFollowersToBlockHash(lastPreMergeBlockHash)
-    waitForAllBlockHeightsToMatch()
 
     log.info("Marked last pre merge block as finalized")
 
@@ -139,45 +148,76 @@ class CliqueToPosTest {
 
     TestEnvironment.sendArbitraryTransaction().waitForInclusion()
 
-    assertSequencerBlockHeight(7)
+    assertNodeBlockHeight(7, TestEnvironment.sequencerL2Client)
     setAllFollowersHeadToBlockNumber(6)
     setAllFollowersHeadToBlockNumber(7)
 
     waitForAllBlockHeightsToMatch()
+    maru.stop()
   }
 
-  // This is more of a debug method rather than an independent test. Thus disabling it
-  @Disabled
-  fun runFCU() {
-    val headBlockNumber = 6L
-    val currentBLock = getBlockByNumber(headBlockNumber, true)
-    val blockHash = currentBLock.hash
+  @Order(2)
+  @ParameterizedTest
+  @MethodSource("followerNodes")
+  fun syncFromScratch(
+    nodeName: String,
+    nodeEngineApiClient: Web3JExecutionEngineClient,
+  ) {
+    qbftCluster.docker().rm("${qbftCluster.projectName().asString()}-$nodeName-1")
 
-    val getNewPayloadFromLastBlockNumber = executionPayloadV1FromBlock(currentBLock)
-    sendNewPayloadToFollowers(getNewPayloadFromLastBlockNumber)
-    fcuFollowersToBlockHash(blockHash)
+    qbftCluster.dockerCompose().up()
+    val nodeEthereumClient = TestEnvironment.followerClients[nodeName]!!
+
+    await
+      .timeout(20.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .alias(nodeName)
+      .untilAsserted {
+        assertThat(
+          nodeEthereumClient
+            .ethBlockNumber()
+            .send()
+            .blockNumber
+            .toLong(),
+        ).isLessThan(7)
+          .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
+      }
+    if (nodeName.contains("erigon")) {
+      // Erigon doesn't seem to backfill the blocks from head to the switch block
+      sendNewPayloadByBlockNumber(6, nodeEngineApiClient)
+    }
+
+    await.pollInterval(1.seconds.toJavaDuration()).timeout(10.seconds.toJavaDuration()).alias(nodeName).untilAsserted {
+      syncTarget(nodeEngineApiClient, 7)
+      assertNodeBlockHeight(7, nodeEthereumClient)
+    }
   }
 
-  // This is more of a debug method rather than an independent test. Useful to test if a node can sync from scratch
-  @Disabled
-  fun fullSync() {
-    val target = besuFollowerExecutionEngineClient
+  private fun sendNewPayloadByBlockNumber(
+    blockNumber: Long,
+    target: Web3JExecutionEngineClient,
+  ): ExecutionPayloadV1 {
+    val targetBlock = getBlockByNumber(blockNumber, true)
+    val blockPayload = executionPayloadV1FromBlock(targetBlock)
+    val newPayloadResult = target.newPayloadV1(blockPayload).get()
+    log.debug("New payload result: $newPayloadResult")
+    return blockPayload
+  }
 
-    val headBlockNumber = 7L
+  private fun syncTarget(
+    target: Web3JExecutionEngineClient,
+    headBlockNumber: Long,
+  ) {
+    val headPayload = sendNewPayloadByBlockNumber(headBlockNumber, target)
 
-    val currentBLock =
-      TestEnvironment.sequencerL2Client
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf(BigInteger.valueOf(headBlockNumber)),
-          false,
-        ).send()
-    val blockHash = currentBLock.block.hash
+    val fcuResult =
+      target
+        .forkChoiceUpdatedV1(
+          ForkChoiceStateV1(headPayload.blockHash, headPayload.blockHash, headPayload.blockHash),
+          Optional.empty(),
+        ).get()
 
-    val lastBlockHashBytes = Bytes32.fromHexString(blockHash)
-    target.forkChoiceUpdatedV1(
-      ForkChoiceStateV1(lastBlockHashBytes, lastBlockHashBytes, lastBlockHashBytes),
-      Optional.empty(),
-    )
+    log.debug("Fork choice updated result: $fcuResult")
   }
 
   private fun setAllFollowersHeadToBlockNumber(blockNumber: Long): String {
@@ -203,28 +243,16 @@ class CliqueToPosTest {
     repeat(5) { TestEnvironment.sendArbitraryTransaction().waitForInclusion() }
   }
 
-  private fun createExecutionClient(
-    eeEndpoint: String,
-    jwtConfig: Optional<JwtConfig> = Optional.empty(),
-  ): Web3JExecutionEngineClient = Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
-
-  @Disabled
-  fun listBlockHeights() {
-    val blockHeights =
-      TestEnvironment.followerClients.entries.map { entry ->
-        entry.key to SafeFuture.of(entry.value.ethBlockNumber().sendAsync())
-      }
-
-    blockHeights.forEach { log.info("${it.first} block height is ${it.second.get().blockNumber}") }
-  }
-
-  private fun assertSequencerBlockHeight(expectedBlockNumber: Long) {
-    val sequencerBlockHeight =
-      TestEnvironment.sequencerL2Client
+  private fun assertNodeBlockHeight(
+    expectedBlockNumber: Long,
+    web3j: Web3j,
+  ) {
+    val targetNodeBlockHeight =
+      web3j
         .ethBlockNumber()
         .send()
         .blockNumber
-    assertThat(sequencerBlockHeight).isEqualTo(expectedBlockNumber)
+    assertThat(targetNodeBlockHeight).isEqualTo(expectedBlockNumber)
   }
 
   private fun waitForAllBlockHeightsToMatch() {
