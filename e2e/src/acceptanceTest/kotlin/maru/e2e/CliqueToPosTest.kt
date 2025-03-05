@@ -170,7 +170,6 @@ class CliqueToPosTest {
     }
 
     await
-      .pollInterval(1.seconds.toJavaDuration())
       .ignoreExceptions()
       .timeout(10.seconds.toJavaDuration())
       .alias(nodeName)
@@ -196,7 +195,6 @@ class CliqueToPosTest {
     nodeEthereumClient: Web3j,
   ) {
     await
-      .pollInterval(30.seconds.toJavaDuration())
       .timeout(2.minutes.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
@@ -223,7 +221,6 @@ class CliqueToPosTest {
         else -> 0L
       }
     await
-      .pollInterval(5.seconds.toJavaDuration())
       .timeout(20.seconds.toJavaDuration())
       .ignoreExceptions()
       .alias(nodeName)
