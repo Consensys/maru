@@ -30,6 +30,7 @@ import org.web3j.protocol.core.methods.response.EthSendTransaction
 import org.web3j.tx.RawTransactionManager
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
@@ -54,13 +55,43 @@ object TestEnvironment {
   val erigonFollowerL2Client: Web3j = buildWeb3Client("http://localhost:11545")
   val followerClients =
     mapOf(
-      // "geth1" to geth1L2Client,
       "follower-geth-2" to geth2L2Client,
       "follower-geth-snap-server" to gethSnapServerL2Client,
       "follower-besu" to besuFollowerL2Client,
       "follower-erigon" to erigonFollowerL2Client,
       "follower-nethermind" to nethermindFollowerL2Client,
     )
+  val followerClientsPostMerge = followerClients + ("follower-geth" to geth1L2Client)
+
+  private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
+  private val nethermindFollowerExecutionEngineClient =
+    createExecutionClient(
+      "http://localhost:10550",
+      TestEnvironment.jwtConfig,
+    )
+  private val erigonFollowerExecutionEngineClient =
+    createExecutionClient(
+      "http://localhost:11551",
+      TestEnvironment.jwtConfig,
+    )
+  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", TestEnvironment.jwtConfig)
+  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", TestEnvironment.jwtConfig)
+  private val gethSnapServerExecutionEngineClient =
+    createExecutionClient("http://localhost:8581", TestEnvironment.jwtConfig)
+  private val gethExecutionEngineClients =
+    mapOf(
+      "follower-geth-2" to geth2ExecutionEngineClient,
+      "follower-geth-snap-server" to gethSnapServerExecutionEngineClient,
+    )
+  val followerExecutionEngineClients =
+    mapOf(
+      "follower-besu" to besuFollowerExecutionEngineClient,
+      "follower-erigon" to erigonFollowerExecutionEngineClient,
+      "follower-nethermind" to nethermindFollowerExecutionEngineClient,
+    ) + gethExecutionEngineClients
+  val followerExecutionClientsPostMerge =
+    (followerExecutionEngineClients + ("follower-geth" to geth1ExecutionEngineClient))
+
   private val transactionManager =
     let {
       val credentials =
@@ -107,4 +138,9 @@ object TestEnvironment {
       .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
       .executionClientEventsPublisher {}
       .build()
+
+  private fun createExecutionClient(
+    eeEndpoint: String,
+    jwtConfig: Optional<JwtConfig> = Optional.empty(),
+  ): Web3JExecutionEngineClient = Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
 }

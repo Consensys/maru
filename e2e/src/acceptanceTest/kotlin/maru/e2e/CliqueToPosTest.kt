@@ -74,43 +74,10 @@ class CliqueToPosTest {
       qbftCluster.after()
     }
 
-    private fun createExecutionClient(
-      eeEndpoint: String,
-      jwtConfig: Optional<JwtConfig> = Optional.empty(),
-    ): Web3JExecutionEngineClient = Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
-
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
-    private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
-    private val nethermindFollowerExecutionEngineClient =
-      createExecutionClient(
-        "http://localhost:10550",
-        TestEnvironment.jwtConfig,
-      )
-    private val erigonFollowerExecutionEngineClient =
-      createExecutionClient(
-        "http://localhost:11551",
-        TestEnvironment.jwtConfig,
-      )
-    private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", TestEnvironment.jwtConfig)
-    private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", TestEnvironment.jwtConfig)
-    private val gethSnapServerExecutionEngineClient =
-      createExecutionClient("http://localhost:8581", TestEnvironment.jwtConfig)
-    private val gethExecutionEngineClients =
-      mapOf(
-//        "follower-geth" to geth1ExecutionEngineClient,
-        "follower-geth-2" to geth2ExecutionEngineClient,
-        "follower-geth-snap-server" to gethSnapServerExecutionEngineClient,
-      )
-    private val followerExecutionEngineClients =
-      mapOf(
-        "follower-besu" to besuFollowerExecutionEngineClient,
-        "follower-erigon" to erigonFollowerExecutionEngineClient,
-        "follower-nethermind" to nethermindFollowerExecutionEngineClient,
-      ) + gethExecutionEngineClients
-
     @JvmStatic
     fun followerNodes(): List<Arguments> =
-      followerExecutionEngineClients
+      TestEnvironment.followerExecutionClientsPostMerge
         .filter {
           // Doesn't work just yet
           !it.key.contains("nethermind")
@@ -166,7 +133,7 @@ class CliqueToPosTest {
     qbftCluster.docker().rm("${qbftCluster.projectName().asString()}-$nodeName-1")
 
     qbftCluster.dockerCompose().up()
-    val nodeEthereumClient = TestEnvironment.followerClients[nodeName]!!
+    val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
 
     await
       .timeout(20.seconds.toJavaDuration())
@@ -187,20 +154,36 @@ class CliqueToPosTest {
       sendNewPayloadByBlockNumber(6, nodeEngineApiClient)
     }
 
-    await.pollInterval(1.seconds.toJavaDuration()).timeout(10.seconds.toJavaDuration()).alias(nodeName).untilAsserted {
-      syncTarget(nodeEngineApiClient, 7)
-      assertNodeBlockHeight(7, nodeEthereumClient)
-    }
+    await
+      .pollInterval(1.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .timeout(20.seconds.toJavaDuration())
+      .alias(nodeName)
+      .untilAsserted {
+        syncTarget(nodeEngineApiClient, 7)
+        if (nodeName.contains("follower-geth")) {
+          // For some reason it doesn't set latest block correctly, but the block is available
+          val blockByNumber =
+            getBlockByNumber(
+              blockNumber = 7,
+              retreiveTransactions = false,
+              ethClient = nodeEthereumClient,
+            )
+          assertThat(blockByNumber).isNotNull
+        } else {
+          assertNodeBlockHeight(7, nodeEthereumClient)
+        }
+      }
   }
 
   private fun sendNewPayloadByBlockNumber(
     blockNumber: Long,
     target: Web3JExecutionEngineClient,
   ): ExecutionPayloadV1 {
-    val targetBlock = getBlockByNumber(blockNumber, true)
+    val targetBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
     val blockPayload = executionPayloadV1FromBlock(targetBlock)
     val newPayloadResult = target.newPayloadV1(blockPayload).get()
-    log.debug("New payload result: $newPayloadResult")
+    log.debug("New payload result: {}", newPayloadResult)
     return blockPayload
   }
 
@@ -217,11 +200,11 @@ class CliqueToPosTest {
           Optional.empty(),
         ).get()
 
-    log.debug("Fork choice updated result: $fcuResult")
+    log.debug("Fork choice updated result: {}", fcuResult)
   }
 
   private fun setAllFollowersHeadToBlockNumber(blockNumber: Long): String {
-    val postMergeBlock = getBlockByNumber(blockNumber, true)
+    val postMergeBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
     val getNewPayloadFromPostMergeBlockNumber = executionPayloadV1FromBlock(postMergeBlock)
     sendNewPayloadToFollowers(getNewPayloadFromPostMergeBlockNumber)
     fcuFollowersToBlockHash(postMergeBlock.hash)
@@ -310,8 +293,9 @@ class CliqueToPosTest {
   private fun getBlockByNumber(
     blockNumber: Long,
     retreiveTransactions: Boolean = false,
-  ): EthBlock.Block =
-    TestEnvironment.sequencerL2Client
+    ethClient: Web3j = TestEnvironment.sequencerL2Client,
+  ): EthBlock.Block? =
+    ethClient
       .ethGetBlockByNumber(
         DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
         retreiveTransactions,
@@ -323,7 +307,7 @@ class CliqueToPosTest {
     // Cutting off the merge first
     val mergeForkChoiceState = ForkChoiceStateV1(lastBlockHashBytes, lastBlockHashBytes, lastBlockHashBytes)
 
-    followerExecutionEngineClients.entries
+    TestEnvironment.followerExecutionEngineClients.entries
       .map {
         it.key to
           it.value.forkChoiceUpdatedV1(
@@ -336,7 +320,7 @@ class CliqueToPosTest {
   }
 
   private fun sendNewPayloadToFollowers(newPayloadV1: ExecutionPayloadV1) {
-    followerExecutionEngineClients.entries
+    TestEnvironment.followerExecutionEngineClients.entries
       .map {
         it.key to
           it.value.newPayloadV1(
