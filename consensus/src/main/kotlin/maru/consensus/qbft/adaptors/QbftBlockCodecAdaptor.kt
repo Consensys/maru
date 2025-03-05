@@ -16,7 +16,7 @@
 package maru.consensus.qbft.adaptors
 
 import maru.consensus.qbft.adaptors.BlockUtil.toBeaconBlock
-import maru.serialization.rlp.RLPCommitSealSerializers
+import maru.serialization.rlp.RLPSerializers.BeaconBlockSerializer
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCodec
 import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
@@ -30,14 +30,14 @@ class QbftBlockCodecAdaptor : QbftBlockCodec {
   override fun readFrom(
     rlpInput: RLPInput,
     qbftHashMode: QbftHashMode,
-  ): QbftBlock = QbftBlockAdaptor(RLPCommitSealSerializers.BeaconBlockSerializer.readFrom(rlpInput))
+  ): QbftBlock = QbftBlockAdaptor(BeaconBlockSerializer.readFrom(rlpInput))
 
   override fun writeTo(
     qbftBlock: QbftBlock,
     rlpOutput: RLPOutput,
   ) {
     toBeaconBlock(qbftBlock).let {
-      RLPCommitSealSerializers.BeaconBlockSerializer.writeTo(it, rlpOutput)
+      BeaconBlockSerializer.writeTo(it, rlpOutput)
     }
   }
 }

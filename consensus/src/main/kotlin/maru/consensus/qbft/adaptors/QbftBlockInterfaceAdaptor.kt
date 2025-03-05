@@ -16,8 +16,6 @@
 package maru.consensus.qbft.adaptors
 
 import maru.core.BeaconBlock
-import maru.core.HashUtil
-import maru.serialization.rlp.RLPCommitSealSerializers
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockInterface
 import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
@@ -35,7 +33,6 @@ class QbftBlockInterfaceAdaptor : QbftBlockInterface {
     val replacedBeaconBlockHeader =
       beaconBlockHeader.copy(
         round = roundNumber.toULong(),
-        headerHashFunction = HashUtil.headerCommittedSealHash(RLPCommitSealSerializers.BeaconBlockHeaderSerializer),
       )
     return QbftBlockAdaptor(
       BeaconBlock(replacedBeaconBlockHeader, BlockUtil.toBeaconBlock(proposalBlock).beaconBlockBody),

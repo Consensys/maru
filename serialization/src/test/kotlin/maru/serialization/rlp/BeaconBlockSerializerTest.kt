@@ -31,7 +31,7 @@ class BeaconBlockSerializerTest {
   private val blockHeaderSerializer =
     BeaconBlockHeaderSerializer(
       validatorSerializer = ValidatorSerializer(),
-      headerHashFunction = HashUtil::headerOnChainHash,
+      headerHashFunction = HashUtil::headerHash,
     )
   private val blockBodySerializer =
     BeaconBlockSerializer(
@@ -55,12 +55,11 @@ class BeaconBlockSerializerTest {
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
-        headerHashFunction = HashUtil.headerOnChainHash(blockHeaderSerializer),
+        headerHashFunction = HashUtil.headerHash(blockHeaderSerializer),
       )
     val beaconBlockBody =
       BeaconBlockBody(
         prevCommitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
-        commitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
         executionPayload = randomExecutionPayload(),
       )
     val testValue =

@@ -25,34 +25,10 @@ typealias HeaderHashFunction = (BeaconBlockHeader) -> ByteArray
  * Utility class for hashing various parts of the beacon chain
  */
 object HashUtil {
-  /**
-   * Hashes the header for onchain omitting the round number
-   */
-  fun headerOnChainHash(serializer: Serializer<BeaconBlockHeader>): HeaderHashFunction =
-    { header -> headerOnChainHash(serializer, header) }
+  fun headerHash(serializer: Serializer<BeaconBlockHeader>): HeaderHashFunction =
+    { header -> headerHash(serializer, header) }
 
-  /**
-   * Hashes the header for onchain omitting the round number
-   */
-  fun headerOnChainHash(
-    serializer: Serializer<BeaconBlockHeader>,
-    header: BeaconBlockHeader,
-  ): ByteArray {
-    val headerWithoutRound = header.copy(round = 0u)
-    val headerBytes = Bytes.wrap(serializer.serialize(headerWithoutRound))
-    return Hash.hash(headerBytes).toArray()
-  }
-
-  /**
-   * Hashes the header for the current commit seal hash including the round number
-   */
-  fun headerCommittedSealHash(serializer: Serializer<BeaconBlockHeader>): HeaderHashFunction =
-    { header -> headerCommittedSealHash(serializer, header) }
-
-  /**
-   * Hashes the header for the current commit seal hash including the round number
-   */
-  fun headerCommittedSealHash(
+  fun headerHash(
     serializer: Serializer<BeaconBlockHeader>,
     header: BeaconBlockHeader,
   ): ByteArray {
@@ -64,8 +40,7 @@ object HashUtil {
     serializer: Serializer<BeaconBlockBody>,
     body: BeaconBlockBody,
   ): ByteArray {
-    val bodyWithoutCommitSeals = body.copy(commitSeals = emptyList())
-    val bodyBytes = Bytes.wrap(serializer.serialize((bodyWithoutCommitSeals)))
+    val bodyBytes = Bytes.wrap(serializer.serialize((body)))
     return Hash.hash(bodyBytes).toArray()
   }
 

@@ -27,7 +27,7 @@ class BeaconBlockHeaderSerializerTest {
   private val serializer =
     BeaconBlockHeaderSerializer(
       validatorSerializer = ValidatorSerializer(),
-      headerHashFunction = HashUtil::headerOnChainHash,
+      headerHashFunction = HashUtil::headerHash,
     )
 
   @Test
@@ -41,7 +41,7 @@ class BeaconBlockHeaderSerializerTest {
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
-        headerHashFunction = HashUtil.headerOnChainHash(serializer),
+        headerHashFunction = HashUtil.headerHash(serializer),
       )
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)

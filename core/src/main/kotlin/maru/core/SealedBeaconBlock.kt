@@ -13,12 +13,25 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.kv
+package maru.core
 
-import maru.serialization.rlp.RLPSerializers
+data class SealedBeaconBlock(
+  val commitSeals: List<Seal>,
+  val beaconBlock: BeaconBlock,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is SealedBeaconBlock) return false
 
-object KvStoreSerializers {
-  val BytesSerializer = BytesSerializer()
-  val BeaconStateSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconStateSerializer)
-  val BeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconBlockSerializer)
+    if (commitSeals != other.commitSeals) return false
+    if (beaconBlock != other.beaconBlock) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = commitSeals.hashCode()
+    result = 31 * result + beaconBlock.hashCode()
+    return result
+  }
 }

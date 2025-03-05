@@ -33,10 +33,6 @@ class BeaconBlockBodySerializer(
       sealSerializer.writeTo(prevBlockSeal, output)
     }
 
-    rlpOutput.writeList(value.commitSeals) { commitSeal, output ->
-      sealSerializer.writeTo(commitSeal, output)
-    }
-
     executionPayloadSerializer.writeTo(value.executionPayload, rlpOutput)
 
     rlpOutput.endList()
@@ -46,11 +42,10 @@ class BeaconBlockBodySerializer(
     rlpInput.enterList()
 
     val prevCommitSeals = rlpInput.readList { sealSerializer.readFrom(rlpInput) }
-    val commitSeals = rlpInput.readList { sealSerializer.readFrom(rlpInput) }
     val executionPayload = executionPayloadSerializer.readFrom(rlpInput)
 
     rlpInput.leaveList()
 
-    return BeaconBlockBody(prevCommitSeals, commitSeals, executionPayload)
+    return BeaconBlockBody(prevCommitSeals, executionPayload)
   }
 }
