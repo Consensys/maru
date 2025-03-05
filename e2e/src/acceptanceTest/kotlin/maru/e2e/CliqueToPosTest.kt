@@ -18,7 +18,10 @@ package maru.e2e
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.palantir.docker.compose.DockerComposeRule
 import com.palantir.docker.compose.configuration.ProjectName
+import com.palantir.docker.compose.connection.State
+import com.palantir.docker.compose.connection.waiting.ClusterHealthCheck
 import com.palantir.docker.compose.connection.waiting.HealthChecks
+import com.palantir.docker.compose.connection.waiting.SuccessOrFailure
 import java.io.File
 import java.math.BigInteger
 import java.nio.file.Files
@@ -143,9 +146,8 @@ class CliqueToPosTest {
     nodeName: String,
     nodeEngineApiClient: Web3JExecutionEngineClient,
   ) {
-    qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
-
-    qbftCluster.dockerCompose().up()
+    restartNode(nodeName)
+    log.info("Container $nodeName restarted")
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
 
     await.timeout(20.seconds.toJavaDuration()).ignoreExceptions().alias(nodeName).untilAsserted {
@@ -155,7 +157,7 @@ class CliqueToPosTest {
           .send()
           .blockNumber
           .toLong(),
-      ).isLessThan(7).withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
+      ).isLessThan(6).withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
     }
     if (nodeName.contains("erigon")) {
       // Erigon doesn't seem to backfill the blocks from head to the switch block
@@ -165,7 +167,7 @@ class CliqueToPosTest {
     await
       .pollInterval(1.seconds.toJavaDuration())
       .ignoreExceptions()
-      .timeout(20.seconds.toJavaDuration())
+      .timeout(10.seconds.toJavaDuration())
       .alias(nodeName)
       .untilAsserted {
         syncTarget(nodeEngineApiClient, 7)
@@ -182,6 +184,24 @@ class CliqueToPosTest {
           assertNodeBlockHeight(7, nodeEthereumClient)
         }
       }
+  }
+
+  private fun restartNode(nodeName: String) {
+    qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
+    qbftCluster.dockerCompose().up()
+    await.timeout(30.seconds.toJavaDuration()).untilAsserted {
+      val nodeIsUp =
+        ClusterHealthCheck
+          .serviceHealthCheck(nodeName) { container ->
+            if (container.state() == State.HEALTHY) {
+              SuccessOrFailure.success()
+            } else {
+              SuccessOrFailure.failure("$nodeName is not healthy!")
+            }
+          }.isClusterHealthy(qbftCluster.containers())
+          .succeeded()
+      assertThat(nodeIsUp).isTrue()
+    }
   }
 
   private fun sendNewPayloadByBlockNumber(
