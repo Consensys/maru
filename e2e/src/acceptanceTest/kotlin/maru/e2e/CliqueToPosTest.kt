@@ -21,7 +21,9 @@ import com.palantir.docker.compose.configuration.ProjectName
 import com.palantir.docker.compose.connection.waiting.HealthChecks
 import java.io.File
 import java.math.BigInteger
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.util.Optional
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -69,8 +71,23 @@ class CliqueToPosTest {
     @AfterAll
     @JvmStatic
     fun afterAll() {
+      File("docker_logs").mkdirs()
+      TestEnvironment.allClients.forEach {
+        val containerShortName = it.key
+        val logsInputStream =
+          qbftCluster.dockerExecutable().execute("logs", containerShortNameToFullId(containerShortName)).inputStream
+        Files.copy(
+          logsInputStream,
+          Path.of("docker_logs/$containerShortName.log"),
+          StandardCopyOption.REPLACE_EXISTING,
+        )
+      }
+
       qbftCluster.after()
     }
+
+    private fun containerShortNameToFullId(containerShortName: String) =
+      "${qbftCluster.projectName().asString()}-$containerShortName-1"
 
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
 
@@ -93,17 +110,14 @@ class CliqueToPosTest {
     everyoneArePeered()
     val newBlockTimestamp = UInt64.valueOf(parseSwitchTimestamp())
 
-    await
-      .timeout(1.minutes.toJavaDuration())
-      .pollInterval(5.seconds.toJavaDuration())
-      .untilAsserted {
-        val unixTimestamp = System.currentTimeMillis() / 1000
-        log.info(
-          "Waiting for the switch {} seconds until the switch ",
-          { newBlockTimestamp.longValue() - unixTimestamp },
-        )
-        assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
-      }
+    await.timeout(1.minutes.toJavaDuration()).pollInterval(5.seconds.toJavaDuration()).untilAsserted {
+      val unixTimestamp = System.currentTimeMillis() / 1000
+      log.info(
+        "Waiting for the switch {} seconds until the switch ",
+        { newBlockTimestamp.longValue() - unixTimestamp },
+      )
+      assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
+    }
 
     log.info("Marked last pre merge block as finalized")
 
@@ -129,25 +143,20 @@ class CliqueToPosTest {
     nodeName: String,
     nodeEngineApiClient: Web3JExecutionEngineClient,
   ) {
-    qbftCluster.docker().rm("${qbftCluster.projectName().asString()}-$nodeName-1")
+    qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
 
     qbftCluster.dockerCompose().up()
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
 
-    await
-      .timeout(20.seconds.toJavaDuration())
-      .ignoreExceptions()
-      .alias(nodeName)
-      .untilAsserted {
-        assertThat(
-          nodeEthereumClient
-            .ethBlockNumber()
-            .send()
-            .blockNumber
-            .toLong(),
-        ).isLessThan(7)
-          .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
-      }
+    await.timeout(20.seconds.toJavaDuration()).ignoreExceptions().alias(nodeName).untilAsserted {
+      assertThat(
+        nodeEthereumClient
+          .ethBlockNumber()
+          .send()
+          .blockNumber
+          .toLong(),
+      ).isLessThan(7).withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
+    }
     if (nodeName.contains("erigon")) {
       // Erigon doesn't seem to backfill the blocks from head to the switch block
       sendNewPayloadByBlockNumber(6, nodeEngineApiClient)
@@ -229,11 +238,7 @@ class CliqueToPosTest {
     expectedBlockNumber: Long,
     web3j: Web3j,
   ) {
-    val targetNodeBlockHeight =
-      web3j
-        .ethBlockNumber()
-        .send()
-        .blockNumber
+    val targetNodeBlockHeight = web3j.ethBlockNumber().send().blockNumber
     assertThat(targetNodeBlockHeight).isEqualTo(expectedBlockNumber)
   }
 
