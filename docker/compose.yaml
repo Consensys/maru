@@ -133,7 +133,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: nethermindeth/nethermind:1.31.4
+    image: nethermindeth/nethermind:clique-merge-fix
     command: >
       --configs-dir /config/
       -c test
