@@ -27,7 +27,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.e2e.Mappers.executionPayloadV1FromBlock
-import maru.e2e.TestEnvironment.createWeb3jClient
 import maru.e2e.TestEnvironment.waitForInclusion
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -44,7 +43,6 @@ import org.junit.jupiter.params.provider.MethodSource
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
-import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
@@ -75,6 +73,7 @@ class CliqueToPosTest {
     }
 
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
+
     @JvmStatic
     fun followerNodes(): List<Arguments> =
       TestEnvironment.followerExecutionClientsPostMerge
