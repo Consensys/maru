@@ -24,7 +24,6 @@ import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.ExecutionPayload
 import maru.core.HashUtil
-import maru.core.HeaderHashFunction
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
@@ -53,11 +52,8 @@ object DataGenerators {
     )
   }
 
-  fun randomBeaconBlock(
-    number: ULong,
-    headerHashFunction: HeaderHashFunction = HEADER_HASH_FUNCTION,
-  ): BeaconBlock {
-    val beaconBlockHeader = randomBeaconBlockHeader(number, headerHashFunction)
+  fun randomBeaconBlock(number: ULong): BeaconBlock {
+    val beaconBlockHeader = randomBeaconBlockHeader(number)
     val beaconBlockBody = randomBeaconBlockBody()
     return BeaconBlock(
       beaconBlockHeader = beaconBlockHeader,
@@ -80,11 +76,7 @@ object DataGenerators {
       executionPayload = randomExecutionPayload(),
     )
 
-  fun randomBeaconBlockHeader(
-    number: ULong,
-    headerHashFunction: HeaderHashFunction =
-      HEADER_HASH_FUNCTION,
-  ): BeaconBlockHeader =
+  fun randomBeaconBlockHeader(number: ULong): BeaconBlockHeader =
     BeaconBlockHeader(
       number = number,
       round = Random.nextULong(),
@@ -93,7 +85,7 @@ object DataGenerators {
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
       bodyRoot = Random.nextBytes(32),
-      headerHashFunction = headerHashFunction,
+      headerHashFunction = HEADER_HASH_FUNCTION,
     )
 
   fun randomExecutionPayload(): ExecutionPayload =

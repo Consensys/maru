@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test
 class QbftBlockCodecAdaptorTest {
   @Test
   fun `can encode and decode same value for committed seal`() {
-    val beaconBlock = DataGenerators.randomBeaconBlock(10U, DataGenerators.HEADER_HASH_FUNCTION)
+    val beaconBlock = DataGenerators.randomBeaconBlock(10U)
     val testValue = QbftBlockAdaptor(beaconBlock)
     val qbftBlockCodecAdaptor = QbftBlockCodecAdaptor()
 
@@ -37,7 +37,7 @@ class QbftBlockCodecAdaptorTest {
 
   @Test
   fun `can encode and decode same value for onchain`() {
-    val beaconBlock = DataGenerators.randomBeaconBlock(10U, DataGenerators.HEADER_HASH_FUNCTION)
+    val beaconBlock = DataGenerators.randomBeaconBlock(10U)
     val testValue = QbftBlockAdaptor(beaconBlock)
     val qbftBlockCodecAdaptor = QbftBlockCodecAdaptor()
 
