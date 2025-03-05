@@ -35,7 +35,7 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object TestEnvironment {
-  val jwtConfig: Optional<JwtConfig> =
+  private val jwtConfig: Optional<JwtConfig> =
     JwtConfig.createIfNeeded(
       true,
       Optional.of("../docker/jwt"),
@@ -45,14 +45,14 @@ object TestEnvironment {
   val sequencerL2Client: Web3j = buildWeb3Client("http://localhost:8545")
 
   // The switch doesn't work for Geth 1.15 yet
-  val geth1L2Client: Web3j = buildWeb3Client("http://localhost:8555")
-  val geth2L2Client: Web3j = buildWeb3Client("http://localhost:8565")
-  val gethSnapServerL2Client: Web3j = buildWeb3Client("http://localhost:8575")
-  val besuFollowerL2Client: Web3j = buildWeb3Client("http://localhost:9545")
+  private val geth1L2Client: Web3j = buildWeb3Client("http://localhost:8555")
+  private val geth2L2Client: Web3j = buildWeb3Client("http://localhost:8565")
+  private val gethSnapServerL2Client: Web3j = buildWeb3Client("http://localhost:8575")
+  private val besuFollowerL2Client: Web3j = buildWeb3Client("http://localhost:9545")
 
   // The switch doesn't work for nethermind yet
-  val nethermindFollowerL2Client: Web3j = buildWeb3Client("http://localhost:10545", jwtConfig)
-  val erigonFollowerL2Client: Web3j = buildWeb3Client("http://localhost:11545")
+  private val nethermindFollowerL2Client: Web3j = buildWeb3Client("http://localhost:10545", jwtConfig)
+  private val erigonFollowerL2Client: Web3j = buildWeb3Client("http://localhost:11545")
   val followerClients =
     mapOf(
       "follower-geth-2" to geth2L2Client,
@@ -67,17 +67,17 @@ object TestEnvironment {
   private val nethermindFollowerExecutionEngineClient =
     createExecutionClient(
       "http://localhost:10550",
-      TestEnvironment.jwtConfig,
+      jwtConfig,
     )
   private val erigonFollowerExecutionEngineClient =
     createExecutionClient(
       "http://localhost:11551",
-      TestEnvironment.jwtConfig,
+      jwtConfig,
     )
-  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", TestEnvironment.jwtConfig)
-  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", TestEnvironment.jwtConfig)
+  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", jwtConfig)
+  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", jwtConfig)
   private val gethSnapServerExecutionEngineClient =
-    createExecutionClient("http://localhost:8581", TestEnvironment.jwtConfig)
+    createExecutionClient("http://localhost:8581", jwtConfig)
   private val gethExecutionEngineClients =
     mapOf(
       "follower-geth-2" to geth2ExecutionEngineClient,
@@ -127,7 +127,7 @@ object TestEnvironment {
     jwtConfig: Optional<JwtConfig> = Optional.empty(),
   ): Web3j = createWeb3jClient(rpcUrl, jwtConfig).eth1Web3j
 
-  fun createWeb3jClient(
+  private fun createWeb3jClient(
     endpoint: String,
     jwtConfig: Optional<JwtConfig>,
   ): Web3JClient =
