@@ -144,9 +144,9 @@ class CliqueToPosTest {
     nodeName: String,
     nodeEngineApiClient: Web3JExecutionEngineClient,
   ) {
-    restartNode(nodeName)
-    log.info("Container $nodeName restarted")
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
+    restartNode(nodeName, nodeEthereumClient)
+    log.info("Container $nodeName restarted")
 
     if (nodeName.contains("erigon")) {
       await
@@ -189,17 +189,54 @@ class CliqueToPosTest {
       }
   }
 
-  private fun restartNode(nodeName: String) {
-    qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
-    qbftCluster.dockerCompose().up()
-    await.timeout(30.seconds.toJavaDuration()).untilAsserted {
-      val nodeIsUp =
-        ClusterHealthCheck
-          .nativeHealthChecks()
-          .isClusterHealthy(qbftCluster.containers())
-          .succeeded()
-      assertThat(nodeIsUp).isTrue()
-    }
+  private fun restartNode(
+    nodeName: String,
+    nodeEthereumClient: Web3j,
+  ) {
+    await
+      .pollInterval(30.seconds.toJavaDuration())
+      .timeout(2.minutes.toJavaDuration())
+      .ignoreExceptions()
+      .untilAsserted {
+        log.debug("Restarting $nodeName")
+        qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
+        qbftCluster.dockerCompose().up()
+        val nodeIsUp =
+          ClusterHealthCheck
+            .nativeHealthChecks()
+            .isClusterHealthy(qbftCluster.containers())
+            .succeeded()
+        assertThat(nodeIsUp).isTrue()
+        awaitExpectedBlockNumberAfterStartup(nodeName, nodeEthereumClient)
+      }
+  }
+
+  private fun awaitExpectedBlockNumberAfterStartup(
+    nodeName: String,
+    ethereumClient: Web3j,
+  ) {
+    val expectedBlockNumber =
+      when {
+        (nodeName.contains("geth-2") || nodeName.contains("geth-snap")) -> 5L
+        nodeName.contains("erigon") -> 5L
+        else -> 0L
+      }
+    await
+      .pollInterval(5.seconds.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .alias(nodeName)
+      .untilAsserted {
+        log.debug("Waiting till the node $nodeName is up and synced")
+        assertThat(
+          ethereumClient
+            .ethBlockNumber()
+            .send()
+            .blockNumber
+            .toLong(),
+        ).isEqualTo(expectedBlockNumber)
+          .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
+      }
   }
 
   private fun sendNewPayloadByBlockNumber(
