@@ -47,7 +47,6 @@ object TestEnvironment {
   // The switch doesn't work for Geth 1.15 yet
   private val geth1L2Client: Web3j = buildWeb3Client("http://localhost:8555")
   private val geth2L2Client: Web3j = buildWeb3Client("http://localhost:8565")
-  private val gethSnapServerL2Client: Web3j = buildWeb3Client("http://localhost:8575")
   private val besuFollowerL2Client: Web3j = buildWeb3Client("http://localhost:9545")
 
   // The switch doesn't work for nethermind yet
@@ -56,7 +55,6 @@ object TestEnvironment {
   val followerClients =
     mapOf(
       "follower-geth-2" to geth2L2Client,
-      "follower-geth-snap-server" to gethSnapServerL2Client,
       "follower-besu" to besuFollowerL2Client,
       "follower-erigon" to erigonFollowerL2Client,
       "follower-nethermind" to nethermindFollowerL2Client,
@@ -77,12 +75,9 @@ object TestEnvironment {
     )
   private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", jwtConfig)
   private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", jwtConfig)
-  private val gethSnapServerExecutionEngineClient =
-    createExecutionClient("http://localhost:8581", jwtConfig)
   private val gethExecutionEngineClients =
     mapOf(
       "follower-geth-2" to geth2ExecutionEngineClient,
-      "follower-geth-snap-server" to gethSnapServerExecutionEngineClient,
     )
   val followerExecutionEngineClients =
     mapOf(

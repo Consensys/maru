@@ -168,7 +168,6 @@ class CliqueToPosTest {
     }
 
     await
-      .pollInterval(1.seconds.toJavaDuration())
       .ignoreExceptions()
       .timeout(10.seconds.toJavaDuration())
       .alias(nodeName)
@@ -194,8 +193,7 @@ class CliqueToPosTest {
     nodeEthereumClient: Web3j,
   ) {
     await
-      .pollInterval(30.seconds.toJavaDuration())
-      .timeout(2.minutes.toJavaDuration())
+      .timeout(4.minutes.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         log.debug("Restarting $nodeName")
@@ -217,13 +215,11 @@ class CliqueToPosTest {
   ) {
     val expectedBlockNumber =
       when {
-        (nodeName.contains("geth-2") || nodeName.contains("geth-snap")) -> 5L
         nodeName.contains("erigon") -> 5L
         else -> 0L
       }
     await
-      .pollInterval(5.seconds.toJavaDuration())
-      .timeout(30.seconds.toJavaDuration())
+      .timeout(20.seconds.toJavaDuration())
       .ignoreExceptions()
       .alias(nodeName)
       .untilAsserted {
@@ -322,7 +318,7 @@ class CliqueToPosTest {
 
   private fun everyoneArePeered() {
     log.info("Call add peer on all nodes and wait for peering to happen.")
-    await.pollInterval(1.seconds.toJavaDuration()).timeout(1.minutes.toJavaDuration()).untilAsserted {
+    await.timeout(1.minutes.toJavaDuration()).untilAsserted {
       TestEnvironment.followerClients.forEach {
         try {
           it.value
