@@ -148,6 +148,12 @@ class CliqueToPosTest {
     log.info("Container $nodeName restarted")
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
 
+    val expectedBlockHeight =
+      when {
+        nodeName.contains("geth-2") || nodeName.contains("geth-snap") -> 5L
+        nodeName.contains("erigon") -> 5L
+        else -> 0L
+      }
     await.timeout(20.seconds.toJavaDuration()).ignoreExceptions().alias(nodeName).untilAsserted {
       assertThat(
         nodeEthereumClient
@@ -155,7 +161,8 @@ class CliqueToPosTest {
           .send()
           .blockNumber
           .toLong(),
-      ).isLessThan(6).withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
+      ).isEqualTo(expectedBlockHeight)
+        .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
     }
     if (nodeName.contains("erigon")) {
       // Erigon doesn't seem to backfill the blocks from head to the switch block
