@@ -219,6 +219,7 @@ class CliqueToPosTest {
         else -> 0L
       }
     await
+      .pollInterval(5.seconds.toJavaDuration())
       .timeout(20.seconds.toJavaDuration())
       .ignoreExceptions()
       .alias(nodeName)
