@@ -18,10 +18,8 @@ package maru.e2e
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.palantir.docker.compose.DockerComposeRule
 import com.palantir.docker.compose.configuration.ProjectName
-import com.palantir.docker.compose.connection.State
 import com.palantir.docker.compose.connection.waiting.ClusterHealthCheck
 import com.palantir.docker.compose.connection.waiting.HealthChecks
-import com.palantir.docker.compose.connection.waiting.SuccessOrFailure
 import java.io.File
 import java.math.BigInteger
 import java.nio.file.Files
@@ -192,13 +190,8 @@ class CliqueToPosTest {
     await.timeout(30.seconds.toJavaDuration()).untilAsserted {
       val nodeIsUp =
         ClusterHealthCheck
-          .serviceHealthCheck(nodeName) { container ->
-            if (container.state() == State.HEALTHY) {
-              SuccessOrFailure.success()
-            } else {
-              SuccessOrFailure.failure("$nodeName is not healthy!")
-            }
-          }.isClusterHealthy(qbftCluster.containers())
+          .nativeHealthChecks()
+          .isClusterHealthy(qbftCluster.containers())
           .succeeded()
       assertThat(nodeIsUp).isTrue()
     }
