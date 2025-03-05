@@ -98,8 +98,6 @@ class CliqueToPosTest {
         .filter {
           // Doesn't work just yet
           !it.key.contains("nethermind")
-          // It's exactly the same as geth-2. The point is that Geth syncs only to Geth nodes.
-          !it.key.contains("snap-server")
         }.map {
           Arguments.of(it.key, it.value)
         }
