@@ -149,6 +149,7 @@ class CliqueToPosTest {
 
     if (nodeName.contains("erigon")) {
       await
+        .pollInterval(1.seconds.toJavaDuration())
         .timeout(20.seconds.toJavaDuration())
         .ignoreExceptions()
         .alias(nodeName)
@@ -212,6 +213,7 @@ class CliqueToPosTest {
         else -> 0L
       }
     await
+      .pollInterval(1.seconds.toJavaDuration())
       .timeout(20.seconds.toJavaDuration())
       .ignoreExceptions()
       .alias(nodeName)
