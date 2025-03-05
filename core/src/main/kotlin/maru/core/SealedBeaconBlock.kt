@@ -16,8 +16,8 @@
 package maru.core
 
 data class SealedBeaconBlock(
-  val commitSeals: List<Seal>,
   val beaconBlock: BeaconBlock,
+  val commitSeals: List<Seal>,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
