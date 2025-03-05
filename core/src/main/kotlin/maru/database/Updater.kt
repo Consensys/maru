@@ -15,14 +15,14 @@
  */
 package maru.database
 
-import maru.core.BeaconBlock
 import maru.core.BeaconState
+import maru.core.SealedBeaconBlock
 
 interface Updater : AutoCloseable {
   fun putBeaconState(beaconState: BeaconState): Updater
 
-  fun putBeaconBlock(
-    beaconBlock: BeaconBlock,
+  fun putSealedBeaconBlock(
+    sealedBeaconBlock: SealedBeaconBlock,
     beaconBlockRoot: ByteArray,
   ): Updater
 

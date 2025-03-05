@@ -36,6 +36,11 @@ object RLPSerializers {
       beaconBlockHeaderSerializer = BeaconBlockHeaderSerializer,
       beaconBlockBodySerializer = BeaconBlockBodySerializer,
     )
+  val SealedBeaconBlockSerializer =
+    SealedBeaconBlockSerializer(
+      beaconBlockSerializer = BeaconBlockSerializer,
+      sealSerializer = SealSerializer,
+    )
   val BeaconStateSerializer =
     BeaconStateSerializer(
       beaconBlockHeaderSerializer = BeaconBlockHeaderSerializer,

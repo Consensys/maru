@@ -26,6 +26,7 @@ import maru.core.ExecutionPayload
 import maru.core.HashUtil
 import maru.core.HeaderHashFunction
 import maru.core.Seal
+import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.executionlayer.manager.BlockMetadata
 import maru.serialization.rlp.RLPSerializers
@@ -63,6 +64,15 @@ object DataGenerators {
       beaconBlockBody = beaconBlockBody,
     )
   }
+
+  fun randomSealedBeaconBlock(number: ULong): SealedBeaconBlock =
+    SealedBeaconBlock(
+      beaconBlock = randomBeaconBlock(number),
+      commitSeals =
+        (1..3).map {
+          Seal(Random.nextBytes(96))
+        },
+    )
 
   fun randomBeaconBlockBody(): BeaconBlockBody =
     BeaconBlockBody(
