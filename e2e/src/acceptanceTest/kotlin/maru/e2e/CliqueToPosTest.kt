@@ -168,6 +168,7 @@ class CliqueToPosTest {
     }
 
     await
+      .timeout(1.seconds.toJavaDuration())
       .ignoreExceptions()
       .timeout(10.seconds.toJavaDuration())
       .alias(nodeName)
