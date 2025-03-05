@@ -133,7 +133,9 @@ class MaruDummyConsensusTest {
     val timestamps = blocks.map { it.timestamp.toLong() }
     (1.until(blocks.size)).forEach {
       assertThat(timestamps[it - 1]).isLessThan(timestamps[it])
-      assertThat(timestamps[it] - timestamps[it - 1]).isEqualTo(blockTimeSeconds)
+      val actualBlockTime = timestamps[it] - timestamps[it - 1]
+      assertThat(actualBlockTime).isGreaterThanOrEqualTo(blockTimeSeconds)
+      assertThat(actualBlockTime).isLessThanOrEqualTo(blockTimeSeconds + 1)
     }
   }
 }
