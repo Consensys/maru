@@ -17,6 +17,7 @@ package maru.consensus.qbft.adaptors
 
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
+import maru.core.SealedBeaconBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 
@@ -29,9 +30,21 @@ object BlockUtil {
    *
    * @param qbftBlock the QBFT block to convert
    */
-  fun toBeaconBlock(qbftBlock: QbftBlock): BeaconBlock {
-    if (qbftBlock is QbftBlockAdaptor) {
-      return qbftBlock.beaconBlock
+  fun toBeaconBlock(qbftBlock: QbftBlock): BeaconBlock =
+    when (qbftBlock) {
+      is QbftBlockAdaptor -> qbftBlock.beaconBlock
+      is QbftSealedBlockAdaptor -> qbftBlock.sealedBeaconBlock.beaconBlock
+      else -> throw IllegalArgumentException("Unsupported block type")
+    }
+
+  /**
+   * Convert a QBFT block to a SealedBeaconBlock
+   *
+   * @param qbftBlock the QBFT block to convert
+   */
+  fun toSealedBeaconBlock(qbftBlock: QbftBlock): SealedBeaconBlock {
+    if (qbftBlock is QbftSealedBlockAdaptor) {
+      return qbftBlock.sealedBeaconBlock
     } else {
       throw IllegalArgumentException("Unsupported block type")
     }
