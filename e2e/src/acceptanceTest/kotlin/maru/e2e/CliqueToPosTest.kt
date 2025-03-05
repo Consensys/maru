@@ -148,16 +148,31 @@ class CliqueToPosTest {
     log.info("Container $nodeName restarted")
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
 
+    if (nodeName.contains("erigon")) {
+      await
+        .timeout(20.seconds.toJavaDuration())
+        .ignoreExceptions()
+        .alias(nodeName)
+        .untilAsserted {
+          assertThat(
+            nodeEthereumClient
+              .ethBlockNumber()
+              .send()
+              .blockNumber
+              .toLong(),
+          ).isEqualTo(5L)
+            .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
+        }
+      // Erigon doesn't seem to backfill the blocks from head to the switch block
+      sendNewPayloadByBlockNumber(6, nodeEngineApiClient)
+    }
+
     await
       .pollInterval(1.seconds.toJavaDuration())
       .ignoreExceptions()
       .timeout(10.seconds.toJavaDuration())
       .alias(nodeName)
       .untilAsserted {
-        if (nodeName.contains("erigon")) {
-          // Erigon doesn't seem to backfill the blocks from head to the switch block
-          sendNewPayloadByBlockNumber(6, nodeEngineApiClient)
-        }
         syncTarget(nodeEngineApiClient, 7)
         if (nodeName.contains("follower-geth")) {
           // For some reason it doesn't set latest block correctly, but the block is available
