@@ -193,7 +193,7 @@ class CliqueToPosTest {
     nodeEthereumClient: Web3j,
   ) {
     await
-      .timeout(4.minutes.toJavaDuration())
+      .timeout(2.minutes.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         log.debug("Restarting $nodeName")
