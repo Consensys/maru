@@ -86,9 +86,8 @@ object TestEnvironment {
       "follower-nethermind" to nethermindFollowerExecutionEngineClient,
     ) + gethExecutionEngineClients
 
-  // Order matters here. Geth syncs only to Geth nodes, so 1 up and running Geth node is required all the time
   val followerExecutionClientsPostMerge =
-    mapOf(("follower-geth" to geth1ExecutionEngineClient)) + followerExecutionEngineClients
+    (followerExecutionEngineClients + ("follower-geth" to geth1ExecutionEngineClient))
 
   private val transactionManager =
     let {
