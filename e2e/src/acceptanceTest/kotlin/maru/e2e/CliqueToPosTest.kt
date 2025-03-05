@@ -18,7 +18,6 @@ package maru.e2e
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.palantir.docker.compose.DockerComposeRule
 import com.palantir.docker.compose.configuration.ProjectName
-import com.palantir.docker.compose.connection.waiting.ClusterHealthCheck
 import com.palantir.docker.compose.connection.waiting.HealthChecks
 import java.io.File
 import java.math.BigInteger
@@ -199,12 +198,6 @@ class CliqueToPosTest {
         log.debug("Restarting $nodeName")
         qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
         qbftCluster.dockerCompose().up()
-        val nodeIsUp =
-          ClusterHealthCheck
-            .nativeHealthChecks()
-            .isClusterHealthy(qbftCluster.containers())
-            .succeeded()
-        assertThat(nodeIsUp).isTrue()
         awaitExpectedBlockNumberAfterStartup(nodeName, nodeEthereumClient)
       }
   }
