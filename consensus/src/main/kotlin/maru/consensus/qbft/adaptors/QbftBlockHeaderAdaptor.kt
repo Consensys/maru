@@ -47,3 +47,11 @@ class QbftBlockHeaderAdaptor(
 
   override fun hashCode(): Int = beaconBlockHeader.hashCode()
 }
+
+fun QbftBlockHeader.toBeaconBlockHeader(): BeaconBlockHeader {
+  if (this is QbftBlockHeaderAdaptor) {
+    return this.beaconBlockHeader
+  } else {
+    throw IllegalArgumentException("Unsupported block header type")
+  }
+}
