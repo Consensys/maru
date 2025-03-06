@@ -156,7 +156,6 @@ class CliqueToPosTest {
         if (nodeName.contains("erigon")) {
           // For some reason Erigon needs a restart after PoS transition
           restartNodeKeepingState(nodeName, nodeEthereumClient)
-          syncTarget(nodeEngineApiClient, 7)
         }
         syncTarget(nodeEngineApiClient, 7)
         if (nodeName.contains("follower-geth")) {
