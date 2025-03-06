@@ -177,15 +177,9 @@ class CliqueToPosTest {
     nodeName: String,
     nodeEthereumClient: Web3j,
   ) {
-    await
-      .timeout(2.minutes.toJavaDuration())
-      .ignoreExceptions()
-      .untilAsserted {
-        log.debug("Restarting $nodeName")
-        qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
-        qbftCluster.dockerCompose().up()
-        awaitExpectedBlockNumberAfterStartup(nodeName, nodeEthereumClient)
-      }
+    qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
+    qbftCluster.dockerCompose().up()
+    awaitExpectedBlockNumberAfterStartup(nodeName, nodeEthereumClient)
   }
 
   private fun restartNodeKeepingState(
@@ -193,9 +187,9 @@ class CliqueToPosTest {
     nodeEthereumClient: Web3j,
   ) {
     log.debug("Restarting $nodeName keeping state")
-    val erigonContainer = qbftCluster.containers().container(nodeName)
-    erigonContainer.stop()
-    erigonContainer.start()
+    val container = qbftCluster.containers().container(nodeName)
+    container.stop()
+    container.start()
     awaitExpectedBlockNumberAfterStartup(nodeName, nodeEthereumClient)
   }
 
