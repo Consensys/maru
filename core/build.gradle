@@ -19,7 +19,6 @@ plugins {
 }
 
 dependencies {
-  implementation "org.hyperledger.besu.internal:rlp"
   implementation "org.hyperledger.besu:besu-datatypes"
   implementation "io.tmio:tuweni-bytes"
 

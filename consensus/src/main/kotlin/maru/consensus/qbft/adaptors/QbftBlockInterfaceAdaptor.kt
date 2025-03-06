@@ -15,6 +15,8 @@
  */
 package maru.consensus.qbft.adaptors
 
+import maru.consensus.qbft.adaptors.toBeaconBlock
+import maru.consensus.qbft.adaptors.toBeaconBlockHeader
 import maru.core.BeaconBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockInterface
@@ -29,13 +31,13 @@ class QbftBlockInterfaceAdaptor : QbftBlockInterface {
     roundNumber: Int,
     hashMode: QbftHashMode,
   ): QbftBlock {
-    val beaconBlockHeader = BlockUtil.toBeaconBlockHeader(proposalBlock.header)
+    val beaconBlockHeader = proposalBlock.header.toBeaconBlockHeader()
     val replacedBeaconBlockHeader =
       beaconBlockHeader.copy(
         round = roundNumber.toULong(),
       )
     return QbftBlockAdaptor(
-      BeaconBlock(replacedBeaconBlockHeader, BlockUtil.toBeaconBlock(proposalBlock).beaconBlockBody),
+      BeaconBlock(replacedBeaconBlockHeader, proposalBlock.toBeaconBlock().beaconBlockBody),
     )
   }
 }

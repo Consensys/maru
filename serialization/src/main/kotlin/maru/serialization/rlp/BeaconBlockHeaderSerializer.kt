@@ -64,7 +64,7 @@ class BeaconBlockHeaderSerializer(
       parentRoot = parentRoot,
       stateRoot = stateRoot,
       bodyRoot = bodyRoot,
-      headerHashFunction.invoke(this),
+      headerHashFunction(this),
     )
   }
 }

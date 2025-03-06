@@ -24,42 +24,42 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 /**
 * Utility class to convert QBFT blocks to BeaconBlocks and QBFT headers to BeaconBlockHeaders
  */
-object BlockUtil {
-  /**
-   * Convert a QBFT block to a BeaconBlock
-   *
-   * @param qbftBlock the QBFT block to convert
-   */
-  fun toBeaconBlock(qbftBlock: QbftBlock): BeaconBlock =
-    when (qbftBlock) {
-      is QbftBlockAdaptor -> qbftBlock.beaconBlock
-      is QbftSealedBlockAdaptor -> qbftBlock.sealedBeaconBlock.beaconBlock
-      else -> throw IllegalArgumentException("Unsupported block type")
-    }
+object BlockUtil
 
-  /**
-   * Convert a QBFT block to a SealedBeaconBlock
-   *
-   * @param qbftBlock the QBFT block to convert
-   */
-  fun toSealedBeaconBlock(qbftBlock: QbftBlock): SealedBeaconBlock {
-    if (qbftBlock is QbftSealedBlockAdaptor) {
-      return qbftBlock.sealedBeaconBlock
-    } else {
-      throw IllegalArgumentException("Unsupported block type")
-    }
+/**
+ * Convert a QBFT block to a BeaconBlock
+ *
+ * @param qbftBlock the QBFT block to convert
+ */
+fun QbftBlock.toBeaconBlock(): BeaconBlock =
+  when (this) {
+    is QbftBlockAdaptor -> this.beaconBlock
+    is QbftSealedBlockAdaptor -> this.sealedBeaconBlock.beaconBlock
+    else -> throw IllegalArgumentException("Unsupported block type")
   }
 
-  /**
-   * Convert a QBFT block header to a BeaconBlockHeader
-   *
-   * @param qbftBlockHeader the QBFT block header to convert
-   */
-  fun toBeaconBlockHeader(qbftBlockHeader: QbftBlockHeader): BeaconBlockHeader {
-    if (qbftBlockHeader is QbftBlockHeaderAdaptor) {
-      return qbftBlockHeader.beaconBlockHeader
-    } else {
-      throw IllegalArgumentException("Unsupported block header type")
-    }
+/**
+ * Convert a QBFT block to a SealedBeaconBlock
+ *
+ * @param qbftBlock the QBFT block to convert
+ */
+fun QbftBlock.toSealedBeaconBlock(): SealedBeaconBlock {
+  if (this is QbftSealedBlockAdaptor) {
+    return this.sealedBeaconBlock
+  } else {
+    throw IllegalArgumentException("Unsupported block type")
+  }
+}
+
+/**
+ * Convert a QBFT block header to a BeaconBlockHeader
+ *
+ * @param qbftBlockHeader the QBFT block header to convert
+ */
+fun QbftBlockHeader.toBeaconBlockHeader(): BeaconBlockHeader {
+  if (this is QbftBlockHeaderAdaptor) {
+    return this.beaconBlockHeader
+  } else {
+    throw IllegalArgumentException("Unsupported block header type")
   }
 }
