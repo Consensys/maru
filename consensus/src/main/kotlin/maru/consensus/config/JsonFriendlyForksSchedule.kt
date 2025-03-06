@@ -18,6 +18,7 @@ package maru.consensus.config
 import fromHexToByteArray
 import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
@@ -44,8 +45,13 @@ data class JsonFriendlyForksSchedule(
   ): ConsensusConfig =
     when (type) {
       "dummy" -> {
-        DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt(), obj["feeRecipient"]!!.fromHexToByteArray())
+        DummyConsensusConfig(
+          blockTimeMillis = obj["blockTimeMillis"]!!.toUInt(),
+          feeRecipient = obj["feeRecipient"]!!.fromHexToByteArray(),
+          elFork = ElFork.valueOf(obj["elFork"]!!),
+        )
       }
+
       "delegated" -> {
         ElDelegatedConsensus.Config(obj["pollPeriodMillis"]!!.toInt().milliseconds)
       }

@@ -17,7 +17,7 @@ package maru.consensus
 
 import java.util.concurrent.atomic.AtomicReference
 import maru.core.Protocol
-import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -41,7 +41,7 @@ class MetadataOnlyHandlerAdapter(
 class ProtocolStarter(
   private val forksSchedule: ForksSchedule,
   private val protocolFactory: ProtocolFactory,
-  private val executionLayerClient: ExecutionLayerClient,
+  private val metadataProvider: MetadataProvider,
 ) : Protocol {
   data class ProtocolWithConfig(
     val protocol: Protocol,
@@ -79,7 +79,7 @@ class ProtocolStarter(
   }
 
   override fun start() {
-    val latestBlock = executionLayerClient.getLatestBlockMetadata().get()
+    val latestBlock = metadataProvider.getLatestBlockMetadata().get()
     handleNewBlock(latestBlock)
   }
 

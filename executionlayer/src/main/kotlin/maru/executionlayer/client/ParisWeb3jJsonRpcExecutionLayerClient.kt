@@ -15,22 +15,29 @@
  */
 package maru.executionlayer.client
 
+import java.util.Optional
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
-interface ExecutionLayerClient {
-  fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>>
+class ParisWeb3jJsonRpcExecutionLayerClient(
+  private val web3jEngineClient: Web3JExecutionEngineClient,
+) : ExecutionLayerClient {
+  override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>> =
+    web3jEngineClient.getPayloadV1(payloadId)
 
-  fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>>
+  override fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>> =
+    web3jEngineClient.newPayloadV1(executionPayload)
 
-  fun forkChoiceUpdate(
+  override fun forkChoiceUpdate(
     forkChoiceState: ForkChoiceStateV1,
     payloadAttributes: PayloadAttributesV1?,
-  ): SafeFuture<Response<ForkChoiceUpdatedResult>>
+  ): SafeFuture<Response<ForkChoiceUpdatedResult>> =
+    web3jEngineClient.forkChoiceUpdatedV1(forkChoiceState, Optional.ofNullable(payloadAttributes))
 }

@@ -20,6 +20,11 @@ import java.util.TreeSet
 
 interface ConsensusConfig
 
+enum class ElFork {
+  Paris,
+  Prague,
+}
+
 data class ForkSpec(
   val blockNumber: ULong,
   val configuration: ConsensusConfig,

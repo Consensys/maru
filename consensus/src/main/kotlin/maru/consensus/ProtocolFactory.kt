@@ -21,7 +21,7 @@ import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
 import maru.consensus.dummy.DummyConsensusProtocolBuilder
 import maru.core.Protocol
-import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.client.MetadataProvider
 import org.web3j.protocol.Web3j
 
 interface ProtocolFactory {
@@ -32,8 +32,8 @@ class OmniProtocolFactory(
   private val forksSchedule: ForksSchedule,
   private val clock: Clock,
   private val config: MaruConfig,
-  private val executionLayerClient: ExecutionLayerClient,
   private val ethereumJsonRpcClient: Web3j,
+  private val metadataProvider: MetadataProvider,
   private val newBlockHandler: NewBlockHandler,
 ) : ProtocolFactory {
   override fun create(protocolConfig: ConsensusConfig): Protocol =
@@ -49,8 +49,10 @@ class OmniProtocolFactory(
             clock = clock,
             minTimeTillNextBlock = config.executionClientConfig.minTimeBetweenGetPayloadAttempts,
             dummyConsensusOptions = config.dummyConsensusOptions!!,
-            executionLayerClient = executionLayerClient,
+            executionClientConfig = config.executionClientConfig,
+            metadataProvider = metadataProvider,
             onNewBlockHandler = newBlockHandler,
+            effectiveFork = protocolConfig.elFork,
           )
       }
 

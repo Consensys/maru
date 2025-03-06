@@ -16,10 +16,12 @@
 package maru.consensus.dummy
 
 import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
 
 data class DummyConsensusConfig(
   private val blockTimeMillis: UInt,
   val feeRecipient: ByteArray,
+  val elFork: ElFork,
 ) : ConsensusConfig {
   /** Leaving blockTimeMillis in the configuration to be future-proof, exposing nextBlockPeriodSeconds to be closer
    * to reality where block timestamp is in seconds

@@ -69,14 +69,13 @@ class JsonRpcExecutionLayerManagerTest {
   }
 
   private fun createExecutionLayerManager(): ExecutionLayerManager {
-    whenever(executionLayerClient.getLatestBlockMetadata()).thenReturn(
-      SafeFuture.completedFuture(BlockMetadata(initialBlockHeight, latestBlockHash, 0L)),
-    )
+    val metadataProvider = { SafeFuture.completedFuture(BlockMetadata(initialBlockHeight, latestBlockHash, 0L)) }
     return JsonRpcExecutionLayerManager
       .create(
-        executionLayerClient,
-        { feeRecipient },
-        NoopValidator,
+        executionLayerClient = executionLayerClient,
+        metadataProvider = metadataProvider,
+        feeRecipientProvider = { feeRecipient },
+        payloadValidator = NoopValidator,
       ).get()
   }
 
@@ -86,7 +85,9 @@ class JsonRpcExecutionLayerManagerTest {
     val payloadStatus = PayloadStatusV1(executionStatus, latestValidHash, null)
     whenever(executionLayerClient.forkChoiceUpdate(any(), any()))
       .thenReturn(
-        SafeFuture.completedFuture(Response(TekuForkChoiceUpdatedResult(payloadStatus, payloadId))),
+        SafeFuture.completedFuture(
+          Response.fromPayloadReceivedAsJson(TekuForkChoiceUpdatedResult(payloadStatus, payloadId)),
+        ),
       )
     return payloadStatus
   }
@@ -96,7 +97,7 @@ class JsonRpcExecutionLayerManagerTest {
     executionPayload: ExecutionPayloadV1,
   ) {
     val getPayloadResponse =
-      Response(
+      Response.fromPayloadReceivedAsJson(
         executionPayload,
       )
     whenever(executionLayerClient.getPayload(eq(payloadId)))
@@ -105,7 +106,7 @@ class JsonRpcExecutionLayerManagerTest {
 
   private fun mockNewPayloadWithStatus(payloadStatus: PayloadStatusV1) {
     whenever(executionLayerClient.newPayload(any())).thenReturn(
-      SafeFuture.completedFuture(Response(payloadStatus)),
+      SafeFuture.completedFuture(Response.fromPayloadReceivedAsJson(payloadStatus)),
     )
   }
 

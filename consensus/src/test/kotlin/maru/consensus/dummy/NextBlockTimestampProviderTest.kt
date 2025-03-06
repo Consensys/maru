@@ -20,6 +20,7 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
+import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.executionlayer.manager.BlockMetadata
@@ -29,8 +30,8 @@ class NextBlockTimestampProviderTest {
   private val forksSchedule =
     ForksSchedule(
       listOf(
-        ForkSpec(0UL, DummyConsensusConfig(1000u, ByteArray(20))),
-        ForkSpec(10UL, DummyConsensusConfig(2000u, ByteArray(20))),
+        ForkSpec(0UL, DummyConsensusConfig(1000u, ByteArray(20), ElFork.Prague)),
+        ForkSpec(10UL, DummyConsensusConfig(2000u, ByteArray(20), ElFork.Prague)),
       ),
     )
   private val baseLastBlockMetadata = BlockMetadata(1UL, ByteArray(32), 9)
