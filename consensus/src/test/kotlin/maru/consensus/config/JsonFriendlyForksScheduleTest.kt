@@ -23,6 +23,7 @@ import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
+import maru.consensus.dummy.ElFork
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -36,7 +37,8 @@ class JsonFriendlyForksScheduleTest {
         "0": {
           "type": "dummy",
           "blockTimeMillis": 1000,
-          "feeRecipient": "0x0000000000000000000000000000000000000000"
+          "feeRecipient": "0x0000000000000000000000000000000000000000",
+          "elFork": "Paris"
         },
         "2": {
           "type": "delegated",
@@ -57,6 +59,7 @@ class JsonFriendlyForksScheduleTest {
         "type" to "dummy",
         "blockTimeMillis" to "1000",
         "feeRecipient" to "0x0000000000000000000000000000000000000000",
+        "elFork" to "Paris",
       )
     val expectedDelegatedConsensusMap =
       mapOf(
@@ -87,6 +90,7 @@ class JsonFriendlyForksScheduleTest {
             DummyConsensusConfig(
               blockTimeMillis = 1000u,
               feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
+              elFork = ElFork.Paris,
             ),
           ),
           ForkSpec(
@@ -100,7 +104,7 @@ class JsonFriendlyForksScheduleTest {
     )
   }
 
-  inline fun <reified T : Any> parseJsonConfig(json: String): T =
+  private inline fun <reified T : Any> parseJsonConfig(json: String): T =
     ConfigLoaderBuilder
       .default()
       .withExplicitSealedTypes()

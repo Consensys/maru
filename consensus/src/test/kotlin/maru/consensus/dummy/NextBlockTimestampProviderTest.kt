@@ -29,8 +29,8 @@ class NextBlockTimestampProviderTest {
   private val forksSchedule =
     ForksSchedule(
       listOf(
-        ForkSpec(0UL, DummyConsensusConfig(1000u, ByteArray(20))),
-        ForkSpec(10UL, DummyConsensusConfig(2000u, ByteArray(20))),
+        ForkSpec(0UL, DummyConsensusConfig(1000u, ByteArray(20), ElFork.Prague)),
+        ForkSpec(10UL, DummyConsensusConfig(2000u, ByteArray(20), ElFork.Prague)),
       ),
     )
   private val baseLastBlockMetadata = BlockMetadata(1UL, ByteArray(32), 9)

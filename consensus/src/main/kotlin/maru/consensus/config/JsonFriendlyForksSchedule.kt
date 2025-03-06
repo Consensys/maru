@@ -22,6 +22,7 @@ import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
+import maru.consensus.dummy.ElFork
 
 data class JsonFriendlyForksSchedule(
   val config: Map<String, Map<String, String>>,
@@ -44,8 +45,13 @@ data class JsonFriendlyForksSchedule(
   ): ConsensusConfig =
     when (type) {
       "dummy" -> {
-        DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt(), obj["feeRecipient"]!!.fromHexToByteArray())
+        DummyConsensusConfig(
+          blockTimeMillis = obj["blockTimeMillis"]!!.toUInt(),
+          feeRecipient = obj["feeRecipient"]!!.fromHexToByteArray(),
+          elFork = ElFork.valueOf(obj["elFork"]!!),
+        )
       }
+
       "delegated" -> {
         ElDelegatedConsensus.Config(obj["pollPeriodMillis"]!!.toInt().milliseconds)
       }

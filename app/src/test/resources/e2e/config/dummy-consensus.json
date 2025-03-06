@@ -3,7 +3,8 @@
     "0": {
       "type": "dummy",
       "blockTimeMillis": 1000,
-      "feeRecipient": "0x0000000000000000000000000000000000000000"
+      "feeRecipient": "0x0000000000000000000000000000000000000000",
+      "elFork": "Prague"
     }
   }
 }

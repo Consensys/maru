@@ -23,12 +23,10 @@ import maru.consensus.MetadataOnlyHandlerAdapter
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
-import maru.executionlayer.client.ExecutionLayerClient
-import maru.executionlayer.client.Web3jJsonRpcExecutionLayerClient
+import maru.executionlayer.client.Web3jMetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
@@ -53,14 +51,10 @@ class MaruApp(
       config.executionClientConfig.ethereumJsonRpcEndpoint
         .toString(),
     )
-  private val executionLayerClient =
-    buildExecutionEngineClient(
-      config.executionClientConfig.engineApiJsonRpcEndpoint
-        .toString(),
-      ethereumJsonRpcClient,
-    )
 
   private val newBlockHandlerMultiplexer = NewBlockHandlerMultiplexer(emptyMap())
+
+  private val metadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
 
   private val protocolStarter =
     ProtocolStarter(
@@ -70,29 +64,14 @@ class MaruApp(
           forksSchedule = beaconGenesisConfig,
           clock = clock,
           config = config,
-          executionLayerClient = executionLayerClient,
           ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
+          metadataProvider = metadataProvider,
           newBlockHandler = newBlockHandlerMultiplexer,
         ),
-      executionLayerClient = executionLayerClient,
+      metadataProvider = metadataProvider,
     ).also {
       newBlockHandlerMultiplexer.addHandler("protocol starter", MetadataOnlyHandlerAdapter(it))
     }
-
-  private fun buildExecutionEngineClient(
-    endpoint: String,
-    web3JEthereumApiClient: Web3JClient,
-  ): ExecutionLayerClient {
-    val web3JEngineApiClient: Web3JClient =
-      Web3jClientBuilder()
-        .endpoint(endpoint)
-        .timeout(Duration.ofMinutes(1))
-        .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-        .executionClientEventsPublisher { }
-        .build()
-    val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
-    return Web3jJsonRpcExecutionLayerClient(web3jExecutionLayerClient, web3JEthereumApiClient)
-  }
 
   private fun buildJsonRpcClient(endpoint: String): Web3JClient =
     Web3jClientBuilder()

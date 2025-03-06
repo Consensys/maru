@@ -18,6 +18,7 @@ package maru.consensus
 import maru.core.Protocol
 import maru.core.ext.DataGenerators
 import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.manager.BlockMetadata
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -67,12 +68,11 @@ class ProtocolStarterTest {
           ),
         ),
       )
-    val executionLayerClient =
-      createFakeExecutionLayerClient(latestBlockMetadataToReturn = DataGenerators.randomBlockMetadata(15u))
+    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(15u)) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        executionLayerClient = executionLayerClient,
+        metadataProvider = metadataProvider,
       )
     protocolStarter.start()
     val currentProtocolWithConfig = protocolStarter.currentProtocolWithConfig.get()
@@ -95,12 +95,11 @@ class ProtocolStarterTest {
           ),
         ),
       )
-    val executionLayerClient =
-      createFakeExecutionLayerClient(latestBlockMetadataToReturn = DataGenerators.randomBlockMetadata(15u))
+    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(15u)) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        executionLayerClient = executionLayerClient,
+        metadataProvider = metadataProvider,
       )
     protocolStarter.start()
     val initiallyCreatedProtocol = protocolStarter.currentProtocolWithConfig.get().protocol
@@ -125,12 +124,11 @@ class ProtocolStarterTest {
           ),
         ),
       )
-    val executionLayerClient =
-      createFakeExecutionLayerClient(latestBlockMetadataToReturn = DataGenerators.randomBlockMetadata(13u))
+    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(13u)) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        executionLayerClient = executionLayerClient,
+        metadataProvider = metadataProvider,
       )
     protocolStarter.start()
 
@@ -149,11 +147,6 @@ class ProtocolStarterTest {
 
   private fun createFakeExecutionLayerClient(latestBlockMetadataToReturn: BlockMetadata): ExecutionLayerClient =
     object : ExecutionLayerClient {
-      override fun getLatestBlockMetadata(): SafeFuture<BlockMetadata> =
-        SafeFuture.completedFuture(
-          latestBlockMetadataToReturn,
-        )
-
       override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>> {
         TODO("Not yet implemented")
       }
@@ -185,11 +178,11 @@ class ProtocolStarterTest {
 
   private fun createProtocolStarter(
     forksSchedule: ForksSchedule,
-    executionLayerClient: ExecutionLayerClient,
+    metadataProvider: MetadataProvider,
   ): ProtocolStarter =
     ProtocolStarter(
       forksSchedule = forksSchedule,
       protocolFactory = protocolFactory,
-      executionLayerClient = executionLayerClient,
+      metadataProvider = metadataProvider,
     )
 }

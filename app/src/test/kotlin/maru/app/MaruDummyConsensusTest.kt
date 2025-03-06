@@ -19,6 +19,8 @@ import java.math.BigInteger
 import maru.testutils.MaruFactory
 import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
+import maru.testutils.besu.BesuFactory.parisGenesis
+import maru.testutils.besu.BesuFactory.pragueGenesis
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
@@ -31,7 +33,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
 
@@ -48,10 +49,9 @@ class MaruDummyConsensusTest {
   private lateinit var transactionsHelper: TransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
 
-  @BeforeEach
-  fun setUp() {
+  private fun setUp(genesisFilePath: String = pragueGenesis) {
     transactionsHelper = TransactionsHelper()
-    besuNode = BesuFactory.buildTestBesu()
+    besuNode = BesuFactory.buildTestBesu(genesisFilePath)
     cluster = Cluster(NetConditions(NetTransactions()))
 
     cluster.start(besuNode)
@@ -81,6 +81,7 @@ class MaruDummyConsensusTest {
 
   @Test
   fun `dummyConsensus is able to produce blocks with the expected block time`() {
+    setUp()
     val blocksToProduce = 10
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
@@ -91,6 +92,7 @@ class MaruDummyConsensusTest {
 
   @Test
   fun `dummyConsensus works if Besu stops mid flight`() {
+    setUp()
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
@@ -105,6 +107,21 @@ class MaruDummyConsensusTest {
 
   @Test
   fun `dummyConsensus works if Maru stops mid flight`() {
+    setUp()
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+    maruNode.stop()
+    maruNode.start()
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+  }
+
+  @Test
+  fun `dummyConsensus works with Paris fork`() {
+    setUp(parisGenesis)
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))

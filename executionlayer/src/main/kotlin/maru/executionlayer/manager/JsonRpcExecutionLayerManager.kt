@@ -18,6 +18,7 @@ package maru.executionlayer.manager
 import kotlin.jvm.optionals.getOrNull
 import maru.core.ExecutionPayload
 import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.client.MetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
@@ -48,10 +49,11 @@ class JsonRpcExecutionLayerManager private constructor(
   companion object {
     fun create(
       executionLayerClient: ExecutionLayerClient,
+      metadataProvider: MetadataProvider,
       feeRecipientProvider: FeeRecipientProvider,
       payloadValidator: ExecutionPayloadValidator,
     ): SafeFuture<JsonRpcExecutionLayerManager> =
-      executionLayerClient.getLatestBlockMetadata().thenApply {
+      metadataProvider.getLatestBlockMetadata().thenApply {
         val currentBlockMetadata = BlockMetadata(it.blockNumber, it.blockHash, it.unixTimestamp)
         JsonRpcExecutionLayerManager(
           executionLayerClient = executionLayerClient,

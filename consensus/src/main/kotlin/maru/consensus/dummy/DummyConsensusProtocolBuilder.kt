@@ -18,12 +18,20 @@ package maru.consensus.dummy
 import java.time.Clock
 import kotlin.time.Duration
 import maru.config.DummyConsensusOptions
+import maru.config.ExecutionClientConfig
 import maru.consensus.EngineApiBlockCreator
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
 import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.client.MetadataProvider
+import maru.executionlayer.client.ParisWeb3jJsonRpcExecutionLayerClient
+import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
+import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object DummyConsensusProtocolBuilder {
   fun build(
@@ -31,17 +39,25 @@ object DummyConsensusProtocolBuilder {
     clock: Clock,
     minTimeTillNextBlock: Duration,
     dummyConsensusOptions: DummyConsensusOptions,
-    executionLayerClient: ExecutionLayerClient,
+    executionClientConfig: ExecutionClientConfig,
+    metadataProvider: MetadataProvider,
     onNewBlockHandler: NewBlockHandler,
+    effectiveFork: ElFork,
   ): TimeDrivenEventProducer {
+    val executionLayerClient =
+      buildExecutionEngineClient(
+        executionClientConfig.engineApiJsonRpcEndpoint.toString(),
+        effectiveFork,
+      )
     val jsonRpcExecutionLayerManager =
       JsonRpcExecutionLayerManager
         .create(
           executionLayerClient = executionLayerClient,
+          metadataProvider = metadataProvider,
           feeRecipientProvider = {
             (forksSchedule.getForkByNumber(it) as DummyConsensusConfig).feeRecipient
           },
-          EmptyBlockValidator,
+          payloadValidator = EmptyBlockValidator,
         ).get()
     val latestBlockMetadata = jsonRpcExecutionLayerManager.latestBlockMetadata()
     val latestBlockHash = latestBlockMetadata.blockHash
@@ -82,5 +98,23 @@ object DummyConsensusProtocolBuilder {
       clock = clock,
       config = TimeDrivenEventProducer.Config(dummyConsensusOptions.communicationMargin),
     )
+  }
+
+  private fun buildExecutionEngineClient(
+    endpoint: String,
+    elFork: ElFork,
+  ): ExecutionLayerClient {
+    val web3JEngineApiClient: Web3JClient =
+      Web3jClientBuilder()
+        .endpoint(endpoint)
+        .timeout(java.time.Duration.ofMinutes(1))
+        .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
+        .executionClientEventsPublisher { }
+        .build()
+    val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
+    return when (elFork) {
+      ElFork.Paris -> ParisWeb3jJsonRpcExecutionLayerClient(web3jExecutionLayerClient)
+      ElFork.Prague -> PragueWeb3jJsonRpcExecutionLayerClient(web3jExecutionLayerClient)
+    }
   }
 }

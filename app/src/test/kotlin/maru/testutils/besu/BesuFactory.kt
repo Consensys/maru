@@ -27,13 +27,15 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFact
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 
 object BesuFactory {
-  private val cancunGenesis = "/e2e/config/el_cancun.json"
+  private val elConfigsDir = "/e2e/config"
+  val pragueGenesis = "$elConfigsDir/el_prague.json"
+  val parisGenesis = "$elConfigsDir/el_prague.json"
 
-  fun buildTestBesu(): BesuNode =
+  fun buildTestBesu(genesisFilePath: String = pragueGenesis): BesuNode =
     BesuNodeFactory().createMinerNode(
       "miner",
     ) { builder: BesuNodeConfigurationBuilder ->
-      val genesisFile = GenesisConfigurationFactory.readGenesisFile(cancunGenesis)
+      val genesisFile = GenesisConfigurationFactory.readGenesisFile(genesisFilePath)
       val persistentStorageFactory: KeyValueStorageFactory =
         RocksDBKeyValueStorageFactory(
           RocksDBCLIOptions.create()::toDomainObject,
@@ -51,6 +53,5 @@ object BesuFactory {
         .jsonRpcTxPool()
         .engineRpcEnabled(true)
         .jsonRpcDebug()
-      builder
     }
 }
