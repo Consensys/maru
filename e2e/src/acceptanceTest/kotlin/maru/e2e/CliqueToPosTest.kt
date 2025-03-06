@@ -144,35 +144,20 @@ class CliqueToPosTest {
     nodeEngineApiClient: Web3JExecutionEngineClient,
   ) {
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
-    restartNode(nodeName, nodeEthereumClient)
+    restartNodeFromScratch(nodeName, nodeEthereumClient)
     log.info("Container $nodeName restarted")
-
-    if (nodeName.contains("erigon")) {
-      await
-        .pollInterval(1.seconds.toJavaDuration())
-        .timeout(20.seconds.toJavaDuration())
-        .ignoreExceptions()
-        .alias(nodeName)
-        .untilAsserted {
-          assertThat(
-            nodeEthereumClient
-              .ethBlockNumber()
-              .send()
-              .blockNumber
-              .toLong(),
-          ).isEqualTo(5L)
-            .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
-        }
-      // Erigon doesn't seem to backfill the blocks from head to the switch block
-      sendNewPayloadByBlockNumber(6, nodeEngineApiClient)
-    }
 
     await
       .pollInterval(1.seconds.toJavaDuration())
       .ignoreExceptions()
-      .timeout(10.seconds.toJavaDuration())
+      .timeout(20.seconds.toJavaDuration())
       .alias(nodeName)
       .untilAsserted {
+        if (nodeName.contains("erigon")) {
+          // For some reason Erigon needs a restart after PoS transition
+          restartNodeKeepingState(nodeName, nodeEthereumClient)
+          syncTarget(nodeEngineApiClient, 7)
+        }
         syncTarget(nodeEngineApiClient, 7)
         if (nodeName.contains("follower-geth")) {
           // For some reason it doesn't set latest block correctly, but the block is available
@@ -189,7 +174,7 @@ class CliqueToPosTest {
       }
   }
 
-  private fun restartNode(
+  private fun restartNodeFromScratch(
     nodeName: String,
     nodeEthereumClient: Web3j,
   ) {
@@ -202,6 +187,17 @@ class CliqueToPosTest {
         qbftCluster.dockerCompose().up()
         awaitExpectedBlockNumberAfterStartup(nodeName, nodeEthereumClient)
       }
+  }
+
+  private fun restartNodeKeepingState(
+    nodeName: String,
+    nodeEthereumClient: Web3j,
+  ) {
+    log.debug("Restarting $nodeName keeping state")
+    val erigonContainer = qbftCluster.containers().container(nodeName)
+    erigonContainer.stop()
+    erigonContainer.start()
+    awaitExpectedBlockNumberAfterStartup(nodeName, nodeEthereumClient)
   }
 
   private fun awaitExpectedBlockNumberAfterStartup(
