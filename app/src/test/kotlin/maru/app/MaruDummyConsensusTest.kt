@@ -16,11 +16,10 @@
 package maru.app
 
 import java.math.BigInteger
+import maru.consensus.ElFork
 import maru.testutils.MaruFactory
 import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
-import maru.testutils.besu.BesuFactory.parisGenesis
-import maru.testutils.besu.BesuFactory.pragueGenesis
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
@@ -49,15 +48,16 @@ class MaruDummyConsensusTest {
   private lateinit var transactionsHelper: TransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
 
-  private fun setUp(genesisFilePath: String = pragueGenesis) {
+  private fun setUp(elFork: ElFork = ElFork.Prague) {
     transactionsHelper = TransactionsHelper()
-    besuNode = BesuFactory.buildTestBesu(genesisFilePath)
+    besuNode = BesuFactory.buildTestBesu(elFork)
     cluster = Cluster(NetConditions(NetTransactions()))
 
     cluster.start(besuNode)
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
     val engineRpcUrl = besuNode.engineRpcUrl().get()
-    maruNode = MaruFactory.buildTestMaru(ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl, engineApiRpc = engineRpcUrl)
+    maruNode =
+      MaruFactory.buildTestMaru(ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl, engineApiRpc = engineRpcUrl, elFork)
     maruNode.start()
   }
 
@@ -121,7 +121,7 @@ class MaruDummyConsensusTest {
 
   @Test
   fun `dummyConsensus works with Paris fork`() {
-    setUp(parisGenesis)
+    setUp(ElFork.Paris)
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))

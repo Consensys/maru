@@ -19,6 +19,7 @@ import java.time.Clock
 import kotlin.time.Duration
 import maru.config.DummyConsensusOptions
 import maru.config.ExecutionClientConfig
+import maru.consensus.ElFork
 import maru.consensus.EngineApiBlockCreator
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler

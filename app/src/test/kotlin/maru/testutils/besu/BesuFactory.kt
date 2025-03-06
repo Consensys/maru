@@ -16,6 +16,7 @@
 package maru.testutils.besu
 
 import java.util.Optional
+import maru.consensus.ElFork
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorageFactory
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory
@@ -28,13 +29,20 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 
 object BesuFactory {
   private val elConfigsDir = "/e2e/config"
-  val pragueGenesis = "$elConfigsDir/el_prague.json"
-  val parisGenesis = "$elConfigsDir/el_prague.json"
+  private val pragueGenesis = "$elConfigsDir/el_prague.json"
+  private val parisGenesis = "$elConfigsDir/el_prague.json"
 
-  fun buildTestBesu(genesisFilePath: String = pragueGenesis): BesuNode =
+  private fun pickGenesis(elFork: ElFork): String =
+    when (elFork) {
+      ElFork.Paris -> parisGenesis
+      ElFork.Prague -> pragueGenesis
+    }
+
+  fun buildTestBesu(elFork: ElFork = ElFork.Prague): BesuNode =
     BesuNodeFactory().createMinerNode(
       "miner",
     ) { builder: BesuNodeConfigurationBuilder ->
+      val genesisFilePath = pickGenesis(elFork)
       val genesisFile = GenesisConfigurationFactory.readGenesisFile(genesisFilePath)
       val persistentStorageFactory: KeyValueStorageFactory =
         RocksDBKeyValueStorageFactory(

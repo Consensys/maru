@@ -18,11 +18,11 @@ package maru.consensus.config
 import fromHexToByteArray
 import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
-import maru.consensus.dummy.ElFork
 
 data class JsonFriendlyForksSchedule(
   val config: Map<String, Map<String, String>>,

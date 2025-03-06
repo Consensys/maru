@@ -20,6 +20,7 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
+import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.executionlayer.manager.BlockMetadata

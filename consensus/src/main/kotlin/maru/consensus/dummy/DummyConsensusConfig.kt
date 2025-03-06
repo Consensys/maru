@@ -16,11 +16,7 @@
 package maru.consensus.dummy
 
 import maru.consensus.ConsensusConfig
-
-enum class ElFork {
-  Paris,
-  Prague,
-}
+import maru.consensus.ElFork
 
 data class DummyConsensusConfig(
   private val blockTimeMillis: UInt,
