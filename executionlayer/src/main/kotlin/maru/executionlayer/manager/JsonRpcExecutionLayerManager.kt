@@ -18,10 +18,10 @@ package maru.executionlayer.manager
 import kotlin.jvm.optionals.getOrNull
 import maru.core.ExecutionPayload
 import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.extensions.toDomainExecutionPayload
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
@@ -166,7 +166,7 @@ class JsonRpcExecutionLayerManager private constructor(
       .thenCompose { payloadResponse ->
         if (payloadResponse.isSuccess) {
           val tekuExecutionPayload = payloadResponse.payload.executionPayload
-          val executionPayload = executionPayloadV3ToDomain(tekuExecutionPayload)
+          val executionPayload = tekuExecutionPayload.toDomainExecutionPayload()
           val validationResult = payloadValidator.validate(executionPayload)
 
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
@@ -204,26 +204,6 @@ class JsonRpcExecutionLayerManager private constructor(
         }
       }
   }
-
-  private fun executionPayloadV3ToDomain(executionPayloadV3: ExecutionPayloadV3): ExecutionPayload =
-    ExecutionPayload(
-      parentHash = executionPayloadV3.parentHash.toArray(),
-      feeRecipient = executionPayloadV3.feeRecipient.wrappedBytes.toArray(),
-      stateRoot = executionPayloadV3.stateRoot.toArray(),
-      receiptsRoot = executionPayloadV3.receiptsRoot.toArray(),
-      logsBloom = executionPayloadV3.logsBloom.toArray(),
-      prevRandao = executionPayloadV3.prevRandao.toArray(),
-      blockNumber = executionPayloadV3.blockNumber.longValue().toULong(),
-      gasLimit = executionPayloadV3.gasLimit.longValue().toULong(),
-      gasUsed = executionPayloadV3.gasUsed.longValue().toULong(),
-      timestamp = executionPayloadV3.timestamp.longValue().toULong(),
-      extraData = executionPayloadV3.extraData.toArray(),
-      // Intentional cropping, UInt256 doesn't fit into ULong
-      baseFeePerGas =
-        executionPayloadV3.baseFeePerGas.toBigInteger(),
-      blockHash = executionPayloadV3.blockHash.toArray(),
-      transactions = executionPayloadV3.transactions.map { it.toArray() },
-    )
 
   override fun latestBlockMetadata(): BlockMetadata = latestBlockCache.currentBlockMetadata
 

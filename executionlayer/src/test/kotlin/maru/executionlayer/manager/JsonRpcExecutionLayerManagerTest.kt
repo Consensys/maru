@@ -112,7 +112,7 @@ class JsonRpcExecutionLayerManagerTest {
   }
 
   private fun mockNewPayloadWithStatus(payloadStatus: PayloadStatusV1) {
-    whenever(executionLayerClient.newPayload(any())).thenReturn(
+    whenever(executionLayerClient.newPayload(any<ExecutionPayloadV3>())).thenReturn(
       SafeFuture.completedFuture(Response(payloadStatus)),
     )
   }
