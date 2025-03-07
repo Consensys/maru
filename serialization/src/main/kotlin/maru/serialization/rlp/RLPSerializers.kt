@@ -22,6 +22,7 @@ object RLPSerializers {
   val BeaconBlockHeaderSerializer =
     BeaconBlockHeaderSerializer(
       validatorSerializer = ValidatorSerializer,
+      hasher = KeccakHasher,
       headerHashFunction = HashUtil::headerHash,
     )
   val SealSerializer = SealSerializer()

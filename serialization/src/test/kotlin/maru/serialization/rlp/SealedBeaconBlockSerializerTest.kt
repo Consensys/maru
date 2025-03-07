@@ -32,6 +32,7 @@ class SealedBeaconBlockSerializerTest {
   private val blockHeaderSerializer =
     BeaconBlockHeaderSerializer(
       validatorSerializer = ValidatorSerializer(),
+      hasher = KeccakHasher,
       headerHashFunction = HashUtil::headerHash,
     )
   private val sealSerializer = SealSerializer()
@@ -62,7 +63,7 @@ class SealedBeaconBlockSerializerTest {
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
-        headerHashFunction = HashUtil.headerHash(blockHeaderSerializer),
+        headerHashFunction = HashUtil.headerHash(blockHeaderSerializer, KeccakHasher),
       )
     val beaconBlockBody =
       BeaconBlockBody(

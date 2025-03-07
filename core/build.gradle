@@ -20,7 +20,6 @@ plugins {
 
 dependencies {
   implementation "org.hyperledger.besu:besu-datatypes"
-  implementation "io.tmio:tuweni-bytes"
 
   testImplementation(project(":serialization"))
   testFixturesImplementation(project(":serialization"))

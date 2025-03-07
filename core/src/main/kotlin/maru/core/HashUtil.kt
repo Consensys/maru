@@ -16,39 +16,28 @@
 package maru.core
 
 import maru.serialization.Serializer
-import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.datatypes.Hash
 
 typealias HeaderHashFunction = (BeaconBlockHeader) -> ByteArray
+
+interface Hasher {
+  fun hash(serializedBytes: ByteArray): ByteArray
+}
 
 /**
  * Utility class for hashing various parts of the beacon chain
  */
 object HashUtil {
-  fun headerHash(serializer: Serializer<BeaconBlockHeader>): HeaderHashFunction =
-    { header -> headerHash(serializer, header) }
-
   fun headerHash(
     serializer: Serializer<BeaconBlockHeader>,
-    header: BeaconBlockHeader,
-  ): ByteArray {
-    val headerBytes = Bytes.wrap(serializer.serialize(header))
-    return Hash.hash(headerBytes).toArray()
-  }
+    hasher: Hasher,
+  ): HeaderHashFunction = { header -> rootHash(header, serializer, hasher) }
 
-  fun bodyRoot(
-    serializer: Serializer<BeaconBlockBody>,
-    body: BeaconBlockBody,
+  fun <T> rootHash(
+    t: T,
+    serializer: Serializer<T>,
+    hasher: Hasher,
   ): ByteArray {
-    val bodyBytes = Bytes.wrap(serializer.serialize((body)))
-    return Hash.hash(bodyBytes).toArray()
-  }
-
-  fun stateRoot(
-    serializer: Serializer<BeaconState>,
-    state: BeaconState,
-  ): ByteArray {
-    val stateBytes = Bytes.wrap(serializer.serialize(state))
-    return Hash.hash(stateBytes).toArray()
+    val serialized = serializer.serialize(t)
+    return hasher.hash(serialized)
   }
 }

@@ -28,10 +28,11 @@ import maru.core.Seal
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.executionlayer.manager.BlockMetadata
+import maru.serialization.rlp.KeccakHasher
 import maru.serialization.rlp.RLPSerializers
 
 object DataGenerators {
-  val HEADER_HASH_FUNCTION = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer)
+  val HEADER_HASH_FUNCTION = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
 
   fun randomBeaconState(number: ULong): BeaconState {
     val beaconBlockHeader =
