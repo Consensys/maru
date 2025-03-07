@@ -15,7 +15,9 @@
  */
 package maru.consensus
 
+import java.time.Clock
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.max
 import maru.core.Protocol
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.manager.BlockMetadata
@@ -39,39 +41,44 @@ class MetadataOnlyHandlerAdapter(
 }
 
 class ProtocolStarter(
+  private val clock: Clock,
   private val forksSchedule: ForksSchedule,
   private val protocolFactory: ProtocolFactory,
   private val metadataProvider: MetadataProvider,
 ) : Protocol {
-  data class ProtocolWithConfig(
+  data class ProtocolWithFork(
     val protocol: Protocol,
-    val config: ConsensusConfig,
+    val fork: ForkSpec,
   )
 
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  internal val currentProtocolWithConfig: AtomicReference<ProtocolWithConfig> = AtomicReference()
+  internal val currentProtocolWithForkReference: AtomicReference<ProtocolWithFork> = AtomicReference()
+
+  private fun currentTimeInSeconds(): Long = clock.millis() / 1000
 
   @Synchronized
   fun handleNewBlock(block: BlockMetadata) {
-    log.debug("New block {} received", { block.blockNumber })
-    val latestBlockNumber = block.blockNumber
-    val nextForkSpec = forksSchedule.getForkByNumber(latestBlockNumber + 1UL)
+    log.debug("New block {} received", { block.unixTimestampSeconds })
+    val currentBlockTime = forksSchedule.getForkByTimestamp(block.unixTimestampSeconds).blockTimeSeconds
 
-    val currentProtocol = currentProtocolWithConfig.get()
-    if (currentProtocol?.config != nextForkSpec) {
+    val nextBlockTimestamp = max(currentTimeInSeconds(), block.unixTimestampSeconds + currentBlockTime)
+    val nextForkSpec = forksSchedule.getNextForkByTimestamp(nextBlockTimestamp)
+
+    val currentProtocolWithFork = currentProtocolWithForkReference.get()
+    if (currentProtocolWithFork?.fork != nextForkSpec) {
       val newProtocol: Protocol = protocolFactory.create(nextForkSpec)
 
-      val newProtocolWithConfig =
-        ProtocolWithConfig(
+      val newProtocolWithFork =
+        ProtocolWithFork(
           newProtocol,
           nextForkSpec,
         )
-      log.debug("Switching from {} to protocol {}", currentProtocol, newProtocolWithConfig)
-      currentProtocolWithConfig.set(
-        newProtocolWithConfig,
+      log.debug("Switching from {} to protocol {}", currentProtocolWithFork, newProtocolWithFork)
+      currentProtocolWithForkReference.set(
+        newProtocolWithFork,
       )
-      currentProtocol?.protocol?.stop()
+      currentProtocolWithFork?.protocol?.stop()
       newProtocol.start()
     } else {
       log.trace("Block {} was produced, but the fork switch isn't required", { block.blockNumber })
@@ -84,7 +91,7 @@ class ProtocolStarter(
   }
 
   override fun stop() {
-    currentProtocolWithConfig.get().protocol.stop()
-    currentProtocolWithConfig.set(null)
+    currentProtocolWithForkReference.get().protocol.stop()
+    currentProtocolWithForkReference.set(null)
   }
 }

@@ -25,10 +25,20 @@ enum class ElFork {
   Prague,
 }
 
+/*
+* Inspired by `ScheduledProtocolSpec` from Besu repo.
+* It relies on a clever (in a bad sense) property that timestamps are always more than a block time. It means that
+* once a timestamp milestone has been reached, it's impossible to switch back to the block time milestone
+*/
 data class ForkSpec(
-  val blockNumber: ULong,
+  val timestampSeconds: Long, // Could be a block number or a timestamp
+  val blockTimeSeconds: Int,
   val configuration: ConsensusConfig,
-)
+) {
+  init {
+    require(blockTimeSeconds > 0) { "blockTimeSeconds must be greater or equal to 1 second" }
+  }
+}
 
 class ForksSchedule(
   forks: Collection<ForkSpec>,
@@ -37,20 +47,25 @@ class ForksSchedule(
     run {
       val newForks =
         TreeSet(
-          Comparator.comparing(ForkSpec::blockNumber).reversed(),
+          Comparator.comparing(ForkSpec::timestampSeconds).reversed(),
         )
       newForks.addAll(forks)
       newForks
     }
 
-  fun getForkByNumber(blockNumber: ULong): ConsensusConfig {
+  fun getForkByTimestamp(timestamp: Long): ForkSpec {
     for (f in forks) {
-      if (blockNumber >= f.blockNumber) {
-        return f.configuration
+      if (timestamp >= f.timestampSeconds) {
+        return f
       }
     }
 
-    return forks.first().configuration
+    return forks.first()
+  }
+
+  fun getNextForkByTimestamp(timestamp: Long): ForkSpec {
+    val currentFork = getForkByTimestamp(timestamp)
+    return getForkByTimestamp(timestamp + currentFork.timestampSeconds)
   }
 
   override fun equals(other: Any?): Boolean {

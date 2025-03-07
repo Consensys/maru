@@ -18,7 +18,6 @@ package maru.consensus.config
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.json.JsonPropertySource
-import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -36,13 +35,13 @@ class JsonFriendlyForksScheduleTest {
       "config": {
         "0": {
           "type": "dummy",
-          "blockTimeMillis": 1000,
+          "blockTimeSeconds": 1,
           "feeRecipient": "0x0000000000000000000000000000000000000000",
           "elFork": "Paris"
         },
         "2": {
           "type": "delegated",
-          "pollPeriodMillis": 2000
+          "blockTimeSeconds": 4
         }
       }
     }
@@ -57,14 +56,14 @@ class JsonFriendlyForksScheduleTest {
     val expectedDummyConsensusMap =
       mapOf(
         "type" to "dummy",
-        "blockTimeMillis" to "1000",
+        "blockTimeSeconds" to "1",
         "feeRecipient" to "0x0000000000000000000000000000000000000000",
         "elFork" to "Paris",
       )
     val expectedDelegatedConsensusMap =
       mapOf(
         "type" to "delegated",
-        "pollPeriodMillis" to "2000",
+        "blockTimeSeconds" to "4",
       )
     assertThat(config).isEqualTo(
       JsonFriendlyForksSchedule(
@@ -86,18 +85,17 @@ class JsonFriendlyForksScheduleTest {
       ForksSchedule(
         setOf(
           ForkSpec(
-            0u,
+            0,
+            blockTimeSeconds = 2,
             DummyConsensusConfig(
-              blockTimeMillis = 1000u,
               feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
               elFork = ElFork.Paris,
             ),
           ),
           ForkSpec(
-            2u,
-            ElDelegatedConsensus.Config(
-              pollPeriod = 2000.milliseconds,
-            ),
+            2,
+            blockTimeSeconds = 2,
+            ElDelegatedConsensus.ElDelegatedConfig,
           ),
         ),
       ),

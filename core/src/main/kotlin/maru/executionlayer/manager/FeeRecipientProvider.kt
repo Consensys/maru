@@ -15,6 +15,8 @@
  */
 package maru.executionlayer.manager
 
-fun interface FeeRecipientProvider {
-  fun getFeeRecipient(blockNumber: ULong): ByteArray
+interface FeeRecipientProvider {
+  fun getFeeRecipient(timestamp: Long): ByteArray
+
+  fun getNextFeeRecipient(timestamp: Long): ByteArray
 }

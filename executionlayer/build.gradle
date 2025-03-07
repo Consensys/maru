@@ -22,12 +22,8 @@ dependencies {
 
   api "tech.pegasys.teku.internal:executionclient"
 
-  api("tech.pegasys.teku.internal:time") {
-    because "required by executionclient ^"
-  }
-  api("tech.pegasys.teku.internal:ethereum-events") {
-    because "required by executionclient ^"
-  }
+  api("tech.pegasys.teku.internal:time")
+  api("tech.pegasys.teku.internal:ethereum-events")
   implementation "tech.pegasys.teku.internal:unsigned"
   implementation "tech.pegasys.teku.internal:bytes"
   implementation "tech.pegasys.teku.internal:spec"

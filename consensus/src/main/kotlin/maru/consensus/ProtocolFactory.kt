@@ -25,7 +25,7 @@ import maru.executionlayer.client.MetadataProvider
 import org.web3j.protocol.Web3j
 
 interface ProtocolFactory {
-  fun create(protocolConfig: ConsensusConfig): Protocol
+  fun create(forkSpec: ForkSpec): Protocol
 }
 
 class OmniProtocolFactory(
@@ -36,8 +36,8 @@ class OmniProtocolFactory(
   private val metadataProvider: MetadataProvider,
   private val newBlockHandler: NewBlockHandler,
 ) : ProtocolFactory {
-  override fun create(protocolConfig: ConsensusConfig): Protocol =
-    when (protocolConfig) {
+  override fun create(forkSpec: ForkSpec): Protocol =
+    when (forkSpec.configuration) {
       is DummyConsensusConfig -> {
         require(config.dummyConsensusOptions != null) {
           "Next fork is dummy consensus one, but dummyConsensusOptions are undefined!"
@@ -52,20 +52,20 @@ class OmniProtocolFactory(
             executionClientConfig = config.executionClientConfig,
             metadataProvider = metadataProvider,
             onNewBlockHandler = newBlockHandler,
-            effectiveFork = protocolConfig.elFork,
+            effectiveFork = forkSpec.configuration.elFork,
           )
       }
 
-      is ElDelegatedConsensus.Config -> {
+      is ElDelegatedConsensus.ElDelegatedConfig -> {
         ElDelegatedConsensus(
           ethereumJsonRpcClient = ethereumJsonRpcClient,
           onNewBlock = newBlockHandler,
-          config = protocolConfig,
+          blockTimeSeconds = forkSpec.blockTimeSeconds,
         )
       }
 
       else -> {
-        throw IllegalArgumentException("Fork $protocolConfig is unknown!")
+        throw IllegalArgumentException("Fork $forkSpec is unknown!")
       }
     }
 }

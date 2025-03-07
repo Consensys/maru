@@ -27,6 +27,7 @@ import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.client.ParisWeb3jJsonRpcExecutionLayerClient
 import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
+import maru.executionlayer.manager.FeeRecipientProvider
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -35,6 +36,20 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object DummyConsensusProtocolBuilder {
+  class DummyConsensusFeeRecipientProvider(
+    private val forksSchedule: ForksSchedule,
+  ) : FeeRecipientProvider {
+    override fun getFeeRecipient(timestamp: Long): ByteArray =
+      (forksSchedule.getForkByTimestamp(timestamp).configuration as DummyConsensusConfig).feeRecipient
+
+    override fun getNextFeeRecipient(timestamp: Long): ByteArray {
+      val nextExpectedFork = forksSchedule.getNextForkByTimestamp(timestamp)
+      return (
+        nextExpectedFork.configuration as DummyConsensusConfig
+      ).feeRecipient
+    }
+  }
+
   fun build(
     forksSchedule: ForksSchedule,
     clock: Clock,
@@ -55,9 +70,7 @@ object DummyConsensusProtocolBuilder {
         .create(
           executionLayerClient = executionLayerClient,
           metadataProvider = metadataProvider,
-          feeRecipientProvider = {
-            (forksSchedule.getForkByNumber(it) as DummyConsensusConfig).feeRecipient
-          },
+          feeRecipientProvider = DummyConsensusFeeRecipientProvider(forksSchedule),
           payloadValidator = EmptyBlockValidator,
         ).get()
     val latestBlockMetadata = jsonRpcExecutionLayerManager.latestBlockMetadata()

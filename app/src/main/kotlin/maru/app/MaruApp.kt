@@ -58,6 +58,7 @@ class MaruApp(
 
   private val protocolStarter =
     ProtocolStarter(
+      clock = clock,
       forksSchedule = beaconGenesisConfig,
       protocolFactory =
         OmniProtocolFactory(

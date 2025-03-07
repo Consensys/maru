@@ -2,11 +2,11 @@
   "config": {
     "0": {
       "type": "delegated",
-      "pollPeriodMillis": 1000
+      "blockTimeSeconds": 1
     },
     "6": {
       "type": "dummy",
-      "blockTimeMillis": 6000,
+      "blockTimeSeconds": 6,
       "feeRecipient": "0x0000000000000000000000000000000000000000",
       "elFork": "Paris"
     }

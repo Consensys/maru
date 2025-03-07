@@ -54,7 +54,7 @@ class JsonRpcExecutionLayerManager private constructor(
       payloadValidator: ExecutionPayloadValidator,
     ): SafeFuture<JsonRpcExecutionLayerManager> =
       metadataProvider.getLatestBlockMetadata().thenApply {
-        val currentBlockMetadata = BlockMetadata(it.blockNumber, it.blockHash, it.unixTimestamp)
+        val currentBlockMetadata = BlockMetadata(it.blockNumber, it.blockHash, it.unixTimestampSeconds)
         JsonRpcExecutionLayerManager(
           executionLayerClient = executionLayerClient,
           feeRecipientProvider = feeRecipientProvider,
@@ -87,7 +87,7 @@ class JsonRpcExecutionLayerManager private constructor(
     )
 
   private fun getNextFeeRecipient(): Bytes20 =
-    Bytes20(Bytes.wrap(feeRecipientProvider.getFeeRecipient(latestBlockMetadata().blockNumber + 1u)))
+    Bytes20(Bytes.wrap(feeRecipientProvider.getNextFeeRecipient(latestBlockMetadata().unixTimestampSeconds)))
 
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
@@ -172,7 +172,7 @@ class JsonRpcExecutionLayerManager private constructor(
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
             throw RuntimeException(validationResult.reason)
           }
-          executionLayerClient.newPayload(tekuExecutionPayload).thenApply { payloadStatus ->
+          executionLayerClient.newPayload(executionPayload).thenApply { payloadStatus ->
             if (payloadStatus.isSuccess &&
               payloadStatus.payload
                 .asInternalExecutionPayload()

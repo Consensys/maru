@@ -83,10 +83,10 @@ object DataGenerators {
       transactions = emptyList(),
     )
 
-  fun randomBlockMetadata(number: ULong): BlockMetadata =
+  fun randomBlockMetadata(timestamp: Long): BlockMetadata =
     BlockMetadata(
-      number,
+      Random.nextULong(),
       blockHash = Random.nextBytes(32),
-      unixTimestamp = Random.nextLong(0, Long.MAX_VALUE),
+      unixTimestampSeconds = timestamp,
     )
 }

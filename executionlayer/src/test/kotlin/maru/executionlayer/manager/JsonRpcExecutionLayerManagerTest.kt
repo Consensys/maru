@@ -68,13 +68,20 @@ class JsonRpcExecutionLayerManagerTest {
     reset(executionLayerClient)
   }
 
+  private val dummyFeeRecipientProvider =
+    object : FeeRecipientProvider {
+      override fun getFeeRecipient(timestamp: Long): ByteArray = feeRecipient
+
+      override fun getNextFeeRecipient(timestamp: Long): ByteArray = feeRecipient
+    }
+
   private fun createExecutionLayerManager(): ExecutionLayerManager {
     val metadataProvider = { SafeFuture.completedFuture(BlockMetadata(initialBlockHeight, latestBlockHash, 0L)) }
     return JsonRpcExecutionLayerManager
       .create(
         executionLayerClient = executionLayerClient,
         metadataProvider = metadataProvider,
-        feeRecipientProvider = { feeRecipient },
+        feeRecipientProvider = dummyFeeRecipientProvider,
         payloadValidator = NoopValidator,
       ).get()
   }
@@ -250,7 +257,7 @@ class JsonRpcExecutionLayerManagerTest {
       BlockMetadata(
         blockNumber = executionPayload.blockNumber.longValue().toULong(),
         blockHash = executionPayload.blockHash.toArray(),
-        unixTimestamp = executionPayload.timestamp.longValue(),
+        unixTimestampSeconds = executionPayload.timestamp.longValue(),
       )
     assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(expectedBlockMetadata)
   }
