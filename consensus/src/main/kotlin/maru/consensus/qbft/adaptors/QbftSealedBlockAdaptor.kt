@@ -49,11 +49,3 @@ class QbftSealedBlockAdaptor(
     return result
   }
 }
-
-fun QbftBlock.toSealedBeaconBlock(): SealedBeaconBlock {
-  if (this is QbftSealedBlockAdaptor) {
-    return this.sealedBeaconBlock
-  } else {
-    throw IllegalArgumentException("Unsupported block type")
-  }
-}
