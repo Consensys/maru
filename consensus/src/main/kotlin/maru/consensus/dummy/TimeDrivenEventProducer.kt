@@ -59,7 +59,9 @@ class TimeDrivenEventProducer(
   @Synchronized
   private fun handleTick() {
     val lastBlockMetadata = blockMetadataProvider()
-    val nextBlockFork = forksSchedule.getNextForkByTimestamp(lastBlockMetadata.unixTimestampSeconds)
+    val nextTargetBlockTimestampSeconds = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(lastBlockMetadata)
+    val nextBlockFork =
+      forksSchedule.getForkByTimestamp(nextTargetBlockTimestampSeconds)
     val nextBlockNumber = lastBlockMetadata.blockNumber + 1u
 
     log.debug("currentTimestamp={} nextBlockNumber={}", clock.millis(), nextBlockNumber)
@@ -75,7 +77,7 @@ class TimeDrivenEventProducer(
       is DummyConsensusConfig -> {
         scheduleNextTask(
           nextBlockNumber = nextBlockNumber,
-          nextTargetTimestampSeconds = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(lastBlockMetadata),
+          nextTargetTimestampSeconds = nextTargetBlockTimestampSeconds,
         )
       }
 

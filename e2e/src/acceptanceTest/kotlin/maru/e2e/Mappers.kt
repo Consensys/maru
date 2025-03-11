@@ -30,6 +30,7 @@ import org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder
 import org.web3j.protocol.core.methods.response.EthBlock
 import org.web3j.protocol.core.methods.response.EthBlock.TransactionObject
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV2
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.WithdrawalV1
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
@@ -182,7 +183,7 @@ object Mappers {
         transaction.toBytes()
       }
 
-    // Create an instance of ExecutionPayloadV3
+    // Create an instance of ExecutionPayloadV1
     return ExecutionPayloadV1(
       parentHash,
       feeRecipient,

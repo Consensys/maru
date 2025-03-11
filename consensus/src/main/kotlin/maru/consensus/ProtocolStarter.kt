@@ -15,9 +15,8 @@
  */
 package maru.consensus
 
-import java.time.Clock
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.max
+import maru.consensus.dummy.NextBlockTimestampProvider
 import maru.core.Protocol
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.manager.BlockMetadata
@@ -41,10 +40,10 @@ class MetadataOnlyHandlerAdapter(
 }
 
 class ProtocolStarter(
-  private val clock: Clock,
   private val forksSchedule: ForksSchedule,
   private val protocolFactory: ProtocolFactory,
   private val metadataProvider: MetadataProvider,
+  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
 ) : Protocol {
   data class ProtocolWithFork(
     val protocol: Protocol,
@@ -55,15 +54,12 @@ class ProtocolStarter(
 
   internal val currentProtocolWithForkReference: AtomicReference<ProtocolWithFork> = AtomicReference()
 
-  private fun currentTimeInSeconds(): Long = clock.millis() / 1000
-
   @Synchronized
   fun handleNewBlock(block: BlockMetadata) {
-    log.debug("New block {} received", { block.unixTimestampSeconds })
-    val currentBlockTime = forksSchedule.getForkByTimestamp(block.unixTimestampSeconds).blockTimeSeconds
+    log.debug("New block {} received", { block.blockNumber })
 
-    val nextBlockTimestamp = max(currentTimeInSeconds(), block.unixTimestampSeconds + currentBlockTime)
-    val nextForkSpec = forksSchedule.getNextForkByTimestamp(nextBlockTimestamp)
+    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(block)
+    val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()
     if (currentProtocolWithFork?.fork != nextForkSpec) {

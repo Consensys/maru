@@ -65,7 +65,7 @@ class ForksSchedule(
 
   fun getNextForkByTimestamp(timestamp: Long): ForkSpec {
     val currentFork = getForkByTimestamp(timestamp)
-    return getForkByTimestamp(timestamp + currentFork.timestampSeconds)
+    return getForkByTimestamp(timestamp + currentFork.blockTimeSeconds)
   }
 
   override fun equals(other: Any?): Boolean {

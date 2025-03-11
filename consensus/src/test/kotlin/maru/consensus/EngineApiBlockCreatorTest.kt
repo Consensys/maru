@@ -81,7 +81,7 @@ class EngineApiBlockCreatorTest {
       manager = executionLayerManager,
       state = dummyConsensusState,
       blockHeaderFunctions = MainnetBlockHeaderFunctions(),
-      initialBlockTimestamp = nextTimestamp,
+      nextBlockTimestamp = nextTimestamp,
     )
 
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
@@ -107,7 +107,7 @@ class EngineApiBlockCreatorTest {
         manager = executionLayerManager,
         state = dummyConsensusState,
         blockHeaderFunctions = MainnetBlockHeaderFunctions(),
-        initialBlockTimestamp = nextTimestamp,
+        nextBlockTimestamp = nextTimestamp,
       )
     blockCreator.createEmptyWithdrawalsBlock(1L, null)
     blockCreator.createEmptyWithdrawalsBlock(2L, null)
@@ -140,14 +140,14 @@ class EngineApiBlockCreatorTest {
     mockFinishBlockBuilding(expectedBlockBuildingResult)
     val forkChoiceUpdatedResult = randomValidForkChoiceUpdatedResult()
     mockSetHeadAndStartBlockBuilding(forkChoiceUpdatedResult)
-    val initialTimestamp = dummyConsensusState.clock.millis()
+    val nextBlockTimestamp = dummyConsensusState.clock.millis()
 
     val blockCreator =
       EngineApiBlockCreator(
         manager = executionLayerManager,
         state = dummyConsensusState,
         blockHeaderFunctions = MainnetBlockHeaderFunctions(),
-        initialBlockTimestamp = initialTimestamp,
+        nextBlockTimestamp = nextBlockTimestamp,
       )
     val nextTimestamp1 = 123L
     blockCreator.createEmptyWithdrawalsBlock(nextTimestamp1, null)

@@ -39,10 +39,7 @@ object DummyConsensusProtocolBuilder {
   class DummyConsensusFeeRecipientProvider(
     private val forksSchedule: ForksSchedule,
   ) : FeeRecipientProvider {
-    override fun getFeeRecipient(timestamp: Long): ByteArray =
-      (forksSchedule.getForkByTimestamp(timestamp).configuration as DummyConsensusConfig).feeRecipient
-
-    override fun getNextFeeRecipient(timestamp: Long): ByteArray {
+    override fun getFeeRecipient(timestamp: Long): ByteArray {
       val nextExpectedFork = forksSchedule.getNextForkByTimestamp(timestamp)
       return (
         nextExpectedFork.configuration as DummyConsensusConfig
@@ -53,7 +50,7 @@ object DummyConsensusProtocolBuilder {
   fun build(
     forksSchedule: ForksSchedule,
     clock: Clock,
-    minTimeTillNextBlock: Duration,
+    nextBlockTimestampProvider: NextBlockTimestampProvider,
     dummyConsensusOptions: DummyConsensusOptions,
     executionClientConfig: ExecutionClientConfig,
     metadataProvider: MetadataProvider,
@@ -84,18 +81,12 @@ object DummyConsensusProtocolBuilder {
         latestBlockHash_ = latestBlockHash,
       )
 
-    val nextBlockTimestampProvider =
-      NextBlockTimestampProviderImpl(
-        clock = clock,
-        forksSchedule = forksSchedule,
-        minTimeTillNextBlock = minTimeTillNextBlock,
-      )
     val blockCreator =
       EngineApiBlockCreator(
         manager = jsonRpcExecutionLayerManager,
         state = dummyConsensusState,
         blockHeaderFunctions = MainnetBlockHeaderFunctions(),
-        initialBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata),
+        nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata),
       )
     val eventHandler =
       DummyConsensusEventHandler(

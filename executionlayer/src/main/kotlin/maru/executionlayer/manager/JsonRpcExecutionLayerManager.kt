@@ -86,8 +86,8 @@ class JsonRpcExecutionLayerManager private constructor(
       currentBlockMetadata = currentBlockMetadata,
     )
 
-  private fun getNextFeeRecipient(): Bytes20 =
-    Bytes20(Bytes.wrap(feeRecipientProvider.getNextFeeRecipient(latestBlockMetadata().unixTimestampSeconds)))
+  private fun getNextFeeRecipient(nextBlockTimestamp: Long): Bytes20 =
+    Bytes20(Bytes.wrap(feeRecipientProvider.getFeeRecipient(nextBlockTimestamp)))
 
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
@@ -104,7 +104,7 @@ class JsonRpcExecutionLayerManager private constructor(
       PayloadAttributesV1(
         UInt64.fromLongBits(nextBlockTimestamp),
         Bytes32.ZERO,
-        getNextFeeRecipient(),
+        getNextFeeRecipient(nextBlockTimestamp),
       )
     log.debug("Starting block building with payload attributes {}", payloadAttributes)
     return executionLayerClient
@@ -115,8 +115,24 @@ class JsonRpcExecutionLayerManager private constructor(
           Bytes32.wrap(finalizedHash),
         ),
         payloadAttributes,
-      ).thenApply { response ->
-        log.debug("Forkchoice update response {}", response)
+      ).thenCompose { response ->
+        log.debug("Forkchoice update response with payload attributes {}", response)
+        if (response.isFailure) {
+          // TODO: Temporary hack for protocol switches. Should go when QBFT fully works along with dummy consensus
+          executionLayerClient
+            .forkChoiceUpdate(
+              ForkChoiceStateV1(
+                Bytes32.wrap(headHash),
+                Bytes32.wrap(safeHash),
+                Bytes32.wrap(finalizedHash),
+              ),
+              null,
+            )
+        } else {
+          SafeFuture.completedFuture(response)
+        }
+      }.thenApply { response ->
+        log.debug("Forkchoice update response after a retry without payload attributes {}", response)
         if (response.isFailure) {
           throw IllegalStateException(
             "forkChoiceUpdate request failed! nextBlockTimestamp=${
@@ -128,7 +144,7 @@ class JsonRpcExecutionLayerManager private constructor(
         }
       }.thenPeek {
         latestBlockCache.promoteBlockMetadata()
-        log.debug("Setting payload Id, block metadata {}", latestBlockCache)
+        log.debug("Setting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
         payloadId = it.payloadId
       }
   }
@@ -181,7 +197,7 @@ class JsonRpcExecutionLayerManager private constructor(
               ExecutionPayloadStatus.VALID
             ) {
               payloadId = null // Not necessary, but it helps to reinforce the order of calls
-              log.debug("Unsetting payload Id, block metadata {}", latestBlockCache)
+              log.debug("Unsetting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
 
               latestBlockCache.updateNext(
                 BlockMetadata(

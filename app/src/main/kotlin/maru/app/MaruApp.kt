@@ -23,6 +23,7 @@ import maru.consensus.MetadataOnlyHandlerAdapter
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
+import maru.consensus.dummy.NextBlockTimestampProviderImpl
 import maru.executionlayer.client.Web3jMetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -56,9 +57,14 @@ class MaruApp(
 
   private val metadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
 
+  private val nextBlockTimestampProvider =
+    NextBlockTimestampProviderImpl(
+      clock = clock,
+      forksSchedule = beaconGenesisConfig,
+      minTimeTillNextBlock = config.executionClientConfig.minTimeBetweenGetPayloadAttempts,
+    )
   private val protocolStarter =
     ProtocolStarter(
-      clock = clock,
       forksSchedule = beaconGenesisConfig,
       protocolFactory =
         OmniProtocolFactory(
@@ -68,8 +74,10 @@ class MaruApp(
           ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
           metadataProvider = metadataProvider,
           newBlockHandler = newBlockHandlerMultiplexer,
+          nextBlockTimestampProvider = nextBlockTimestampProvider,
         ),
       metadataProvider = metadataProvider,
+      nextBlockTimestampProvider = nextBlockTimestampProvider,
     ).also {
       newBlockHandlerMultiplexer.addHandler("protocol starter", MetadataOnlyHandlerAdapter(it))
     }
