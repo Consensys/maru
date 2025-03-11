@@ -120,8 +120,8 @@ class MaruDummyConsensusTest {
   }
 
   @Test
-  fun `dummyConsensus works with Paris fork`() {
-    setUp(ElFork.Paris)
+  fun `dummyConsensus works with Prague fork`() {
+    setUp(ElFork.Prague)
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))

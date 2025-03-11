@@ -25,7 +25,6 @@ import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.MetadataProvider
-import maru.executionlayer.client.ParisWeb3jJsonRpcExecutionLayerClient
 import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
 import maru.executionlayer.manager.FeeRecipientProvider
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
@@ -118,7 +117,6 @@ object DummyConsensusProtocolBuilder {
         .build()
     val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
     return when (elFork) {
-      ElFork.Paris -> ParisWeb3jJsonRpcExecutionLayerClient(web3jExecutionLayerClient)
       ElFork.Prague -> PragueWeb3jJsonRpcExecutionLayerClient(web3jExecutionLayerClient)
     }
   }

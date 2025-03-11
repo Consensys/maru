@@ -21,7 +21,6 @@ import java.util.TreeSet
 interface ConsensusConfig
 
 enum class ElFork {
-  Paris,
   Prague,
 }
 

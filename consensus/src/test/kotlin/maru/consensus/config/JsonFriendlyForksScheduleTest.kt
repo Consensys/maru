@@ -37,7 +37,7 @@ class JsonFriendlyForksScheduleTest {
           "type": "dummy",
           "blockTimeSeconds": 1,
           "feeRecipient": "0x0000000000000000000000000000000000000000",
-          "elFork": "Paris"
+          "elFork": "Prague"
         },
         "2": {
           "type": "delegated",
@@ -58,7 +58,7 @@ class JsonFriendlyForksScheduleTest {
         "type" to "dummy",
         "blockTimeSeconds" to "1",
         "feeRecipient" to "0x0000000000000000000000000000000000000000",
-        "elFork" to "Paris",
+        "elFork" to "Prague",
       )
     val expectedDelegatedConsensusMap =
       mapOf(
@@ -89,7 +89,7 @@ class JsonFriendlyForksScheduleTest {
             blockTimeSeconds = 2,
             DummyConsensusConfig(
               feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
-              elFork = ElFork.Paris,
+              elFork = ElFork.Prague,
             ),
           ),
           ForkSpec(

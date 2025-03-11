@@ -7,7 +7,6 @@ networks:
 
 services:
   initialization:
-    restart: on-failure
     image: busybox:latest
     container_name: intialization_using_busybox
     entrypoint: [ "sh","/initialization/init.sh" ]

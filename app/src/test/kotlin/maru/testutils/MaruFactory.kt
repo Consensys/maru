@@ -25,7 +25,6 @@ import maru.consensus.config.JsonFriendlyForksSchedule
 
 object MaruFactory {
   private val consensusConfigDir = "/e2e/config"
-  private val parisConsensusConfig = "$consensusConfigDir/dummy-consensus-paris.json"
   private val pragueConsensusConfig = "$consensusConfigDir/dummy-consensus-prague.json"
 
   private fun buildMaruConfigString(
@@ -50,7 +49,6 @@ object MaruFactory {
 
   private fun pickConsensusConfig(elFork: ElFork): String =
     when (elFork) {
-      ElFork.Paris -> parisConsensusConfig
       ElFork.Prague -> pragueConsensusConfig
     }
 

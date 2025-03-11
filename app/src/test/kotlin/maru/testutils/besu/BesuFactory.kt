@@ -30,11 +30,9 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 object BesuFactory {
   private val elConfigsDir = "/e2e/config"
   private val pragueGenesis = "$elConfigsDir/el_prague.json"
-  private val parisGenesis = "$elConfigsDir/el_paris.json"
 
   private fun pickGenesis(elFork: ElFork): String =
     when (elFork) {
-      ElFork.Paris -> parisGenesis
       ElFork.Prague -> pragueGenesis
     }
 

@@ -29,7 +29,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.app.MaruApp
-import maru.e2e.Mappers.executionPayloadV1FromBlock
 import maru.e2e.Mappers.executionPayloadV3FromBlock
 import maru.e2e.TestEnvironment.waitForInclusion
 import org.apache.logging.log4j.LogManager
@@ -47,7 +46,6 @@ import org.junit.jupiter.params.provider.MethodSource
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
@@ -63,7 +61,6 @@ class CliqueToPosTest {
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
     private lateinit var maru: MaruApp
-    private var parisSwitchTimeStamp: Long = 0
     private var pragueSwitchTimestamp: Long = 0
     private val genesisDir = File("../docker/initialization")
 
@@ -90,8 +87,7 @@ class CliqueToPosTest {
       qbftCluster.before()
 
       pragueSwitchTimestamp = parsePragueSwitchTimestamp()
-      parisSwitchTimeStamp = pragueSwitchTimestamp - 15
-      maru = MaruFactory.buildTestMaru(parisSwitchTimeStamp, pragueSwitchTimestamp)
+      maru = MaruFactory.buildTestMaru(pragueSwitchTimestamp)
     }
 
     @AfterAll
@@ -134,22 +130,16 @@ class CliqueToPosTest {
     maru.start()
     sendCliqueTransactions()
     everyoneArePeered()
-
-    waitTillTimestamp("Paris", parisSwitchTimeStamp)
+    waitTillTimestamp("Prague", pragueSwitchTimestamp)
 
     repeat(4) {
       TestEnvironment.sendArbitraryTransaction().waitForInclusion()
     }
     log.info("Sequencer has switched to PoS")
 
-    val parisBlock = getBlockByNumber(6)!!
-    assertThat(parisBlock.timestamp.toLong())
-      .isGreaterThan(parisSwitchTimeStamp)
-      .isLessThan(parsePragueSwitchTimestamp())
-    setAllFollowersHeadToBlockNumberParis(6)
     val latestBlock = getBlockByNumber(7)!!
     assertThat(latestBlock.timestamp.toLong()).isGreaterThan(parsePragueSwitchTimestamp())
-    (7L..9L).forEach {
+    (6L..9L).forEach {
       setAllFollowersHeadToBlockNumberPrague(it)
     }
     assertNodeBlockHeight(9, TestEnvironment.sequencerL2Client)
@@ -284,14 +274,6 @@ class CliqueToPosTest {
     log.debug("Fork choice updated result: {}", fcuResult)
   }
 
-  private fun setAllFollowersHeadToBlockNumberParis(blockNumber: Long): String {
-    val postMergeBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
-    val getNewPayloadFromPostMergeBlockNumber = executionPayloadV1FromBlock(postMergeBlock)
-    sendNewPayloadToFollowersParis(getNewPayloadFromPostMergeBlockNumber)
-    fcuFollowersToBlockHashParis(postMergeBlock.hash)
-    return postMergeBlock.hash
-  }
-
   private fun setAllFollowersHeadToBlockNumberPrague(blockNumber: Long): String {
     val postMergeBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
     val getNewPayloadFromPostMergeBlockNumber = executionPayloadV3FromBlock(postMergeBlock)
@@ -385,23 +367,6 @@ class CliqueToPosTest {
       ).send()
       .block
 
-  private fun fcuFollowersToBlockHashParis(blockHash: String) {
-    val lastBlockHashBytes = Bytes32.fromHexString(blockHash)
-    // Cutting off the merge first
-    val mergeForkChoiceState = ForkChoiceStateV1(lastBlockHashBytes, lastBlockHashBytes, lastBlockHashBytes)
-
-    TestEnvironment.followerExecutionClientsPostMerge.entries
-      .map {
-        it.key to
-          it.value.forkChoiceUpdatedV1(
-            mergeForkChoiceState,
-            Optional.empty(),
-          )
-      }.forEach {
-        log.info("FCU for block hash $blockHash, node: ${it.first} response: ${it.second.get()}")
-      }
-  }
-
   private fun fcuFollowersToBlockHashPrague(blockHash: String) {
     val lastBlockHashBytes = Bytes32.fromHexString(blockHash)
     // Cutting off the merge first
@@ -417,16 +382,6 @@ class CliqueToPosTest {
       }.forEach {
         log.info("FCU for block hash $blockHash, node: ${it.first} response: ${it.second.get()}")
       }
-  }
-
-  private fun sendNewPayloadToFollowersParis(newPayloadV1: ExecutionPayloadV1) {
-    TestEnvironment.followerExecutionClientsPostMerge.entries
-      .map {
-        it.key to
-          it.value.newPayloadV1(
-            newPayloadV1,
-          )
-      }.forEach { log.info("New payload for node: ${it.first} response: ${it.second.get()}") }
   }
 
   private fun sendNewPayloadToFollowersPrague(newPayloadV3: ExecutionPayloadV3) {

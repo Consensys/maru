@@ -23,20 +23,17 @@ import maru.config.MaruConfigDtoToml
 import maru.consensus.config.JsonFriendlyForksSchedule
 
 object MaruFactory {
-  fun buildTestMaru(
-    parisTime: Long,
-    pragueTime: Long,
-  ): MaruApp {
+  fun buildTestMaru(pragueTime: Long): MaruApp {
     val maruConfigResource = this::class.java.getResource("/config/maru.toml")
     val maruConfig = loadConfig<MaruConfigDtoToml>(listOf(File(maruConfigResource!!.path)))
     val consensusGenesisTemplate =
       this::class.java
-        .getResource("/config/clique-to-paris-to-prague.template")!!
+        .getResource("/config/clique-to-prague.template")!!
         .readText()
     val tmpDirFile = Files.createTempDirectory("maru-clique-to-pos").toFile()
     tmpDirFile.deleteOnExit()
-    val maruGenesisFile = File(tmpDirFile, "clique-to-paris-to-prague.json")
-    maruGenesisFile.writeText(renderTemplate(consensusGenesisTemplate, parisTime, pragueTime))
+    val maruGenesisFile = File(tmpDirFile, "clique-to-prague.json")
+    maruGenesisFile.writeText(renderTemplate(consensusGenesisTemplate, pragueTime))
 
     val beaconGenesisConfig =
       loadConfig<JsonFriendlyForksSchedule>(listOf(maruGenesisFile))
@@ -46,7 +43,6 @@ object MaruFactory {
 
   private fun renderTemplate(
     template: String,
-    parisTime: Long,
     pragueTime: Long,
-  ): String = template.replace("%PARIS_TIME%", parisTime.toString()).replace("%PRAGUE_TIME%", pragueTime.toString())
+  ): String = template.replace("%PRAGUE_TIME%", pragueTime.toString())
 }
