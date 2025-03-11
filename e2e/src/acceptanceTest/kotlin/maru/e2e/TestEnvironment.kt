@@ -79,7 +79,7 @@ object TestEnvironment {
       "http://localhost:11551",
       jwtConfig,
     )
-  val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", jwtConfig)
+  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", jwtConfig)
   private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", jwtConfig)
   private val gethExecutionEngineClients =
     mapOf(
