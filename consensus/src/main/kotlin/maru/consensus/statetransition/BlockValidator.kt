@@ -82,7 +82,7 @@ class BlockValidatorImpl(
       return SafeFuture.completedFuture(BlockValidator.ValidationResult.Invalid("Proposer is not expected proposer"))
     }
 
-    for (seal in block.beaconBlockBody.prevBlockSeals) {
+    for (seal in block.beaconBlockBody.prevCommitSeals) {
       if (!sealVerifier.verifySeal(seal, preState.latestBeaconBlockRoot)) {
         return SafeFuture.completedFuture(BlockValidator.ValidationResult.Invalid("Seal verification failed"))
       }

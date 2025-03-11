@@ -23,7 +23,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
@@ -99,12 +99,10 @@ class JsonRpcExecutionLayerManager private constructor(
       nextBlockTimestamp,
     )
     val payloadAttributes =
-      PayloadAttributesV3(
+      PayloadAttributesV1(
         UInt64.fromLongBits(nextBlockTimestamp),
         Bytes32.ZERO,
         getNextFeeRecipient(),
-        emptyList(),
-        Bytes32.ZERO,
       )
     log.debug("Starting block building with payload attributes {}", payloadAttributes)
     return executionLayerClient
@@ -165,7 +163,7 @@ class JsonRpcExecutionLayerManager private constructor(
       .getPayload(Bytes8(Bytes.wrap(payloadId!!)))
       .thenCompose { payloadResponse ->
         if (payloadResponse.isSuccess) {
-          val tekuExecutionPayload = payloadResponse.payload.executionPayload
+          val tekuExecutionPayload = payloadResponse.payload
           val executionPayload = tekuExecutionPayload.toDomainExecutionPayload()
           val validationResult = payloadValidator.validate(executionPayload)
 

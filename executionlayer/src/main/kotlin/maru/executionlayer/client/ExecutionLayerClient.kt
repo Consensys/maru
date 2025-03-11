@@ -16,13 +16,12 @@
 package maru.executionlayer.client
 
 import maru.core.ExecutionPayload
-import maru.executionlayer.extensions.toExecutionPayloadV3
+import maru.executionlayer.extensions.toExecutionPayloadV1
 import maru.executionlayer.manager.BlockMetadata
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
-import tech.pegasys.teku.ethereum.executionclient.schema.GetPayloadV3Response
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -31,15 +30,15 @@ import tech.pegasys.teku.infrastructure.bytes.Bytes8
 interface ExecutionLayerClient {
   fun getLatestBlockMetadata(): SafeFuture<BlockMetadata>
 
-  fun getPayload(payloadId: Bytes8): SafeFuture<Response<GetPayloadV3Response>>
+  fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>>
 
   fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =
-    newPayload(executionPayload.toExecutionPayloadV3())
+    newPayload(executionPayload.toExecutionPayloadV1())
 
-  fun newPayload(executionPayload: ExecutionPayloadV3): SafeFuture<Response<PayloadStatusV1>>
+  fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>>
 
   fun forkChoiceUpdate(
     forkChoiceState: ForkChoiceStateV1,
-    payloadAttributes: PayloadAttributesV3?,
+    payloadAttributes: PayloadAttributesV1?,
   ): SafeFuture<Response<ForkChoiceUpdatedResult>>
 }
