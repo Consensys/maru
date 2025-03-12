@@ -24,11 +24,6 @@ enum class ElFork {
   Prague,
 }
 
-/*
-* Inspired by `ScheduledProtocolSpec` from Besu repo.
-* It relies on a clever (in a bad sense) property that timestamps are always more than a block time. It means that
-* once a timestamp milestone has been reached, it's impossible to switch back to the block time milestone
-*/
 data class ForkSpec(
   val timestampSeconds: Long, // Could be a block number or a timestamp
   val blockTimeSeconds: Int,
