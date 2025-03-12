@@ -13,9 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.consensus
 
 import java.util.Optional
+import maru.consensus.dummy.DummyConsensusState
 import maru.core.ExecutionPayload
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager

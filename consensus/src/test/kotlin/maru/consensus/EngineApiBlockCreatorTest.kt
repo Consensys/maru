@@ -13,19 +13,27 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.consensus
 
 import java.time.Clock
 import kotlin.random.Random
+import maru.consensus.dummy.DummyConsensusState
+import maru.consensus.dummy.FinalizationState
 import maru.core.ExecutionPayload
-import maru.executionlayer.manager.DataGenerators
+import maru.core.ext.DataGenerators
+import maru.executionlayer.manager.DataGenerators.randomValidForkChoiceUpdatedResult
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
+import org.mockito.Mockito.atLeastOnce
+import org.mockito.Mockito.inOrder
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.reset
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
@@ -36,19 +44,19 @@ class EngineApiBlockCreatorTest {
 
   @BeforeEach
   fun setUp() {
-    executionLayerManager = Mockito.mock()
+    executionLayerManager = mock()
   }
 
   @AfterEach
   fun tearDown() {
-    Mockito.reset(executionLayerManager)
+    reset(executionLayerManager)
   }
 
   private fun createDummyConsensusState(finalizationState: FinalizationState): DummyConsensusState =
     DummyConsensusState(
       Clock.systemUTC(),
       finalizationState,
-      Random.Default.nextBytes(32),
+      Random.nextBytes(32),
     )
 
   private fun mockFinishBlockBuilding(result: ExecutionPayload) {
@@ -65,9 +73,9 @@ class EngineApiBlockCreatorTest {
 
   @Test
   fun `initialization triggers setHeadAndStartBlockBuilding with latest known state`() {
-    val finalizationState = FinalizationState(Random.Default.nextBytes(32), Random.Default.nextBytes(32))
+    val finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     val dummyConsensusState = createDummyConsensusState(finalizationState)
-    mockSetHeadAndStartBlockBuilding(DataGenerators.randomValidForkChoiceUpdatedResult())
+    mockSetHeadAndStartBlockBuilding(randomValidForkChoiceUpdatedResult())
     val nextTimestamp = dummyConsensusState.clock.millis()
     EngineApiBlockCreator(
       manager = executionLayerManager,
@@ -76,7 +84,7 @@ class EngineApiBlockCreatorTest {
       initialBlockTimestamp = nextTimestamp,
     )
 
-    Mockito.verify(executionLayerManager, Mockito.atLeastOnce()).setHeadAndStartBlockBuilding(
+    verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
       eq(dummyConsensusState.latestBlockHash),
       eq(finalizationState.safeBlockHash),
       eq(finalizationState.finalizedBlockHash),
@@ -86,13 +94,11 @@ class EngineApiBlockCreatorTest {
 
   @Test
   fun `block creator doesn't call setHeadAndStartBlockBuilding or finishBlockBuilding twice in a row`() {
-    val finalizationState = FinalizationState(Random.Default.nextBytes(32), Random.Default.nextBytes(32))
+    val finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     val dummyConsensusState = createDummyConsensusState(finalizationState)
-    val expectedBlockBuildingResult =
-      maru.core.ext.DataGenerators
-        .randomExecutionPayload()
+    val expectedBlockBuildingResult = DataGenerators.randomExecutionPayload()
     mockFinishBlockBuilding(expectedBlockBuildingResult)
-    val forkChoiceUpdatedResult = DataGenerators.randomValidForkChoiceUpdatedResult()
+    val forkChoiceUpdatedResult = randomValidForkChoiceUpdatedResult()
     mockSetHeadAndStartBlockBuilding(forkChoiceUpdatedResult)
     val nextTimestamp = dummyConsensusState.clock.millis()
 
@@ -107,7 +113,7 @@ class EngineApiBlockCreatorTest {
     blockCreator.createEmptyWithdrawalsBlock(2L, null)
     blockCreator.createEmptyWithdrawalsBlock(3L, null)
 
-    val inOrder = Mockito.inOrder(executionLayerManager)
+    val inOrder = inOrder(executionLayerManager)
     repeat((1..3).count()) {
       inOrder.verify(executionLayerManager).setHeadAndStartBlockBuilding(
         any(),
@@ -123,18 +129,16 @@ class EngineApiBlockCreatorTest {
       any(),
       any(),
     )
-    Mockito.verifyNoMoreInteractions(executionLayerManager)
+    verifyNoMoreInteractions(executionLayerManager)
   }
 
   @Test
   fun `finalization updates are respected`() {
-    val finalizationState = FinalizationState(Random.Default.nextBytes(32), Random.Default.nextBytes(32))
+    val finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     val dummyConsensusState = createDummyConsensusState(finalizationState)
-    val expectedBlockBuildingResult =
-      maru.core.ext.DataGenerators
-        .randomExecutionPayload()
+    val expectedBlockBuildingResult = DataGenerators.randomExecutionPayload()
     mockFinishBlockBuilding(expectedBlockBuildingResult)
-    val forkChoiceUpdatedResult = DataGenerators.randomValidForkChoiceUpdatedResult()
+    val forkChoiceUpdatedResult = randomValidForkChoiceUpdatedResult()
     mockSetHeadAndStartBlockBuilding(forkChoiceUpdatedResult)
     val initialTimestamp = dummyConsensusState.clock.millis()
 
@@ -147,19 +151,19 @@ class EngineApiBlockCreatorTest {
       )
     val nextTimestamp1 = 123L
     blockCreator.createEmptyWithdrawalsBlock(nextTimestamp1, null)
-    Mockito.verify(executionLayerManager, Mockito.atLeastOnce()).setHeadAndStartBlockBuilding(
+    verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
       eq(expectedBlockBuildingResult.blockHash),
       eq(finalizationState.safeBlockHash),
       eq(finalizationState.finalizedBlockHash),
       eq(nextTimestamp1),
     )
-    val newFinalizationState = FinalizationState(Random.Default.nextBytes(32), Random.Default.nextBytes(32))
+    val newFinalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     dummyConsensusState.updateFinalizationState(newFinalizationState)
 
     val otherTimestamp2 = 124L
     blockCreator.createEmptyWithdrawalsBlock(otherTimestamp2, null)
 
-    Mockito.verify(executionLayerManager, Mockito.atLeastOnce()).setHeadAndStartBlockBuilding(
+    verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
       eq(expectedBlockBuildingResult.blockHash),
       eq(newFinalizationState.safeBlockHash),
       eq(newFinalizationState.finalizedBlockHash),
