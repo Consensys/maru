@@ -62,22 +62,20 @@ class BlockCreator(
 
     val beaconBlockBody =
       BeaconBlockBody(latestBeaconBlock.commitSeals, executionPayload)
-    val bodyRoot = HashUtil.bodyRoot(beaconBlockBody)
-
     val proposer =
       proposerSelector.selectProposerForRound(
         ConsensusRoundIdentifier((parentHeader.number + 1UL).toLong(), roundNumber.toInt()),
       )
-    val temporaryBlockHeader =
+    val stateRootBlockHeader =
       BeaconBlockHeader(
-        parentHeader.number + 1UL,
-        roundNumber.toULong(),
-        timestamp.toULong(),
-        Validator(proposer.toArrayUnsafe()),
-        parentHeader.hash(),
-        ByteArray(32), // temporary state root to avoid circular dependency, will be replaced in final header
-        bodyRoot,
-        HashUtil::headerHash,
+        number = parentHeader.number + 1UL,
+        round = roundNumber.toULong(),
+        timestamp = timestamp.toULong(),
+        proposer = Validator(proposer.toArrayUnsafe()),
+        parentRoot = parentHeader.hash(),
+        stateRoot = ByteArray(32), // temporary state root to avoid circular dependency
+        bodyRoot = HashUtil.bodyRoot(beaconBlockBody),
+        headerHashFunction = HashUtil::headerHash,
       )
 
     val validators =
@@ -85,8 +83,11 @@ class BlockCreator(
         .getValidatorsAfterBlock(
           parentHeader,
         )
-    val stateRoot = HashUtil.stateRoot(BeaconState(temporaryBlockHeader, bodyRoot, validators))
-    val finalBlockHeader = temporaryBlockHeader.copy(stateRoot = stateRoot)
+    val stateRoot =
+      HashUtil.stateRoot(
+        BeaconState(stateRootBlockHeader, HashUtil.bodyRoot(beaconBlockBody), validators),
+      )
+    val finalBlockHeader = stateRootBlockHeader.copy(stateRoot = stateRoot)
 
     return BeaconBlock(finalBlockHeader, beaconBlockBody)
   }
