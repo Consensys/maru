@@ -77,7 +77,7 @@ data class ForkChoiceUpdatedResult(
 data class BlockMetadata(
   val blockNumber: ULong,
   val blockHash: ByteArray,
-  val unixTimestampSeconds: Long, // Since use Java standard lib, Long is more practical than ULong
+  val unixTimestampSeconds: Long, // Since the use of Java standard lib, Long is more practical than ULong
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
