@@ -16,30 +16,80 @@
 package maru.e2e
 
 import java.math.BigInteger
-import okhttp3.OkHttpClient
+import java.util.Optional
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlin.io.path.Path
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.toJavaDuration
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
+import org.awaitility.kotlin.await
 import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.methods.response.EthSendTransaction
-import org.web3j.protocol.http.HttpService
 import org.web3j.tx.RawTransactionManager
-import org.web3j.utils.Async
+import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
+import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object TestEnvironment {
-  val sequencerL2Client: Web3j = buildL2Client("http://localhost:8545")
-  val geth1L2Client: Web3j = buildL2Client("http://localhost:8555")
-  val geth2L2Client: Web3j = buildL2Client("http://localhost:8565")
-  val gethSnapServerL2Client: Web3j = buildL2Client("http://localhost:8575")
-  val besuFollowerL2Client: Web3j = buildL2Client("http://localhost:9545")
+  private val jwtConfig: Optional<JwtConfig> =
+    JwtConfig.createIfNeeded(
+      true,
+      Optional.of("../docker/jwt"),
+      Optional.of(UUID.randomUUID().toString()),
+      Path("/tmp"),
+    )
+  val sequencerL2Client: Web3j = buildWeb3Client("http://localhost:8545")
+
+  // The switch doesn't work for Geth 1.15 yet
+  private val geth1L2Client: Web3j = buildWeb3Client("http://localhost:8555")
+  private val geth2L2Client: Web3j = buildWeb3Client("http://localhost:8565")
+  private val besuFollowerL2Client: Web3j = buildWeb3Client("http://localhost:9545")
+
+  // The switch doesn't work for nethermind yet
+  private val nethermindFollowerL2Client: Web3j = buildWeb3Client("http://localhost:10545", jwtConfig)
+  private val erigonFollowerL2Client: Web3j = buildWeb3Client("http://localhost:11545")
   val followerClients =
     mapOf(
-      //        "geth1" to geth1L2Client,
-      "geth2" to geth2L2Client,
-      "gethSnapServer" to gethSnapServerL2Client,
-      "besuFollower" to besuFollowerL2Client,
+      "follower-geth-2" to geth2L2Client,
+      "follower-besu" to besuFollowerL2Client,
+      "follower-erigon" to erigonFollowerL2Client,
+      "follower-nethermind" to nethermindFollowerL2Client,
     )
-  val transactionManager =
+  val allClients = followerClients + ("sequencer" to sequencerL2Client)
+  val followerClientsPostMerge = followerClients + ("follower-geth" to geth1L2Client)
+
+  private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
+  private val nethermindFollowerExecutionEngineClient =
+    createExecutionClient(
+      "http://localhost:10550",
+      jwtConfig,
+    )
+  private val erigonFollowerExecutionEngineClient =
+    createExecutionClient(
+      "http://localhost:11551",
+      jwtConfig,
+    )
+  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", jwtConfig)
+  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", jwtConfig)
+  private val gethExecutionEngineClients =
+    mapOf(
+      "follower-geth-2" to geth2ExecutionEngineClient,
+    )
+  val followerExecutionEngineClients =
+    mapOf(
+      "follower-besu" to besuFollowerExecutionEngineClient,
+      "follower-erigon" to erigonFollowerExecutionEngineClient,
+      "follower-nethermind" to nethermindFollowerExecutionEngineClient,
+    ) + gethExecutionEngineClients
+
+  val followerExecutionClientsPostMerge =
+    (followerExecutionEngineClients + ("follower-geth" to geth1ExecutionEngineClient))
+
+  private val transactionManager =
     let {
       val credentials =
         Credentials.create("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae")
@@ -54,25 +104,40 @@ object TestEnvironment {
   }
 
   fun EthSendTransaction.waitForInclusion() {
-    await().untilAsserted {
-      val lastTransaction =
-        sequencerL2Client
-          .ethGetTransactionByHash(transactionHash)
-          .send()
-          .transaction
-          .get()
-      assertThat(lastTransaction.blockNumberRaw)
-        .withFailMessage("Transaction $transactionHash wasn't included!")
-        .isNotNull()
-    }
+    await
+      .timeout(30, TimeUnit.SECONDS)
+      .untilAsserted {
+        val lastTransaction =
+          sequencerL2Client
+            .ethGetTransactionByHash(transactionHash)
+            .send()
+            .transaction
+            .get()
+        assertThat(lastTransaction.blockNumberRaw)
+          .withFailMessage("Transaction $transactionHash wasn't included!")
+          .isNotNull()
+      }
   }
 
-  private fun buildL2Client(rpcUrl: String): Web3j = buildWeb3Client(rpcUrl)
+  private fun buildWeb3Client(
+    rpcUrl: String,
+    jwtConfig: Optional<JwtConfig> = Optional.empty(),
+  ): Web3j = createWeb3jClient(rpcUrl, jwtConfig).eth1Web3j
 
-  private fun buildWeb3Client(rpcUrl: String): Web3j =
-    Web3j.build(
-      HttpService(rpcUrl, OkHttpClient.Builder().build()),
-      500,
-      Async.defaultExecutorService(),
-    )
+  private fun createWeb3jClient(
+    endpoint: String,
+    jwtConfig: Optional<JwtConfig>,
+  ): Web3JClient =
+    Web3jClientBuilder()
+      .timeout(1.minutes.toJavaDuration())
+      .endpoint(endpoint)
+      .jwtConfigOpt(jwtConfig)
+      .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
+      .executionClientEventsPublisher {}
+      .build()
+
+  private fun createExecutionClient(
+    eeEndpoint: String,
+    jwtConfig: Optional<JwtConfig> = Optional.empty(),
+  ): Web3JExecutionEngineClient = Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
 }

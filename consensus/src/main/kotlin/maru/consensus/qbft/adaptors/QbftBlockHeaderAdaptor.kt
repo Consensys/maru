@@ -23,7 +23,7 @@ import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.Hash
 
 /**
- * Adaptor class to convert a [BeaconBlockHeader] to a [QbftBlockHeader].
+ * Adaptor class to convert a BeaconBlockHeader to a QBFT block header
  */
 class QbftBlockHeaderAdaptor(
   val beaconBlockHeader: BeaconBlockHeader,

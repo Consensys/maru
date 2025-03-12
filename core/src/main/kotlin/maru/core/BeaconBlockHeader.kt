@@ -15,9 +15,6 @@
  */
 package maru.core
 
-import com.google.common.base.Suppliers
-import java.util.function.Supplier
-
 data class BeaconBlockHeader(
   val number: ULong,
   val round: ULong,
@@ -26,13 +23,9 @@ data class BeaconBlockHeader(
   val parentRoot: ByteArray,
   val stateRoot: ByteArray,
   val bodyRoot: ByteArray,
-  val hashFunction: HashFunction,
+  private val headerHashFunction: HeaderHashFunction,
 ) {
-  val hash: Supplier<ByteArray>
-
-  init {
-    hash = Suppliers.memoize { hashFunction.invoke(this) }
-  }
+  val hash by lazy { headerHashFunction(this) }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -40,27 +33,12 @@ data class BeaconBlockHeader(
 
     other as BeaconBlockHeader
 
-    if (number != other.number) return false
-    if (round != other.round) return false
-    if (timestamp != other.timestamp) return false
-    if (proposer != other.proposer) return false
-    if (!parentRoot.contentEquals(other.parentRoot)) return false
-    if (!stateRoot.contentEquals(other.stateRoot)) return false
-    if (!bodyRoot.contentEquals(other.bodyRoot)) return false
+    if (!hash.contentEquals(other.hash)) return false
 
     return true
   }
 
-  override fun hashCode(): Int {
-    var result = number.hashCode()
-    result = 31 * result + round.hashCode()
-    result = 31 * result + timestamp.hashCode()
-    result = 31 * result + proposer.hashCode()
-    result = 31 * result + parentRoot.contentHashCode()
-    result = 31 * result + stateRoot.contentHashCode()
-    result = 31 * result + bodyRoot.contentHashCode()
-    return result
-  }
+  override fun hashCode(): Int = hash.contentHashCode()
 
-  fun hash(): ByteArray = hash.get()
+  fun hash(): ByteArray = hash
 }

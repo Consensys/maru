@@ -15,14 +15,15 @@
  */
 package maru.consensus.qbft.adaptors
 
+import maru.consensus.qbft.adaptors.toBeaconBlock
+import maru.consensus.qbft.adaptors.toBeaconBlockHeader
 import maru.core.BeaconBlock
-import maru.core.BeaconBlockHeader
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockInterface
 import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
 
 /**
- * Adaptor class for [QbftBlockInterface], this provides a way to replace the round number in a block
+ * Adaptor class for QBFT block interface, this provides a way to replace the round number in a block
  */
 class QbftBlockInterfaceAdaptor : QbftBlockInterface {
   override fun replaceRoundInBlock(
@@ -30,21 +31,13 @@ class QbftBlockInterfaceAdaptor : QbftBlockInterface {
     roundNumber: Int,
     hashMode: QbftHashMode,
   ): QbftBlock {
-    val beaconBlockHeader = BlockUtil.toBeaconBlockHeader(proposalBlock.header)
+    val beaconBlockHeader = proposalBlock.header.toBeaconBlockHeader()
     val replacedBeaconBlockHeader =
-      BeaconBlockHeader(
-        beaconBlockHeader.number,
-        roundNumber.toULong(),
-        beaconBlockHeader.timestamp,
-        beaconBlockHeader.proposer,
-        beaconBlockHeader.parentRoot,
-        beaconBlockHeader.stateRoot,
-        beaconBlockHeader.bodyRoot,
-        HashFunctionUtils.toHeaderHashFunction(hashMode),
+      beaconBlockHeader.copy(
+        round = roundNumber.toULong(),
       )
-
     return QbftBlockAdaptor(
-      BeaconBlock(replacedBeaconBlockHeader, BlockUtil.toBeaconBlock(proposalBlock).beaconBlockBody),
+      BeaconBlock(replacedBeaconBlockHeader, proposalBlock.toBeaconBlock().beaconBlockBody),
     )
   }
 }

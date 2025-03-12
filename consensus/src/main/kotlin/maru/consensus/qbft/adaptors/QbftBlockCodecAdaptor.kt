@@ -15,13 +15,7 @@
  */
 package maru.consensus.qbft.adaptors
 
-import maru.consensus.qbft.adaptors.BlockUtil.toBeaconBlock
-import maru.serialization.rlp.BeaconBlockBodySerializer
-import maru.serialization.rlp.BeaconBlockHeaderSerializer
-import maru.serialization.rlp.BeaconBlockSerializer
-import maru.serialization.rlp.ExecutionPayloadSerializer
-import maru.serialization.rlp.SealSerializer
-import maru.serialization.rlp.ValidatorSerializer
+import maru.serialization.rlp.RLPSerializers.BeaconBlockSerializer
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCodec
 import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
@@ -29,33 +23,20 @@ import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 /**
- * Adaptor for [QbftBlockCodec], this provides a way to serialize QBFT blocks
+ * Adaptor for QBFT block codec, this provides a way to serialize QBFT blocks
  */
 class QbftBlockCodecAdaptor : QbftBlockCodec {
-  private val serializer =
-    BeaconBlockSerializer(
-      beaconBlockHeaderSerializer =
-        BeaconBlockHeaderSerializer(
-          validatorSerializer = ValidatorSerializer(),
-        ),
-      beaconBlockBodySerializer =
-        BeaconBlockBodySerializer(
-          sealSerializer = SealSerializer(),
-          executionPayloadSerializer = ExecutionPayloadSerializer(),
-        ),
-    )
-
   override fun readFrom(
     rlpInput: RLPInput,
     qbftHashMode: QbftHashMode,
-  ): QbftBlock = QbftBlockAdaptor(serializer.readFrom(rlpInput, HashFunctionUtils.toHashType(qbftHashMode)))
+  ): QbftBlock = QbftBlockAdaptor(BeaconBlockSerializer.readFrom(rlpInput))
 
   override fun writeTo(
     qbftBlock: QbftBlock,
     rlpOutput: RLPOutput,
   ) {
-    toBeaconBlock(qbftBlock).let {
-      serializer.writeTo(it, rlpOutput)
+    qbftBlock.toBeaconBlock().let {
+      BeaconBlockSerializer.writeTo(it, rlpOutput)
     }
   }
 }

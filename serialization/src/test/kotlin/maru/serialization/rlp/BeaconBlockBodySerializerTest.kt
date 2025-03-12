@@ -34,7 +34,6 @@ class BeaconBlockBodySerializerTest {
     val testValue =
       BeaconBlockBody(
         prevCommitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
-        commitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
         executionPayload =
           randomExecutionPayload(),
       )

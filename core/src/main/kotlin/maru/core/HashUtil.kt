@@ -15,66 +15,29 @@
  */
 package maru.core
 
-import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.datatypes.Hash
+import maru.serialization.Serializer
 
-typealias HashFunction = (BeaconBlockHeader) -> ByteArray
+typealias HeaderHashFunction = (BeaconBlockHeader) -> ByteArray
 
-enum class HashType(
-  val hashFunction: HashFunction,
-) {
-  ON_CHAIN(HashUtil::headerOnChainHash),
-  COMMITTED_SEAL(HashUtil::headerCommittedSealHash),
+interface Hasher {
+  fun hash(serializedBytes: ByteArray): ByteArray
 }
 
 /**
  * Utility class for hashing various parts of the beacon chain
  */
 object HashUtil {
-  /**
-   * Hashes the header for onchain omitting the round number
-   */
-  fun headerOnChainHash(header: BeaconBlockHeader): ByteArray {
-    val headerAsBytes =
-      byteArrayOf(header.number.toByte()) + header.proposer.address + header.parentRoot + header.stateRoot +
-        header.bodyRoot
-    return Hash.hash(Bytes.wrap(headerAsBytes)).toArray()
-  }
+  fun headerHash(
+    serializer: Serializer<BeaconBlockHeader>,
+    hasher: Hasher,
+  ): HeaderHashFunction = { header -> rootHash(header, serializer, hasher) }
 
-  /**
-   * Hashes the header for the commit seal hash including the round number
-   */
-  fun headerCommittedSealHash(header: BeaconBlockHeader): ByteArray {
-    val headerAsBytes =
-      byteArrayOf(header.number.toByte()) + byteArrayOf(header.round.toByte()) + header.proposer.address +
-        header.parentRoot +
-        header.stateRoot +
-        header.bodyRoot
-    return Hash.hash(Bytes.wrap(headerAsBytes)).toArray()
-  }
-
-  fun bodyRoot(body: BeaconBlockBody): ByteArray {
-    // this deliberately does not include commit seals as these are always excluded as part of the hash
-    val prevCommitSeals = body.prevCommitSeals.map { it.signature }.reduceOrNull { acc, bytes -> acc + bytes }
-    val bodyAsBytes =
-      (prevCommitSeals ?: byteArrayOf()) + body.executionPayload.blockHash
-    return Hash.hash(Bytes.wrap(bodyAsBytes)).toArray()
-  }
-
-  fun stateRoot(state: BeaconState): ByteArray {
-    var validatorsAsBytes =
-      state.validators
-        .map { it.address }
-        .reduceOrNull { acc, bytes -> acc + bytes }
-    // onchain hash can be used as this is the latest finalized beacon block header already on chain
-    var stateRootAsBytes =
-      headerOnChainHash(state.latestBeaconBlockHeader) + state.latestBeaconBlockRoot +
-        (validatorsAsBytes ?: byteArrayOf())
-    return Hash
-      .hash(
-        Bytes.wrap(
-          stateRootAsBytes,
-        ),
-      ).toArray()
+  fun <T> rootHash(
+    t: T,
+    serializer: Serializer<T>,
+    hasher: Hasher,
+  ): ByteArray {
+    val serialized = serializer.serialize(t)
+    return hasher.hash(serialized)
   }
 }

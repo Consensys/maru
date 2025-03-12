@@ -25,9 +25,15 @@ import maru.core.BeaconState
 import maru.core.ExecutionPayload
 import maru.core.HashUtil
 import maru.core.Seal
+import maru.core.SealedBeaconBlock
 import maru.core.Validator
+import maru.executionlayer.manager.BlockMetadata
+import maru.serialization.rlp.KeccakHasher
+import maru.serialization.rlp.RLPSerializers
 
 object DataGenerators {
+  val HEADER_HASH_FUNCTION = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
+
   fun randomBeaconState(number: ULong): BeaconState {
     val beaconBlockHeader =
       BeaconBlockHeader(
@@ -38,7 +44,7 @@ object DataGenerators {
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
-        HashUtil::headerOnChainHash,
+        HEADER_HASH_FUNCTION,
       )
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
@@ -56,10 +62,18 @@ object DataGenerators {
     )
   }
 
+  fun randomSealedBeaconBlock(number: ULong): SealedBeaconBlock =
+    SealedBeaconBlock(
+      beaconBlock = randomBeaconBlock(number),
+      commitSeals =
+        (1..3).map {
+          Seal(Random.nextBytes(96))
+        },
+    )
+
   fun randomBeaconBlockBody(): BeaconBlockBody =
     BeaconBlockBody(
       prevCommitSeals = (1..3).map { Seal(Random.nextBytes(96)) },
-      commitSeals = (1..3).map { Seal(Random.nextBytes(96)) },
       executionPayload = randomExecutionPayload(),
     )
 
@@ -72,7 +86,7 @@ object DataGenerators {
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
       bodyRoot = Random.nextBytes(32),
-      HashUtil::headerOnChainHash,
+      headerHashFunction = HEADER_HASH_FUNCTION,
     )
 
   fun randomExecutionPayload(): ExecutionPayload =
@@ -94,4 +108,11 @@ object DataGenerators {
     )
 
   fun randomValidator(): Validator = Validator(Random.nextBytes(20))
+
+  fun randomBlockMetadata(number: ULong): BlockMetadata =
+    BlockMetadata(
+      number,
+      blockHash = Random.nextBytes(32),
+      unixTimestamp = Random.nextLong(0, Long.MAX_VALUE),
+    )
 }
