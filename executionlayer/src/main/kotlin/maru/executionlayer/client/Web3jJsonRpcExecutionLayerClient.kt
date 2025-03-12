@@ -16,10 +16,12 @@
 package maru.executionlayer.client
 
 import java.util.Optional
+import maru.core.ExecutionPayload
+import maru.executionlayer.extensions.toDomainExecutionPayload
+import maru.executionlayer.extensions.toExecutionPayloadV1
 import maru.executionlayer.manager.BlockMetadata
 import org.apache.tuweni.bytes.Bytes32
 import org.web3j.protocol.core.DefaultBlockParameter
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -52,11 +54,17 @@ class Web3jJsonRpcExecutionLayerClient(
         )
       }
 
-  override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>> =
-    web3jEngineClient.getPayloadV1(payloadId)
+  override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
+    web3jEngineClient.getPayloadV1(payloadId).thenApply { response ->
+      if (response.isSuccess) {
+        Response(response.payload.toDomainExecutionPayload())
+      } else {
+        Response.withErrorMessage(response.errorMessage)
+      }
+    }
 
-  override fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>> =
-    web3jEngineClient.newPayloadV1(executionPayload)
+  override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =
+    web3jEngineClient.newPayloadV1(executionPayload.toExecutionPayloadV1())
 
   override fun forkChoiceUpdate(
     forkChoiceState: ForkChoiceStateV1,

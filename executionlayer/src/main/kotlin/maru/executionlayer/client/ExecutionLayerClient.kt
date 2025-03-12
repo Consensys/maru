@@ -16,9 +16,7 @@
 package maru.executionlayer.client
 
 import maru.core.ExecutionPayload
-import maru.executionlayer.extensions.toExecutionPayloadV1
 import maru.executionlayer.manager.BlockMetadata
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -30,12 +28,10 @@ import tech.pegasys.teku.infrastructure.bytes.Bytes8
 interface ExecutionLayerClient {
   fun getLatestBlockMetadata(): SafeFuture<BlockMetadata>
 
-  fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>>
+  fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>>
 
   fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =
-    newPayload(executionPayload.toExecutionPayloadV1())
-
-  fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>>
+    newPayload(executionPayload)
 
   fun forkChoiceUpdate(
     forkChoiceState: ForkChoiceStateV1,

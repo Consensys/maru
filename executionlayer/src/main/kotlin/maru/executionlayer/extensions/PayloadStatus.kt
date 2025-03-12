@@ -13,14 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.executionlayer.extensions
 
-import maru.core.BeaconState
-import maru.core.Validator
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 
-interface Spec {
-  fun isProposerExpectedProposer(
-    proposer: Validator,
-    state: BeaconState,
-  ): Boolean
-}
+fun PayloadStatusV1.hasValidExecutionPayload() = this.asInternalExecutionPayload().hasValidStatus()

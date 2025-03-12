@@ -18,7 +18,6 @@ package maru.executionlayer.manager
 import kotlin.jvm.optionals.getOrNull
 import maru.core.ExecutionPayload
 import maru.executionlayer.client.ExecutionLayerClient
-import maru.executionlayer.extensions.toDomainExecutionPayload
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
@@ -163,14 +162,13 @@ class JsonRpcExecutionLayerManager private constructor(
       .getPayload(Bytes8(Bytes.wrap(payloadId!!)))
       .thenCompose { payloadResponse ->
         if (payloadResponse.isSuccess) {
-          val tekuExecutionPayload = payloadResponse.payload
-          val executionPayload = tekuExecutionPayload.toDomainExecutionPayload()
+          val executionPayload = payloadResponse.payload
           val validationResult = payloadValidator.validate(executionPayload)
 
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
             throw RuntimeException(validationResult.reason)
           }
-          executionLayerClient.newPayload(tekuExecutionPayload).thenApply { payloadStatus ->
+          executionLayerClient.newPayload(executionPayload).thenApply { payloadStatus ->
             if (payloadStatus.isSuccess &&
               payloadStatus.payload
                 .asInternalExecutionPayload()
@@ -183,11 +181,9 @@ class JsonRpcExecutionLayerManager private constructor(
 
               latestBlockCache.updateNext(
                 BlockMetadata(
-                  tekuExecutionPayload.blockNumber
-                    .longValue()
-                    .toULong(),
-                  tekuExecutionPayload.blockHash.toArray(),
-                  tekuExecutionPayload.timestamp.longValue(),
+                  executionPayload.blockNumber,
+                  executionPayload.blockHash,
+                  executionPayload.timestamp.toLong(),
                 ),
               )
               executionPayload

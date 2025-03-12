@@ -13,13 +13,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.validation
 
+import maru.core.BeaconBlockHeader
 import maru.core.Seal
 
 interface SealVerifier {
   fun verifySeal(
     seal: Seal,
-    blockHash: ByteArray,
-  ): Boolean
+    beaconBLockHeader: BeaconBlockHeader,
+  ): Result<Boolean>
 }
