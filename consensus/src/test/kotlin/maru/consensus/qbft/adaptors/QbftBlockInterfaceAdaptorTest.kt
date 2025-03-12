@@ -32,7 +32,7 @@ class QbftBlockInterfaceAdaptorTest {
     val qbftBlock = QbftBlockAdaptor(beaconBlock)
     val updatedBlock =
       QbftBlockInterfaceAdaptor().replaceRoundInBlock(qbftBlock, 20, QbftHashMode.COMMITTED_SEAL)
-    val updatedBeaconBlockHeader = BlockUtil.toBeaconBlockHeader(updatedBlock.header)
+    val updatedBeaconBlockHeader = updatedBlock.header.toBeaconBlockHeader()
     assertEquals(updatedBeaconBlockHeader.round, 20UL)
   }
 }

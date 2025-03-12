@@ -39,7 +39,7 @@ class QbftBlockCreatorAdaptorTest {
     val qbftBlockCreatorAdaptor = QbftBlockCreatorAdaptor(blockCreator, 1)
 
     val createdQbftblock = qbftBlockCreatorAdaptor.createBlock(1000L, QbftBlockHeaderAdaptor(parentBeaconHeader))
-    assertThat(BlockUtil.toBeaconBlock(createdQbftblock)).isEqualTo(createdBeaconBlock)
+    assertThat(createdQbftblock.toBeaconBlock()).isEqualTo(createdBeaconBlock)
   }
 
   @Test

@@ -35,12 +35,12 @@ class QbftValidatorProviderAdaptor(
     }
 
   override fun getValidatorsAfterBlock(header: QbftBlockHeader): Collection<Address> =
-    validatorProvider.getValidatorsAfterBlock(BlockUtil.toBeaconBlockHeader(header)).map {
+    validatorProvider.getValidatorsAfterBlock(header.toBeaconBlockHeader()).map {
       Address.wrap(Bytes.wrap(it.address))
     }
 
   override fun getValidatorsForBlock(header: QbftBlockHeader): Collection<Address> =
-    validatorProvider.getValidatorsForBlock(BlockUtil.toBeaconBlockHeader(header)).map {
+    validatorProvider.getValidatorsForBlock(header.toBeaconBlockHeader()).map {
       Address.wrap(Bytes.wrap(it.address))
     }
 
