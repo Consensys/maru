@@ -19,7 +19,6 @@ import maru.core.ExecutionPayload
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.units.bigints.UInt256
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
@@ -63,22 +62,4 @@ fun ExecutionPayload.toExecutionPayloadV3() =
     /* withdrawals */ emptyList(),
     /* blobGasUsed */ UInt64.ZERO,
     /* excessBlobGas */ UInt64.ZERO,
-  )
-
-fun ExecutionPayload.toExecutionPayloadV1() =
-  ExecutionPayloadV1(
-    /* parentHash */ Bytes32.wrap(this.parentHash),
-    /* feeRecipient */ Bytes20(Bytes.wrap(this.feeRecipient)),
-    /* stateRoot */ Bytes32.wrap(this.stateRoot),
-    /* receiptsRoot */ Bytes32.wrap(this.receiptsRoot),
-    /* logsBloom */ Bytes.wrap(this.logsBloom),
-    /* prevRandao */ Bytes32.wrap(this.prevRandao),
-    /* blockNumber */ UInt64.valueOf(this.blockNumber.toString()),
-    /* gasLimit */ UInt64.valueOf(this.gasLimit.toString()),
-    /* gasUsed */ UInt64.valueOf(this.gasUsed.toString()),
-    /* timestamp */ UInt64.valueOf(this.timestamp.toString()),
-    /* extraData */ Bytes.wrap(this.extraData),
-    /* baseFeePerGas */ UInt256.valueOf(this.baseFeePerGas),
-    /* blockHash */ Bytes32.wrap(this.blockHash),
-    /* transactions */ this.transactions.map { Bytes.wrap(it) },
   )

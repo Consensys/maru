@@ -16,7 +16,7 @@
 package maru.executionlayer.client
 
 import maru.core.ExecutionPayload
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -26,7 +26,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
 interface ExecutionLayerClient {
-  fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>>
+  fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV3>>
 
   fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>>
 

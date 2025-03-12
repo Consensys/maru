@@ -31,7 +31,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -94,7 +93,7 @@ class JsonRpcExecutionLayerManagerTest {
 
   private fun mockGetPayloadWithRandomData(
     payloadId: Bytes8,
-    executionPayload: ExecutionPayloadV1,
+    executionPayload: ExecutionPayloadV3,
   ) {
     val getPayloadResponse =
       Response.fromPayloadReceivedAsJson(
