@@ -39,7 +39,7 @@ class QbftBlockCreatorAdaptorTest {
     val qbftBlockCreatorAdaptor = QbftBlockCreatorAdaptor(blockCreator, 1)
 
     val createdQbftblock = qbftBlockCreatorAdaptor.createBlock(1000L, QbftBlockHeaderAdaptor(parentBeaconHeader))
-    assertThat(BlockUtil.toBeaconBlock(createdQbftblock!!)).isEqualTo(createdBeaconBlock)
+    assertThat(BlockUtil.toBeaconBlock(createdQbftblock)).isEqualTo(createdBeaconBlock)
   }
 
   @Test
@@ -57,7 +57,7 @@ class QbftBlockCreatorAdaptorTest {
           Seal(it.encodedBytes().toArray())
         },
       ),
-    ).thenReturn(DataGenerators.randomBeaconBlock(round.toULong()))
+    ).thenReturn(DataGenerators.randomSealedBeaconBlock(round.toULong()))
     val qbftBlockCreatorAdaptor = QbftBlockCreatorAdaptor(blockCreator, 1)
 
     val sealedBlock = qbftBlockCreatorAdaptor.createSealedBlock(extraDataProvider, qbftBlock, round, seals)

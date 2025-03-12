@@ -25,8 +25,6 @@ import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
-import maru.serialization.rlp.KeccakHasher
-import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
@@ -66,21 +64,20 @@ class BlockCreator(
       BeaconBlockBody(latestBeaconBlock.commitSeals, executionPayload)
     val bodyRoot = HashUtil.bodyRoot(beaconBlockBody)
 
-    val number = parentHeader.number + 1UL
     val proposer =
       proposerSelector.selectProposerForRound(
-        ConsensusRoundIdentifier(number.toLong(), roundNumber.toInt()),
+        ConsensusRoundIdentifier((parentHeader.number + 1UL).toLong(), roundNumber.toInt()),
       )
     val temporaryBlockHeader =
       BeaconBlockHeader(
-        number.toULong(),
+        parentHeader.number + 1UL,
         roundNumber.toULong(),
         timestamp.toULong(),
         Validator(proposer.toArrayUnsafe()),
         parentHeader.hash(),
         ByteArray(32), // temporary state root to avoid circular dependency, will be replaced in final header
         bodyRoot,
-        HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher),
+        HashUtil::headerHash,
       )
 
     val validators =

@@ -16,9 +16,7 @@
 package maru.consensus.dummy
 
 import java.time.Clock
-import java.time.Duration
 import kotlin.time.Duration
-import maru.app.config.DummyConsensusOptions
 import maru.config.DummyConsensusOptions
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler

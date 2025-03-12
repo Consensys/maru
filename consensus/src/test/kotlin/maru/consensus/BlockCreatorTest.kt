@@ -42,10 +42,10 @@ class BlockCreatorTest {
 
   @Test
   fun `can create block`() {
-    val parentBlock = DataGenerators.randomBeaconBlock(10U)
-    val parentHeader = parentBlock.beaconBlockHeader
+    val parentBlock = DataGenerators.randomSealedBeaconBlock(10U)
+    val parentHeader = parentBlock.beaconBlock.beaconBlockHeader
     val executionPayload = DataGenerators.randomExecutionPayload()
-    whenever(beaconChain.getBeaconBlock(parentHeader.hash())).thenReturn(parentBlock)
+    whenever(beaconChain.getSealedBeaconBlock(parentHeader.hash())).thenReturn(parentBlock)
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
 
@@ -53,7 +53,7 @@ class BlockCreatorTest {
     val block = blockCreator.createBlock(1000L, 1, parentHeader)
 
     // block header fields
-    val blockHeader = block!!.beaconBlockHeader
+    val blockHeader = block.beaconBlockHeader
     assertThat(blockHeader.number).isEqualTo(11UL)
     assertThat(blockHeader.round).isEqualTo(1UL)
     assertThat(blockHeader.timestamp).isEqualTo(1000UL)
@@ -75,16 +75,15 @@ class BlockCreatorTest {
     )
     assertThat(blockHeader.stateRoot).isEqualTo(stateRoot)
     assertThat(blockHeader.parentRoot).isEqualTo(parentHeader.hash())
-    assertThat(block.beaconBlockHeader.hash()).isEqualTo(HashUtil.headerCommittedSealHash(block.beaconBlockHeader))
+    assertThat(block.beaconBlockHeader.hash()).isEqualTo(HashUtil.headerHash(block.beaconBlockHeader))
 
     // block body fields
     val blockBody = block.beaconBlockBody
     assertThat(
       blockBody.prevCommitSeals,
     ).isEqualTo(
-      parentBlock.beaconBlockBody.commitSeals,
+      parentBlock.commitSeals,
     )
-    assertThat(blockBody.commitSeals).isEqualTo(Collections.emptyList<Seal>())
     assertThat(blockBody.executionPayload).isEqualTo(executionPayload)
   }
 
@@ -113,7 +112,7 @@ class BlockCreatorTest {
     val executionPayload = DataGenerators.randomExecutionPayload()
 
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
-    whenever(beaconChain.getBeaconBlock(parentHeader.hash())).thenReturn(null)
+    whenever(beaconChain.getSealedBeaconBlock(parentHeader.hash())).thenReturn(null)
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
 
     val blockCreator = BlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain)
@@ -135,7 +134,7 @@ class BlockCreatorTest {
     val sealedBlock = blockCreator.createSealedBlock(block, round, seals)
 
     // block header fields
-    val sealedBlockHeader = sealedBlock.beaconBlockHeader
+    val sealedBlockHeader = sealedBlock.beaconBlock.beaconBlockHeader
     assertThat(sealedBlockHeader.number).isEqualTo(block.beaconBlockHeader.number)
     assertThat(sealedBlockHeader.round).isEqualTo(round.toULong())
     assertThat(sealedBlockHeader.timestamp).isEqualTo(block.beaconBlockHeader.timestamp)
@@ -149,16 +148,16 @@ class BlockCreatorTest {
     )
     assertThat(sealedBlockHeader.stateRoot).isEqualTo(block.beaconBlockHeader.stateRoot)
     assertThat(sealedBlockHeader.parentRoot).isEqualTo(block.beaconBlockHeader.parentRoot)
-    assertThat(sealedBlockHeader.hash()).isEqualTo(HashUtil.headerOnChainHash(sealedBlock.beaconBlockHeader))
+    assertThat(sealedBlockHeader.hash()).isEqualTo(HashUtil.headerHash(sealedBlock.beaconBlock.beaconBlockHeader))
 
     // block body fields
-    val sealedBlockBody = sealedBlock.beaconBlockBody
+    val sealedBlockBody = sealedBlock.beaconBlock.beaconBlockBody
     assertThat(
       sealedBlockBody.prevCommitSeals,
     ).isEqualTo(
       block.beaconBlockBody.prevCommitSeals,
     )
-    assertThat(sealedBlockBody.commitSeals).isEqualTo(seals)
+    assertThat(sealedBlock.commitSeals).isEqualTo(seals)
     assertThat(sealedBlockBody.executionPayload).isEqualTo(block.beaconBlockBody.executionPayload)
   }
 }
