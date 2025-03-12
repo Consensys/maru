@@ -36,7 +36,6 @@ fun ExecutionPayloadV3.toDomainExecutionPayload() =
     gasUsed = this.gasUsed.longValue().toULong(),
     timestamp = this.timestamp.longValue().toULong(),
     extraData = this.extraData.toArray(),
-    // Intentional cropping, UInt256 doesn't fit into ULong
     baseFeePerGas =
       this.baseFeePerGas.toBigInteger(),
     blockHash = this.blockHash.toArray(),
