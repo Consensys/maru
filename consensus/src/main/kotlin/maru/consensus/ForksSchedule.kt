@@ -25,7 +25,7 @@ enum class ElFork {
 }
 
 data class ForkSpec(
-  val timestampSeconds: Long, // Could be a block number or a timestamp
+  val timestampSeconds: Long,
   val blockTimeSeconds: Int,
   val configuration: ConsensusConfig,
 ) {
