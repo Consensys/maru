@@ -19,12 +19,14 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
-import maru.core.HashType
 import maru.core.HashUtil
 import maru.core.Seal
+import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.serialization.rlp.KeccakHasher
+import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
@@ -57,11 +59,11 @@ class BlockCreator(
         throw IllegalStateException("Execution payload unavailable, unable to create block", e)
       }
     val latestBeaconBlock =
-      beaconChain.getBeaconBlock(parentHeader.hash())
+      beaconChain.getSealedBeaconBlock(parentHeader.hash())
         ?: throw IllegalStateException("Parent beacon block unavailable, unable to create block")
 
     val beaconBlockBody =
-      BeaconBlockBody(latestBeaconBlock.beaconBlockBody.commitSeals, emptyList(), executionPayload)
+      BeaconBlockBody(latestBeaconBlock.commitSeals, executionPayload)
     val bodyRoot = HashUtil.bodyRoot(beaconBlockBody)
 
     val number = parentHeader.number + 1UL
@@ -78,7 +80,7 @@ class BlockCreator(
         parentHeader.hash(),
         ByteArray(32), // temporary state root to avoid circular dependency, will be replaced in final header
         bodyRoot,
-        HashType.COMMITTED_SEAL.hashFunction,
+        HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher),
       )
 
     val validators =
@@ -100,28 +102,14 @@ class BlockCreator(
     block: BeaconBlock,
     roundNumber: Int,
     commitSeals: List<Seal>,
-  ): BeaconBlock {
+  ): SealedBeaconBlock {
     val beaconBlockHeader = block.beaconBlockHeader
-    val sealedBlockHeader =
-      BeaconBlockHeader(
-        beaconBlockHeader.number,
-        roundNumber.toULong(),
-        beaconBlockHeader.timestamp,
-        beaconBlockHeader.proposer,
-        beaconBlockHeader.parentRoot,
-        beaconBlockHeader.stateRoot,
-        beaconBlockHeader.bodyRoot,
-        HashType.ON_CHAIN.hashFunction,
-      )
-
-    val beaconBlockBody = block.beaconBlockBody
+    val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toULong())
     val sealedBlockBody =
-      BeaconBlockBody(
-        beaconBlockBody.prevCommitSeals,
+      SealedBeaconBlock(
+        BeaconBlock(updatedBlockHeader, block.beaconBlockBody),
         commitSeals,
-        beaconBlockBody.executionPayload,
       )
-
-    return BeaconBlock(sealedBlockHeader, sealedBlockBody)
+    return sealedBlockBody
   }
 }

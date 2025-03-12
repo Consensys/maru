@@ -16,7 +16,6 @@
 package maru.serialization.rlp
 
 import maru.core.BeaconBlock
-import maru.core.HashType
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
@@ -36,15 +35,10 @@ class BeaconBlockSerializer(
     rlpOutput.endList()
   }
 
-  override fun readFrom(rlpInput: RLPInput): BeaconBlock = readFrom(rlpInput, HashType.ON_CHAIN)
-
-  fun readFrom(
-    rlpInput: RLPInput,
-    hashType: HashType,
-  ): BeaconBlock {
+  override fun readFrom(rlpInput: RLPInput): BeaconBlock {
     rlpInput.enterList()
 
-    val beaconBLockHeader = beaconBlockHeaderSerializer.readFrom(rlpInput, hashType)
+    val beaconBLockHeader = beaconBlockHeaderSerializer.readFrom(rlpInput)
     val beaconBlockBody = beaconBlockBodySerializer.readFrom(rlpInput)
 
     rlpInput.leaveList()

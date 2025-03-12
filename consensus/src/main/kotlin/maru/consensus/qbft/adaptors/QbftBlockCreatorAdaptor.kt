@@ -53,7 +53,7 @@ class QbftBlockCreatorAdaptor(
       commitSeals.map {
         Seal(it.encodedBytes().toArrayUnsafe())
       }
-    val beaconBlock = blockCreator.createSealedBlock(BlockUtil.toBeaconBlock(block), roundNumber, seals)
-    return QbftBlockAdaptor(beaconBlock)
+    val sealedBeaconBlock = blockCreator.createSealedBlock(BlockUtil.toBeaconBlock(block), roundNumber, seals)
+    return QbftSealedBlockAdaptor(sealedBeaconBlock)
   }
 }

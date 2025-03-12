@@ -13,18 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adaptors
+package maru.consensus
 
-import maru.core.HashFunction
-import maru.core.HashType
-import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
+import maru.core.BeaconBlockBody
+import maru.core.BeaconState
+import maru.core.HashUtil
+import maru.serialization.rlp.KeccakHasher
+import maru.serialization.rlp.RLPSerializers
 
-object HashFunctionUtils {
-  fun toHeaderHashFunction(qbftHashMode: QbftHashMode): HashFunction = toHashType(qbftHashMode).hashFunction
+fun HashUtil.bodyRoot(beaconBlockBody: BeaconBlockBody): ByteArray =
+  rootHash(beaconBlockBody, RLPSerializers.BeaconBlockBodySerializer, KeccakHasher)
 
-  fun toHashType(mode: QbftHashMode): HashType =
-    when (mode) {
-      QbftHashMode.ONCHAIN -> HashType.ON_CHAIN
-      QbftHashMode.COMMITTED_SEAL -> HashType.COMMITTED_SEAL
-    }
-}
+fun HashUtil.stateRoot(beaconState: BeaconState): ByteArray =
+  rootHash(beaconState, RLPSerializers.BeaconStateSerializer, KeccakHasher)
