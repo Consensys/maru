@@ -16,13 +16,13 @@
 package maru.consensus.validation
 
 import maru.consensus.ValidatorProvider
-import maru.consensus.bodyRoot
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.HashUtil
 import maru.database.Database
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.extensions.hasValidExecutionPayload
+import maru.serialization.rlp.bodyRoot
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface BlockValidator {
@@ -67,9 +67,9 @@ class BlockValidatorImpl(
       )
     }
 
-    if (block.beaconBlockHeader.timestamp < prevBlockHeader.timestamp) {
+    if (block.beaconBlockHeader.timestamp <= prevBlockHeader.timestamp) {
       return SafeFuture.completedFuture(
-        invalid("Block timestamp is less than previous block timestamp"),
+        invalid("Block timestamp is not greater than previous block timestamp"),
       )
     }
 

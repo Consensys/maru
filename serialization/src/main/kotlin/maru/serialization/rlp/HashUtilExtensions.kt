@@ -13,13 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.serialization.rlp
 
 import maru.core.BeaconBlockBody
 import maru.core.BeaconState
 import maru.core.HashUtil
-import maru.serialization.rlp.KeccakHasher
-import maru.serialization.rlp.RLPSerializers
 
 fun HashUtil.bodyRoot(beaconBlockBody: BeaconBlockBody): ByteArray =
   rootHash(beaconBlockBody, RLPSerializers.BeaconBlockBodySerializer, KeccakHasher)

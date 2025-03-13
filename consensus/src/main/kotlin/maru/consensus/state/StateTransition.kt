@@ -15,12 +15,12 @@
  */
 package maru.consensus.state
 
-import maru.consensus.bodyRoot
-import maru.consensus.stateRoot
 import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.HashUtil
+import maru.serialization.rlp.bodyRoot
+import maru.serialization.rlp.stateRoot
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface StateTransition {
