@@ -25,20 +25,14 @@ class StaticValidatorProviderTest {
   private val staticValidatorProvider = StaticValidatorProvider(validator)
 
   @Test
-  fun `can get validators at head`() {
-    val validators = staticValidatorProvider.getValidatorsAtHead()
-    assertThat(validators).isEqualTo(setOf(validator))
-  }
-
-  @Test
   fun `can get validators at after block`() {
-    val validators = staticValidatorProvider.getValidatorsAtHead()
-    assertThat(validators).isEqualTo(setOf(validator))
+    assertThat(staticValidatorProvider.getValidatorsAfterBlock(0U)).isEqualTo(setOf(validator))
+    assertThat(staticValidatorProvider.getValidatorsAfterBlock(1U)).isEqualTo(setOf(validator))
   }
 
   @Test
   fun `can get validators for block`() {
-    val validators = staticValidatorProvider.getValidatorsAtHead()
-    assertThat(validators).isEqualTo(setOf(validator))
+    assertThat(staticValidatorProvider.getValidatorsForBlock(0U)).isEqualTo(setOf(validator))
+    assertThat(staticValidatorProvider.getValidatorsForBlock(1U)).isEqualTo(setOf(validator))
   }
 }

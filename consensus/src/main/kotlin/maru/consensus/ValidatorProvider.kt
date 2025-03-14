@@ -16,18 +16,15 @@
 package maru.consensus
 
 import kotlin.collections.setOf
-import maru.core.BeaconBlockHeader
 import maru.core.Validator
 
 /**
  * Provides access to the set of validators for a given block.
  */
 interface ValidatorProvider {
-  fun getValidatorsAtHead(): Set<Validator>
+  fun getValidatorsAfterBlock(blockNumber: ULong): Set<Validator>
 
-  fun getValidatorsAfterBlock(header: BeaconBlockHeader): Set<Validator>
-
-  fun getValidatorsForBlock(header: BeaconBlockHeader): Collection<Validator>
+  fun getValidatorsForBlock(blockNumber: ULong): Set<Validator>
 }
 
 /**
@@ -36,9 +33,7 @@ interface ValidatorProvider {
 class StaticValidatorProvider(
   private val validator: Validator,
 ) : ValidatorProvider {
-  override fun getValidatorsAtHead(): Set<Validator> = setOf(validator)
+  override fun getValidatorsAfterBlock(blockNumber: ULong): Set<Validator> = setOf(validator)
 
-  override fun getValidatorsAfterBlock(header: BeaconBlockHeader): Set<Validator> = setOf(validator)
-
-  override fun getValidatorsForBlock(header: BeaconBlockHeader): Collection<Validator> = setOf(validator)
+  override fun getValidatorsForBlock(blockNumber: ULong): Set<Validator> = setOf(validator)
 }

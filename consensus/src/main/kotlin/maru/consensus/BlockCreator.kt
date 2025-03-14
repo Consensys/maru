@@ -81,7 +81,7 @@ class BlockCreator(
     val validators =
       validatorProvider
         .getValidatorsAfterBlock(
-          parentHeader,
+          parentHeader.number,
         )
     val stateRoot =
       HashUtil.stateRoot(

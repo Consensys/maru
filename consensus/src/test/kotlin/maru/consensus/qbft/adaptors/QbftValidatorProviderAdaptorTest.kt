@@ -26,25 +26,14 @@ import org.mockito.kotlin.whenever
 
 class QbftValidatorProviderAdaptorTest {
   @Test
-  fun `can get validators at head`() {
-    val validator = DataGenerators.randomValidator()
-    val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
-    whenever(validatorProvider.getValidatorsAtHead()).thenReturn(setOf(validator))
-
-    val qbftValidatorProviderAdaptor = QbftValidatorProviderAdaptor(validatorProvider)
-    val validators = qbftValidatorProviderAdaptor.getValidatorsAtHead()
-    assertThat(validators).containsExactly(Address.wrap(Bytes.wrap(validator.address)))
-  }
-
-  @Test
   fun `can get validators after block`() {
     val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
     val validator1 = DataGenerators.randomValidator()
     val validator2 = DataGenerators.randomValidator()
     val header1 = QbftBlockHeaderAdaptor(DataGenerators.randomBeaconBlockHeader(10U))
     val header2 = QbftBlockHeaderAdaptor(DataGenerators.randomBeaconBlockHeader(11U))
-    whenever(validatorProvider.getValidatorsAfterBlock(header1.beaconBlockHeader)).thenReturn(setOf(validator1))
-    whenever(validatorProvider.getValidatorsAfterBlock(header2.beaconBlockHeader)).thenReturn(setOf(validator2))
+    whenever(validatorProvider.getValidatorsAfterBlock(header1.beaconBlockHeader.number)).thenReturn(setOf(validator1))
+    whenever(validatorProvider.getValidatorsAfterBlock(header2.beaconBlockHeader.number)).thenReturn(setOf(validator2))
 
     val qbftValidatorProviderAdaptor = QbftValidatorProviderAdaptor(validatorProvider)
     assertThat(
@@ -62,8 +51,8 @@ class QbftValidatorProviderAdaptorTest {
     val validator2 = DataGenerators.randomValidator()
     val header1 = QbftBlockHeaderAdaptor(DataGenerators.randomBeaconBlockHeader(10U))
     val header2 = QbftBlockHeaderAdaptor(DataGenerators.randomBeaconBlockHeader(11U))
-    whenever(validatorProvider.getValidatorsForBlock(header1.beaconBlockHeader)).thenReturn(setOf(validator1))
-    whenever(validatorProvider.getValidatorsForBlock(header2.beaconBlockHeader)).thenReturn(setOf(validator2))
+    whenever(validatorProvider.getValidatorsForBlock(header1.beaconBlockHeader.number)).thenReturn(setOf(validator1))
+    whenever(validatorProvider.getValidatorsForBlock(header2.beaconBlockHeader.number)).thenReturn(setOf(validator2))
 
     val qbftValidatorProviderAdaptor = QbftValidatorProviderAdaptor(validatorProvider)
     assertThat(
