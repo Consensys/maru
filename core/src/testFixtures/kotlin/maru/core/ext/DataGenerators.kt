@@ -30,6 +30,7 @@ import maru.core.Validator
 import maru.executionlayer.manager.BlockMetadata
 import maru.serialization.rlp.KeccakHasher
 import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
 
 object DataGenerators {
   val HEADER_HASH_FUNCTION = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
@@ -54,8 +55,11 @@ object DataGenerators {
   }
 
   fun randomBeaconBlock(number: ULong): BeaconBlock {
-    val beaconBlockHeader = randomBeaconBlockHeader(number)
     val beaconBlockBody = randomBeaconBlockBody()
+    val beaconBlockHeader =
+      randomBeaconBlockHeader(number).copy(
+        bodyRoot = HashUtil.bodyRoot(beaconBlockBody),
+      )
     return BeaconBlock(
       beaconBlockHeader = beaconBlockHeader,
       beaconBlockBody = beaconBlockBody,
@@ -113,4 +117,6 @@ object DataGenerators {
       blockHash = Random.nextBytes(32),
       unixTimestamp = Random.nextLong(0, Long.MAX_VALUE),
     )
+
+  fun randomValidator(): Validator = Validator(Random.nextBytes(128))
 }

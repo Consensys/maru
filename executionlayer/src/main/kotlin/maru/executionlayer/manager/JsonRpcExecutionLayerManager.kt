@@ -21,7 +21,6 @@ import maru.executionlayer.client.ExecutionLayerClient
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
@@ -163,14 +162,13 @@ class JsonRpcExecutionLayerManager private constructor(
       .getPayload(Bytes8(Bytes.wrap(payloadId!!)))
       .thenCompose { payloadResponse ->
         if (payloadResponse.isSuccess) {
-          val tekuExecutionPayload = payloadResponse.payload
-          val executionPayload = executionPayloadV1ToDomain(tekuExecutionPayload)
+          val executionPayload = payloadResponse.payload
           val validationResult = payloadValidator.validate(executionPayload)
 
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
             throw RuntimeException(validationResult.reason)
           }
-          executionLayerClient.newPayload(tekuExecutionPayload).thenApply { payloadStatus ->
+          executionLayerClient.newPayload(executionPayload).thenApply { payloadStatus ->
             if (payloadStatus.isSuccess &&
               payloadStatus.payload
                 .asInternalExecutionPayload()
@@ -183,11 +181,9 @@ class JsonRpcExecutionLayerManager private constructor(
 
               latestBlockCache.updateNext(
                 BlockMetadata(
-                  tekuExecutionPayload.blockNumber
-                    .longValue()
-                    .toULong(),
-                  tekuExecutionPayload.blockHash.toArray(),
-                  tekuExecutionPayload.timestamp.longValue(),
+                  executionPayload.blockNumber,
+                  executionPayload.blockHash,
+                  executionPayload.timestamp.toLong(),
                 ),
               )
               executionPayload
@@ -202,26 +198,6 @@ class JsonRpcExecutionLayerManager private constructor(
         }
       }
   }
-
-  private fun executionPayloadV1ToDomain(executionPayloadV1: ExecutionPayloadV1): ExecutionPayload =
-    ExecutionPayload(
-      parentHash = executionPayloadV1.parentHash.toArray(),
-      feeRecipient = executionPayloadV1.feeRecipient.wrappedBytes.toArray(),
-      stateRoot = executionPayloadV1.stateRoot.toArray(),
-      receiptsRoot = executionPayloadV1.receiptsRoot.toArray(),
-      logsBloom = executionPayloadV1.logsBloom.toArray(),
-      prevRandao = executionPayloadV1.prevRandao.toArray(),
-      blockNumber = executionPayloadV1.blockNumber.longValue().toULong(),
-      gasLimit = executionPayloadV1.gasLimit.longValue().toULong(),
-      gasUsed = executionPayloadV1.gasUsed.longValue().toULong(),
-      timestamp = executionPayloadV1.timestamp.longValue().toULong(),
-      extraData = executionPayloadV1.extraData.toArray(),
-      // Intentional cropping, UInt256 doesn't fit into ULong
-      baseFeePerGas =
-        executionPayloadV1.baseFeePerGas.toBigInteger(),
-      blockHash = executionPayloadV1.blockHash.toArray(),
-      transactions = executionPayloadV1.transactions.map { it.toArray() },
-    )
 
   override fun latestBlockMetadata(): BlockMetadata = latestBlockCache.currentBlockMetadata
 

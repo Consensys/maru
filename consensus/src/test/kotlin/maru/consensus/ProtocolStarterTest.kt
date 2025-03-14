@@ -15,6 +15,7 @@
  */
 package maru.consensus
 
+import maru.core.ExecutionPayload
 import maru.core.Protocol
 import maru.core.ext.DataGenerators
 import maru.executionlayer.client.ExecutionLayerClient
@@ -22,7 +23,6 @@ import maru.executionlayer.manager.BlockMetadata
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -154,11 +154,11 @@ class ProtocolStarterTest {
           latestBlockMetadataToReturn,
         )
 
-      override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>> {
+      override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> {
         TODO("Not yet implemented")
       }
 
-      override fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>> {
+      override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> {
         TODO("Not yet implemented")
       }
 
