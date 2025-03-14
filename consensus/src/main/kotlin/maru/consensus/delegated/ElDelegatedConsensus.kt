@@ -16,7 +16,6 @@
 package maru.consensus.delegated
 
 import java.util.concurrent.TimeUnit
-import kotlin.time.Duration
 import maru.consensus.ConsensusConfig
 import maru.consensus.NewBlockHandler
 import maru.core.Protocol
@@ -29,11 +28,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class ElDelegatedConsensus(
   private val ethereumJsonRpcClient: Web3j,
   private val onNewBlock: NewBlockHandler,
-  private val config: Config,
+  private val blockTimeSeconds: Int,
 ) : Protocol {
-  data class Config(
-    val pollPeriod: Duration,
-  ) : ConsensusConfig
+  // Only for comparisons in the tests to set common ground
+  object ElDelegatedConfig : ConsensusConfig
 
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -79,7 +77,7 @@ class ElDelegatedConsensus(
             {
               currentTask = poll()
             },
-            SafeFuture.delayedExecutor(config.pollPeriod.inWholeMilliseconds, TimeUnit.MILLISECONDS),
+            SafeFuture.delayedExecutor(blockTimeSeconds.toLong(), TimeUnit.SECONDS),
           )
       }
   }

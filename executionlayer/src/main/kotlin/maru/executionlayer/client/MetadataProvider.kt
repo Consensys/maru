@@ -13,8 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.executionlayer.manager
+package maru.executionlayer.client
 
-fun interface FeeRecipientProvider {
-  fun getFeeRecipient(timestamp: Long): ByteArray
+import maru.executionlayer.manager.BlockMetadata
+import tech.pegasys.teku.infrastructure.async.SafeFuture
+
+fun interface MetadataProvider {
+  fun getLatestBlockMetadata(): SafeFuture<BlockMetadata>
 }

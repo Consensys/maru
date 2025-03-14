@@ -31,7 +31,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -69,14 +68,13 @@ class JsonRpcExecutionLayerManagerTest {
   }
 
   private fun createExecutionLayerManager(): ExecutionLayerManager {
-    whenever(executionLayerClient.getLatestBlockMetadata()).thenReturn(
-      SafeFuture.completedFuture(BlockMetadata(initialBlockHeight, latestBlockHash, 0L)),
-    )
+    val metadataProvider = { SafeFuture.completedFuture(BlockMetadata(initialBlockHeight, latestBlockHash, 0L)) }
     return JsonRpcExecutionLayerManager
       .create(
-        executionLayerClient,
-        { feeRecipient },
-        NoopValidator,
+        executionLayerClient = executionLayerClient,
+        metadataProvider = metadataProvider,
+        feeRecipientProvider = { feeRecipient },
+        payloadValidator = NoopValidator,
       ).get()
   }
 
@@ -86,17 +84,19 @@ class JsonRpcExecutionLayerManagerTest {
     val payloadStatus = PayloadStatusV1(executionStatus, latestValidHash, null)
     whenever(executionLayerClient.forkChoiceUpdate(any(), any()))
       .thenReturn(
-        SafeFuture.completedFuture(Response(TekuForkChoiceUpdatedResult(payloadStatus, payloadId))),
+        SafeFuture.completedFuture(
+          Response.fromPayloadReceivedAsJson(TekuForkChoiceUpdatedResult(payloadStatus, payloadId)),
+        ),
       )
     return payloadStatus
   }
 
   private fun mockGetPayloadWithRandomData(
     payloadId: Bytes8,
-    executionPayload: ExecutionPayloadV1,
+    executionPayload: ExecutionPayloadV3,
   ) {
     val getPayloadResponse =
-      Response(
+      Response.fromPayloadReceivedAsJson(
         executionPayload,
       )
     whenever(executionLayerClient.getPayload(eq(payloadId)))
@@ -105,7 +105,7 @@ class JsonRpcExecutionLayerManagerTest {
 
   private fun mockNewPayloadWithStatus(payloadStatus: PayloadStatusV1) {
     whenever(executionLayerClient.newPayload(any())).thenReturn(
-      SafeFuture.completedFuture(Response(payloadStatus)),
+      SafeFuture.completedFuture(Response.fromPayloadReceivedAsJson(payloadStatus)),
     )
   }
 
@@ -249,7 +249,7 @@ class JsonRpcExecutionLayerManagerTest {
       BlockMetadata(
         blockNumber = executionPayload.blockNumber.longValue().toULong(),
         blockHash = executionPayload.blockHash.toArray(),
-        unixTimestamp = executionPayload.timestamp.longValue(),
+        unixTimestampSeconds = executionPayload.timestamp.longValue(),
       )
     assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(expectedBlockMetadata)
   }
