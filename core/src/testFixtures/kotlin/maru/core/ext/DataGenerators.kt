@@ -107,6 +107,8 @@ object DataGenerators {
       transactions = emptyList(),
     )
 
+  fun randomValidator(): Validator = Validator(Random.nextBytes(20))
+
   fun randomBlockMetadata(number: ULong): BlockMetadata =
     BlockMetadata(
       number,
