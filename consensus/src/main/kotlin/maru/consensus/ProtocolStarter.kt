@@ -48,7 +48,9 @@ class ProtocolStarter(
   data class ProtocolWithFork(
     val protocol: Protocol,
     val fork: ForkSpec,
-  )
+  ) {
+    override fun toString(): String = "protocol=${protocol.javaClass.simpleName}, fork=$fork"
+  }
 
   private val log: Logger = LogManager.getLogger(this::class.java)
 

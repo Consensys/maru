@@ -59,7 +59,7 @@ class DummyConsensusProtocolFactory(
     }
   }
 
-  override fun create(forkSpec: ForkSpec): TimeDrivenEventProducer {
+  override fun create(forkSpec: ForkSpec): DummyConsensus {
     require(forkSpec.configuration is DummyConsensusConfig) {
       "Unexpected fork specification! ${
         forkSpec
@@ -105,13 +105,13 @@ class DummyConsensusProtocolFactory(
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         onNewBlock = newBlockHandler,
       )
-    return TimeDrivenEventProducer(
+    return DummyConsensus(
       forksSchedule = forksSchedule,
       eventHandler = eventHandler,
       blockMetadataProvider = jsonRpcExecutionLayerManager::latestBlockMetadata,
       nextBlockTimestampProvider = nextBlockTimestampProvider,
       clock = clock,
-      config = TimeDrivenEventProducer.Config(maruConfig.dummyConsensusOptions!!.communicationMargin),
+      config = DummyConsensus.Config(maruConfig.dummyConsensusOptions!!.communicationMargin),
     )
   }
 

@@ -28,7 +28,7 @@ import org.hyperledger.besu.consensus.common.bft.events.BlockTimerExpiry
 import org.hyperledger.besu.consensus.common.bft.statemachine.BftEventHandler
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class TimeDrivenEventProducer(
+class DummyConsensus(
   private val forksSchedule: ForksSchedule,
   private val eventHandler: BftEventHandler,
   private val blockMetadataProvider: () -> BlockMetadata,
