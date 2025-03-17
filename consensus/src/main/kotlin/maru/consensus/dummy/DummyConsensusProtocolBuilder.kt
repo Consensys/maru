@@ -16,7 +16,6 @@
 package maru.consensus.dummy
 
 import java.time.Clock
-import kotlin.time.Duration
 import maru.config.DummyConsensusOptions
 import maru.config.ExecutionClientConfig
 import maru.consensus.ElFork
@@ -39,7 +38,7 @@ object DummyConsensusProtocolBuilder {
     private val forksSchedule: ForksSchedule,
   ) : FeeRecipientProvider {
     override fun getFeeRecipient(timestamp: Long): ByteArray {
-      val nextExpectedFork = forksSchedule.getNextForkByTimestamp(timestamp)
+      val nextExpectedFork = forksSchedule.getForkFollowingTimestamp(timestamp)
       return (
         nextExpectedFork.configuration as DummyConsensusConfig
       ).feeRecipient

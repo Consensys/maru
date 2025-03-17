@@ -16,6 +16,8 @@
 package maru.executionlayer.manager
 
 import kotlin.random.Random
+import maru.core.ExecutionPayload
+import maru.core.ext.DataGenerators
 import maru.executionlayer.client.ExecutionLayerClient
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
@@ -31,7 +33,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
@@ -93,7 +94,7 @@ class JsonRpcExecutionLayerManagerTest {
 
   private fun mockGetPayloadWithRandomData(
     payloadId: Bytes8,
-    executionPayload: ExecutionPayloadV3,
+    executionPayload: ExecutionPayload,
   ) {
     val getPayloadResponse =
       Response.fromPayloadReceivedAsJson(
@@ -143,7 +144,7 @@ class JsonRpcExecutionLayerManagerTest {
     val expectedResult = ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId.wrappedBytes.toArray())
     assertThat(result).isEqualTo(expectedResult)
 
-    val executionPayload = ExecutionPayloadV3.fromInternalExecutionPayload(dataStructureUtil.randomExecutionPayload())
+    val executionPayload = DataGenerators.randomExecutionPayload()
     mockGetPayloadWithRandomData(payloadId, executionPayload)
     mockNewPayloadWithStatus(payloadStatus)
 
@@ -231,7 +232,7 @@ class JsonRpcExecutionLayerManagerTest {
         nextBlockTimestamp = nextTimestamp,
       ).get()
 
-    val executionPayload = ExecutionPayloadV3.fromInternalExecutionPayload(dataStructureUtil.randomExecutionPayload())
+    val executionPayload = DataGenerators.randomExecutionPayload()
     mockGetPayloadWithRandomData(payloadId, executionPayload)
     mockNewPayloadWithStatus(payloadStatus)
 
@@ -247,9 +248,9 @@ class JsonRpcExecutionLayerManagerTest {
 
     val expectedBlockMetadata =
       BlockMetadata(
-        blockNumber = executionPayload.blockNumber.longValue().toULong(),
-        blockHash = executionPayload.blockHash.toArray(),
-        unixTimestampSeconds = executionPayload.timestamp.longValue(),
+        blockNumber = executionPayload.blockNumber,
+        blockHash = executionPayload.blockHash,
+        unixTimestampSeconds = executionPayload.timestamp.toLong(),
       )
     assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(expectedBlockMetadata)
   }

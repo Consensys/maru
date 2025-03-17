@@ -21,7 +21,7 @@ import maru.consensus.dummy.DummyConsensusState
 import maru.consensus.dummy.FinalizationState
 import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
-import maru.executionlayer.manager.DataGenerators.randomValidForkChoiceUpdatedResult
+import maru.core.ext.DataGenerators.randomValidForkChoiceUpdatedResult
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions

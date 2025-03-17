@@ -17,9 +17,9 @@ package maru.executionlayer.client
 
 import java.util.Optional
 import maru.core.ExecutionPayload
+import maru.executionlayer.extensions.toDomainExecutionPayload
 import maru.executionlayer.extensions.toExecutionPayloadV3
 import org.apache.tuweni.bytes.Bytes32
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -33,9 +33,9 @@ import tech.pegasys.teku.infrastructure.bytes.Bytes8
 class PragueWeb3jJsonRpcExecutionLayerClient(
   private val web3jEngineClient: Web3JExecutionEngineClient,
 ) : ExecutionLayerClient {
-  override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV3>> =
+  override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
     web3jEngineClient.getPayloadV4(payloadId).thenApply {
-      Response.fromPayloadReceivedAsJson(it.payload.executionPayload)
+      Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
     }
 
   override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =

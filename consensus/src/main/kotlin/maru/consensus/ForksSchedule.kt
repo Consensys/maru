@@ -54,10 +54,12 @@ class ForksSchedule(
       }
     }
 
-    return forks.first()
+    throw IllegalArgumentException(
+      "No fork found for $timestamp, first known fork is at ${forks.last.timestampSeconds}",
+    )
   }
 
-  fun getNextForkByTimestamp(timestamp: Long): ForkSpec {
+  fun getForkFollowingTimestamp(timestamp: Long): ForkSpec {
     val currentFork = getForkByTimestamp(timestamp)
     return getForkByTimestamp(timestamp + currentFork.blockTimeSeconds)
   }

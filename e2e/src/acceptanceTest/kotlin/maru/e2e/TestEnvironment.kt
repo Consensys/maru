@@ -65,8 +65,8 @@ object TestEnvironment {
       "follower-erigon" to erigonFollowerL2Client,
       "follower-nethermind" to nethermindFollowerL2Client,
     )
-  val allClients = preMergeFollowerClients + ("sequencer" to sequencerL2Client)
   val followerClientsPostMerge = preMergeFollowerClients - "follower-geth-2" + ("follower-geth" to geth1L2Client)
+  val allClients = preMergeFollowerClients + followerClientsPostMerge + ("sequencer" to sequencerL2Client)
 
   private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
   private val nethermindFollowerExecutionEngineClient =
