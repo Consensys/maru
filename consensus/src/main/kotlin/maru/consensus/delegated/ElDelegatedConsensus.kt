@@ -17,13 +17,27 @@ package maru.consensus.delegated
 
 import java.util.concurrent.TimeUnit
 import maru.consensus.ConsensusConfig
+import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
+import maru.consensus.ProtocolFactory
 import maru.core.Protocol
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+
+class ElDelegatedConsensusFactory(
+  private val ethereumJsonRpcClient: Web3j,
+  private val newBlockHandler: NewBlockHandler,
+) : ProtocolFactory {
+  override fun create(forkSpec: ForkSpec): ElDelegatedConsensus =
+    ElDelegatedConsensus(
+      ethereumJsonRpcClient = ethereumJsonRpcClient,
+      onNewBlock = newBlockHandler,
+      blockTimeSeconds = forkSpec.blockTimeSeconds,
+    )
+}
 
 class ElDelegatedConsensus(
   private val ethereumJsonRpcClient: Web3j,

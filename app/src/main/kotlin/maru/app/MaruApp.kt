@@ -23,6 +23,8 @@ import maru.consensus.MetadataOnlyHandlerAdapter
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
+import maru.consensus.delegated.ElDelegatedConsensusFactory
+import maru.consensus.dummy.DummyConsensusProtocolFactory
 import maru.consensus.dummy.NextBlockTimestampProviderImpl
 import maru.executionlayer.client.Web3jMetadataProvider
 import org.apache.logging.log4j.LogManager
@@ -68,13 +70,20 @@ class MaruApp(
       forksSchedule = beaconGenesisConfig,
       protocolFactory =
         OmniProtocolFactory(
-          forksSchedule = beaconGenesisConfig,
-          clock = clock,
-          config = config,
-          ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
-          metadataProvider = metadataProvider,
-          newBlockHandler = newBlockHandlerMultiplexer,
-          nextBlockTimestampProvider = nextBlockTimestampProvider,
+          dummyConsensusFactory =
+            DummyConsensusProtocolFactory(
+              forksSchedule = beaconGenesisConfig,
+              clock = clock,
+              maruConfig = config,
+              metadataProvider = metadataProvider,
+              newBlockHandler = newBlockHandlerMultiplexer,
+              nextBlockTimestampProvider = nextBlockTimestampProvider,
+            ),
+          elDelegatedConsensusFactory =
+            ElDelegatedConsensusFactory(
+              ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
+              newBlockHandler = newBlockHandlerMultiplexer,
+            ),
         ),
       metadataProvider = metadataProvider,
       nextBlockTimestampProvider = nextBlockTimestampProvider,

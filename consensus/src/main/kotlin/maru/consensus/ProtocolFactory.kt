@@ -15,55 +15,26 @@
  */
 package maru.consensus
 
-import java.time.Clock
-import maru.config.MaruConfig
 import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
-import maru.consensus.dummy.DummyConsensusProtocolBuilder
-import maru.consensus.dummy.NextBlockTimestampProvider
 import maru.core.Protocol
-import maru.executionlayer.client.MetadataProvider
-import org.web3j.protocol.Web3j
 
 interface ProtocolFactory {
   fun create(forkSpec: ForkSpec): Protocol
 }
 
 class OmniProtocolFactory(
-  private val forksSchedule: ForksSchedule,
-  private val clock: Clock,
-  private val config: MaruConfig,
-  private val ethereumJsonRpcClient: Web3j,
-  private val metadataProvider: MetadataProvider,
-  private val newBlockHandler: NewBlockHandler,
-  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
+  private val dummyConsensusFactory: ProtocolFactory,
+  private val elDelegatedConsensusFactory: ProtocolFactory,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol =
     when (forkSpec.configuration) {
       is DummyConsensusConfig -> {
-        require(config.dummyConsensusOptions != null) {
-          "Next fork is dummy consensus one, but dummyConsensusOptions are undefined!"
-        }
-
-        DummyConsensusProtocolBuilder
-          .build(
-            forksSchedule = forksSchedule,
-            clock = clock,
-            dummyConsensusOptions = config.dummyConsensusOptions!!,
-            executionClientConfig = config.executionClientConfig,
-            metadataProvider = metadataProvider,
-            onNewBlockHandler = newBlockHandler,
-            nextBlockTimestampProvider = nextBlockTimestampProvider,
-            effectiveFork = forkSpec.configuration.elFork,
-          )
+        dummyConsensusFactory.create(forkSpec)
       }
 
       is ElDelegatedConsensus.ElDelegatedConfig -> {
-        ElDelegatedConsensus(
-          ethereumJsonRpcClient = ethereumJsonRpcClient,
-          onNewBlock = newBlockHandler,
-          blockTimeSeconds = forkSpec.blockTimeSeconds,
-        )
+        elDelegatedConsensusFactory.create(forkSpec)
       }
 
       else -> {

@@ -16,12 +16,13 @@
 package maru.consensus.dummy
 
 import java.time.Clock
-import maru.config.DummyConsensusOptions
-import maru.config.ExecutionClientConfig
+import maru.config.MaruConfig
 import maru.consensus.ElFork
 import maru.consensus.EngineApiBlockCreator
+import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
+import maru.consensus.ProtocolFactory
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
@@ -33,7 +34,20 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClie
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
-object DummyConsensusProtocolBuilder {
+class DummyConsensusProtocolFactory(
+  private val forksSchedule: ForksSchedule,
+  private val maruConfig: MaruConfig,
+  private val clock: Clock,
+  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
+  private val metadataProvider: MetadataProvider,
+  private val newBlockHandler: NewBlockHandler,
+) : ProtocolFactory {
+  init {
+    require(maruConfig.dummyConsensusOptions != null) {
+      "Next fork is dummy consensus one, but dummyConsensusOptions are undefined!"
+    }
+  }
+
   class DummyConsensusFeeRecipientProvider(
     private val forksSchedule: ForksSchedule,
   ) : FeeRecipientProvider {
@@ -45,20 +59,18 @@ object DummyConsensusProtocolBuilder {
     }
   }
 
-  fun build(
-    forksSchedule: ForksSchedule,
-    clock: Clock,
-    nextBlockTimestampProvider: NextBlockTimestampProvider,
-    dummyConsensusOptions: DummyConsensusOptions,
-    executionClientConfig: ExecutionClientConfig,
-    metadataProvider: MetadataProvider,
-    onNewBlockHandler: NewBlockHandler,
-    effectiveFork: ElFork,
-  ): TimeDrivenEventProducer {
+  override fun create(forkSpec: ForkSpec): TimeDrivenEventProducer {
+    require(forkSpec.configuration is DummyConsensusConfig) {
+      "Unexpected fork specification! ${
+        forkSpec
+          .configuration
+      } instead of ${DummyConsensusConfig::class.simpleName}"
+    }
+
     val executionLayerClient =
       buildExecutionEngineClient(
-        executionClientConfig.engineApiJsonRpcEndpoint.toString(),
-        effectiveFork,
+        maruConfig.executionClientConfig.engineApiJsonRpcEndpoint.toString(),
+        forkSpec.configuration.elFork,
       )
     val jsonRpcExecutionLayerManager =
       JsonRpcExecutionLayerManager
@@ -91,7 +103,7 @@ object DummyConsensusProtocolBuilder {
         executionLayerManager = jsonRpcExecutionLayerManager,
         blockCreator = blockCreator,
         nextBlockTimestampProvider = nextBlockTimestampProvider,
-        onNewBlock = onNewBlockHandler,
+        onNewBlock = newBlockHandler,
       )
     return TimeDrivenEventProducer(
       forksSchedule = forksSchedule,
@@ -99,7 +111,7 @@ object DummyConsensusProtocolBuilder {
       blockMetadataProvider = jsonRpcExecutionLayerManager::latestBlockMetadata,
       nextBlockTimestampProvider = nextBlockTimestampProvider,
       clock = clock,
-      config = TimeDrivenEventProducer.Config(dummyConsensusOptions.communicationMargin),
+      config = TimeDrivenEventProducer.Config(maruConfig.dummyConsensusOptions!!.communicationMargin),
     )
   }
 
