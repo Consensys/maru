@@ -84,7 +84,7 @@ class StateTransitionImplTest {
         proposerSelector = proposerSelector,
       )
 
-    val result = stateTransition.processBlock(newBlock, preState).get()
+    val result = stateTransition.processBlock(preState, newBlock).get()
     assertThat(result is Err).isTrue()
     assertThat(result.component2()).isNotNull()
     assertThat(result.component2()?.message).isEqualTo("State Transition failed. Reason: Block validation failed")
@@ -107,7 +107,7 @@ class StateTransitionImplTest {
         proposerSelector = proposerSelector,
       )
 
-    val result = stateTransition.processBlock(newBlock, preState).get()
+    val result = stateTransition.processBlock(preState, newBlock).get()
     assertThat(result is Ok).isTrue()
   }
 }

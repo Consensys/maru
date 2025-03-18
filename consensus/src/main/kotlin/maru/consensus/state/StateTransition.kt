@@ -35,8 +35,8 @@ interface StateTransition {
   )
 
   fun processBlock(
-    block: BeaconBlock,
     preState: BeaconState,
+    block: BeaconBlock,
   ): SafeFuture<Result<BeaconState, StateTransitionError>>
 }
 
@@ -46,8 +46,8 @@ class StateTransitionImpl(
   private val proposerSelector: ProposerSelector,
 ) : StateTransition {
   override fun processBlock(
-    block: BeaconBlock,
     preState: BeaconState,
+    block: BeaconBlock,
   ): SafeFuture<Result<BeaconState, StateTransition.StateTransitionError>> {
     val validatorsForBlockFuture = validatorProvider.getValidatorsForBlock(block.beaconBlockHeader)
     val proposerForBlockFuture = proposerSelector.getProposerForBlock(block.beaconBlockHeader)
