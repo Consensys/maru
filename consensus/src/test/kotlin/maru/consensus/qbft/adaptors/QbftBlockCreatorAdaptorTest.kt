@@ -48,6 +48,7 @@ class QbftBlockCreatorAdaptorTest {
     val qbftBlock = QbftBlockAdaptor(block)
     val seals = listOf(SECPSignature.create(BigInteger.ONE, BigInteger.TWO, 0x00, BigInteger.valueOf(4)))
     val round = 12
+    val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(round.toULong())
 
     whenever(
       blockCreator.createSealedBlock(
@@ -57,10 +58,10 @@ class QbftBlockCreatorAdaptorTest {
           Seal(it.encodedBytes().toArray())
         },
       ),
-    ).thenReturn(DataGenerators.randomSealedBeaconBlock(round.toULong()))
+    ).thenReturn(sealedBeaconBlock)
     val qbftBlockCreatorAdaptor = QbftBlockCreatorAdaptor(blockCreator, 1)
 
     val sealedBlock = qbftBlockCreatorAdaptor.createSealedBlock(extraDataProvider, qbftBlock, round, seals)
-    assertThat(sealedBlock)
+    assertThat(sealedBlock.toSealedBeaconBlock()).isEqualTo(sealedBeaconBlock)
   }
 }

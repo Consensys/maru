@@ -25,10 +25,8 @@ import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
-import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
 
 /**
  * Responsible for beacon block creation.
@@ -39,8 +37,6 @@ class BlockCreator(
   private val validatorProvider: ValidatorProvider,
   private val beaconChain: BeaconChain,
 ) {
-  private val log = LogManager.getLogger(QbftBlockCreator::class.java)
-
   /**
    * Creates a new block with the given timestamp on of the parent header including the execution payload ready
    * to be proposed as a block in the QBFT consensus.

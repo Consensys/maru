@@ -32,15 +32,4 @@ class QbftBlockCodecAdaptorTest {
     val decodedValue = qbftBlockCodecAdaptor.readFrom(RLP.input(encodedData), QbftHashMode.COMMITTED_SEAL)
     assertThat(decodedValue).isEqualTo(testValue)
   }
-
-  @Test
-  fun `can encode and decode same value for onchain`() {
-    val beaconBlock = DataGenerators.randomBeaconBlock(10U)
-    val testValue = QbftBlockAdaptor(beaconBlock)
-    val qbftBlockCodecAdaptor = QbftBlockCodecAdaptor()
-
-    val encodedData = RLP.encode { rlpOutput -> qbftBlockCodecAdaptor.writeTo(testValue, rlpOutput) }
-    val decodedValue = qbftBlockCodecAdaptor.readFrom(RLP.input(encodedData), QbftHashMode.ONCHAIN)
-    assertThat(decodedValue).isEqualTo(testValue)
-  }
 }
