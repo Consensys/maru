@@ -98,9 +98,9 @@ class BlockValidatorTest {
           executionPayload == validCurrBlockBody.executionPayload
         ) {
           val mockPayload = PayloadStatusV1(ExecutionPayloadStatus.VALID, null, null)
-          SafeFuture.completedFuture(Response(mockPayload))
+          SafeFuture.completedFuture(Response.fromPayloadReceivedAsSsz(mockPayload))
         } else {
-          SafeFuture.completedFuture(Response.withErrorMessage<PayloadStatusV1>("Invalid execution payload"))
+          SafeFuture.completedFuture(Response.fromErrorMessage<PayloadStatusV1>("Invalid execution payload"))
         }
       }
     }
