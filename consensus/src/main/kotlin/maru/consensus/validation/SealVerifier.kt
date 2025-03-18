@@ -15,12 +15,43 @@
  */
 package maru.consensus.validation
 
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
 import maru.core.BeaconBlockHeader
 import maru.core.Seal
+import maru.core.Validator
+import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.bytes.Bytes32
+import org.hyperledger.besu.crypto.AbstractSECP256
+import org.hyperledger.besu.datatypes.Hash
+import org.hyperledger.besu.ethereum.core.Util
 
 interface SealVerifier {
-  fun verifySeal(
+  data class SealValidationError(
+    val message: String,
+  )
+
+  fun verifySealAndExtractValidator(
     seal: Seal,
-    beaconBLockHeader: BeaconBlockHeader,
-  ): Result<Boolean>
+    beaconBlockHeader: BeaconBlockHeader,
+  ): Result<Validator, SealValidationError>
+}
+
+class SCEP256SealVerifier(
+  private val signatureAlgorithm: AbstractSECP256,
+) : SealVerifier {
+  override fun verifySealAndExtractValidator(
+    seal: Seal,
+    beaconBlockHeader: BeaconBlockHeader,
+  ): Result<Validator, SealVerifier.SealValidationError> {
+    val signature = signatureAlgorithm.decodeSignature(Bytes.wrap(seal.signature))
+    val blockHash = beaconBlockHeader.hash
+    val address = Util.signatureToAddress(signature, Hash.wrap(Bytes32.wrap(blockHash)))
+    return if (address == null) {
+      Err(SealVerifier.SealValidationError("Invalid signature ($seal) for block ($beaconBlockHeader)"))
+    } else {
+      Ok(Validator(address.toArray()))
+    }
+  }
 }

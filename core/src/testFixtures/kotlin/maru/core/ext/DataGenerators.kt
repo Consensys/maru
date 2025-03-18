@@ -75,9 +75,9 @@ object DataGenerators {
         },
     )
 
-  fun randomBeaconBlockBody(): BeaconBlockBody =
+  fun randomBeaconBlockBody(numSeals: Int = 3): BeaconBlockBody =
     BeaconBlockBody(
-      prevCommitSeals = (1..3).map { Seal(Random.nextBytes(96)) },
+      prevCommitSeals = (1..numSeals).map { Seal(Random.nextBytes(96)) },
       executionPayload = randomExecutionPayload(),
     )
 

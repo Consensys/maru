@@ -15,6 +15,12 @@
  */
 package maru.consensus.state
 
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
+import encodeHex
+import maru.consensus.ProposerSelector
+import maru.consensus.ValidatorProvider
 import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
 import maru.core.BeaconState
@@ -24,65 +30,80 @@ import maru.serialization.rlp.stateRoot
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface StateTransition {
+  data class StateTransitionError(
+    val message: String,
+  )
+
   fun processBlock(
     block: BeaconBlock,
     preState: BeaconState,
-  ): SafeFuture<Result<BeaconState>>
-}
-
-class StateTransitionException : Exception {
-  constructor(message: String) : super(message)
-  constructor(message: String, cause: Throwable) : super(message, cause)
+  ): SafeFuture<Result<BeaconState, StateTransitionError>>
 }
 
 class StateTransitionImpl(
   private val blockValidator: BlockValidator,
+  private val validatorProvider: ValidatorProvider,
+  private val proposerSelector: ProposerSelector,
 ) : StateTransition {
-  companion object {
-    fun failure(message: String): Result<BeaconState> =
-      Result.failure(StateTransitionException("State Transition failed: $message"))
-
-    fun failure(
-      message: String,
-      cause: Throwable,
-    ): Result<BeaconState> =
-      Result.failure(StateTransitionException("State Transition failed: $message" + ", cause: ${cause.message}", cause))
-
-    fun success(postState: BeaconState) = Result.success(postState)
-  }
-
   override fun processBlock(
     block: BeaconBlock,
     preState: BeaconState,
-  ): SafeFuture<Result<BeaconState>> {
-    val stateRootBlockHeader =
-      block.beaconBlockHeader.copy(
-        stateRoot = ByteArray(0),
-      )
-    val beaconBodyRoot = HashUtil.bodyRoot(block.beaconBlockBody)
-    val tmpState =
-      preState.copy(
-        latestBeaconBlockHeader = stateRootBlockHeader,
-        latestBeaconBlockRoot = beaconBodyRoot,
-      )
+  ): SafeFuture<Result<BeaconState, StateTransition.StateTransitionError>> {
+    val validatorsForBlockFuture = validatorProvider.getValidatorsForBlock(block.beaconBlockHeader)
+    val proposerForBlockFuture = proposerSelector.getProposerForBlock(block.beaconBlockHeader)
 
-    if (!HashUtil.stateRoot(tmpState).contentEquals(block.beaconBlockHeader.stateRoot)) {
-      return SafeFuture.completedFuture(failure("Beacon state root does not match"))
-    }
-
-    return blockValidator
-      .validateBlock(block, preState.latestBeaconBlockHeader)
-      .thenApply { blockValidationResult ->
-        if (blockValidationResult.isFailure) {
-          failure("Block validation failed", blockValidationResult.exceptionOrNull()!!)
-        } else {
-          val postState =
-            preState.copy(
-              latestBeaconBlockHeader = block.beaconBlockHeader,
-              latestBeaconBlockRoot = beaconBodyRoot,
-            )
-          success(postState)
-        }
+    return validatorsForBlockFuture.thenComposeCombined(
+      proposerForBlockFuture,
+    ) { validatorsForBlock, proposerForBlock ->
+      val beaconBodyRoot = HashUtil.bodyRoot(block.beaconBlockBody)
+      val tmpExpectedNewBlockHeader =
+        block.beaconBlockHeader.copy(
+          proposer = proposerForBlock,
+          parentRoot = preState.latestBeaconBlockHeader.hash,
+          stateRoot = ByteArray(0),
+          bodyRoot = beaconBodyRoot,
+        )
+      val tmpState =
+        preState.copy(
+          latestBeaconBlockHeader = tmpExpectedNewBlockHeader,
+          latestBeaconBlockRoot = beaconBodyRoot,
+        )
+      val stateRootHash = HashUtil.stateRoot(tmpState)
+      val expectedNewBlockHeader = tmpExpectedNewBlockHeader.copy(stateRoot = stateRootHash)
+      if (!expectedNewBlockHeader.stateRoot.contentEquals(block.beaconBlockHeader.stateRoot)) {
+        SafeFuture.completedFuture(
+          Err(
+            StateTransition.StateTransitionError(
+              "Beacon state root does not match. " +
+                "Expected ${expectedNewBlockHeader.stateRoot.encodeHex()} " +
+                "but got ${block.beaconBlockHeader.stateRoot.encodeHex()}",
+            ),
+          ),
+        )
+      } else {
+        blockValidator
+          .validateBlock(block, proposerForBlock, preState.latestBeaconBlockHeader, preState.validators)
+          .thenApply { blockValidationResult ->
+            when (blockValidationResult) {
+              is Ok -> {
+                val postState =
+                  BeaconState(
+                    latestBeaconBlockHeader = block.beaconBlockHeader,
+                    latestBeaconBlockRoot = beaconBodyRoot,
+                    validators = validatorsForBlock,
+                  )
+                Ok(postState)
+              }
+              is Err ->
+                Err(
+                  StateTransition.StateTransitionError(
+                    "State Transition failed. " +
+                      "Reason: ${blockValidationResult.error.message}",
+                  ),
+                )
+            }
+          }
       }
+    }
   }
 }

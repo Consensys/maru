@@ -19,6 +19,6 @@ import maru.core.BeaconBlockHeader
 import maru.core.Validator
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-interface ValidatorProvider {
-  fun getValidatorsForBlock(header: BeaconBlockHeader): SafeFuture<Set<Validator>>
+interface ProposerSelector {
+  fun getProposerForBlock(header: BeaconBlockHeader): SafeFuture<Validator>
 }
