@@ -19,6 +19,7 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import encodeHex
+import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.HashUtil
@@ -39,6 +40,8 @@ import tech.pegasys.teku.spec.executionlayer.ExecutionPayloadStatus
 
 class BlockValidatorTest {
   private val validators = (1..3).map { DataGenerators.randomValidator() }
+  private val nonValidatorNode = DataGenerators.randomValidator()
+
   private val currBlockNumber = 9uL
   private val newBlockNumber = 10uL
 
@@ -106,8 +109,8 @@ class BlockValidatorTest {
         .validateBlock(
           newBlock = validNewBlock,
           proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          prevBlockHeader = validCurrBlockHeader,
-          validatorsForPrevBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
+          validatorsForParentBlock = validators.toSet(),
         ).get()
     assertThat(result is Ok).isTrue()
   }
@@ -120,14 +123,16 @@ class BlockValidatorTest {
         .validateBlock(
           newBlock = validNewBlock,
           proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          prevBlockHeader = prevBlockHeader,
-          validatorsForPrevBlock = validators.toSet(),
+          parentBlockHeader = prevBlockHeader,
+          validatorsForParentBlock = validators.toSet(),
         ).get()
-    assertThat(result is Err).isTrue()
-    assertThat(result.component2()).isNotNull()
-    assertThat(result.component2()?.message).isEqualTo(
-      "Block number ($newBlockNumber) is not the next block number (${prevBlockHeader.number + 1u})",
-    )
+    val expectedResult =
+      error(
+        "Block number is not the next block number " +
+          "blockNumber=$newBlockNumber " +
+          "nextBlockNumber=${prevBlockHeader.number + 1u}",
+      )
+    assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
@@ -137,17 +142,17 @@ class BlockValidatorTest {
       BlockValidators.TimestampValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          prevBlockHeader = validCurrBlockHeader,
+          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          validatorsForPrevBlock = validators.toSet(),
+          validatorsForParentBlock = validators.toSet(),
         ).get()
-    assertThat(result is Err).isTrue()
-    assertThat(result.component2()).isNotNull()
-    assertThat(result.component2()?.message)
-      .isEqualTo(
-        "Block timestamp (${blockHeader.timestamp}) " +
-          "is not greater than previous block timestamp (${validCurrBlockHeader.timestamp})",
+    val expectedResult =
+      error(
+        "Block timestamp is not greater than previous block timestamp " +
+          "blockTimestamp=${blockHeader.timestamp} " +
+          "parentBlockTimestamp=${validCurrBlockHeader.timestamp}",
       )
+    assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
@@ -157,17 +162,18 @@ class BlockValidatorTest {
       BlockValidators.TimestampValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          prevBlockHeader = validCurrBlockHeader,
+          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          validatorsForPrevBlock = validators.toSet(),
+          validatorsForParentBlock = validators.toSet(),
         ).get()
-    assertThat(result is Err).isTrue()
-    assertThat(result.component2()).isNotNull()
-    assertThat(result.component2()?.message)
-      .isEqualTo(
-        "Block timestamp (${blockHeader.timestamp}) " +
-          "is not greater than previous block timestamp (${validCurrBlockHeader.timestamp})",
+    val expectedResult =
+      error(
+        "Block timestamp is not greater than previous block timestamp " +
+          "blockTimestamp=${blockHeader.timestamp} " +
+          "parentBlockTimestamp=${validCurrBlockHeader.timestamp}",
       )
+
+    assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
@@ -176,13 +182,17 @@ class BlockValidatorTest {
       BlockValidators.ProposerValidator
         .validateBlock(
           newBlock = validNewBlock,
-          prevBlockHeader = validCurrBlockHeader,
+          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validators.last(),
-          validatorsForPrevBlock = validators.toSet(),
+          validatorsForParentBlock = validators.toSet(),
         ).get()
-    assertThat(result is Err).isTrue()
-    assertThat(result.component2()).isNotNull()
-    assertThat(result.component2()?.message).contains("is not expected proposer")
+    val expectedResult =
+      error(
+        "Proposer is not expected proposer " +
+          "proposer=${validNewBlockHeader.proposer} " +
+          "expectedProposer=${validators.last()}",
+      )
+    assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
@@ -192,17 +202,17 @@ class BlockValidatorTest {
       BlockValidators.ParentRootValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          prevBlockHeader = validCurrBlockHeader,
+          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForPrevBlock = validators.toSet(),
+          validatorsForParentBlock = validators.toSet(),
         ).get()
-    assertThat(result is Err).isTrue()
-    assertThat(result.component2()).isNotNull()
-    assertThat(result.component2()?.message)
-      .isEqualTo(
-        "Parent root (${blockHeader.parentRoot.encodeHex()}) " +
-          "does not match previous block root (${validCurrBlockHeader.hash.encodeHex()})",
+    val expectedResult =
+      error(
+        "Parent root does not match parent block root " +
+          "parentRoot=${blockHeader.parentRoot.encodeHex()} " +
+          "expectedParentRoot=${validCurrBlockHeader.hash.encodeHex()}",
       )
+    assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
@@ -212,16 +222,17 @@ class BlockValidatorTest {
       BlockValidators.BodyRootValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          prevBlockHeader = validCurrBlockHeader,
+          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validCurrBlockHeader.proposer,
-          validatorsForPrevBlock = validators.toSet(),
+          validatorsForParentBlock = validators.toSet(),
         ).get()
-    assertThat(result is Err).isTrue()
-    assertThat(result.component2()).isNotNull()
-    assertThat(result.component2()?.message).contains(
-      "Body root in header (${blockHeader.bodyRoot.encodeHex()}) " +
-        "does not match body root (${validNewBlockHeader.bodyRoot.encodeHex()})",
-    )
+    val expectedResult =
+      error(
+        "Body root in header does not match body root " +
+          "bodyRoot=${blockHeader.bodyRoot.encodeHex()} " +
+          "expectedBodyRoot=${validNewBlockHeader.bodyRoot.encodeHex()}",
+      )
+    assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
@@ -259,9 +270,9 @@ class BlockValidatorTest {
       PrevBlockSealValidator(sealVerifier = sealVerifier)
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockBody = blockBodyWithEnoughSeals),
-          prevBlockHeader = validCurrBlockHeader,
+          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForPrevBlock = validators.toSet(),
+          validatorsForParentBlock = validators.toSet(),
         ).get()
     assertThat(validResult is Ok).isTrue()
 
@@ -269,13 +280,45 @@ class BlockValidatorTest {
       PrevBlockSealValidator(sealVerifier = sealVerifier)
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockBody = blockBodyWithLessSeals),
-          prevBlockHeader = validCurrBlockHeader,
+          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForPrevBlock = validators.toSet(),
+          validatorsForParentBlock = validators.toSet(),
         ).get()
-    assertThat(inValidResult is Err).isTrue()
-    assertThat(inValidResult.component2()?.message)
-      .isEqualTo("Quorum threshold not met. Committers: 1, Validators: 3, QuorumCount: 2")
+    val expectedResult =
+      error(
+        "Quorum threshold not met. " +
+          "committers=1 " +
+          "validators=3 " +
+          "quorumCount=2",
+      )
+    assertThat(inValidResult).isEqualTo(expectedResult)
+  }
+
+  @Test
+  fun `test commit seals not from validator`() {
+    val sealVerifier =
+      object : SealVerifier {
+        override fun extractValidator(
+          seal: Seal,
+          beaconBlockHeader: BeaconBlockHeader,
+        ): Result<Validator, SealVerifier.SealValidationError> = Ok(nonValidatorNode)
+      }
+    val result =
+      PrevBlockSealValidator(sealVerifier = sealVerifier)
+        .validateBlock(
+          newBlock = validNewBlock,
+          parentBlockHeader = validCurrBlockHeader,
+          proposerForNewBlock = validNewBlockHeader.proposer,
+          validatorsForParentBlock = validators.toSet(),
+        ).get()
+    val expectedResult =
+      error(
+        "Seal validator is not in the parent block's validator set " +
+          "seal=${validNewBlockBody.prevCommitSeals[0]} " +
+          "sealValidator=$nonValidatorNode " +
+          "validatorsForParentBlock=$validators",
+      )
+    assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
@@ -291,13 +334,12 @@ class BlockValidatorTest {
       PrevBlockSealValidator(sealVerifier = sealVerifier)
         .validateBlock(
           newBlock = validNewBlock,
-          prevBlockHeader = validCurrBlockHeader,
+          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForPrevBlock = validators.toSet(),
+          validatorsForParentBlock = validators.toSet(),
         ).get()
-    assertThat(result is Err).isTrue()
-    assertThat(result.component2()?.message)
-      .isEqualTo("Previous block seal verification failed. Reason: Invalid seal")
+    val expectedResult = error("Previous block seal verification failed. Reason: Invalid seal")
+    assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
@@ -319,12 +361,14 @@ class BlockValidatorTest {
       ExecutionPayloadValidator(executionLayerClient = invalidExecutionClient)
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockBody = blockBody),
-          prevBlockHeader = validCurrBlockHeader,
+          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForPrevBlock = validators.toSet(),
+          validatorsForParentBlock = validators.toSet(),
         ).get()
-    assertThat(result is Err).isTrue()
-    assertThat(result.component2()?.message)
-      .isEqualTo("Execution payload validation failed: Invalid execution payload")
+    val expectedResult =
+      error(
+        "Execution payload validation failed: Invalid execution payload",
+      )
+    assertThat(result).isEqualTo(expectedResult)
   }
 }

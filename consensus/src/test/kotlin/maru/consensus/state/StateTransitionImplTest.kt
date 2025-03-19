@@ -20,8 +20,11 @@ import com.github.michaelbull.result.Ok
 import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
 import maru.consensus.validation.BlockValidator
+import maru.consensus.validation.BlockValidator.Companion.error
+import maru.consensus.validation.BlockValidator.Companion.ok
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
+import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.core.Validator
 import maru.core.ext.DataGenerators
@@ -55,10 +58,13 @@ class StateTransitionImplTest {
     )
   private val newBlockHeader = stateRootBlockHeader.copy(stateRoot = stateRootHash)
   private val newBlock = BeaconBlock(newBlockHeader, newBeaconBlockBody)
+
+  private val validators = setOf(newBlockHeader.proposer)
+
   private val validatorProvider =
     object : ValidatorProvider {
       override fun getValidatorsForBlock(header: BeaconBlockHeader): SafeFuture<Set<Validator>> =
-        SafeFuture.completedFuture(setOf(newBlockHeader.proposer))
+        SafeFuture.completedFuture(validators)
     }
 
   private val proposerSelector =
@@ -67,15 +73,18 @@ class StateTransitionImplTest {
         SafeFuture.completedFuture(newBlockHeader.proposer)
     }
 
+  private val postState =
+    BeaconState(
+      latestBeaconBlockHeader = newBlockHeader,
+      latestBeaconBlockRoot = newBlockHeader.bodyRoot,
+      validators = validators,
+    )
+
   @Test
   fun `processBlock should return failure if block validation fails`() {
     val blockValidator =
-      BlockValidator { block, _, prevBlockHeader, _ ->
-        if (block == newBlock && prevBlockHeader == preState.latestBeaconBlockHeader) {
-          SafeFuture.completedFuture(Err(BlockValidator.BlockValidationError("Block validation failed")))
-        } else {
-          SafeFuture.completedFuture(Ok(true))
-        }
+      BlockValidator { _, _, _, _ ->
+        SafeFuture.completedFuture(error("Block validation failed"))
       }
     val stateTransition =
       StateTransitionImpl(
@@ -85,20 +94,16 @@ class StateTransitionImplTest {
       )
 
     val result = stateTransition.processBlock(preState, newBlock).get()
-    assertThat(result is Err).isTrue()
-    assertThat(result.component2()).isNotNull()
-    assertThat(result.component2()?.message).isEqualTo("State Transition failed. Reason: Block validation failed")
+    val expectedResult =
+      Err(StateTransition.StateTransitionError("State Transition failed. Reason: Block validation failed"))
+    assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
   fun `processBlock should return ok if all checks pass`() {
     val blockValidator =
-      BlockValidator { block, _, prevBlockHeader, _ ->
-        if (block == newBlock && prevBlockHeader == preState.latestBeaconBlockHeader) {
-          SafeFuture.completedFuture(Ok(true))
-        } else {
-          SafeFuture.completedFuture(Err(BlockValidator.BlockValidationError("Block validation failed")))
-        }
+      BlockValidator { _, _, _, _ ->
+        SafeFuture.completedFuture(ok())
       }
     val stateTransition =
       StateTransitionImpl(
@@ -108,6 +113,7 @@ class StateTransitionImplTest {
       )
 
     val result = stateTransition.processBlock(preState, newBlock).get()
-    assertThat(result is Ok).isTrue()
+    val expectedResult = Ok(postState)
+    assertThat(result).isEqualTo(expectedResult)
   }
 }
