@@ -83,7 +83,7 @@ class StateTransitionImplTest {
   @Test
   fun `processBlock should return failure if block validation fails`() {
     val blockValidator =
-      BlockValidator { _, _, _, _ ->
+      BlockValidator { _, _, _ ->
         SafeFuture.completedFuture(error("Block validation failed"))
       }
     val stateTransition =
@@ -102,7 +102,7 @@ class StateTransitionImplTest {
   @Test
   fun `processBlock should return ok if all checks pass`() {
     val blockValidator =
-      BlockValidator { _, _, _, _ ->
+      BlockValidator { _, _, _ ->
         SafeFuture.completedFuture(ok())
       }
     val stateTransition =

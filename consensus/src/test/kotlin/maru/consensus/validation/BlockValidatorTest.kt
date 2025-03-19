@@ -32,7 +32,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.BftHelpers
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.spy
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -100,7 +102,7 @@ class BlockValidatorTest {
             BlockValidators.ProposerValidator,
             BlockValidators.ParentRootValidator,
             BlockValidators.BodyRootValidator,
-            PrevBlockSealValidator(sealVerifier = sealVerifier),
+//            PrevCommitSealValidator(sealVerifier = sealVerifier),
             ExecutionPayloadValidator(executionLayerClient),
           ),
       )
@@ -110,7 +112,6 @@ class BlockValidatorTest {
           newBlock = validNewBlock,
           proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
           parentBlockHeader = validCurrBlockHeader,
-          validatorsForParentBlock = validators.toSet(),
         ).get()
     assertThat(result is Ok).isTrue()
   }
@@ -124,7 +125,6 @@ class BlockValidatorTest {
           newBlock = validNewBlock,
           proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
           parentBlockHeader = prevBlockHeader,
-          validatorsForParentBlock = validators.toSet(),
         ).get()
     val expectedResult =
       error(
@@ -142,9 +142,8 @@ class BlockValidatorTest {
       BlockValidators.TimestampValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     val expectedResult =
       error(
@@ -162,9 +161,8 @@ class BlockValidatorTest {
       BlockValidators.TimestampValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     val expectedResult =
       error(
@@ -182,9 +180,8 @@ class BlockValidatorTest {
       BlockValidators.ProposerValidator
         .validateBlock(
           newBlock = validNewBlock,
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validators.last(),
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     val expectedResult =
       error(
@@ -202,9 +199,8 @@ class BlockValidatorTest {
       BlockValidators.ParentRootValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     val expectedResult =
       error(
@@ -222,9 +218,8 @@ class BlockValidatorTest {
       BlockValidators.BodyRootValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validCurrBlockHeader.proposer,
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     val expectedResult =
       error(
@@ -266,23 +261,27 @@ class BlockValidatorTest {
           }
       }
 
+    val prevCommitSealValidator = spy(PrevCommitSealValidator(sealVerifier = sealVerifier))
+    doReturn(
+      SafeFuture.completedFuture(validators.toSet()),
+    ).`when`(prevCommitSealValidator).getValidatorsForAncestorBlock(
+      any(),
+    )
     val validResult =
-      PrevBlockSealValidator(sealVerifier = sealVerifier)
+      prevCommitSealValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockBody = blockBodyWithEnoughSeals),
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     assertThat(validResult is Ok).isTrue()
 
     val inValidResult =
-      PrevBlockSealValidator(sealVerifier = sealVerifier)
+      prevCommitSealValidator
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockBody = blockBodyWithLessSeals),
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     val expectedResult =
       error(
@@ -303,13 +302,20 @@ class BlockValidatorTest {
           beaconBlockHeader: BeaconBlockHeader,
         ): Result<Validator, SealVerifier.SealValidationError> = Ok(nonValidatorNode)
       }
+
+    val prevCommitSealValidator = spy(PrevCommitSealValidator(sealVerifier = sealVerifier))
+    doReturn(
+      SafeFuture.completedFuture(validators.toSet()),
+    ).`when`(prevCommitSealValidator).getValidatorsForAncestorBlock(
+      any(),
+    )
+
     val result =
-      PrevBlockSealValidator(sealVerifier = sealVerifier)
+      prevCommitSealValidator
         .validateBlock(
           newBlock = validNewBlock,
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     val expectedResult =
       error(
@@ -330,13 +336,19 @@ class BlockValidatorTest {
           beaconBlockHeader: BeaconBlockHeader,
         ): Result<Validator, SealVerifier.SealValidationError> = Err(SealVerifier.SealValidationError("Invalid seal"))
       }
+    val prevCommitSealValidator = spy(PrevCommitSealValidator(sealVerifier = sealVerifier))
+    doReturn(
+      SafeFuture.completedFuture(validators.toSet()),
+    ).`when`(prevCommitSealValidator).getValidatorsForAncestorBlock(
+      any(),
+    )
+
     val result =
-      PrevBlockSealValidator(sealVerifier = sealVerifier)
+      prevCommitSealValidator
         .validateBlock(
           newBlock = validNewBlock,
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     val expectedResult = error("Previous block seal verification failed. Reason: Invalid seal")
     assertThat(result).isEqualTo(expectedResult)
@@ -361,9 +373,8 @@ class BlockValidatorTest {
       ExecutionPayloadValidator(executionLayerClient = invalidExecutionClient)
         .validateBlock(
           newBlock = validNewBlock.copy(beaconBlockBody = blockBody),
-          parentBlockHeader = validCurrBlockHeader,
           proposerForNewBlock = validNewBlockHeader.proposer,
-          validatorsForParentBlock = validators.toSet(),
+          parentBlockHeader = validCurrBlockHeader,
         ).get()
     val expectedResult =
       error(

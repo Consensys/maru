@@ -82,7 +82,7 @@ class StateTransitionImpl(
         )
       } else {
         blockValidator
-          .validateBlock(block, proposerForBlock, preState.latestBeaconBlockHeader, preState.validators)
+          .validateBlock(block, proposerForBlock, preState.latestBeaconBlockHeader)
           .thenApply { blockValidationResult ->
             when (blockValidationResult) {
               is Ok -> {
