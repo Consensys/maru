@@ -13,8 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.qbft
 
+import maru.consensus.ValidatorProvider
+import maru.consensus.bodyRoot
+import maru.consensus.headerHash
+import maru.consensus.qbft.adaptors.QbftBlockAdaptor
+import maru.consensus.qbft.adaptors.QbftSealedBlockAdaptor
+import maru.consensus.qbft.adaptors.toBeaconBlock
+import maru.consensus.qbft.adaptors.toBeaconBlockHeader
+import maru.consensus.stateRoot
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
@@ -27,25 +35,27 @@ import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
+import org.hyperledger.besu.consensus.qbft.core.types.QbftExtraDataProvider
+import org.hyperledger.besu.crypto.SECPSignature
 
 /**
- * Responsible for beacon block creation.
+ * Responsible for QBFT block creation.
  */
-class BlockCreator(
+class QbftBlockCreator(
   private val manager: ExecutionLayerManager,
   private val proposerSelector: ProposerSelector,
   private val validatorProvider: ValidatorProvider,
   private val beaconChain: BeaconChain,
-) {
-  /**
-   * Creates a new block with the given timestamp on of the parent header including the execution payload ready
-   * to be proposed as a block in the QBFT consensus.
-   */
-  fun createBlock(
-    timestamp: Long,
-    roundNumber: Int,
-    parentHeader: BeaconBlockHeader,
-  ): BeaconBlock {
+  private val round: Int,
+) : QbftBlockCreator {
+  override fun createBlock(
+    headerTimeStampSeconds: Long,
+    parentHeader: QbftBlockHeader,
+  ): QbftBlock {
+    val parentBeaconBlockHeader = parentHeader.toBeaconBlockHeader()
     val executionPayload =
       try {
         manager.finishBlockBuilding().get()
@@ -53,57 +63,59 @@ class BlockCreator(
         throw IllegalStateException("Execution payload unavailable, unable to create block", e)
       }
     val latestBeaconBlock =
-      beaconChain.getSealedBeaconBlock(parentHeader.hash())
+      beaconChain.getSealedBeaconBlock(parentBeaconBlockHeader.hash())
         ?: throw IllegalStateException("Parent beacon block unavailable, unable to create block")
-
     val beaconBlockBody =
       BeaconBlockBody(latestBeaconBlock.commitSeals, executionPayload)
     val proposer =
       proposerSelector.selectProposerForRound(
-        ConsensusRoundIdentifier((parentHeader.number + 1UL).toLong(), roundNumber.toInt()),
+        ConsensusRoundIdentifier((parentBeaconBlockHeader.number + 1UL).toLong(), round.toInt()),
       )
     val stateRootBlockHeader =
       BeaconBlockHeader(
-        number = parentHeader.number + 1UL,
-        round = roundNumber.toULong(),
-        timestamp = timestamp.toULong(),
+        number = parentBeaconBlockHeader.number + 1UL,
+        round = round.toULong(),
+        timestamp = headerTimeStampSeconds.toULong(),
         proposer = Validator(proposer.toArrayUnsafe()),
-        parentRoot = parentHeader.hash(),
+        parentRoot = parentBeaconBlockHeader.hash(),
         stateRoot = ByteArray(32), // temporary state root to avoid circular dependency
         bodyRoot = HashUtil.bodyRoot(beaconBlockBody),
         headerHashFunction = HashUtil::headerHash,
       )
-
     val validators =
       validatorProvider
         .getValidatorsAfterBlock(
-          parentHeader.number,
+          parentBeaconBlockHeader.number,
         )
     val stateRoot =
       HashUtil.stateRoot(
         BeaconState(stateRootBlockHeader, HashUtil.bodyRoot(beaconBlockBody), validators),
       )
     val finalBlockHeader = stateRootBlockHeader.copy(stateRoot = stateRoot)
-
-    return BeaconBlock(finalBlockHeader, beaconBlockBody)
+    val beaconBlock =
+      BeaconBlock(finalBlockHeader, beaconBlockBody)
+    return QbftBlockAdaptor(beaconBlock)
   }
 
-  /**
-   * Creates a sealed block ready to be imported into the blockchain. This means including the commit seals
-   * and round number and replacing the block hash with the onchain hash function.
-   */
-  fun createSealedBlock(
-    block: BeaconBlock,
+  override fun createSealedBlock(
+    qbftExtraDataProvider: QbftExtraDataProvider,
+    block: QbftBlock,
     roundNumber: Int,
-    commitSeals: List<Seal>,
-  ): SealedBeaconBlock {
-    val beaconBlockHeader = block.beaconBlockHeader
+    commitSeals: Collection<SECPSignature>,
+  ): QbftBlock {
+    val seals =
+      commitSeals.map {
+        Seal(it.encodedBytes().toArrayUnsafe())
+      }
+    val block1 = block.toBeaconBlock()
+    val beaconBlockHeader = block1.beaconBlockHeader
     val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toULong())
     val sealedBlockBody =
       SealedBeaconBlock(
-        BeaconBlock(updatedBlockHeader, block.beaconBlockBody),
-        commitSeals,
+        BeaconBlock(updatedBlockHeader, block1.beaconBlockBody),
+        seals,
       )
-    return sealedBlockBody
+    val sealedBeaconBlock = sealedBlockBody
+    return QbftSealedBlockAdaptor(sealedBeaconBlock)
   }
 }
