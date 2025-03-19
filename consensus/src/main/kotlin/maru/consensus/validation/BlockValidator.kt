@@ -160,7 +160,7 @@ class PrevBlockSealValidator(
   ): SafeFuture<Result<Boolean, BlockValidator.BlockValidationError>> {
     val committers = mutableSetOf<Validator>()
     for (seal in newBlock.beaconBlockBody.prevCommitSeals) {
-      when (val sealVerificationResult = sealVerifier.verifySealAndExtractValidator(seal, prevBlockHeader)) {
+      when (val sealVerificationResult = sealVerifier.extractValidator(seal, prevBlockHeader)) {
         is Ok -> committers.add(sealVerificationResult.value)
         is Err -> return SafeFuture.completedFuture(
           Err(

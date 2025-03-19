@@ -63,7 +63,7 @@ class BlockValidatorTest {
   fun `test valid block`() {
     val sealVerifier =
       object : SealVerifier {
-        override fun verifySealAndExtractValidator(
+        override fun extractValidator(
           seal: Seal,
           beaconBlockHeader: BeaconBlockHeader,
         ): Result<Validator, SealVerifier.SealValidationError> {
@@ -244,7 +244,7 @@ class BlockValidatorTest {
 
     val sealVerifier =
       object : SealVerifier {
-        override fun verifySealAndExtractValidator(
+        override fun extractValidator(
           seal: Seal,
           beaconBlockHeader: BeaconBlockHeader,
         ): Result<Validator, SealVerifier.SealValidationError> =
@@ -282,7 +282,7 @@ class BlockValidatorTest {
   fun `test invalid commit seals`() {
     val sealVerifier =
       object : SealVerifier {
-        override fun verifySealAndExtractValidator(
+        override fun extractValidator(
           seal: Seal,
           beaconBlockHeader: BeaconBlockHeader,
         ): Result<Validator, SealVerifier.SealValidationError> = Err(SealVerifier.SealValidationError("Invalid seal"))

@@ -24,7 +24,6 @@ import maru.core.Validator
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.crypto.AbstractSECP256
-import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.ethereum.core.Util
 
 interface SealVerifier {
@@ -32,7 +31,7 @@ interface SealVerifier {
     val message: String,
   )
 
-  fun verifySealAndExtractValidator(
+  fun extractValidator(
     seal: Seal,
     beaconBlockHeader: BeaconBlockHeader,
   ): Result<Validator, SealValidationError>
@@ -41,17 +40,21 @@ interface SealVerifier {
 class SCEP256SealVerifier(
   private val signatureAlgorithm: AbstractSECP256,
 ) : SealVerifier {
-  override fun verifySealAndExtractValidator(
+  override fun extractValidator(
     seal: Seal,
     beaconBlockHeader: BeaconBlockHeader,
   ): Result<Validator, SealVerifier.SealValidationError> {
     val signature = signatureAlgorithm.decodeSignature(Bytes.wrap(seal.signature))
     val blockHash = beaconBlockHeader.hash
-    val address = Util.signatureToAddress(signature, Hash.wrap(Bytes32.wrap(blockHash)))
-    return if (address == null) {
-      Err(SealVerifier.SealValidationError("Invalid signature ($seal) for block ($beaconBlockHeader)"))
+    val publicKey = signatureAlgorithm.recoverPublicKeyFromSignature(Bytes32.wrap(blockHash), signature)
+    return if (publicKey.isEmpty) {
+      Err(
+        SealVerifier.SealValidationError(
+          "Could not extract validator from seal for block. seal=$seal block=$beaconBlockHeader",
+        ),
+      )
     } else {
-      Ok(Validator(address.toArray()))
+      Ok(Validator(Util.publicKeyToAddress(publicKey.get()).toArray()))
     }
   }
 }
