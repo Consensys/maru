@@ -18,11 +18,10 @@ package maru.executionlayer.manager
 import kotlin.jvm.optionals.getOrNull
 import maru.core.ExecutionPayload
 import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.client.MetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
-import org.apache.tuweni.units.bigints.UInt256
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
@@ -49,11 +48,12 @@ class JsonRpcExecutionLayerManager private constructor(
   companion object {
     fun create(
       executionLayerClient: ExecutionLayerClient,
+      metadataProvider: MetadataProvider,
       feeRecipientProvider: FeeRecipientProvider,
       payloadValidator: ExecutionPayloadValidator,
     ): SafeFuture<JsonRpcExecutionLayerManager> =
-      executionLayerClient.getLatestBlockMetadata().thenApply {
-        val currentBlockMetadata = BlockMetadata(it.blockNumber, it.blockHash, it.unixTimestamp)
+      metadataProvider.getLatestBlockMetadata().thenApply {
+        val currentBlockMetadata = BlockMetadata(it.blockNumber, it.blockHash, it.unixTimestampSeconds)
         JsonRpcExecutionLayerManager(
           executionLayerClient = executionLayerClient,
           feeRecipientProvider = feeRecipientProvider,
@@ -85,8 +85,8 @@ class JsonRpcExecutionLayerManager private constructor(
       currentBlockMetadata = currentBlockMetadata,
     )
 
-  private fun getNextFeeRecipient(): Bytes20 =
-    Bytes20(Bytes.wrap(feeRecipientProvider.getFeeRecipient(latestBlockMetadata().blockNumber + 1u)))
+  private fun getNextFeeRecipient(nextBlockTimestamp: Long): Bytes20 =
+    Bytes20(Bytes.wrap(feeRecipientProvider.getFeeRecipient(nextBlockTimestamp)))
 
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
@@ -103,7 +103,7 @@ class JsonRpcExecutionLayerManager private constructor(
       PayloadAttributesV1(
         UInt64.fromLongBits(nextBlockTimestamp),
         Bytes32.ZERO,
-        getNextFeeRecipient(),
+        getNextFeeRecipient(nextBlockTimestamp),
       )
     log.debug("Starting block building with payload attributes {}", payloadAttributes)
     return executionLayerClient
@@ -114,8 +114,24 @@ class JsonRpcExecutionLayerManager private constructor(
           Bytes32.wrap(finalizedHash),
         ),
         payloadAttributes,
-      ).thenApply { response ->
-        log.debug("Forkchoice update response {}", response)
+      ).thenCompose { response ->
+        log.debug("Forkchoice update response with payload attributes {}", response)
+        if (response.isFailure) {
+          // TODO: Temporary hack for protocol switches. Should go when QBFT fully works along with dummy consensus
+          executionLayerClient
+            .forkChoiceUpdate(
+              ForkChoiceStateV1(
+                Bytes32.wrap(headHash),
+                Bytes32.wrap(safeHash),
+                Bytes32.wrap(finalizedHash),
+              ),
+              null,
+            )
+        } else {
+          SafeFuture.completedFuture(response)
+        }
+      }.thenApply { response ->
+        log.debug("Forkchoice update response after a retry without payload attributes {}", response)
         if (response.isFailure) {
           throw IllegalStateException(
             "forkChoiceUpdate request failed! nextBlockTimestamp=${
@@ -127,7 +143,7 @@ class JsonRpcExecutionLayerManager private constructor(
         }
       }.thenPeek {
         latestBlockCache.promoteBlockMetadata()
-        log.debug("Setting payload Id, block metadata {}", latestBlockCache)
+        log.debug("Setting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
         payloadId = it.payloadId
       }
   }
@@ -152,36 +168,6 @@ class JsonRpcExecutionLayerManager private constructor(
     return ForkChoiceUpdatedResult(domainPayloadStatus, parsedPayloadId)
   }
 
-  override fun finishBlockBuildingAndBuildNextBlock(): SafeFuture<ExecutionPayload> =
-    finishBlockBuilding().thenCompose {
-      val domainExecutionPayload = domainToExecutionPayloadV1(it)
-      executionLayerClient.newPayload(domainExecutionPayload).thenApply { payloadStatus ->
-        if (payloadStatus.isSuccess &&
-          payloadStatus.payload
-            .asInternalExecutionPayload()
-            .status
-            .get() ==
-          ExecutionPayloadStatus.VALID
-        ) {
-          payloadId = null // Not necessary, but it helps to reinforce the order of calls
-          log.debug("Unsetting payload Id, block metadata {}", latestBlockCache)
-
-          latestBlockCache.updateNext(
-            BlockMetadata(
-              domainExecutionPayload.blockNumber
-                .longValue()
-                .toULong(),
-              domainExecutionPayload.blockHash.toArray(),
-              domainExecutionPayload.timestamp.longValue(),
-            ),
-          )
-          it
-        } else {
-          throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatus.errorMessage)
-        }
-      }
-    }
-
   override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> {
     if (payloadId == null) {
       return SafeFuture.failedFuture(
@@ -194,14 +180,35 @@ class JsonRpcExecutionLayerManager private constructor(
       .getPayload(Bytes8(Bytes.wrap(payloadId!!)))
       .thenCompose { payloadResponse ->
         if (payloadResponse.isSuccess) {
-          val tekuExecutionPayload = payloadResponse.payload
-          val executionPayload = executionPayloadV1ToDomain(tekuExecutionPayload)
+          val executionPayload = payloadResponse.payload
           val validationResult = payloadValidator.validate(executionPayload)
 
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
             throw RuntimeException(validationResult.reason)
           }
-          SafeFuture.completedFuture(executionPayload)
+          executionLayerClient.newPayload(executionPayload).thenApply { payloadStatus ->
+            if (payloadStatus.isSuccess &&
+              payloadStatus.payload
+                .asInternalExecutionPayload()
+                .status
+                .get() ==
+              ExecutionPayloadStatus.VALID
+            ) {
+              payloadId = null // Not necessary, but it helps to reinforce the order of calls
+              log.debug("Unsetting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
+
+              latestBlockCache.updateNext(
+                BlockMetadata(
+                  executionPayload.blockNumber,
+                  executionPayload.blockHash,
+                  executionPayload.timestamp.toLong(),
+                ),
+              )
+              executionPayload
+            } else {
+              throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatus.errorMessage)
+            }
+          }
         } else {
           SafeFuture.failedFuture(
             IllegalStateException("engine_getPayload request failed! Cause: " + payloadResponse.errorMessage),
@@ -209,44 +216,6 @@ class JsonRpcExecutionLayerManager private constructor(
         }
       }
   }
-
-  private fun executionPayloadV1ToDomain(executionPayloadV1: ExecutionPayloadV1): ExecutionPayload =
-    ExecutionPayload(
-      parentHash = executionPayloadV1.parentHash.toArray(),
-      feeRecipient = executionPayloadV1.feeRecipient.wrappedBytes.toArray(),
-      stateRoot = executionPayloadV1.stateRoot.toArray(),
-      receiptsRoot = executionPayloadV1.receiptsRoot.toArray(),
-      logsBloom = executionPayloadV1.logsBloom.toArray(),
-      prevRandao = executionPayloadV1.prevRandao.toArray(),
-      blockNumber = executionPayloadV1.blockNumber.longValue().toULong(),
-      gasLimit = executionPayloadV1.gasLimit.longValue().toULong(),
-      gasUsed = executionPayloadV1.gasUsed.longValue().toULong(),
-      timestamp = executionPayloadV1.timestamp.longValue().toULong(),
-      extraData = executionPayloadV1.extraData.toArray(),
-      // Intentional cropping, UInt256 doesn't fit into ULong
-      baseFeePerGas =
-        executionPayloadV1.baseFeePerGas.toBigInteger(),
-      blockHash = executionPayloadV1.blockHash.toArray(),
-      transactions = executionPayloadV1.transactions.map { it.toArray() },
-    )
-
-  private fun domainToExecutionPayloadV1(executionPayload: ExecutionPayload): ExecutionPayloadV1 =
-    ExecutionPayloadV1(
-      Bytes32.wrap(executionPayload.parentHash),
-      Bytes20(Bytes.wrap(executionPayload.feeRecipient)),
-      Bytes32.wrap(executionPayload.stateRoot),
-      Bytes32.wrap(executionPayload.receiptsRoot),
-      Bytes.wrap(executionPayload.logsBloom),
-      Bytes32.wrap(executionPayload.prevRandao),
-      UInt64.valueOf(executionPayload.blockNumber.toLong()),
-      UInt64.valueOf(executionPayload.gasLimit.toLong()),
-      UInt64.valueOf(executionPayload.gasUsed.toLong()),
-      UInt64.valueOf(executionPayload.timestamp.toLong()),
-      Bytes.wrap(executionPayload.extraData),
-      UInt256.valueOf(executionPayload.baseFeePerGas),
-      Bytes32.wrap(executionPayload.blockHash),
-      executionPayload.transactions.map { Bytes.wrap(it) },
-    )
 
   override fun latestBlockMetadata(): BlockMetadata = latestBlockCache.currentBlockMetadata
 
