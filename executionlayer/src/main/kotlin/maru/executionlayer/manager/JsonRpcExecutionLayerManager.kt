@@ -151,7 +151,6 @@ class JsonRpcExecutionLayerManager private constructor(
           importBlock(executionPayload).thenApply {
             log.debug("Unsetting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
 
-
             payloadId = null // Not necessary, but it helps to reinforce the order of calls
             executionPayload
           }
