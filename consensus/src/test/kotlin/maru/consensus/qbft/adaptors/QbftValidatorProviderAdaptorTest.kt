@@ -62,11 +62,4 @@ class QbftValidatorProviderAdaptorTest {
       qbftValidatorProviderAdaptor.getValidatorsForBlock(header2),
     ).containsExactly(Address.wrap(Bytes.wrap(validator2.address)))
   }
-
-  @Test
-  fun `vote provider at head is empty`() {
-    val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
-    val qbftValidatorProviderAdaptor = QbftValidatorProviderAdaptor(validatorProvider)
-    assertThat(qbftValidatorProviderAdaptor.getVoteProviderAtHead().isEmpty).isTrue()
-  }
 }

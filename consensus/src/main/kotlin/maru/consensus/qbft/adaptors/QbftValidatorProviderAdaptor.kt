@@ -15,10 +15,8 @@
  */
 package maru.consensus.qbft.adaptors
 
-import java.util.Optional
 import maru.consensus.ValidatorProvider
 import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.consensus.common.validator.VoteProvider
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorProvider
 import org.hyperledger.besu.datatypes.Address
@@ -41,6 +39,4 @@ class QbftValidatorProviderAdaptor(
     validatorProvider.getValidatorsForBlock(header.toBeaconBlockHeader().number).map {
       Address.wrap(Bytes.wrap(it.address))
     }
-
-  override fun getVoteProviderAtHead(): Optional<VoteProvider> = Optional.empty<VoteProvider>()
 }

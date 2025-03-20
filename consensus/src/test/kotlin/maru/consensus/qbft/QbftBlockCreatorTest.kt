@@ -37,7 +37,6 @@ import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
-import org.hyperledger.besu.consensus.qbft.core.types.QbftExtraDataProvider
 import org.hyperledger.besu.crypto.SECPSignature
 import org.hyperledger.besu.datatypes.Address
 import org.junit.jupiter.api.Test
@@ -50,7 +49,6 @@ class QbftBlockCreatorTest {
   private val proposerSelector = Mockito.mock(ProposerSelector::class.java)
   private val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
-  private val extraDataProvider = Mockito.mock(QbftExtraDataProvider::class.java)
 
   @Test
   fun `can create block`() {
@@ -150,7 +148,7 @@ class QbftBlockCreatorTest {
     val round = 1
 
     val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 1)
-    val createSealedBlock = blockCreator.createSealedBlock(extraDataProvider, block, round, seals)
+    val createSealedBlock = blockCreator.createSealedBlock(block, round, seals)
     val createdSealedBeaconBlock = createSealedBlock.toSealedBeaconBlock()
 
     // block header fields

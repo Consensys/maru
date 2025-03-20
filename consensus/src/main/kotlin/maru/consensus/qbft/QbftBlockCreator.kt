@@ -38,7 +38,6 @@ import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
-import org.hyperledger.besu.consensus.qbft.core.types.QbftExtraDataProvider
 import org.hyperledger.besu.crypto.SECPSignature
 
 /**
@@ -98,7 +97,6 @@ class QbftBlockCreator(
   }
 
   override fun createSealedBlock(
-    qbftExtraDataProvider: QbftExtraDataProvider,
     block: QbftBlock,
     roundNumber: Int,
     commitSeals: Collection<SECPSignature>,
