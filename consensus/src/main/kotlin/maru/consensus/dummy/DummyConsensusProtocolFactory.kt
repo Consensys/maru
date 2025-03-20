@@ -23,6 +23,7 @@ import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
 import maru.consensus.ProtocolFactory
+import maru.consensus.state.FinalizationState
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient

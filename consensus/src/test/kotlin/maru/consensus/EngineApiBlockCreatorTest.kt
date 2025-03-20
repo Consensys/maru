@@ -18,7 +18,7 @@ package maru.consensus
 import java.time.Clock
 import kotlin.random.Random
 import maru.consensus.dummy.DummyConsensusState
-import maru.consensus.dummy.FinalizationState
+import maru.consensus.state.FinalizationState
 import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
 import maru.core.ext.DataGenerators.randomValidForkChoiceUpdatedResult
