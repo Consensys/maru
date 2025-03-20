@@ -31,7 +31,7 @@ class QbftBlockImporter(
   private val blockchain: Database,
   private val executionLayerManager: ExecutionLayerManager,
   private val stateTransition: StateTransition,
-  private val finalizationState: FinalizationState,
+  private val finalizationStateProvider: () -> FinalizationState,
 ) : QbftBlockImporter {
   override fun importBlock(qbftBlock: QbftBlock): Boolean {
     val sealedBeaconBlock = qbftBlock.toSealedBeaconBlock()
@@ -60,8 +60,8 @@ class QbftBlockImporter(
           .thenCompose {
             executionLayerManager.setHead(
               headHash = sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash,
-              safeHash = finalizationState.safeBlockHash,
-              finalizedHash = finalizationState.finalizedBlockHash,
+              safeHash = finalizationStateProvider().safeBlockHash,
+              finalizedHash = finalizationStateProvider().finalizedBlockHash,
               payloadAttributes = null,
             )
           }.get()
