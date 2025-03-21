@@ -85,7 +85,7 @@ class QbftBlockCreator(
       validatorProvider
         .getValidatorsAfterBlock(
           parentBeaconBlockHeader.number,
-        ).get()
+        )
     val stateRoot =
       HashUtil.stateRoot(
         BeaconState(stateRootBlockHeader, HashUtil.bodyRoot(beaconBlockBody), validators),

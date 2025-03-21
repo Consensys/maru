@@ -38,7 +38,7 @@ class BeaconBlockHeaderSerializerTest {
         number = Random.nextULong(),
         round = Random.nextULong(),
         timestamp = Random.nextULong(),
-        proposer = Validator(Random.nextBytes(20)),
+        proposer = Validator(Random.nextBytes(128)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
