@@ -16,12 +16,16 @@
 package maru.consensus
 
 import kotlin.collections.setOf
+import maru.core.BeaconBlockHeader
 import maru.core.Validator
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
  * Provides access to the set of validators for a given block.
  */
 interface ValidatorProvider {
+  fun getValidatorsForBlock(header: BeaconBlockHeader): SafeFuture<Set<Validator>>
+
   fun getValidatorsAfterBlock(blockNumber: ULong): Set<Validator>
 
   fun getValidatorsForBlock(blockNumber: ULong): Set<Validator>
