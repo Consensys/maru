@@ -23,7 +23,7 @@ data class BeaconBlockHeader(
   val parentRoot: ByteArray,
   val stateRoot: ByteArray,
   val bodyRoot: ByteArray,
-  private val headerHashFunction: HeaderHashFunction,
+  val headerHashFunction: HeaderHashFunction,
 ) {
   val hash by lazy { headerHashFunction(this) }
 
