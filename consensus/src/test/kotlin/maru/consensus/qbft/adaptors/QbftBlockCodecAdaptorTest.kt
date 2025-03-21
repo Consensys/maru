@@ -15,8 +15,8 @@
  */
 package maru.consensus.adaptors
 
-import maru.consensus.qbft.adaptors.QbftBlockAdaptor
-import maru.consensus.qbft.adaptors.QbftBlockCodecAdaptor
+import maru.consensus.qbft.adaptors.QbftBlockAdapter
+import maru.consensus.qbft.adaptors.QbftBlockCodecAdapter
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.ethereum.rlp.RLP
@@ -26,11 +26,11 @@ class QbftBlockCodecAdaptorTest {
   @Test
   fun `can encode and decode same value`() {
     val beaconBlock = DataGenerators.randomBeaconBlock(10U)
-    val testValue = QbftBlockAdaptor(beaconBlock)
-    val qbftBlockCodecAdaptor = QbftBlockCodecAdaptor()
+    val testValue = QbftBlockAdapter(beaconBlock)
+    val qbftBlockCodecAdapter = QbftBlockCodecAdapter()
 
-    val encodedData = RLP.encode { rlpOutput -> qbftBlockCodecAdaptor.writeTo(testValue, rlpOutput) }
-    val decodedValue = qbftBlockCodecAdaptor.readFrom(RLP.input(encodedData))
+    val encodedData = RLP.encode { rlpOutput -> qbftBlockCodecAdapter.writeTo(testValue, rlpOutput) }
+    val decodedValue = qbftBlockCodecAdapter.readFrom(RLP.input(encodedData))
     assertThat(decodedValue).isEqualTo(testValue)
   }
 }

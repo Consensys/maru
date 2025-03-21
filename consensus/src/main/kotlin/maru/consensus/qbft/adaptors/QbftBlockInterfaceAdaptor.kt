@@ -20,7 +20,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockInterface
 
 /**
- * Adaptor class for QBFT block interface, this provides a way to replace the round number in a block
+ * Adapter class for QBFT block interface, this provides a way to replace the round number in a block
  */
 class QbftBlockInterfaceAdaptor : QbftBlockInterface {
   override fun replaceRoundInBlock(
@@ -32,7 +32,7 @@ class QbftBlockInterfaceAdaptor : QbftBlockInterface {
       beaconBlockHeader.copy(
         round = roundNumber.toULong(),
       )
-    return QbftBlockAdaptor(
+    return QbftBlockAdapter(
       BeaconBlock(replacedBeaconBlockHeader, proposalBlock.toBeaconBlock().beaconBlockBody),
     )
   }
