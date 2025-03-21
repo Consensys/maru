@@ -37,7 +37,6 @@ object NoopValidator : ExecutionPayloadValidator {
 
 class JsonRpcExecutionLayerManager private constructor(
   private val executionLayerClient: ExecutionLayerClient,
-  private val feeRecipientProvider: FeeRecipientProvider,
   currentBlockMetadata: BlockMetadata,
   private val payloadValidator: ExecutionPayloadValidator,
 ) : ExecutionLayerManager {
@@ -47,14 +46,12 @@ class JsonRpcExecutionLayerManager private constructor(
     fun create(
       executionLayerClient: ExecutionLayerClient,
       metadataProvider: MetadataProvider,
-      feeRecipientProvider: FeeRecipientProvider,
       payloadValidator: ExecutionPayloadValidator,
     ): SafeFuture<JsonRpcExecutionLayerManager> =
       metadataProvider.getLatestBlockMetadata().thenApply {
         val currentBlockMetadata = BlockMetadata(it.blockNumber, it.blockHash, it.unixTimestampSeconds)
         JsonRpcExecutionLayerManager(
           executionLayerClient = executionLayerClient,
-          feeRecipientProvider = feeRecipientProvider,
           currentBlockMetadata = currentBlockMetadata,
           payloadValidator = payloadValidator,
         )
@@ -83,14 +80,12 @@ class JsonRpcExecutionLayerManager private constructor(
       currentBlockMetadata = currentBlockMetadata,
     )
 
-  private fun getNextFeeRecipient(nextBlockTimestamp: Long): ByteArray =
-    feeRecipientProvider.getFeeRecipient(nextBlockTimestamp)
-
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
     safeHash: ByteArray,
     finalizedHash: ByteArray,
     nextBlockTimestamp: Long,
+    feeRecipient: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult> {
     log.debug(
       "Trying to create a block number {} with timestamp {}",
@@ -100,10 +95,10 @@ class JsonRpcExecutionLayerManager private constructor(
     val payloadAttributes =
       PayloadAttributes(
         timestamp = nextBlockTimestamp,
-        suggestedFeeRecipient = getNextFeeRecipient(nextBlockTimestamp),
+        suggestedFeeRecipient = feeRecipient,
       )
     log.debug("Starting block building with payload attributes {}", payloadAttributes)
-    return setHead(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
+    return forkChoiceUpdate(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
       log.debug("Setting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
       payloadId = it.payloadId
     }
@@ -164,6 +159,12 @@ class JsonRpcExecutionLayerManager private constructor(
   override fun latestBlockMetadata(): BlockMetadata = latestBlockCache.currentBlockMetadata
 
   override fun setHead(
+    headHash: ByteArray,
+    safeHash: ByteArray,
+    finalizedHash: ByteArray,
+  ): SafeFuture<ForkChoiceUpdatedResult> = forkChoiceUpdate(headHash, safeHash, finalizedHash, null)
+
+  private fun forkChoiceUpdate(
     headHash: ByteArray,
     safeHash: ByteArray,
     finalizedHash: ByteArray,

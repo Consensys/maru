@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.executionlayer.manager
+package maru.consensus.dummy
 
 fun interface FeeRecipientProvider {
   fun getFeeRecipient(timestamp: Long): ByteArray

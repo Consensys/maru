@@ -147,6 +147,7 @@ interface ExecutionLayerManager {
     safeHash: ByteArray,
     finalizedHash: ByteArray,
     nextBlockTimestamp: Long,
+    feeRecipient: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
@@ -157,7 +158,6 @@ interface ExecutionLayerManager {
     headHash: ByteArray,
     safeHash: ByteArray,
     finalizedHash: ByteArray,
-    payloadAttributes: PayloadAttributes?,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
   fun importPayload(executionPayload: ExecutionPayload): SafeFuture<Unit>

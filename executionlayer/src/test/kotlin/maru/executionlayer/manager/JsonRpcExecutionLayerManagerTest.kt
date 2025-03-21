@@ -30,12 +30,12 @@ import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito.atLeastOnce
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.reset
-import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -75,7 +75,6 @@ class JsonRpcExecutionLayerManagerTest {
       .create(
         executionLayerClient = executionLayerClient,
         metadataProvider = metadataProvider,
-        feeRecipientProvider = { feeRecipient },
         payloadValidator = NoopValidator,
       ).get()
   }
@@ -134,6 +133,7 @@ class JsonRpcExecutionLayerManagerTest {
           safeHash = newSafeHash.toArray(),
           finalizedHash = newFinalizedHash.toArray(),
           nextBlockTimestamp = nextTimestamp,
+          feeRecipient = feeRecipient,
         ).get()
 
     val expectedPayloadStatus =
@@ -176,6 +176,7 @@ class JsonRpcExecutionLayerManagerTest {
           safeHash = newSafeHash.toArray(),
           finalizedHash = newFinalizedHash.toArray(),
           nextBlockTimestamp = nextTimestamp,
+          feeRecipient = feeRecipient,
         ).get()
 
     val expectedPayloadStatus =
@@ -237,6 +238,7 @@ class JsonRpcExecutionLayerManagerTest {
         safeHash = newSafeHash.toArray(),
         finalizedHash = newFinalizedHash.toArray(),
         nextBlockTimestamp = nextTimestamp,
+        feeRecipient = feeRecipient,
       ).get()
 
     val executionPayload = DataGenerators.randomExecutionPayload()
@@ -251,6 +253,7 @@ class JsonRpcExecutionLayerManagerTest {
         safeHash = Bytes32.random().toArray(),
         finalizedHash = Bytes32.random().toArray(),
         nextBlockTimestamp = nextTimestamp,
+        feeRecipient = feeRecipient,
       ).get()
 
     val expectedBlockMetadata =
@@ -274,7 +277,6 @@ class JsonRpcExecutionLayerManagerTest {
       headHash = executionPayload.blockHash,
       safeHash = executionPayload.blockHash,
       finalizedHash = executionPayload.blockHash,
-      payloadAttributes = null,
     )
     assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(
       BlockMetadata(
@@ -317,7 +319,6 @@ class JsonRpcExecutionLayerManagerTest {
     val newHeadHash = Bytes32.random()
     val newSafeHash = Bytes32.random()
     val newFinalizedHash = Bytes32.random()
-    val nextTimestamp = Random.nextLong(0, Long.MAX_VALUE)
 
     val payloadId = Bytes8(Bytes.random(8))
     val payloadStatus = mockForkChoiceUpdateWithValidStatus(payloadId)
@@ -328,11 +329,6 @@ class JsonRpcExecutionLayerManagerTest {
           headHash = newHeadHash.toArray(),
           safeHash = newSafeHash.toArray(),
           finalizedHash = newFinalizedHash.toArray(),
-          payloadAttributes =
-            PayloadAttributes(
-              timestamp = nextTimestamp,
-              suggestedFeeRecipient = feeRecipient,
-            ),
         ).get()
 
     val expectedPayloadStatus =
@@ -354,14 +350,7 @@ class JsonRpcExecutionLayerManagerTest {
       argThat { forkChoiceState ->
         forkChoiceState == ForkChoiceStateV1(newHeadHash, newSafeHash, newFinalizedHash)
       },
-      argThat { payloadAttributes ->
-        payloadAttributes ==
-          PayloadAttributesV1(
-            UInt64.fromLongBits(nextTimestamp),
-            Bytes32.ZERO,
-            Bytes20(Bytes.wrap(feeRecipient)),
-          )
-      },
+      isNull(),
     )
   }
 }
