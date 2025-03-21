@@ -18,14 +18,11 @@ package maru.consensus.qbft
 import java.math.BigInteger
 import java.util.Collections
 import maru.consensus.ValidatorProvider
-import maru.consensus.bodyRoot
-import maru.consensus.headerHash
 import maru.consensus.qbft.adaptors.QbftBlockAdapter
 import maru.consensus.qbft.adaptors.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adaptors.toBeaconBlock
 import maru.consensus.qbft.adaptors.toBeaconBlockHeader
 import maru.consensus.qbft.adaptors.toSealedBeaconBlock
-import maru.consensus.stateRoot
 import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.core.Seal
@@ -33,6 +30,9 @@ import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.serialization.rlp.bodyRoot
+import maru.serialization.rlp.headerHash
+import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier

@@ -16,13 +16,10 @@
 package maru.consensus.qbft
 
 import maru.consensus.ValidatorProvider
-import maru.consensus.bodyRoot
-import maru.consensus.headerHash
 import maru.consensus.qbft.adaptors.QbftBlockAdapter
 import maru.consensus.qbft.adaptors.QbftSealedBlockAdaptor
 import maru.consensus.qbft.adaptors.toBeaconBlock
 import maru.consensus.qbft.adaptors.toBeaconBlockHeader
-import maru.consensus.stateRoot
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
@@ -33,6 +30,9 @@ import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.serialization.rlp.bodyRoot
+import maru.serialization.rlp.headerHash
+import maru.serialization.rlp.stateRoot
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
