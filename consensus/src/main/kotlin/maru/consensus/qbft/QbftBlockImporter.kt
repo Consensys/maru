@@ -56,15 +56,12 @@ class QbftBlockImporter(
           .putBeaconState(resultingState)
           .putSealedBeaconBlock(sealedBeaconBlock, sealedBeaconBlock.beaconBlock.beaconBlockHeader.bodyRoot)
         executionLayerManager
-          .importBlock(sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload)
-          .thenCompose {
-            executionLayerManager.setHead(
-              headHash = sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash,
-              safeHash = finalizationStateProvider().safeBlockHash,
-              finalizedHash = finalizationStateProvider().finalizedBlockHash,
-              payloadAttributes = null,
-            )
-          }.get()
+          .setHead(
+            headHash = sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash,
+            safeHash = finalizationStateProvider().safeBlockHash,
+            finalizedHash = finalizationStateProvider().finalizedBlockHash,
+            payloadAttributes = null,
+          ).get()
       } catch (e: Exception) {
         updater.rollback()
         return false

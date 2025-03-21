@@ -15,6 +15,7 @@
  */
 package maru.executionlayer.manager
 
+import java.util.concurrent.ExecutionException
 import kotlin.random.Random
 import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
@@ -25,11 +26,14 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito.atLeastOnce
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.reset
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
@@ -41,13 +45,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
-import tech.pegasys.teku.spec.TestSpecFactory
 import tech.pegasys.teku.spec.executionlayer.ExecutionPayloadStatus
-import tech.pegasys.teku.spec.util.DataStructureUtil
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult as TekuForkChoiceUpdatedResult
 
 class JsonRpcExecutionLayerManagerTest {
-  private val dataStructureUtil = DataStructureUtil(TestSpecFactory.createMinimalDeneb())
   private lateinit var executionLayerClient: ExecutionLayerClient
   private lateinit var executionLayerManager: ExecutionLayerManager
 
@@ -79,11 +80,11 @@ class JsonRpcExecutionLayerManagerTest {
       ).get()
   }
 
-  private fun mockForkChoiceUpdateWithValidStatus(payloadId: Bytes8): PayloadStatusV1 {
+  private fun mockForkChoiceUpdateWithValidStatus(payloadId: Bytes8?): PayloadStatusV1 {
     val latestValidHash = Bytes32.random()
     val executionStatus = ExecutionPayloadStatus.VALID
     val payloadStatus = PayloadStatusV1(executionStatus, latestValidHash, null)
-    whenever(executionLayerClient.forkChoiceUpdate(any(), any()))
+    whenever(executionLayerClient.forkChoiceUpdate(any(), anyOrNull()))
       .thenReturn(
         SafeFuture.completedFuture(
           Response.fromPayloadReceivedAsJson(TekuForkChoiceUpdatedResult(payloadStatus, payloadId)),
@@ -107,6 +108,12 @@ class JsonRpcExecutionLayerManagerTest {
   private fun mockNewPayloadWithStatus(payloadStatus: PayloadStatusV1) {
     whenever(executionLayerClient.newPayload(any())).thenReturn(
       SafeFuture.completedFuture(Response.fromPayloadReceivedAsJson(payloadStatus)),
+    )
+  }
+
+  private fun mockFailedNewPayloadWithStatus(errorMessage: String) {
+    whenever(executionLayerClient.newPayload(any())).thenReturn(
+      SafeFuture.completedFuture(Response.fromErrorMessage(errorMessage)),
     )
   }
 
@@ -253,5 +260,108 @@ class JsonRpcExecutionLayerManagerTest {
         unixTimestampSeconds = executionPayload.timestamp.toLong(),
       )
     assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(expectedBlockMetadata)
+  }
+
+  @Test
+  fun `importPayload + setHead updates next block metadata on success`() {
+    val executionPayload = DataGenerators.randomExecutionPayload()
+    val payloadStatus = PayloadStatusV1(ExecutionPayloadStatus.VALID, Bytes32.random(), null)
+    mockNewPayloadWithStatus(payloadStatus)
+    mockForkChoiceUpdateWithValidStatus(null)
+    executionLayerManager.importPayload(executionPayload).get()
+
+    executionLayerManager.setHead(
+      headHash = executionPayload.blockHash,
+      safeHash = executionPayload.blockHash,
+      finalizedHash = executionPayload.blockHash,
+      payloadAttributes = null,
+    )
+    assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(
+      BlockMetadata(
+        executionPayload.blockNumber,
+        executionPayload.blockHash,
+        executionPayload.timestamp.toLong(),
+      ),
+    )
+  }
+
+  @Test
+  fun `importPayload throws exception on validation failure`() {
+    val executionPayload = DataGenerators.randomExecutionPayload()
+    val payloadStatus = PayloadStatusV1(ExecutionPayloadStatus.INVALID, Bytes32.random(), "Invalid payload")
+    mockNewPayloadWithStatus(payloadStatus)
+
+    val exception =
+      assertThrows<ExecutionException> {
+        executionLayerManager.importPayload(executionPayload).get()
+      }
+
+    assertThat(exception).cause().hasMessage("engine_newPayload request failed! Cause: Invalid payload")
+  }
+
+  @Test
+  fun `importPayload throws exception on general failure`() {
+    val executionPayload = DataGenerators.randomExecutionPayload()
+    mockFailedNewPayloadWithStatus("Unexpected error!")
+
+    val exception =
+      assertThrows<ExecutionException> {
+        executionLayerManager.importPayload(executionPayload).get()
+      }
+
+    assertThat(exception).cause().hasMessage("engine_newPayload request failed! Cause: Unexpected error!")
+  }
+
+  @Test
+  fun `setHead updates fork choice state and returns result`() {
+    val newHeadHash = Bytes32.random()
+    val newSafeHash = Bytes32.random()
+    val newFinalizedHash = Bytes32.random()
+    val nextTimestamp = Random.nextLong(0, Long.MAX_VALUE)
+
+    val payloadId = Bytes8(Bytes.random(8))
+    val payloadStatus = mockForkChoiceUpdateWithValidStatus(payloadId)
+
+    val result =
+      executionLayerManager
+        .setHead(
+          headHash = newHeadHash.toArray(),
+          safeHash = newSafeHash.toArray(),
+          finalizedHash = newFinalizedHash.toArray(),
+          payloadAttributes =
+            PayloadAttributes(
+              timestamp = nextTimestamp,
+              suggestedFeeRecipient = feeRecipient,
+            ),
+        ).get()
+
+    val expectedPayloadStatus =
+      PayloadStatus(
+        executionPayloadStatus = "VALID",
+        latestValidHash =
+          payloadStatus
+            .asInternalExecutionPayload()
+            .latestValidHash
+            .get()
+            .toArray(),
+        validationError = null,
+        failureCause = null,
+      )
+    val expectedResult = ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId.wrappedBytes.toArray())
+    assertThat(result).isEqualTo(expectedResult)
+
+    verify(executionLayerClient).forkChoiceUpdate(
+      argThat { forkChoiceState ->
+        forkChoiceState == ForkChoiceStateV1(newHeadHash, newSafeHash, newFinalizedHash)
+      },
+      argThat { payloadAttributes ->
+        payloadAttributes ==
+          PayloadAttributesV1(
+            UInt64.fromLongBits(nextTimestamp),
+            Bytes32.ZERO,
+            Bytes20(Bytes.wrap(feeRecipient)),
+          )
+      },
+    )
   }
 }

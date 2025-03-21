@@ -160,5 +160,5 @@ interface ExecutionLayerManager {
     payloadAttributes: PayloadAttributes?,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
-  fun importBlock(executionPayload: ExecutionPayload): SafeFuture<Unit>
+  fun importPayload(executionPayload: ExecutionPayload): SafeFuture<Unit>
 }

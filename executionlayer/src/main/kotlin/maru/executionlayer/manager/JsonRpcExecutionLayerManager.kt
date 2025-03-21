@@ -104,7 +104,6 @@ class JsonRpcExecutionLayerManager private constructor(
       )
     log.debug("Starting block building with payload attributes {}", payloadAttributes)
     return setHead(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
-      latestBlockCache.promoteBlockMetadata()
       log.debug("Setting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
       payloadId = it.payloadId
     }
@@ -148,7 +147,7 @@ class JsonRpcExecutionLayerManager private constructor(
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
             throw RuntimeException(validationResult.reason)
           }
-          importBlock(executionPayload).thenApply {
+          importPayload(executionPayload).thenApply {
             log.debug("Unsetting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
 
             payloadId = null // Not necessary, but it helps to reinforce the order of calls
@@ -203,28 +202,28 @@ class JsonRpcExecutionLayerManager private constructor(
             } " + response.errorMessage,
           )
         } else {
+          latestBlockCache.promoteBlockMetadata()
           mapForkChoiceUpdatedResultToDomain(response)
         }
       }
 
-  override fun importBlock(executionPayload: ExecutionPayload): SafeFuture<Unit> =
-    executionLayerClient.newPayload(executionPayload).thenApply { payloadStatus ->
-      if (payloadStatus.isSuccess &&
-        payloadStatus.payload
-          .asInternalExecutionPayload()
-          .status
-          .get() ==
-        ExecutionPayloadStatus.VALID
-      ) {
-        latestBlockCache.updateNext(
-          BlockMetadata(
-            executionPayload.blockNumber,
-            executionPayload.blockHash,
-            executionPayload.timestamp.toLong(),
-          ),
-        )
+  override fun importPayload(executionPayload: ExecutionPayload): SafeFuture<Unit> =
+    executionLayerClient.newPayload(executionPayload).thenApply { payloadStatusResponse ->
+      if (payloadStatusResponse.isSuccess) {
+        val payloadStatus = payloadStatusResponse.payload.asInternalExecutionPayload()
+        if (payloadStatus.status.get() == ExecutionPayloadStatus.VALID) {
+          latestBlockCache.updateNext(
+            BlockMetadata(
+              executionPayload.blockNumber,
+              executionPayload.blockHash,
+              executionPayload.timestamp.toLong(),
+            ),
+          )
+        } else {
+          throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatus.validationError.get())
+        }
       } else {
-        throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatus.errorMessage)
+        throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatusResponse.errorMessage)
       }
     }
 }
