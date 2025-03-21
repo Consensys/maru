@@ -18,7 +18,7 @@ package maru.consensus.qbft
 import maru.consensus.ValidatorProvider
 import maru.consensus.bodyRoot
 import maru.consensus.headerHash
-import maru.consensus.qbft.adaptors.QbftBlockAdaptor
+import maru.consensus.qbft.adaptors.QbftBlockAdapter
 import maru.consensus.qbft.adaptors.QbftSealedBlockAdaptor
 import maru.consensus.qbft.adaptors.toBeaconBlock
 import maru.consensus.qbft.adaptors.toBeaconBlockHeader
@@ -93,7 +93,7 @@ class QbftBlockCreator(
     val finalBlockHeader = stateRootBlockHeader.copy(stateRoot = stateRoot)
     val beaconBlock =
       BeaconBlock(finalBlockHeader, beaconBlockBody)
-    return QbftBlockAdaptor(beaconBlock)
+    return QbftBlockAdapter(beaconBlock)
   }
 
   override fun createSealedBlock(

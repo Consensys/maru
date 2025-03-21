@@ -22,7 +22,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorProvider
 import org.hyperledger.besu.datatypes.Address
 
 /**
- * Adaptor to convert a [ValidatorProvider] to a [QbftValidatorProvider].
+ * Adapter to convert a [ValidatorProvider] to a [QbftValidatorProvider].
  */
 class QbftValidatorProviderAdaptor(
   private val validatorProvider: ValidatorProvider,
@@ -31,12 +31,12 @@ class QbftValidatorProviderAdaptor(
   override fun getValidatorsAtHead(): Collection<Address> = throw UnsupportedOperationException("Not implemented")
 
   override fun getValidatorsAfterBlock(header: QbftBlockHeader): Collection<Address> =
-    validatorProvider.getValidatorsAfterBlock(header.toBeaconBlockHeader().number).map {
+    validatorProvider.getValidatorsAfterBlock(header.toBeaconBlockHeader().number).get().map {
       Address.wrap(Bytes.wrap(it.address))
     }
 
   override fun getValidatorsForBlock(header: QbftBlockHeader): Collection<Address> =
-    validatorProvider.getValidatorsForBlock(header.toBeaconBlockHeader().number).map {
+    validatorProvider.getValidatorsForBlock(header.toBeaconBlockHeader().number).get().map {
       Address.wrap(Bytes.wrap(it.address))
     }
 }

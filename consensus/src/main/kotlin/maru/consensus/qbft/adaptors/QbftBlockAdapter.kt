@@ -20,12 +20,12 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 
 /**
- * Adaptor class to convert a BeaconBlock to a QBFT block
+ * Adapter class to convert a BeaconBlock to a QBFT block
  */
-class QbftBlockAdaptor(
+class QbftBlockAdapter(
   val beaconBlock: BeaconBlock,
 ) : QbftBlock {
-  val qbftHeader: QbftBlockHeader = QbftBlockHeaderAdaptor(beaconBlock.beaconBlockHeader)
+  val qbftHeader: QbftBlockHeader = QbftBlockHeaderAdapter(beaconBlock.beaconBlockHeader)
 
   override fun getHeader(): QbftBlockHeader = qbftHeader
 
@@ -35,7 +35,7 @@ class QbftBlockAdaptor(
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
-    if (other !is QbftBlockAdaptor) return false
+    if (other !is QbftBlockAdapter) return false
 
     if (beaconBlock != other.beaconBlock) return false
     if (qbftHeader != other.qbftHeader) return false

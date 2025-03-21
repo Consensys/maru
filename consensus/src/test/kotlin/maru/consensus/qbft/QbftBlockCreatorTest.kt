@@ -20,8 +20,8 @@ import java.util.Collections
 import maru.consensus.ValidatorProvider
 import maru.consensus.bodyRoot
 import maru.consensus.headerHash
-import maru.consensus.qbft.adaptors.QbftBlockAdaptor
-import maru.consensus.qbft.adaptors.QbftBlockHeaderAdaptor
+import maru.consensus.qbft.adaptors.QbftBlockAdapter
+import maru.consensus.qbft.adaptors.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adaptors.toBeaconBlock
 import maru.consensus.qbft.adaptors.toBeaconBlockHeader
 import maru.consensus.qbft.adaptors.toSealedBeaconBlock
@@ -53,7 +53,7 @@ class QbftBlockCreatorTest {
   @Test
   fun `can create block`() {
     val parentBlock = DataGenerators.randomSealedBeaconBlock(10U)
-    val parentHeader = QbftBlockHeaderAdaptor(parentBlock.beaconBlock.beaconBlockHeader)
+    val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
     val executionPayload = DataGenerators.randomExecutionPayload()
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(parentBlock)
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
@@ -104,7 +104,7 @@ class QbftBlockCreatorTest {
   @Test
   fun `fails to create block if execution payload not available`() {
     val parentBlock = DataGenerators.randomBeaconBlock(10U)
-    val parentHeader = QbftBlockHeaderAdaptor(parentBlock.beaconBlockHeader)
+    val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
 
     whenever(
       executionLayerManager.finishBlockBuilding(),
@@ -123,7 +123,7 @@ class QbftBlockCreatorTest {
   @Test
   fun `fails to create block if parent beacon block not available`() {
     val parentBlock = DataGenerators.randomBeaconBlock(10U)
-    val parentHeader = QbftBlockHeaderAdaptor(parentBlock.beaconBlockHeader)
+    val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
     val executionPayload = DataGenerators.randomExecutionPayload()
 
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
@@ -142,7 +142,7 @@ class QbftBlockCreatorTest {
 
   @Test
   fun `can create sealed block`() {
-    val block = QbftBlockAdaptor(DataGenerators.randomBeaconBlock(10U))
+    val block = QbftBlockAdapter(DataGenerators.randomBeaconBlock(10U))
     val beaconBlock = block.toBeaconBlock()
     val seals = listOf(SECPSignature.create(BigInteger.ONE, BigInteger.TWO, 0x00, BigInteger.valueOf(4)))
     val round = 1

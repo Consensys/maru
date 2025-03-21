@@ -15,7 +15,6 @@
  */
 package maru.consensus
 
-import kotlin.collections.setOf
 import maru.core.BeaconBlockHeader
 import maru.core.Validator
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -26,18 +25,21 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 interface ValidatorProvider {
   fun getValidatorsForBlock(header: BeaconBlockHeader): SafeFuture<Set<Validator>>
 
-  fun getValidatorsAfterBlock(blockNumber: ULong): Set<Validator>
+  fun getValidatorsAfterBlock(blockNumber: ULong): SafeFuture<Set<Validator>> = getValidatorsForBlock(blockNumber + 1u)
 
-  fun getValidatorsForBlock(blockNumber: ULong): Set<Validator>
+  fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>>
 }
 
 /**
  * A [ValidatorProvider] that always returns the same [Validator] instance. This is useful for the single validator case.
  */
 class StaticValidatorProvider(
-  private val validator: Validator,
+  private val validators: Set<Validator>,
 ) : ValidatorProvider {
-  override fun getValidatorsAfterBlock(blockNumber: ULong): Set<Validator> = setOf(validator)
+  // TODO: will be removed in the future
+  override fun getValidatorsForBlock(header: BeaconBlockHeader): SafeFuture<Set<Validator>> =
+    SafeFuture.completedFuture<Set<Validator>>(validators)
 
-  override fun getValidatorsForBlock(blockNumber: ULong): Set<Validator> = setOf(validator)
+  override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> =
+    SafeFuture.completedFuture<Set<Validator>>(validators)
 }

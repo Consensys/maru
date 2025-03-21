@@ -28,7 +28,7 @@ class QbftBlockInterfaceAdaptorTest {
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(1UL).copy(round = 10UL),
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
-    val qbftBlock = QbftBlockAdaptor(beaconBlock)
+    val qbftBlock = QbftBlockAdapter(beaconBlock)
     val updatedBlock =
       QbftBlockInterfaceAdaptor().replaceRoundInBlock(qbftBlock, 20)
     val updatedBeaconBlockHeader = updatedBlock.header.toBeaconBlockHeader()
