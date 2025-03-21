@@ -19,11 +19,11 @@ import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 
 interface Database : AutoCloseable {
-  fun getLatestBeaconState(): BeaconState?
+  fun getLatestBeaconState(): BeaconState
 
-  fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState?
+  fun findBeaconState(beaconBlockRoot: ByteArray): BeaconState?
 
-  fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock?
+  fun findSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock?
 
   fun newUpdater(): Updater
 }
