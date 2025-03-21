@@ -45,7 +45,7 @@ class BeaconStateSerializerTest {
         number = Random.nextULong(),
         round = Random.nextULong(),
         timestamp = Random.nextULong(),
-        proposer = Validator(Random.nextBytes(128)),
+        proposer = Validator(Random.nextBytes(20)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
@@ -55,7 +55,7 @@ class BeaconStateSerializerTest {
       BeaconState(
         latestBeaconBlockHeader = beaconBLockHeader,
         latestBeaconBlockRoot = Random.nextBytes(32),
-        validators = buildSet(3) { Validator(Random.nextBytes(128)) },
+        validators = buildSet(3) { Validator(Random.nextBytes(20)) },
       )
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)

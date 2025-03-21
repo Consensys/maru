@@ -43,7 +43,7 @@ object DataGenerators {
         number = number,
         round = Random.nextULong(),
         timestamp = Random.nextULong(),
-        proposer = Validator(Random.nextBytes(128)),
+        proposer = Validator(Random.nextBytes(20)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
@@ -52,7 +52,7 @@ object DataGenerators {
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
       latestBeaconBlockRoot = Random.nextBytes(32),
-      validators = buildSet(3) { Validator(Random.nextBytes(128)) },
+      validators = buildSet(3) { Validator(Random.nextBytes(20)) },
     )
   }
 
@@ -88,7 +88,7 @@ object DataGenerators {
       number = number,
       round = Random.nextULong(),
       timestamp = Random.nextULong(),
-      proposer = Validator(Random.nextBytes(128)),
+      proposer = Validator(Random.nextBytes(20)),
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
       bodyRoot = Random.nextBytes(32),
@@ -113,8 +113,6 @@ object DataGenerators {
       transactions = emptyList(),
     )
 
-  fun randomValidator(): Validator = Validator(Random.nextBytes(20))
-
   fun randomBlockMetadata(timestamp: Long): BlockMetadata =
     BlockMetadata(
       Random.nextULong(),
@@ -133,5 +131,5 @@ object DataGenerators {
     return ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId)
   }
 
-  fun randomValidator(): Validator = Validator(Random.nextBytes(128))
+  fun randomValidator(): Validator = Validator(Random.nextBytes(20))
 }
