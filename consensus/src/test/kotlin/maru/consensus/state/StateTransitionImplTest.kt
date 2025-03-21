@@ -31,6 +31,7 @@ import maru.core.ext.DataGenerators
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
+import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -69,7 +70,7 @@ class StateTransitionImplTest {
 
   private val proposerSelector =
     object : ProposerSelector {
-      override fun getProposerForBlock(header: BeaconBlockHeader): SafeFuture<Validator> =
+      override fun getProposerForBlock(consensusRoundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator> =
         SafeFuture.completedFuture(newBlockHeader.proposer)
     }
 
