@@ -43,6 +43,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 
 class QbftBlockCreatorTest {
   private val executionLayerManager = Mockito.mock(ExecutionLayerManager::class.java)
@@ -56,8 +57,11 @@ class QbftBlockCreatorTest {
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
     val executionPayload = DataGenerators.randomExecutionPayload()
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(parentBlock)
-    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
+    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(completedFuture(executionPayload))
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
+    whenever(
+      validatorProvider.getValidatorsAfterBlock(10U),
+    ).thenReturn(completedFuture(DataGenerators.randomValidators()))
 
     val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 1)
     val createdBlock = blockCreator.createBlock(1000L, parentHeader)
@@ -126,7 +130,7 @@ class QbftBlockCreatorTest {
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
     val executionPayload = DataGenerators.randomExecutionPayload()
 
-    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(SafeFuture.completedFuture(executionPayload))
+    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(completedFuture(executionPayload))
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlockHeader.hash())).thenReturn(null)
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
 

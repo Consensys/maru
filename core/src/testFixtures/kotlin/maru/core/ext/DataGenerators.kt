@@ -132,4 +132,6 @@ object DataGenerators {
   }
 
   fun randomValidator(): Validator = Validator(Random.nextBytes(20))
+
+  fun randomValidators(): Set<Validator> = buildSet(3) { Validator(Random.nextBytes(20)) }
 }

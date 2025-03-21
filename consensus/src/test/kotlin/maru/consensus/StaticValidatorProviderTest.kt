@@ -15,24 +15,23 @@
  */
 package maru.consensus
 
-import kotlin.random.Random
 import kotlin.test.Test
-import maru.core.Validator
+import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 
 class StaticValidatorProviderTest {
-  private val validator = Validator(Random.nextBytes(128))
-  private val staticValidatorProvider = StaticValidatorProvider(validator)
+  private val validators = DataGenerators.randomValidators()
+  private val staticValidatorProvider = StaticValidatorProvider(validators)
 
   @Test
   fun `can get validators at after block`() {
-    assertThat(staticValidatorProvider.getValidatorsAfterBlock(0U)).isEqualTo(setOf(validator))
-    assertThat(staticValidatorProvider.getValidatorsAfterBlock(1U)).isEqualTo(setOf(validator))
+    assertThat(staticValidatorProvider.getValidatorsAfterBlock(0U).get()).isEqualTo(validators)
+    assertThat(staticValidatorProvider.getValidatorsAfterBlock(1U).get()).isEqualTo(validators)
   }
 
   @Test
   fun `can get validators for block`() {
-    assertThat(staticValidatorProvider.getValidatorsForBlock(0U)).isEqualTo(setOf(validator))
-    assertThat(staticValidatorProvider.getValidatorsForBlock(1U)).isEqualTo(setOf(validator))
+    assertThat(staticValidatorProvider.getValidatorsForBlock(0U).get()).isEqualTo(validators)
+    assertThat(staticValidatorProvider.getValidatorsForBlock(1U).get()).isEqualTo(validators)
   }
 }
