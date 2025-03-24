@@ -41,7 +41,7 @@ import org.hyperledger.besu.evm.log.LogsBloomFilter
 /**
  * Responsible for block creation with Engine API. createEmptyWithdrawalsBlock is the only available signature, the
  * rest of the methods delegate to it
- * Even though it implements BlockCreator, this interface doesn't really fit Engine API flow due to its asynchronycity
+ * Even though it implements BlockCreator, this interface doesn't really fit Engine API flow due to its asynchronicity
  */
 class EngineApiBlockCreator(
   private val manager: ExecutionLayerManager,

@@ -15,90 +15,45 @@
  */
 package maru.consensus.qbft
 
-import com.github.michaelbull.result.Err
-import com.github.michaelbull.result.Ok
-import maru.consensus.NextBlockTimestampProvider
-import maru.consensus.ProposerSelector
-import maru.consensus.qbft.adaptors.toSealedBeaconBlock
 import maru.consensus.state.FinalizationState
-import maru.consensus.state.StateTransition
-import maru.consensus.state.StateTransition.StateTransitionError
+import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
-import maru.core.BeaconState
 import maru.core.Validator
-import maru.database.Database
-import maru.executionlayer.manager.BlockMetadata
 import maru.executionlayer.manager.ExecutionLayerManager
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class QbftBlockImporter(
-  private val blockchain: Database,
+fun interface BeaconBlockImporter {
+  fun importBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult>
+}
+
+class BeaconBlockImporterImpl(
   private val executionLayerManager: ExecutionLayerManager,
-  private val stateTransition: StateTransition,
-  private val finalizationStateProvider: () -> FinalizationState,
-  private val proposerSelector: ProposerSelector,
-  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val latestBlockMetadataProvider: () -> BlockMetadata,
+  private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
+  private val nextBlockTimestampProvider: (ConsensusRoundIdentifier) -> Long,
+  private val shouldBuildNextBlock: (ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
-) : QbftBlockImporter {
-  override fun importBlock(qbftBlock: QbftBlock): Boolean {
-    val sealedBeaconBlock = qbftBlock.toSealedBeaconBlock()
-    val beaconBlock = sealedBeaconBlock.beaconBlock
-
-    blockchain.newUpdater().use { updater ->
-      try {
-        val currentState = blockchain.getLatestBeaconState()
-        val resultingState: BeaconState =
-          when (
-            val resultingState =
-              stateTransition
-                .processBlock(
-                  currentState,
-                  beaconBlock,
-                ).get()
-          ) {
-            is Ok<BeaconState> -> resultingState.value
-            is Err<StateTransitionError> -> return false
-          }
-
-        val beaconBlockHeader = beaconBlock.beaconBlockHeader
-        updater
-          .putBeaconState(resultingState)
-          .putSealedBeaconBlock(sealedBeaconBlock, beaconBlockHeader.bodyRoot)
-        val finalizationState = finalizationStateProvider()
-        if (shouldBuildNextBlock(beaconBlockHeader)) {
-          executionLayerManager.setHeadAndStartBlockBuilding(
-            headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
-            safeHash = finalizationState.safeBlockHash,
-            finalizedHash = finalizationState.finalizedBlockHash,
-            nextBlockTimestamp =
-              nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(
-                latestBlockMetadataProvider(),
-              ),
-            feeRecipient = blockBuilderIdentity.address,
-          )
-        } else {
-          executionLayerManager
-            .setHead(
-              headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
-              safeHash = finalizationState.safeBlockHash,
-              finalizedHash = finalizationState.finalizedBlockHash,
-            ).get()
-        }
-      } catch (e: Exception) {
-        updater.rollback()
-        return false
-      }
-      updater.commit()
+) : BeaconBlockImporter {
+  override fun importBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
+    val beaconBlockHeader = beaconBlock.beaconBlockHeader
+    val finalizationState = finalizationStateProvider(beaconBlockHeader)
+    val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
+    return if (shouldBuildNextBlock(nextBlocksRoundIdentifier)) {
+      executionLayerManager.setHeadAndStartBlockBuilding(
+        headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
+        safeHash = finalizationState.safeBlockHash,
+        finalizedHash = finalizationState.finalizedBlockHash,
+        nextBlockTimestamp = nextBlockTimestampProvider(nextBlocksRoundIdentifier),
+        feeRecipient = blockBuilderIdentity.address,
+      )
+    } else {
+      executionLayerManager
+        .setHead(
+          headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
+          safeHash = finalizationState.safeBlockHash,
+          finalizedHash = finalizationState.finalizedBlockHash,
+        )
     }
-
-    return true
-  }
-
-  private fun shouldBuildNextBlock(blockHeader: BeaconBlockHeader): Boolean {
-    return false
-    // proposerSelector.getProposerForBlock(ConsensusRoundIdentifier(blockHeader.number.toLong() + 1, 0)).get() ==
-    // blockBuilderIdentity && it's time to propose next block
   }
 }

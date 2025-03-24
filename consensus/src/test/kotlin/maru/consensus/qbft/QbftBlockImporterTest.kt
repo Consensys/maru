@@ -17,21 +17,17 @@ package maru.consensus.qbft
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
-import kotlin.random.Random
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import maru.consensus.qbft.adaptors.QbftSealedBlockAdaptor
-import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
-import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.Database
 import maru.database.Updater
-import maru.executionlayer.manager.BlockMetadata
 import maru.executionlayer.manager.ExecutionLayerManager
-import org.apache.tuweni.bytes.Bytes32
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -47,32 +43,21 @@ class QbftBlockImporterTest {
   private val stateTransition: StateTransition = mock()
 
   private lateinit var blockchain: Database
-  private lateinit var finalizationStateProvider: () -> FinalizationState
+  private var beaconBlockImporterResponse =
+    SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
 
-  private lateinit var qbftBlockImporter: QbftBlockImporter
+  private lateinit var qbftBlockImporter: QbftBlockImportCoordinator
   private lateinit var initialBeaconState: BeaconState
-  private val feeRecipient = Random.nextBytes(20)
 
   @BeforeEach
   fun setUp() {
     initialBeaconState = DataGenerators.randomBeaconState(2UL)
     blockchain = InMemoryDatabase(initialBeaconState)
-    finalizationStateProvider = {
-      FinalizationState(
-        safeBlockHash = Bytes32.random().toArray(),
-        finalizedBlockHash = Bytes32.random().toArray(),
-      )
-    }
     qbftBlockImporter =
-      QbftBlockImporter(
+      QbftBlockImportCoordinator(
         blockchain = blockchain,
-        executionLayerManager = executionLayerManager,
         stateTransition = stateTransition,
-        finalizationStateProvider = finalizationStateProvider,
-        proposerSelector = { SafeFuture.completedFuture(Validator(feeRecipient)) },
-        nextBlockTimestampProvider = { 1L },
-        latestBlockMetadataProvider = { BlockMetadata(1UL, Random.nextBytes(32), 1L) },
-        blockBuilderIdentity = Validator(Random.nextBytes(20)),
+        beaconBlockImporter = { beaconBlockImporterResponse },
       )
   }
 
@@ -96,38 +81,34 @@ class QbftBlockImporterTest {
     )
 
     val result = qbftBlockImporter.importBlock(qbftBlock)
-
     assertTrue(result)
+    assertThat(blockchain.getLatestBeaconState()).isEqualTo(beaconState)
   }
 
   @Test
-  fun `importBlock returns false on state transition error`() {
+  fun `importBlock rolls the DB update back on state transition failure`() {
     val qbftBlock = QbftSealedBlockAdaptor(DataGenerators.randomSealedBeaconBlock(2UL))
-
-    whenever(stateTransition.processBlock(any(), any())).thenReturn(
-      SafeFuture.completedFuture(
-        Err(
-          StateTransition
-            .StateTransitionError
-            ("error"),
-        ),
-      ),
-    )
-
-    val result = qbftBlockImporter.importBlock(qbftBlock)
-
-    assertFalse(result)
-  }
-
-  @Test
-  fun `importBlock returns false on exception`() {
-    val qbftBlock = QbftSealedBlockAdaptor(DataGenerators.randomSealedBeaconBlock(2UL))
-
     whenever(stateTransition.processBlock(any(), any())).thenThrow(RuntimeException("Test exception"))
+    val stateBeforeTransition = blockchain.getLatestBeaconState()
 
     val result = qbftBlockImporter.importBlock(qbftBlock)
 
     assertFalse(result)
+    val stateAfterTransition = blockchain.getLatestBeaconState()
+    assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
+  }
+
+  @Test
+  fun `importBlock rolls the DB update back on block import`() {
+    val qbftBlock = QbftSealedBlockAdaptor(DataGenerators.randomSealedBeaconBlock(2UL))
+    beaconBlockImporterResponse = SafeFuture.failedFuture(RuntimeException("Test exception"))
+    val stateBeforeTransition = blockchain.getLatestBeaconState()
+
+    val result = qbftBlockImporter.importBlock(qbftBlock)
+
+    assertFalse(result)
+    val stateAfterTransition = blockchain.getLatestBeaconState()
+    assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
   }
 
   private class InMemoryDatabase(
