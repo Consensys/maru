@@ -20,7 +20,7 @@ import maru.core.ext.DataGenerators
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-class QbftBlockInterfaceAdaptorTest {
+class QbftBlockInterfaceAdapterTest {
   @Test
   fun `can replace round number in header`() {
     val beaconBlock =
@@ -30,7 +30,7 @@ class QbftBlockInterfaceAdaptorTest {
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
     val updatedBlock =
-      QbftBlockInterfaceAdaptor().replaceRoundInBlock(qbftBlock, 20)
+      QbftBlockInterfaceAdapter().replaceRoundInBlock(qbftBlock, 20)
     val updatedBeaconBlockHeader = updatedBlock.header.toBeaconBlockHeader()
     assertEquals(updatedBeaconBlockHeader.round, 20UL)
   }
