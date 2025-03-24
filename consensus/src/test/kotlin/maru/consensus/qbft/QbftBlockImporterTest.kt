@@ -15,7 +15,6 @@
  */
 package maru.consensus.qbft
 
-import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
