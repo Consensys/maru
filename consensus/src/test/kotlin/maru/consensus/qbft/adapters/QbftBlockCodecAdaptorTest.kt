@@ -15,8 +15,8 @@
  */
 package maru.consensus.adaptors
 
-import maru.consensus.qbft.adaptors.QbftBlockAdapter
-import maru.consensus.qbft.adaptors.QbftBlockCodecAdapter
+import maru.consensus.qbft.adapters.QbftBlockAdapter
+import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.ethereum.rlp.RLP

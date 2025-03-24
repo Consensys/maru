@@ -16,10 +16,10 @@
 package maru.consensus.qbft
 
 import maru.consensus.ValidatorProvider
-import maru.consensus.qbft.adaptors.QbftBlockAdapter
-import maru.consensus.qbft.adaptors.QbftSealedBlockAdaptor
-import maru.consensus.qbft.adaptors.toBeaconBlock
-import maru.consensus.qbft.adaptors.toBeaconBlockHeader
+import maru.consensus.qbft.adapters.QbftBlockAdapter
+import maru.consensus.qbft.adapters.QbftSealedBlockAdaptor
+import maru.consensus.qbft.adapters.toBeaconBlock
+import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader

@@ -18,11 +18,11 @@ package maru.consensus.qbft
 import java.math.BigInteger
 import java.util.Collections
 import maru.consensus.ValidatorProvider
-import maru.consensus.qbft.adaptors.QbftBlockAdapter
-import maru.consensus.qbft.adaptors.QbftBlockHeaderAdapter
-import maru.consensus.qbft.adaptors.toBeaconBlock
-import maru.consensus.qbft.adaptors.toBeaconBlockHeader
-import maru.consensus.qbft.adaptors.toSealedBeaconBlock
+import maru.consensus.qbft.adapters.QbftBlockAdapter
+import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
+import maru.consensus.qbft.adapters.toBeaconBlock
+import maru.consensus.qbft.adapters.toBeaconBlockHeader
+import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.core.Seal

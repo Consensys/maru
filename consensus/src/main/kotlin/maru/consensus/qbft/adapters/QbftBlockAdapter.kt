@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adaptors
+package maru.consensus.qbft.adapters
 
 import maru.core.BeaconBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
