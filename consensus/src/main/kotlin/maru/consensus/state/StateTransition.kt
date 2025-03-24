@@ -21,15 +21,11 @@ import com.github.michaelbull.result.Result
 import encodeHex
 import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
-import maru.consensus.state.StateTransition.Companion.createTransitionStateBeaconBlockHeader
 import maru.consensus.toConsensusRoundIdentifier
 import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
-import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.HashUtil
-import maru.core.HeaderHashFunction
-import maru.core.Validator
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -43,28 +39,6 @@ interface StateTransition {
     preState: BeaconState,
     block: BeaconBlock,
   ): SafeFuture<Result<BeaconState, StateTransitionError>>
-
-  companion object {
-    fun createTransitionStateBeaconBlockHeader(
-      number: ULong,
-      round: ULong,
-      timestamp: ULong,
-      proposer: Validator,
-      parentRoot: ByteArray,
-      bodyRoot: ByteArray,
-      headerHashFunction: HeaderHashFunction,
-    ): BeaconBlockHeader =
-      BeaconBlockHeader(
-        number = number,
-        round = round,
-        timestamp = timestamp,
-        proposer = proposer,
-        parentRoot = parentRoot,
-        stateRoot = ByteArray(0),
-        bodyRoot = bodyRoot,
-        headerHashFunction = headerHashFunction,
-      )
-  }
 }
 
 class StateTransitionImpl(
@@ -85,23 +59,20 @@ class StateTransitionImpl(
       proposerForBlockFuture,
     ) { validatorsForBlock, proposerForBlock ->
       val beaconBodyRoot = HashUtil.bodyRoot(block.beaconBlockBody)
-      val transitionStateBeaconBlockHeader =
-        createTransitionStateBeaconBlockHeader(
-          number = block.beaconBlockHeader.number,
-          round = block.beaconBlockHeader.round,
-          timestamp = block.beaconBlockHeader.timestamp,
+      val tmpExpectedNewBlockHeader =
+        block.beaconBlockHeader.copy(
           proposer = proposerForBlock,
           parentRoot = preState.latestBeaconBlockHeader.hash,
+          stateRoot = ByteArray(0),
           bodyRoot = beaconBodyRoot,
-          headerHashFunction = block.beaconBlockHeader.headerHashFunction,
         )
-      val transitionState =
+      val tmpState =
         preState.copy(
-          latestBeaconBlockHeader = transitionStateBeaconBlockHeader,
+          latestBeaconBlockHeader = tmpExpectedNewBlockHeader,
           latestBeaconBlockRoot = beaconBodyRoot,
         )
-      val stateRootHash = HashUtil.stateRoot(transitionState)
-      val expectedNewBlockHeader = transitionStateBeaconBlockHeader.copy(stateRoot = stateRootHash)
+      val stateRootHash = HashUtil.stateRoot(tmpState)
+      val expectedNewBlockHeader = tmpExpectedNewBlockHeader.copy(stateRoot = stateRootHash)
       if (!expectedNewBlockHeader.stateRoot.contentEquals(block.beaconBlockHeader.stateRoot)) {
         SafeFuture.completedFuture(
           Err(
