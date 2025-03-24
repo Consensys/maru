@@ -29,7 +29,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 fun QbftBlock.toBeaconBlock(): BeaconBlock =
   when (this) {
     is QbftBlockAdapter -> this.beaconBlock
-    is QbftSealedBlockAdaptor -> this.sealedBeaconBlock.beaconBlock
+    is QbftSealedBlockAdapter -> this.sealedBeaconBlock.beaconBlock
     else -> throw IllegalArgumentException("Unsupported block type")
   }
 
@@ -39,7 +39,7 @@ fun QbftBlock.toBeaconBlock(): BeaconBlock =
  * @param qbftBlock the QBFT block to convert
  */
 fun QbftBlock.toSealedBeaconBlock(): SealedBeaconBlock {
-  if (this is QbftSealedBlockAdaptor) {
+  if (this is QbftSealedBlockAdapter) {
     return this.sealedBeaconBlock
   } else {
     throw IllegalArgumentException("Unsupported block type")

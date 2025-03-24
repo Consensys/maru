@@ -40,13 +40,13 @@ class QbftValidatorProviderAdaptorTest {
       validatorProvider.getValidatorsAfterBlock(header2.beaconBlockHeader.number),
     ).thenReturn(completedFuture(validators2))
 
-    val qbftValidatorProviderAdaptor = QbftValidatorProviderAdaptor(validatorProvider)
+    val qbftValidatorProviderAdapter = QbftValidatorProviderAdapter(validatorProvider)
 
     assertThat(
-      qbftValidatorProviderAdaptor.getValidatorsAfterBlock(header1),
+      qbftValidatorProviderAdapter.getValidatorsAfterBlock(header1),
     ).containsAll(validators1.map { Address.wrap(Bytes.wrap(it.address)) })
     assertThat(
-      qbftValidatorProviderAdaptor.getValidatorsAfterBlock(header2),
+      qbftValidatorProviderAdapter.getValidatorsAfterBlock(header2),
     ).containsAll(validators2.map { Address.wrap(Bytes.wrap(it.address)) })
   }
 
@@ -64,12 +64,12 @@ class QbftValidatorProviderAdaptorTest {
       validatorProvider.getValidatorsForBlock(header2.beaconBlockHeader.number),
     ).thenReturn(completedFuture(validators2))
 
-    val qbftValidatorProviderAdaptor = QbftValidatorProviderAdaptor(validatorProvider)
+    val qbftValidatorProviderAdapter = QbftValidatorProviderAdapter(validatorProvider)
     assertThat(
-      qbftValidatorProviderAdaptor.getValidatorsForBlock(header1),
+      qbftValidatorProviderAdapter.getValidatorsForBlock(header1),
     ).containsAll(validators1.map { Address.wrap(Bytes.wrap(it.address)) })
     assertThat(
-      qbftValidatorProviderAdaptor.getValidatorsForBlock(header2),
+      qbftValidatorProviderAdapter.getValidatorsForBlock(header2),
     ).containsAll(validators2.map { Address.wrap(Bytes.wrap(it.address)) })
   }
 }

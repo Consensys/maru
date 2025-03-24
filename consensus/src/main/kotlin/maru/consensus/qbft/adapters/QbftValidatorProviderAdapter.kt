@@ -24,7 +24,7 @@ import org.hyperledger.besu.datatypes.Address
 /**
  * Adapter to convert a [ValidatorProvider] to a [QbftValidatorProvider].
  */
-class QbftValidatorProviderAdaptor(
+class QbftValidatorProviderAdapter(
   private val validatorProvider: ValidatorProvider,
 ) : QbftValidatorProvider {
   // This method has been removed from QbftValidatorProvider in Besu and will be removed once Besu version is updated

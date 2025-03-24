@@ -24,7 +24,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
 /**
  * Adaptor to convert a [BlockCreator] to a [org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory].
  */
-class QbftBlockCreatorFactory(
+class QbftBlockCreatorFactoryImpl(
   private val manager: ExecutionLayerManager,
   private val proposerSelector: ProposerSelector,
   private val validatorProvider: ValidatorProvider,
