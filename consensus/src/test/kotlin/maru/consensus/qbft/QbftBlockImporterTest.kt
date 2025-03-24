@@ -75,7 +75,7 @@ class QbftBlockImporterTest {
     whenever(executionLayerManager.setHead(any(), any(), any())).thenReturn(
       SafeFuture.completedFuture(
         DataGenerators
-          .randomValidForkChoiceUpdatedResult(null),
+          .randomValidForkChoiceUpdatedResult(),
       ),
     )
 
