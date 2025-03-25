@@ -150,7 +150,7 @@ interface ExecutionLayerManager {
     feeRecipient: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
-  fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
+  fun finishBlockBuildingAndBuildNextBlock(): SafeFuture<ExecutionPayload>
 
   fun latestBlockMetadata(): BlockMetadata
 

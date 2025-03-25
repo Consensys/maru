@@ -57,7 +57,7 @@ class QbftBlockCreator(
     val parentBeaconBlockHeader = parentHeader.toBeaconBlockHeader()
     val executionPayload =
       try {
-        manager.finishBlockBuilding().get()
+        manager.finishBlockBuildingAndBuildNextBlock().get()
       } catch (e: Exception) {
         throw IllegalStateException("Execution payload unavailable, unable to create block", e)
       }

@@ -57,7 +57,7 @@ class QbftBlockCreatorTest {
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
     val executionPayload = DataGenerators.randomExecutionPayload()
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(parentBlock)
-    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(completedFuture(executionPayload))
+    whenever(executionLayerManager.finishBlockBuildingAndBuildNextBlock()).thenReturn(completedFuture(executionPayload))
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
     whenever(
       validatorProvider.getValidatorsAfterBlock(10U),
@@ -111,7 +111,7 @@ class QbftBlockCreatorTest {
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
 
     whenever(
-      executionLayerManager.finishBlockBuilding(),
+      executionLayerManager.finishBlockBuildingAndBuildNextBlock(),
     ).thenReturn(SafeFuture.failedFuture(IllegalStateException("Execution payload not available")))
 
     val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 1)
@@ -130,7 +130,7 @@ class QbftBlockCreatorTest {
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
     val executionPayload = DataGenerators.randomExecutionPayload()
 
-    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(completedFuture(executionPayload))
+    whenever(executionLayerManager.finishBlockBuildingAndBuildNextBlock()).thenReturn(completedFuture(executionPayload))
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlockHeader.hash())).thenReturn(null)
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
 

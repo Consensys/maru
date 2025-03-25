@@ -124,7 +124,7 @@ class JsonRpcExecutionLayerManager private constructor(
     return ForkChoiceUpdatedResult(domainPayloadStatus, parsedPayloadId)
   }
 
-  override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> {
+  override fun finishBlockBuildingAndBuildNextBlock(): SafeFuture<ExecutionPayload> {
     if (payloadId == null) {
       return SafeFuture.failedFuture(
         IllegalStateException(
