@@ -13,12 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adapters
+package maru.consensus.qbft.network
 
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
-import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorModeTransitionLogger
+import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
+import org.hyperledger.besu.datatypes.Address
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 
-class QbftValidatorModeTransitionLoggerAdapter : QbftValidatorModeTransitionLogger {
-  override fun logTransitionChange(parentHeader: QbftBlockHeader) {
+class NoopValidatorMulticaster : ValidatorMulticaster {
+  override fun send(message: MessageData) {
+  }
+
+  override fun send(
+    message: MessageData,
+    denyList: Collection<Address?>?,
+  ) {
   }
 }

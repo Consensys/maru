@@ -49,6 +49,13 @@ class KvDatabase(
           1,
           KvStoreSerializers.BeaconStateSerializer,
         )
+
+      val BlockRootByBlockNumber: KvStoreColumn<ULong, ByteArray> =
+        KvStoreColumn.create(
+          3,
+          KvStoreSerializers.ULongSerializer,
+          KvStoreSerializers.BytesSerializer,
+        )
     }
   }
 
@@ -59,6 +66,13 @@ class KvDatabase(
 
   override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
     kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, beaconBlockRoot).getOrNull()
+
+  override fun getSealedBeaconBlock(blockNumber: ULong): SealedBeaconBlock? {
+    kvStoreAccessor.get(Schema.BlockRootByBlockNumber, blockNumber).getOrNull()?.let { blockRoot ->
+      return getSealedBeaconBlock(blockRoot)
+    }
+    return null
+  }
 
   override fun newUpdater(): Updater = KvUpdater(this.kvStoreAccessor)
 
@@ -82,6 +96,11 @@ class KvDatabase(
       beaconBlockRoot: ByteArray,
     ): Updater {
       transaction.put(Schema.SealedBeaconBlockByBlockRoot, beaconBlockRoot, sealedBeaconBlock)
+      transaction.put(
+        Schema.BlockRootByBlockNumber,
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+        beaconBlockRoot,
+      )
       return this
     }
 

@@ -13,12 +13,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adapters
+package maru.database.kv
 
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
-import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorModeTransitionLogger
+import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.units.bigints.UInt256
+import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
 
-class QbftValidatorModeTransitionLoggerAdapter : QbftValidatorModeTransitionLogger {
-  override fun logTransitionChange(parentHeader: QbftBlockHeader) {
-  }
+class ULongSerializer : KvStoreSerializer<ULong> {
+  override fun deserialize(value: ByteArray): ULong = UInt256.fromBytes(Bytes.wrap(value)).toLong().toULong()
+
+  override fun serialize(value: ULong): ByteArray = UInt256.valueOf(value.toLong()).toBytes().toArrayUnsafe()
 }

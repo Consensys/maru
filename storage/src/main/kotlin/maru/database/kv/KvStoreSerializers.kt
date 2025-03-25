@@ -19,6 +19,7 @@ import maru.serialization.rlp.RLPSerializers
 
 object KvStoreSerializers {
   val BytesSerializer = BytesSerializer()
+  val ULongSerializer = ULongSerializer()
   val BeaconStateSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconStateSerializer)
   val BeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconBlockSerializer)
   val SealedBeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.SealedBeaconBlockSerializer)

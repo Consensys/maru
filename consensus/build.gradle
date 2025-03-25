@@ -45,6 +45,7 @@ dependencies {
   implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu:evm")
   implementation("org.hyperledger.besu.internal:algorithms")
+  implementation("org.hyperledger.besu.internal:util")
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:spec"

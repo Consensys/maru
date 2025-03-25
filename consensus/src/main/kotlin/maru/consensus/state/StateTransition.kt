@@ -51,7 +51,10 @@ class StateTransitionImpl(
     block: BeaconBlock,
   ): SafeFuture<Result<BeaconState, StateTransition.StateTransitionError>> {
     val validatorsForBlockFuture = validatorProvider.getValidatorsForBlock(block.beaconBlockHeader)
-    val proposerForBlockFuture = proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(block.beaconBlockHeader.number, block.beaconBlockHeader.round))
+    val proposerForBlockFuture =
+      proposerSelector.selectProposerForRound(
+        ConsensusRoundIdentifier(block.beaconBlockHeader.number.toLong(), block.beaconBlockHeader.round.toInt()),
+      )
 
     return validatorsForBlockFuture.thenComposeCombined(
       proposerForBlockFuture,

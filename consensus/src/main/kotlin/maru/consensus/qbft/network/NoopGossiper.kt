@@ -13,12 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adapters
+package maru.consensus.qbft.network
 
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
-import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorModeTransitionLogger
+import org.hyperledger.besu.consensus.common.bft.Gossiper
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.Message
 
-class QbftValidatorModeTransitionLoggerAdapter : QbftValidatorModeTransitionLogger {
-  override fun logTransitionChange(parentHeader: QbftBlockHeader) {
+class NoopGossiper : Gossiper {
+  override fun send(message: Message?) {
   }
 }

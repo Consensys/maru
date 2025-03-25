@@ -13,12 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adapters
+package maru.consensus.qbft.network
 
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
-import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorModeTransitionLogger
+import org.hyperledger.besu.consensus.common.bft.SynchronizerUpdater
+import org.hyperledger.besu.ethereum.p2p.rlpx.connections.PeerConnection
 
-class QbftValidatorModeTransitionLoggerAdapter : QbftValidatorModeTransitionLogger {
-  override fun logTransitionChange(parentHeader: QbftBlockHeader) {
+class NoopSynchronizerUpdater : SynchronizerUpdater {
+  override fun updatePeerChainState(
+    knownBlockNumber: Long,
+    peerConnection: PeerConnection?,
+  ) {
   }
 }

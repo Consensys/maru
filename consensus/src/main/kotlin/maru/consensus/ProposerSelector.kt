@@ -29,17 +29,21 @@ interface ProposerSelector {
 
 class ProposerSelectorImpl(
   private val beaconChain: BeaconChain,
-  private val validatorProvider: ValidatorProvider
+  private val validatorProvider: ValidatorProvider,
 ) : ProposerSelector {
   override fun selectProposerForRound(roundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator> {
     val prevBlockNumber = roundIdentifier.sequenceNumber - 1
-    val parentBlock = beaconChain.getSealedBeaconBlock(prevBlockNumber.toULong()) ?: return SafeFuture.failedFuture(IllegalStateException("Parent state not found"))
+    val parentBlock =
+      beaconChain.getSealedBeaconBlock(prevBlockNumber.toULong())
+        ?: return SafeFuture.failedFuture(IllegalStateException("Parent state not found"))
     val parentBlockHeader = parentBlock.beaconBlock.beaconBlockHeader
     val prevBlockProposer = Address.wrap(Bytes.wrap(parentBlockHeader.proposer.address))
 
-    val validatorsForRound = validatorProvider.getValidatorsForBlock(parentBlockHeader).get().map { Address.wrap(Bytes.wrap(it.address)) }
+    val validatorsForRound =
+      validatorProvider.getValidatorsForBlock(parentBlockHeader).get().map {
+        Address.wrap(Bytes.wrap(it.address))
+      }
     val proposer = selectProposerForRound(roundIdentifier, prevBlockProposer, validatorsForRound, true)
-    return SafeFuture.completedFuture(Validator(proposer.toArray()));
+    return SafeFuture.completedFuture(Validator(proposer.toArray()))
   }
-
 }
