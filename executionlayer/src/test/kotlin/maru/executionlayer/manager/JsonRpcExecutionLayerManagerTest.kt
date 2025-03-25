@@ -155,7 +155,7 @@ class JsonRpcExecutionLayerManagerTest {
     mockGetPayloadWithRandomData(payloadId, executionPayload)
     mockNewPayloadWithStatus(payloadStatus)
 
-    executionLayerManager.finishBlockBuildingAndBuildNextBlock().get()
+    executionLayerManager.finishBlockBuilding().get()
     verify(executionLayerClient, atLeastOnce()).getPayload(eq(payloadId))
   }
 
@@ -211,7 +211,7 @@ class JsonRpcExecutionLayerManagerTest {
   // TODO: Add a test for validator
   @Test
   fun `finishBlockBuilding can't be called before setHeadAndStartBlockBuilding`() {
-    val result = executionLayerManager.finishBlockBuildingAndBuildNextBlock()
+    val result = executionLayerManager.finishBlockBuilding()
     assertThat(result.isCompletedExceptionally).isTrue()
   }
 
@@ -244,7 +244,7 @@ class JsonRpcExecutionLayerManagerTest {
     mockGetPayloadWithRandomData(payloadId, executionPayload)
     mockNewPayloadWithStatus(payloadStatus)
 
-    executionLayerManager.finishBlockBuildingAndBuildNextBlock().get()
+    executionLayerManager.finishBlockBuilding().get()
 
     executionLayerManager
       .setHeadAndStartBlockBuilding(
