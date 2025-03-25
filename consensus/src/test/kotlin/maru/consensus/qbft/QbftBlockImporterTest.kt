@@ -18,12 +18,12 @@ package maru.consensus.qbft
 import com.github.michaelbull.result.Ok
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import maru.consensus.qbft.adaptors.QbftSealedBlockAdaptor
+import maru.consensus.qbft.adapters.QbftSealedBlockAdapter
 import maru.consensus.state.StateTransition
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
-import maru.database.Database
+import maru.database.BeaconChain
 import maru.database.Updater
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.assertj.core.api.Assertions.assertThat
@@ -41,7 +41,7 @@ class QbftBlockImporterTest {
 
   private val stateTransition: StateTransition = mock()
 
-  private lateinit var blockchain: Database
+  private lateinit var beaconChain: BeaconChain
   private var beaconBlockImporterResponse =
     SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
 
@@ -51,10 +51,10 @@ class QbftBlockImporterTest {
   @BeforeEach
   fun setUp() {
     initialBeaconState = DataGenerators.randomBeaconState(2UL)
-    blockchain = InMemoryDatabase(initialBeaconState)
+    beaconChain = InMemoryDatabase(initialBeaconState)
     qbftBlockImporter =
       QbftBlockImportCoordinator(
-        blockchain = blockchain,
+        beaconChain = beaconChain,
         stateTransition = stateTransition,
         beaconBlockImporter = { beaconBlockImporterResponse },
       )
@@ -68,7 +68,7 @@ class QbftBlockImporterTest {
 
   @Test
   fun `importBlock returns true on successful import`() {
-    val qbftBlock = QbftSealedBlockAdaptor(DataGenerators.randomSealedBeaconBlock(2UL))
+    val qbftBlock = QbftSealedBlockAdapter(DataGenerators.randomSealedBeaconBlock(2UL))
     val beaconState = DataGenerators.randomBeaconState(2UL)
 
     whenever(stateTransition.processBlock(any(), any())).thenReturn(SafeFuture.completedFuture(Ok(beaconState)))
@@ -81,47 +81,47 @@ class QbftBlockImporterTest {
 
     val result = qbftBlockImporter.importBlock(qbftBlock)
     assertTrue(result)
-    assertThat(blockchain.getLatestBeaconState()).isEqualTo(beaconState)
+    assertThat(beaconChain.getLatestBeaconState()).isEqualTo(beaconState)
   }
 
   @Test
   fun `importBlock rolls the DB update back on state transition failure`() {
-    val qbftBlock = QbftSealedBlockAdaptor(DataGenerators.randomSealedBeaconBlock(2UL))
+    val qbftBlock = QbftSealedBlockAdapter(DataGenerators.randomSealedBeaconBlock(2UL))
     whenever(stateTransition.processBlock(any(), any())).thenThrow(RuntimeException("Test exception"))
-    val stateBeforeTransition = blockchain.getLatestBeaconState()
+    val stateBeforeTransition = beaconChain.getLatestBeaconState()
 
     val result = qbftBlockImporter.importBlock(qbftBlock)
 
     assertFalse(result)
-    val stateAfterTransition = blockchain.getLatestBeaconState()
+    val stateAfterTransition = beaconChain.getLatestBeaconState()
     assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
   }
 
   @Test
   fun `importBlock rolls the DB update back on block import`() {
-    val qbftBlock = QbftSealedBlockAdaptor(DataGenerators.randomSealedBeaconBlock(2UL))
+    val qbftBlock = QbftSealedBlockAdapter(DataGenerators.randomSealedBeaconBlock(2UL))
     beaconBlockImporterResponse = SafeFuture.failedFuture(RuntimeException("Test exception"))
-    val stateBeforeTransition = blockchain.getLatestBeaconState()
+    val stateBeforeTransition = beaconChain.getLatestBeaconState()
 
     val result = qbftBlockImporter.importBlock(qbftBlock)
 
     assertFalse(result)
-    val stateAfterTransition = blockchain.getLatestBeaconState()
+    val stateAfterTransition = beaconChain.getLatestBeaconState()
     assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
   }
 
   private class InMemoryDatabase(
     initialBeaconState: BeaconState,
-  ) : Database {
+  ) : BeaconChain {
     private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
     private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
     private var latestBeaconState: BeaconState = initialBeaconState
 
     override fun getLatestBeaconState(): BeaconState = latestBeaconState
 
-    override fun findBeaconState(beaconBlockRoot: ByteArray): BeaconState? = beaconStateByBlockRoot[beaconBlockRoot]
+    override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? = beaconStateByBlockRoot[beaconBlockRoot]
 
-    override fun findSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
+    override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
       sealedBeaconBlockByBlockRoot[beaconBlockRoot]
 
     override fun newUpdater(): Updater = InMemoryUpdater(this)

@@ -209,7 +209,6 @@ class JsonRpcExecutionLayerManagerTest {
   }
 
   // TODO: Add a test for validator
-
   @Test
   fun `finishBlockBuilding can't be called before setHeadAndStartBlockBuilding`() {
     val result = executionLayerManager.finishBlockBuilding()

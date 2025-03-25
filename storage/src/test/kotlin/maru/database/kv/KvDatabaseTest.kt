@@ -49,14 +49,14 @@ class KvDatabaseTest {
         db.newUpdater().use {
           it.putBeaconState(testBeaconState).commit()
         }
-        assertThat(db.findBeaconState(testBeaconState.latestBeaconBlockRoot))
+        assertThat(db.getBeaconState(testBeaconState.latestBeaconBlockRoot))
           .isEqualTo(testBeaconState)
       }
     }
 
     createDatabase(databasePath).use { db ->
       testBeaconStates.forEach { testBeaconState ->
-        assertThat(db.findBeaconState(testBeaconState.latestBeaconBlockRoot))
+        assertThat(db.getBeaconState(testBeaconState.latestBeaconBlockRoot))
           .isEqualTo(testBeaconState)
       }
     }
@@ -89,8 +89,8 @@ class KvDatabaseTest {
   ) {
     val randomKey = Random.nextBytes(32)
     createDatabase(databasePath).use { db ->
-      assertThat(db.findBeaconState(randomKey)).isNull()
-      assertThat(db.findSealedBeaconBlock(randomKey)).isNull()
+      assertThat(db.getBeaconState(randomKey)).isNull()
+      assertThat(db.getSealedBeaconBlock(randomKey)).isNull()
     }
   }
 
@@ -109,13 +109,13 @@ class KvDatabaseTest {
         db.newUpdater().use {
           it.putSealedBeaconBlock(testBeaconBlock, testBeaconBlockRoot).commit()
         }
-        assertThat(db.findSealedBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
+        assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
       }
     }
 
     createDatabase(databasePath).use { db ->
       testBeaconBlockMap.forEach { (testBeaconBlockRoot, testBeaconBlock) ->
-        assertThat(db.findSealedBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
+        assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
       }
     }
   }
@@ -136,7 +136,7 @@ class KvDatabaseTest {
     }
 
     createDatabase(databasePath).use { db ->
-      assertThat(db.findSealedBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
     }
   }
 
@@ -152,20 +152,20 @@ class KvDatabaseTest {
       db.newUpdater().use {
         it.putSealedBeaconBlock(testBeaconBlock1, testBeaconBlockRoot1).commit()
       }
-      assertThat(db.findSealedBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
 
-      assertThat(db.findSealedBeaconBlock(testBeaconBlockRoot2)).isNull()
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot2)).isNull()
 
       db.newUpdater().use { it.putSealedBeaconBlock(testBeaconBlock2, testBeaconBlockRoot2).rollback() }
 
-      assertThat(db.findSealedBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
 
-      assertThat(db.findSealedBeaconBlock(testBeaconBlockRoot2)).isNull()
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot2)).isNull()
     }
 
     createDatabase(databasePath).use { db ->
-      assertThat(db.findSealedBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
-      assertThat(db.findSealedBeaconBlock(testBeaconBlockRoot2)).isNull()
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot2)).isNull()
     }
   }
 }
