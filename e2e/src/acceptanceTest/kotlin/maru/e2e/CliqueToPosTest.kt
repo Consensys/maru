@@ -115,13 +115,9 @@ class CliqueToPosTest {
 
     @JvmStatic
     fun followerNodes(): List<Arguments> =
-      TestEnvironment.followerExecutionClientsPostMerge
-        .filter {
-          // Doesn't work just yet
-          !it.key.contains("nethermind")
-        }.map {
-          Arguments.of(it.key, it.value)
-        }
+      TestEnvironment.followerExecutionClientsPostMerge.map {
+        Arguments.of(it.key, it.value)
+      }
   }
 
   @Order(1)
@@ -160,12 +156,12 @@ class CliqueToPosTest {
     log.info("Container $nodeName restarted")
 
     await
-      .pollInterval(1.seconds.toJavaDuration())
+      .pollInterval(10.seconds.toJavaDuration())
       .ignoreExceptions()
-      .timeout(20.seconds.toJavaDuration())
+      .timeout(60.seconds.toJavaDuration())
       .alias(nodeName)
       .untilAsserted {
-        if (nodeName.contains("erigon")) {
+        if (nodeName.contains("erigon") || nodeName.contains("nethermind")) {
           // For some reason Erigon needs a restart after PoS transition
           restartNodeKeepingState(nodeName, nodeEthereumClient)
         }
@@ -227,6 +223,7 @@ class CliqueToPosTest {
     val expectedBlockNumber =
       when {
         nodeName.contains("erigon") -> 5L
+        nodeName.contains("nethermind") -> 5L
         else -> 0L
       }
     await
