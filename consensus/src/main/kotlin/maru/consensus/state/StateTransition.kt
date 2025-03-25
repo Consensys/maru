@@ -27,6 +27,7 @@ import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
+import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface StateTransition {
@@ -50,7 +51,7 @@ class StateTransitionImpl(
     block: BeaconBlock,
   ): SafeFuture<Result<BeaconState, StateTransition.StateTransitionError>> {
     val validatorsForBlockFuture = validatorProvider.getValidatorsForBlock(block.beaconBlockHeader)
-    val proposerForBlockFuture = proposerSelector.getProposerForBlock(block.beaconBlockHeader)
+    val proposerForBlockFuture = proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(block.beaconBlockHeader.number, block.beaconBlockHeader.round))
 
     return validatorsForBlockFuture.thenComposeCombined(
       proposerForBlockFuture,

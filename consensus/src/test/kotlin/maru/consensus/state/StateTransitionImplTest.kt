@@ -72,7 +72,7 @@ class StateTransitionImplTest {
 
   private val proposerSelector =
     object : ProposerSelector {
-      override fun getProposerForBlock(header: BeaconBlockHeader): SafeFuture<Validator> =
+      override fun selectProposerForRound(header: BeaconBlockHeader): SafeFuture<Validator> =
         SafeFuture.completedFuture(newBlockHeader.proposer)
     }
 

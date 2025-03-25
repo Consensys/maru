@@ -35,6 +35,9 @@ dependencies {
   implementation("org.hyperledger.besu.internal:core")
   implementation("org.hyperledger.besu.internal:rlp")
   implementation("org.hyperledger.besu.internal:algorithms")
+  implementation("org.hyperledger.besu.internal:services")
+  implementation("org.hyperledger.besu.internal:p2p")
+  implementation("org.hyperledger.besu.internal:config")
   api("org.hyperledger.besu.internal:blockcreation") {
     because("of the BlockCreator")
   }

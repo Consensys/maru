@@ -15,28 +15,29 @@
  */
 package maru.consensus
 
-import maru.core.BeaconBlockHeader
 import maru.core.Validator
 import maru.database.BeaconChain
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
-import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector.selectProposerForRound
+import org.hyperledger.besu.consensus.common.bft.blockcreation.BftProposerSelector.selectProposerForRound
 import org.hyperledger.besu.datatypes.Address
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface ProposerSelector {
-  fun getProposerForBlock(header: BeaconBlockHeader): SafeFuture<Validator>
+  fun selectProposerForRound(roundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator>
 }
 
 class ProposerSelectorImpl(
   private val beaconChain: BeaconChain,
   private val validatorProvider: ValidatorProvider
 ) : ProposerSelector {
-  override fun getProposerForBlock(header: BeaconBlockHeader): SafeFuture<Validator> {
-    val roundIdentifier = ConsensusRoundIdentifier(header.number.toLong(), header.round.toInt())
-    val beaconBlock = beaconChain.getSealedBeaconBlock(header.parentRoot) ?: return SafeFuture.failedFuture(IllegalStateException("Parent state not found"))
-    val prevBlockProposer = Address.wrap(Bytes.wrap(beaconBlock.beaconBlock.beaconBlockHeader.proposer.address))
-    val validatorsForRound = validatorProvider.getValidatorsForBlock(header).get().map { Address.wrap(Bytes.wrap(it.address)) }
+  override fun selectProposerForRound(roundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator> {
+    val prevBlockNumber = roundIdentifier.sequenceNumber - 1
+    val parentBlock = beaconChain.getSealedBeaconBlock(prevBlockNumber.toULong()) ?: return SafeFuture.failedFuture(IllegalStateException("Parent state not found"))
+    val parentBlockHeader = parentBlock.beaconBlock.beaconBlockHeader
+    val prevBlockProposer = Address.wrap(Bytes.wrap(parentBlockHeader.proposer.address))
+
+    val validatorsForRound = validatorProvider.getValidatorsForBlock(parentBlockHeader).get().map { Address.wrap(Bytes.wrap(it.address)) }
     val proposer = selectProposerForRound(roundIdentifier, prevBlockProposer, validatorsForRound, true)
     return SafeFuture.completedFuture(Validator(proposer.toArray()));
   }
