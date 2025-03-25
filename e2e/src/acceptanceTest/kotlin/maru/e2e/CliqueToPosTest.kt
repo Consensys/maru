@@ -155,10 +155,19 @@ class CliqueToPosTest {
     restartNodeFromScratch(nodeName, nodeEthereumClient)
     log.info("Container $nodeName restarted")
 
-    await
-      .pollInterval(10.seconds.toJavaDuration())
+    val awaitCondition =
+      if (nodeName.contains("nethermind")) {
+        await
+          .pollInterval(10.seconds.toJavaDuration())
+          .timeout(60.seconds.toJavaDuration())
+      } else {
+        await
+          .pollInterval(1.seconds.toJavaDuration())
+          .timeout(30.seconds.toJavaDuration())
+      }
+
+    awaitCondition
       .ignoreExceptions()
-      .timeout(60.seconds.toJavaDuration())
       .alias(nodeName)
       .untilAsserted {
         if (nodeName.contains("erigon") || nodeName.contains("nethermind")) {
