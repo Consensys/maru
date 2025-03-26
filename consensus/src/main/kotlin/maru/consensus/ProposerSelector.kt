@@ -21,7 +21,7 @@ import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface ProposerSelector {
-  fun getProposerForBlock(header: ConsensusRoundIdentifier): SafeFuture<Validator>
+  fun getProposerForBlock(consensusRoundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator>
 }
 
 fun BeaconBlockHeader.toConsensusRoundIdentifier(): ConsensusRoundIdentifier =
