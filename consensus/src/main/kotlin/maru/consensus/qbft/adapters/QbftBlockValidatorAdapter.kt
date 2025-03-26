@@ -18,19 +18,20 @@ package maru.consensus.qbft.adaptors
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import java.util.Optional
+import maru.consensus.qbft.adapters.toBeaconBlock
 import maru.consensus.state.StateTransition
-import maru.database.Database
+import maru.database.BeaconChain
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 
 class QbftBlockValidatorAdapter(
   private val stateTransition: StateTransition,
-  private val database: Database,
+  private val beaconChain: BeaconChain,
 ) : QbftBlockValidator {
   override fun validateBlock(qbftBlock: QbftBlock?): QbftBlockValidator.ValidationResult {
     val beaconBlock = qbftBlock!!.toBeaconBlock()
     val latestBeaconState =
-      database.getLatestBeaconState()
+      beaconChain.getLatestBeaconState()
         ?: return QbftBlockValidator.ValidationResult(false, Optional.of("No latest beacon state found"))
     return when (val stateTransitionResult = stateTransition.processBlock(latestBeaconState, beaconBlock).get()) {
       is Ok -> QbftBlockValidator.ValidationResult(true, Optional.empty())
