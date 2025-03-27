@@ -21,10 +21,10 @@ import com.github.michaelbull.result.Result
 import encodeHex
 import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
-import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.HashUtil
+import maru.database.BeaconChain
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -34,22 +34,19 @@ interface StateTransition {
     val message: String,
   )
 
-  fun processBlock(
-    preState: BeaconState,
-    block: BeaconBlock,
-  ): SafeFuture<Result<BeaconState, StateTransitionError>>
+  fun processBlock(block: BeaconBlock): SafeFuture<Result<BeaconState, StateTransitionError>>
 }
 
 class StateTransitionImpl(
-  private val blockValidator: BlockValidator,
+  private val beaconChain: BeaconChain,
   private val validatorProvider: ValidatorProvider,
   private val proposerSelector: ProposerSelector,
 ) : StateTransition {
   override fun processBlock(
-    preState: BeaconState,
     block: BeaconBlock,
   ): SafeFuture<Result<BeaconState, StateTransition.StateTransitionError>> {
-    val validatorsForBlockFuture = validatorProvider.getValidatorsForBlock(block.beaconBlockHeader)
+    val preState = beaconChain.getLatestBeaconState()
+    val validatorsForBlockFuture = validatorProvider.getValidatorsForBlock(block.beaconBlockHeader.number)
     val proposerForBlockFuture = proposerSelector.getProposerForBlock(block.beaconBlockHeader)
 
     return validatorsForBlockFuture.thenComposeCombined(
@@ -58,51 +55,39 @@ class StateTransitionImpl(
       val beaconBodyRoot = HashUtil.bodyRoot(block.beaconBlockBody)
       val tmpExpectedNewBlockHeader =
         block.beaconBlockHeader.copy(
+          number = preState.latestBeaconBlockHeader.number + 1u,
+          round = block.beaconBlockHeader.round,
+          timestamp = block.beaconBlockHeader.timestamp,
           proposer = proposerForBlock,
           parentRoot = preState.latestBeaconBlockHeader.hash,
           stateRoot = ByteArray(0),
           bodyRoot = beaconBodyRoot,
         )
       val tmpState =
-        preState.copy(
+        BeaconState(
           latestBeaconBlockHeader = tmpExpectedNewBlockHeader,
           latestBeaconBlockRoot = beaconBodyRoot,
+          validators = validatorsForBlock,
         )
       val stateRootHash = HashUtil.stateRoot(tmpState)
-      val expectedNewBlockHeader = tmpExpectedNewBlockHeader.copy(stateRoot = stateRootHash)
-      if (!expectedNewBlockHeader.stateRoot.contentEquals(block.beaconBlockHeader.stateRoot)) {
+      if (!stateRootHash.contentEquals(block.beaconBlockHeader.stateRoot)) {
         SafeFuture.completedFuture(
           Err(
             StateTransition.StateTransitionError(
               "Beacon state root does not match. " +
-                "Expected ${expectedNewBlockHeader.stateRoot.encodeHex()} " +
+                "Expected ${stateRootHash.encodeHex()} " +
                 "but got ${block.beaconBlockHeader.stateRoot.encodeHex()}",
             ),
           ),
         )
       } else {
-        blockValidator
-          .validateBlock(block, proposerForBlock, preState.latestBeaconBlockHeader)
-          .thenApply { blockValidationResult ->
-            when (blockValidationResult) {
-              is Ok -> {
-                val postState =
-                  BeaconState(
-                    latestBeaconBlockHeader = block.beaconBlockHeader,
-                    latestBeaconBlockRoot = beaconBodyRoot,
-                    validators = validatorsForBlock,
-                  )
-                Ok(postState)
-              }
-              is Err ->
-                Err(
-                  StateTransition.StateTransitionError(
-                    "State Transition failed. " +
-                      "Reason: ${blockValidationResult.error.message}",
-                  ),
-                )
-            }
-          }
+        val postState =
+          BeaconState(
+            latestBeaconBlockHeader = block.beaconBlockHeader,
+            latestBeaconBlockRoot = beaconBodyRoot,
+            validators = validatorsForBlock,
+          )
+        SafeFuture.completedFuture(Ok(postState))
       }
     }
   }

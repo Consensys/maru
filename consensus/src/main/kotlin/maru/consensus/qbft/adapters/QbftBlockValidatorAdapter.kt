@@ -13,33 +13,35 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adaptors
+package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Err
-import com.github.michaelbull.result.Ok
 import java.util.Optional
-import maru.consensus.qbft.adapters.toBeaconBlock
 import maru.consensus.state.StateTransition
-import maru.database.BeaconChain
+import maru.consensus.validation.BlockValidator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 
 class QbftBlockValidatorAdapter(
   private val stateTransition: StateTransition,
-  private val beaconChain: BeaconChain,
+  private val blockValidator: BlockValidator,
 ) : QbftBlockValidator {
-  override fun validateBlock(qbftBlock: QbftBlock?): QbftBlockValidator.ValidationResult {
-    val beaconBlock = qbftBlock!!.toBeaconBlock()
-    val latestBeaconState =
-      beaconChain.getLatestBeaconState()
-        ?: return QbftBlockValidator.ValidationResult(false, Optional.of("No latest beacon state found"))
-    return when (val stateTransitionResult = stateTransition.processBlock(latestBeaconState, beaconBlock).get()) {
-      is Ok -> QbftBlockValidator.ValidationResult(true, Optional.empty())
-      is Err ->
-        QbftBlockValidator.ValidationResult(
-          false,
-          Optional.of(stateTransitionResult.error.toString()),
-        )
+  override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
+    val beaconBlock = qbftBlock.toBeaconBlock()
+    val stateTransitionResult = stateTransition.processBlock(beaconBlock).get()
+    if (stateTransitionResult is Err) {
+      return QbftBlockValidator.ValidationResult(
+        false,
+        Optional.of(stateTransitionResult.error.toString()),
+      )
     }
+    val blockValidationResult = blockValidator.validateBlock(beaconBlock).get()
+    if (blockValidationResult is Err) {
+      return QbftBlockValidator.ValidationResult(
+        false,
+        Optional.of(blockValidationResult.error.toString()),
+      )
+    }
+    return QbftBlockValidator.ValidationResult(true, Optional.empty())
   }
 }
