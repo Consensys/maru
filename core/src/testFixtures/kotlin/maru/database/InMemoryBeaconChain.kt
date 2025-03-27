@@ -35,11 +35,11 @@ class InMemoryBeaconChain(
   override fun newUpdater(): Updater = InMemoryUpdater(this)
 
   override fun close() {
-    // No-op for in-memory database
+    // No-op for in-memory beacon chain
   }
 
   private class InMemoryUpdater(
-    private val database: InMemoryBeaconChain,
+    private val beaconChain: InMemoryBeaconChain,
   ) : Updater {
     private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
     private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
@@ -60,10 +60,10 @@ class InMemoryBeaconChain(
     }
 
     override fun commit() {
-      database.beaconStateByBlockRoot.putAll(beaconStateByBlockRoot)
-      database.sealedBeaconBlockByBlockRoot.putAll(sealedBeaconBlockByBlockRoot)
+      beaconChain.beaconStateByBlockRoot.putAll(beaconStateByBlockRoot)
+      beaconChain.sealedBeaconBlockByBlockRoot.putAll(sealedBeaconBlockByBlockRoot)
       if (newBeaconState != null) {
-        database.latestBeaconState = newBeaconState!!
+        beaconChain.latestBeaconState = newBeaconState!!
       }
     }
 
