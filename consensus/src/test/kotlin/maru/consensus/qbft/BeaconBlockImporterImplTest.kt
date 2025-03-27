@@ -46,11 +46,11 @@ class BeaconBlockImporterImplTest {
 
     beaconBlockImporter =
       BeaconBlockImporterImpl(
-        executionLayerManager,
-        { finalizationState },
-        { nextBlockTimestamp },
-        { shouldBuildNextBlock },
-        blockBuilderIdentity,
+        executionLayerManager = executionLayerManager,
+        finalizationStateProvider = { finalizationState },
+        nextBlockTimestampProvider = { nextBlockTimestamp },
+        shouldBuildNextBlock = { shouldBuildNextBlock },
+        blockBuilderIdentity = blockBuilderIdentity,
       )
   }
 
@@ -62,22 +62,22 @@ class BeaconBlockImporterImplTest {
     val expectedResponse = SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
     whenever(
       executionLayerManager.setHeadAndStartBlockBuilding(
-        eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
-        eq(finalizationState.safeBlockHash),
-        eq(finalizationState.finalizedBlockHash),
-        eq(nextBlockTimestamp),
-        eq(blockBuilderIdentity.address),
+        headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
+        safeHash = eq(finalizationState.safeBlockHash),
+        finalizedHash = eq(finalizationState.finalizedBlockHash),
+        nextBlockTimestamp = eq(nextBlockTimestamp),
+        feeRecipient = eq(blockBuilderIdentity.address),
       ),
     ).thenReturn(expectedResponse)
 
     val result = beaconBlockImporter.importBlock(randomBeaconBlock)
     assertEquals(expectedResponse, result)
     verify(executionLayerManager).setHeadAndStartBlockBuilding(
-      eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
-      eq(finalizationState.safeBlockHash),
-      eq(finalizationState.finalizedBlockHash),
-      eq(nextBlockTimestamp),
-      eq(blockBuilderIdentity.address),
+      headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
+      safeHash = eq(finalizationState.safeBlockHash),
+      finalizedHash = eq(finalizationState.finalizedBlockHash),
+      nextBlockTimestamp = eq(nextBlockTimestamp),
+      feeRecipient = eq(blockBuilderIdentity.address),
     )
   }
 
@@ -88,18 +88,18 @@ class BeaconBlockImporterImplTest {
     val expectedResponse = SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
     whenever(
       executionLayerManager.setHead(
-        eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
-        eq(finalizationState.safeBlockHash),
-        eq(finalizationState.finalizedBlockHash),
+        headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
+        safeHash = eq(finalizationState.safeBlockHash),
+        finalizedHash = eq(finalizationState.finalizedBlockHash),
       ),
     ).thenReturn(expectedResponse)
 
     val result = beaconBlockImporter.importBlock(randomBeaconBlock)
     assertEquals(expectedResponse, result)
     verify(executionLayerManager).setHead(
-      eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
-      eq(finalizationState.safeBlockHash),
-      eq(finalizationState.finalizedBlockHash),
+      headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
+      safeHash = eq(finalizationState.safeBlockHash),
+      finalizedHash = eq(finalizationState.finalizedBlockHash),
     )
   }
 
@@ -113,11 +113,11 @@ class BeaconBlockImporterImplTest {
     whenever(nextBlockTimestampProvider.invoke(eq(expectedConsensusRoundIdentifier))).thenReturn(nextBlockTimestamp)
     beaconBlockImporter =
       BeaconBlockImporterImpl(
-        executionLayerManager,
-        { finalizationState },
-        nextBlockTimestampProvider,
-        shouldBuildNextBlockPredicate,
-        blockBuilderIdentity,
+        executionLayerManager = executionLayerManager,
+        finalizationStateProvider = { finalizationState },
+        nextBlockTimestampProvider = nextBlockTimestampProvider,
+        shouldBuildNextBlock = shouldBuildNextBlockPredicate,
+        blockBuilderIdentity = blockBuilderIdentity,
       )
 
     beaconBlockImporter.importBlock(randomBeaconBlock)

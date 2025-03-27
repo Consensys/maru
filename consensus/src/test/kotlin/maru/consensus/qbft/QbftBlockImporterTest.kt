@@ -21,10 +21,9 @@ import kotlin.test.assertTrue
 import maru.consensus.qbft.adapters.QbftSealedBlockAdapter
 import maru.consensus.state.StateTransition
 import maru.core.BeaconState
-import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
-import maru.database.Updater
+import maru.database.InMemoryBeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -51,7 +50,7 @@ class QbftBlockImporterTest {
   @BeforeEach
   fun setUp() {
     initialBeaconState = DataGenerators.randomBeaconState(2UL)
-    beaconChain = InMemoryDatabase(initialBeaconState)
+    beaconChain = InMemoryBeaconChain(initialBeaconState)
     qbftBlockImporter =
       QbftBlockImportCoordinator(
         beaconChain = beaconChain,
@@ -108,66 +107,5 @@ class QbftBlockImporterTest {
     assertFalse(result)
     val stateAfterTransition = beaconChain.getLatestBeaconState()
     assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
-  }
-
-  private class InMemoryDatabase(
-    initialBeaconState: BeaconState,
-  ) : BeaconChain {
-    private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
-    private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
-    private var latestBeaconState: BeaconState = initialBeaconState
-
-    override fun getLatestBeaconState(): BeaconState = latestBeaconState
-
-    override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? = beaconStateByBlockRoot[beaconBlockRoot]
-
-    override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
-      sealedBeaconBlockByBlockRoot[beaconBlockRoot]
-
-    override fun newUpdater(): Updater = InMemoryUpdater(this)
-
-    override fun close() {
-      // No-op for in-memory database
-    }
-
-    private class InMemoryUpdater(
-      private val database: InMemoryDatabase,
-    ) : Updater {
-      private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
-      private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
-      private var newBeaconState: BeaconState? = null
-
-      override fun putBeaconState(beaconState: BeaconState): Updater {
-        beaconStateByBlockRoot[beaconState.latestBeaconBlockRoot] = beaconState
-        newBeaconState = beaconState
-        return this
-      }
-
-      override fun putSealedBeaconBlock(
-        sealedBeaconBlock: SealedBeaconBlock,
-        beaconBlockRoot: ByteArray,
-      ): Updater {
-        sealedBeaconBlockByBlockRoot[beaconBlockRoot] = sealedBeaconBlock
-        return this
-      }
-
-      override fun commit() {
-        database.beaconStateByBlockRoot.putAll(beaconStateByBlockRoot)
-        database.sealedBeaconBlockByBlockRoot.putAll(sealedBeaconBlockByBlockRoot)
-        if (newBeaconState != null) {
-          database.latestBeaconState = newBeaconState!!
-        }
-      }
-
-      override fun rollback() {
-        beaconStateByBlockRoot.clear()
-        sealedBeaconBlockByBlockRoot.clear()
-        newBeaconState = null
-      }
-
-      override fun close() {
-        // No-op for in-memory updater
-      }
-    }
   }
 }
