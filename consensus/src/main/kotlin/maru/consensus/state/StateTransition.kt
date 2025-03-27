@@ -21,6 +21,8 @@ import com.github.michaelbull.result.Result
 import encodeHex
 import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
+import maru.consensus.state.StateTransition.Companion.error
+import maru.consensus.state.StateTransition.Companion.ok
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.HashUtil
@@ -29,10 +31,16 @@ import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-interface StateTransition {
+fun interface StateTransition {
   data class StateTransitionError(
     val message: String,
   )
+
+  companion object {
+    fun ok(beaconState: BeaconState): Result<BeaconState, StateTransitionError> = Ok(beaconState)
+
+    fun error(message: String): Result<BeaconState, StateTransitionError> = Err(StateTransitionError(message))
+  }
 
   fun processBlock(block: BeaconBlock): SafeFuture<Result<BeaconState, StateTransitionError>>
 }
@@ -72,12 +80,10 @@ class StateTransitionImpl(
       val stateRootHash = HashUtil.stateRoot(tmpState)
       if (!stateRootHash.contentEquals(block.beaconBlockHeader.stateRoot)) {
         SafeFuture.completedFuture(
-          Err(
-            StateTransition.StateTransitionError(
-              "Beacon state root does not match. " +
-                "Expected ${stateRootHash.encodeHex()} " +
-                "but got ${block.beaconBlockHeader.stateRoot.encodeHex()}",
-            ),
+          error(
+            "Beacon state root does not match. " +
+              "Expected ${stateRootHash.encodeHex()} " +
+              "but got ${block.beaconBlockHeader.stateRoot.encodeHex()}",
           ),
         )
       } else {
@@ -87,7 +93,7 @@ class StateTransitionImpl(
             latestBeaconBlockRoot = beaconBodyRoot,
             validators = validatorsForBlock,
           )
-        SafeFuture.completedFuture(Ok(postState))
+        SafeFuture.completedFuture(ok(postState))
       }
     }
   }
