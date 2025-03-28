@@ -42,13 +42,11 @@ class QbftBlockImportCoordinator(
 
     beaconChain.newUpdater().use { updater ->
       try {
-        val currentState = beaconChain.getLatestBeaconState()
         val resultingState: BeaconState =
           when (
             val resultingState =
               stateTransition
                 .processBlock(
-                  currentState,
                   beaconBlock,
                 ).get()
           ) {

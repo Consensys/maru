@@ -70,7 +70,7 @@ class QbftBlockImporterTest {
     val qbftBlock = QbftSealedBlockAdapter(DataGenerators.randomSealedBeaconBlock(2UL))
     val beaconState = DataGenerators.randomBeaconState(2UL)
 
-    whenever(stateTransition.processBlock(any(), any())).thenReturn(SafeFuture.completedFuture(Ok(beaconState)))
+    whenever(stateTransition.processBlock(any())).thenReturn(SafeFuture.completedFuture(Ok(beaconState)))
     whenever(executionLayerManager.setHead(any(), any(), any())).thenReturn(
       SafeFuture.completedFuture(
         DataGenerators
@@ -86,7 +86,7 @@ class QbftBlockImporterTest {
   @Test
   fun `importBlock rolls the DB update back on state transition failure`() {
     val qbftBlock = QbftSealedBlockAdapter(DataGenerators.randomSealedBeaconBlock(2UL))
-    whenever(stateTransition.processBlock(any(), any())).thenThrow(RuntimeException("Test exception"))
+    whenever(stateTransition.processBlock(any())).thenThrow(RuntimeException("Test exception"))
     val stateBeforeTransition = beaconChain.getLatestBeaconState()
 
     val result = qbftBlockImporter.importBlock(qbftBlock)
