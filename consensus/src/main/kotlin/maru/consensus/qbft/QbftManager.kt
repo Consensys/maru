@@ -30,7 +30,6 @@ import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
 import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.consensus.qbft.network.NoopGossiper
-import maru.consensus.qbft.network.NoopSynchronizerUpdater
 import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.core.Validator
 import maru.database.BeaconChain
@@ -148,7 +147,6 @@ class QbftManager(
         ?.toLong()
         ?: throw IllegalArgumentException("Latest block number not found")
     val futureMessageBuffer = FutureMessageBuffer(FUTURE_MESSAGE_MAX_DISTANCE, FUTURE_MESSAGES_LIMIT, chainHeaderNumber)
-    val synchronizerUpdater = NoopSynchronizerUpdater()
     val qbftController =
       QbftController(
         blockChain,
@@ -157,7 +155,6 @@ class QbftManager(
         gossiper,
         duplicateMessageTracker,
         futureMessageBuffer,
-        synchronizerUpdater,
         blockCodec,
       )
     qbftController.start()
