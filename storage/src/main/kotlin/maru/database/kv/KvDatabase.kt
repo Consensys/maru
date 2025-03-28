@@ -72,6 +72,7 @@ class KvDatabase(
       .get(Schema.BeaconBlockRootByBlockNumber, beaconBlockNumber)
       .flatMap { blockRoot -> kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, blockRoot) }
       .getOrNull()
+
   override fun newUpdater(): Updater = KvUpdater(this.kvStoreAccessor)
 
   override fun close() {
