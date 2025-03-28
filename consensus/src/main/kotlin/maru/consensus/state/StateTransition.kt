@@ -22,7 +22,6 @@ import maru.consensus.ValidatorProvider
 import maru.consensus.state.StateTransition.Companion.ok
 import maru.core.BeaconBlock
 import maru.core.BeaconState
-import maru.serialization.rlp.bodyRoot
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface StateTransition {
@@ -50,7 +49,6 @@ class StateTransitionImpl(
       val postState =
         BeaconState(
           latestBeaconBlockHeader = block.beaconBlockHeader,
-          latestBeaconBlockRoot = block.beaconBlockHeader.bodyRoot,
           validators = validatorsForBlock,
         )
       ok(postState)
