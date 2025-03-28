@@ -44,8 +44,7 @@ class KvDatabase(
           KvStoreSerializers.SealedBeaconBlockSerializer,
         )
 
-      val BeaconBlockRootByBlo
-      ckNumber: KvStoreColumn<ULong, ByteArray> =
+      val BeaconBlockRootByBlockNumber: KvStoreColumn<ULong, ByteArray> =
         KvStoreColumn.create(
           3,
           KvStoreSerializers.ULongSerializer,
