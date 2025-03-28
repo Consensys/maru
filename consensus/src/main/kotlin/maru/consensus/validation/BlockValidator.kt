@@ -21,16 +21,21 @@ import com.github.michaelbull.result.Result
 import encodeHex
 import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
+import maru.consensus.state.StateTransition
+import maru.consensus.toConsensusRoundIdentifier
 import maru.consensus.validation.BlockValidator.BlockValidationError
 import maru.consensus.validation.BlockValidator.Companion.error
 import maru.consensus.validation.BlockValidator.Companion.ok
 import maru.core.BeaconBlock
+import maru.core.BeaconBlockHeader
+import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.extensions.hasValidExecutionPayload
 import maru.serialization.rlp.bodyRoot
+import maru.serialization.rlp.stateRoot
 import org.hyperledger.besu.consensus.common.bft.BftHelpers
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -65,6 +70,34 @@ class CompositeBlockValidator(
       }
     }
   }
+}
+
+class StateRootValidator(
+  private val stateTransition: StateTransition,
+) : BlockValidator {
+  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
+    stateTransition.processBlock(newBlock).thenApply { stateTransitionResult ->
+      when (stateTransitionResult) {
+        is Ok<BeaconState> -> {
+          val postState = stateTransitionResult.value
+          val stateRootHeader =
+            postState.latestBeaconBlockHeader.copy(
+              stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
+            )
+          val expectedStateRoot = HashUtil.stateRoot(postState.copy(latestBeaconBlockHeader = stateRootHeader))
+          if (!newBlock.beaconBlockHeader.stateRoot.contentEquals(expectedStateRoot)) {
+            error(
+              "State root in header does not match state root " +
+                "stateRoot=${newBlock.beaconBlockHeader.stateRoot.encodeHex()} " +
+                "expectedStateRoot=${expectedStateRoot.encodeHex()}",
+            )
+          } else {
+            ok()
+          }
+        }
+        is Err<StateTransition.StateTransitionError> -> error("State transition failed: ${stateTransitionResult.error}")
+      }
+    }
 }
 
 class BlockNumberValidator(
@@ -110,19 +143,21 @@ class ProposerValidator(
   private val proposerSelector: ProposerSelector,
 ) : BlockValidator {
   override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    proposerSelector.getProposerForBlock(newBlock.beaconBlockHeader).thenApply { proposerForNewBlock ->
-      if (newBlock.beaconBlockHeader.proposer != proposerForNewBlock) {
-        Err(
-          BlockValidationError(
-            "Proposer is not expected proposer " +
-              "proposer=${newBlock.beaconBlockHeader.proposer} " +
-              "expectedProposer=$proposerForNewBlock",
-          ),
-        )
-      } else {
-        ok()
+    proposerSelector
+      .getProposerForBlock(newBlock.beaconBlockHeader.toConsensusRoundIdentifier())
+      .thenApply { proposerForNewBlock ->
+        if (newBlock.beaconBlockHeader.proposer != proposerForNewBlock) {
+          Err(
+            BlockValidationError(
+              "Proposer is not expected proposer " +
+                "proposer=${newBlock.beaconBlockHeader.proposer} " +
+                "expectedProposer=$proposerForNewBlock",
+            ),
+          )
+        } else {
+          ok()
+        }
       }
-    }
 }
 
 class ParentRootValidator(
