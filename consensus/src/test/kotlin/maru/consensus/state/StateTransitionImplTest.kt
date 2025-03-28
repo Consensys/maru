@@ -18,9 +18,7 @@ package maru.consensus.state
 import com.github.michaelbull.result.Ok
 import maru.consensus.ValidatorProvider
 import maru.core.BeaconState
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
-import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.eq
@@ -36,7 +34,6 @@ class StateTransitionImplTest {
     val expectedPostState =
       BeaconState(
         latestBeaconBlockHeader = newBlock.beaconBlockHeader,
-        latestBeaconBlockRoot = HashUtil.bodyRoot(newBlock.beaconBlockBody),
         validators = validators,
       )
 
