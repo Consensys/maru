@@ -44,11 +44,12 @@ class KvDatabase(
           KvStoreSerializers.SealedBeaconBlockSerializer,
         )
 
-      val SealedBeaconBlockByBlockNumber: KvStoreColumn<ULong, SealedBeaconBlock> =
+      val BeaconBlockRootByBlo
+      ckNumber: KvStoreColumn<ULong, ByteArray> =
         KvStoreColumn.create(
           3,
           KvStoreSerializers.ULongSerializer,
-          KvStoreSerializers.SealedBeaconBlockSerializer,
+          KvStoreSerializers.BytesSerializer,
         )
 
       val LatestBeaconState: KvStoreVariable<BeaconState> =
@@ -68,7 +69,13 @@ class KvDatabase(
     kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, beaconBlockRoot).getOrNull()
 
   override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
-    kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockNumber, beaconBlockNumber).getOrNull()
+    kvStoreAccessor.get(Schema.BeaconBlockRootByBlockNumber, beaconBlockNumber).getOrNull().let { blockRoot ->
+      if (blockRoot != null) {
+        kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, blockRoot).getOrNull()
+      } else {
+        null
+      }
+    }
 
   override fun newUpdater(): Updater = KvUpdater(this.kvStoreAccessor)
 
@@ -94,9 +101,9 @@ class KvDatabase(
         sealedBeaconBlock,
       )
       transaction.put(
-        Schema.SealedBeaconBlockByBlockNumber,
+        Schema.BeaconBlockRootByBlockNumber,
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
-        sealedBeaconBlock,
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash,
       )
 
       return this
