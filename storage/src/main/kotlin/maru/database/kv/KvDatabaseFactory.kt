@@ -34,6 +34,7 @@ object KvDatabaseFactory {
         KvStoreConfiguration().withDatabaseDir(databasePath),
         listOf(
           KvDatabase.Companion.Schema.SealedBeaconBlockByBlockRoot,
+          KvDatabase.Companion.Schema.SealedBeaconBlockByBlockNumber,
           KvDatabase.Companion.Schema.BeaconStateByBlockRoot,
         ),
         emptyList(),
