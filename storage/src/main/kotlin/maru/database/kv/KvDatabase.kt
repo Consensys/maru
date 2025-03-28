@@ -67,12 +67,10 @@ class KvDatabase(
   override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
     kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, beaconBlockRoot).getOrNull()
 
-  override fun getSealedBeaconBlock(blockNumber: ULong): SealedBeaconBlock? {
+  override fun getSealedBeaconBlock(blockNumber: ULong): SealedBeaconBlock? =
     kvStoreAccessor.get(Schema.BlockRootByBlockNumber, blockNumber).getOrNull()?.let { blockRoot ->
-      return getSealedBeaconBlock(blockRoot)
+      getSealedBeaconBlock(blockRoot)
     }
-    return null
-  }
 
   override fun newUpdater(): Updater = KvUpdater(this.kvStoreAccessor)
 
