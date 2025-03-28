@@ -17,7 +17,6 @@ package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.getError
 import java.util.Optional
-import maru.consensus.state.StateTransition
 import maru.consensus.state.StateTransition.Companion.ok
 import maru.consensus.validation.BlockValidator
 import maru.core.ext.DataGenerators
@@ -28,39 +27,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftBlockValidatorAdapterTest {
   private val newBlock = DataGenerators.randomBeaconBlock(10u)
-  private lateinit var stateTransition: StateTransition
   private lateinit var blockValidator: BlockValidator
 
   @Test
-  fun `validateBlock should return false when state transition error`() {
-    val stateTransitionError = StateTransition.error("Error")
-    stateTransition =
-      StateTransition {
-        SafeFuture.completedFuture(stateTransitionError)
-      }
-    blockValidator =
-      BlockValidator {
-        SafeFuture.completedFuture(BlockValidator.ok())
-      }
-    val qbftBlockValidatorAdapter =
-      QbftBlockValidatorAdapter(
-        stateTransition = stateTransition,
-        blockValidator = blockValidator,
-      )
-    val expectedResult =
-      QbftBlockValidator.ValidationResult(
-        false,
-        Optional.of(stateTransitionError.getError().toString()),
-      )
-    assertThat(qbftBlockValidatorAdapter.validateBlock(QbftBlockAdapter(newBlock))).isEqualTo(expectedResult)
-  }
-
-  @Test
   fun `validateBlock should return false when block validation error`() {
-    stateTransition =
-      StateTransition {
-        SafeFuture.completedFuture(ok(DataGenerators.randomBeaconState(10u)))
-      }
     val blockValidatorError = BlockValidator.error("Error")
     blockValidator =
       BlockValidator {
@@ -68,7 +38,6 @@ class QbftBlockValidatorAdapterTest {
       }
     val qbftBlockValidatorAdapter =
       QbftBlockValidatorAdapter(
-        stateTransition = stateTransition,
         blockValidator = blockValidator,
       )
     val expectedResult =
@@ -80,11 +49,7 @@ class QbftBlockValidatorAdapterTest {
   }
 
   @Test
-  fun `validateBlock should return true when `() {
-    stateTransition =
-      StateTransition {
-        SafeFuture.completedFuture(ok(DataGenerators.randomBeaconState(10u)))
-      }
+  fun `validateBlock should return true when valid block`() {
     blockValidator =
       BlockValidator {
         SafeFuture.completedFuture(BlockValidator.ok())
@@ -92,7 +57,6 @@ class QbftBlockValidatorAdapterTest {
 
     val qbftBlockValidatorAdapter =
       QbftBlockValidatorAdapter(
-        stateTransition = stateTransition,
         blockValidator = blockValidator,
       )
     val expectedResult = QbftBlockValidator.ValidationResult(true, Optional.empty())

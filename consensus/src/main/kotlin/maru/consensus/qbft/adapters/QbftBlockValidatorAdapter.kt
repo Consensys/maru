@@ -17,24 +17,15 @@ package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Err
 import java.util.Optional
-import maru.consensus.state.StateTransition
 import maru.consensus.validation.BlockValidator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 
 class QbftBlockValidatorAdapter(
-  private val stateTransition: StateTransition,
   private val blockValidator: BlockValidator,
 ) : QbftBlockValidator {
   override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
     val beaconBlock = qbftBlock.toBeaconBlock()
-    val stateTransitionResult = stateTransition.processBlock(beaconBlock).get()
-    if (stateTransitionResult is Err) {
-      return QbftBlockValidator.ValidationResult(
-        false,
-        Optional.of(stateTransitionResult.error.toString()),
-      )
-    }
     val blockValidationResult = blockValidator.validateBlock(beaconBlock).get()
     if (blockValidationResult is Err) {
       return QbftBlockValidator.ValidationResult(
