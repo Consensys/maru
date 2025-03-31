@@ -30,7 +30,6 @@ import maru.consensus.validation.BlockValidator.Companion.error
 import maru.consensus.validation.BlockValidator.Companion.ok
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
-import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.core.Validator
 import maru.database.BeaconChain
@@ -93,28 +92,26 @@ class StateRootValidator(
   private val stateTransition: StateTransition,
 ) : BlockValidator {
   override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    stateTransition.processBlock(newBlock).thenApply { stateTransitionResult ->
-      when (stateTransitionResult) {
-        is Ok<BeaconState> -> {
-          val postState = stateTransitionResult.value
-          val stateRootHeader =
-            postState.latestBeaconBlockHeader.copy(
-              stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
-            )
-          val expectedStateRoot = HashUtil.stateRoot(postState.copy(latestBeaconBlockHeader = stateRootHeader))
-          if (!newBlock.beaconBlockHeader.stateRoot.contentEquals(expectedStateRoot)) {
-            error(
-              "State root in header does not match state root " +
-                "stateRoot=${newBlock.beaconBlockHeader.stateRoot.encodeHex()} " +
-                "expectedStateRoot=${expectedStateRoot.encodeHex()}",
-            )
-          } else {
-            ok()
-          }
+    stateTransition
+      .processBlock(newBlock)
+      .thenApply { postState ->
+        val stateRootHeader =
+          postState.latestBeaconBlockHeader.copy(
+            stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
+          )
+        val expectedStateRoot = HashUtil.stateRoot(postState.copy(latestBeaconBlockHeader = stateRootHeader))
+        if (!newBlock.beaconBlockHeader.stateRoot.contentEquals(expectedStateRoot)) {
+          error(
+            "State root in header does not match state root " +
+              "stateRoot=${newBlock.beaconBlockHeader.stateRoot.encodeHex()} " +
+              "expectedStateRoot=${expectedStateRoot.encodeHex()}",
+          )
+        } else {
+          ok()
         }
-        is Err<StateTransition.StateTransitionError> -> error("State transition failed: ${stateTransitionResult.error}")
+      }.exceptionally {
+        error("State root validation failed: ${it.message}")
       }
-    }
 }
 
 class BlockNumberValidator(
