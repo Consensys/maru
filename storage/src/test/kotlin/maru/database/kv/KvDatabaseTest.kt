@@ -32,11 +32,14 @@ class KvDatabaseTest {
     override fun getApplicationPrefix(): Optional<String> = Optional.empty()
   }
 
+  private val genesisState = DataGenerators.randomBeaconState(0uL)
+
   private fun createDatabase(databasePath: Path): KvDatabase =
     KvDatabaseFactory.createRocksDbDatabase(
       databasePath = databasePath,
       metricsSystem = NoOpMetricsSystem(),
       metricCategory = KvDatabaseTestMetricCategory,
+      kvDatabaseConfig = KvDatabase.Config(genesisState = genesisState),
     )
 
   @Test
@@ -45,6 +48,7 @@ class KvDatabaseTest {
   ) {
     val testBeaconStates = (1..10).map { DataGenerators.randomBeaconState(it.toULong()) }
     createDatabase(databasePath).use { db ->
+      assertThat(db.getLatestBeaconState()).isEqualTo(genesisState)
       testBeaconStates.forEach { testBeaconState ->
         db.newUpdater().use {
           it.putBeaconState(testBeaconState).commit()

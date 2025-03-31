@@ -26,6 +26,7 @@ object KvDatabaseFactory {
     databasePath: Path,
     metricsSystem: MetricsSystem,
     metricCategory: MetricCategory,
+    kvDatabaseConfig: KvDatabase.Config,
   ): KvDatabase {
     val rocksDbInstance =
       RocksDbInstanceFactory.create(
@@ -39,6 +40,6 @@ object KvDatabaseFactory {
         ),
         emptyList(),
       )
-    return KvDatabase(rocksDbInstance)
+    return KvDatabase(rocksDbInstance, kvDatabaseConfig)
   }
 }
