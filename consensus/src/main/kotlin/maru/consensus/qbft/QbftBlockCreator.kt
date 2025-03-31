@@ -50,6 +50,28 @@ class QbftBlockCreator(
   private val beaconChain: BeaconChain,
   private val round: Int,
 ) : QbftBlockCreator {
+  companion object {
+    fun createSealedBlock(
+      block: QbftBlock,
+      roundNumber: Int,
+      commitSeals: Collection<SECPSignature>,
+    ): QbftBlock {
+      val seals =
+        commitSeals.map {
+          Seal(it.encodedBytes().toArrayUnsafe())
+        }
+      val block1 = block.toBeaconBlock()
+      val beaconBlockHeader = block1.beaconBlockHeader
+      val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toUInt())
+      val sealedBlockBody =
+        SealedBeaconBlock(
+          BeaconBlock(updatedBlockHeader, block1.beaconBlockBody),
+          seals,
+        )
+      return QbftSealedBlockAdapter(sealedBlockBody)
+    }
+  }
+
   override fun createBlock(
     headerTimeStampSeconds: Long,
     parentHeader: QbftBlockHeader,
@@ -100,20 +122,5 @@ class QbftBlockCreator(
     block: QbftBlock,
     roundNumber: Int,
     commitSeals: Collection<SECPSignature>,
-  ): QbftBlock {
-    val seals =
-      commitSeals.map {
-        Seal(it.encodedBytes().toArrayUnsafe())
-      }
-    val block1 = block.toBeaconBlock()
-    val beaconBlockHeader = block1.beaconBlockHeader
-    val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toUInt())
-    val sealedBlockBody =
-      SealedBeaconBlock(
-        BeaconBlock(updatedBlockHeader, block1.beaconBlockBody),
-        seals,
-      )
-    val sealedBeaconBlock = sealedBlockBody
-    return QbftSealedBlockAdapter(sealedBeaconBlock)
-  }
+  ): QbftBlock = Companion.createSealedBlock(block = block, roundNumber = roundNumber, commitSeals = commitSeals)
 }

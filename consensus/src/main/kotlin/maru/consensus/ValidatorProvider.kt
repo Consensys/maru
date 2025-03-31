@@ -38,8 +38,8 @@ class StaticValidatorProvider(
 ) : ValidatorProvider {
   // TODO: will be removed in the future
   override fun getValidatorsForBlock(header: BeaconBlockHeader): SafeFuture<Set<Validator>> =
-    SafeFuture.completedFuture<Set<Validator>>(validators)
+    SafeFuture.completedFuture(validators)
 
   override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> =
-    SafeFuture.completedFuture<Set<Validator>>(validators)
+    SafeFuture.completedFuture(validators)
 }
