@@ -13,32 +13,27 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.consensus.state
 
-data class BeaconBlockHeader(
-  val number: ULong,
-  val round: UInt,
-  val timestamp: ULong,
-  val proposer: Validator,
-  val parentRoot: ByteArray,
-  val stateRoot: ByteArray,
-  val bodyRoot: ByteArray,
-  private val headerHashFunction: HeaderHashFunction,
+data class FinalizationState(
+  val safeBlockHash: ByteArray,
+  val finalizedBlockHash: ByteArray,
 ) {
-  val hash by lazy { headerHashFunction(this) }
-
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as BeaconBlockHeader
+    other as FinalizationState
 
-    if (!hash.contentEquals(other.hash)) return false
+    if (!safeBlockHash.contentEquals(other.safeBlockHash)) return false
+    if (!finalizedBlockHash.contentEquals(other.finalizedBlockHash)) return false
 
     return true
   }
 
-  override fun hashCode(): Int = hash.contentHashCode()
-
-  fun hash(): ByteArray = hash
+  override fun hashCode(): Int {
+    var result = safeBlockHash.contentHashCode()
+    result = 31 * result + finalizedBlockHash.contentHashCode()
+    return result
+  }
 }

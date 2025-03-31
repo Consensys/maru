@@ -13,16 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.adaptors
+package maru.consensus.qbft.adapters
 
+<<<<<<<< HEAD:consensus/src/test/kotlin/maru/consensus/qbft/adapters/QbftBlockCodecAdaptorTest.kt
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
+========
+>>>>>>>> upstream/main:consensus/src/test/kotlin/maru/consensus/qbft/adapters/QbftBlockCodecAdapterTest.kt
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.ethereum.rlp.RLP
 import org.junit.jupiter.api.Test
 
-class QbftBlockCodecAdaptorTest {
+class QbftBlockCodecAdapterTest {
   @Test
   fun `can encode and decode same value`() {
     val beaconBlock = DataGenerators.randomBeaconBlock(10U)

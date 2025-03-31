@@ -15,12 +15,11 @@
  */
 package maru.database.kv
 
-import org.apache.tuweni.bytes.Bytes
-import org.apache.tuweni.units.bigints.UInt256
+import java.math.BigInteger
 import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
 
 class ULongSerializer : KvStoreSerializer<ULong> {
-  override fun deserialize(value: ByteArray): ULong = UInt256.fromBytes(Bytes.wrap(value)).toLong().toULong()
+  override fun serialize(value: ULong): ByteArray = BigInteger.valueOf(value.toLong()).toByteArray()
 
-  override fun serialize(value: ULong): ByteArray = UInt256.valueOf(value.toLong()).toBytes().toArrayUnsafe()
+  override fun deserialize(bytes: ByteArray): ULong = BigInteger(bytes).toLong().toULong()
 }

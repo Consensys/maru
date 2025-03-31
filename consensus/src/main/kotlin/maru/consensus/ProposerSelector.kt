@@ -16,13 +16,14 @@
 package maru.consensus
 
 import maru.core.Validator
+import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import maru.database.BeaconChain
 import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
-import org.hyperledger.besu.consensus.common.bft.blockcreation.BftProposerSelector.selectProposerForRound
 import org.hyperledger.besu.datatypes.Address
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
+fun interface ProposerSelector {
+  fun getProposerForBlock(consensusRoundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator>
 interface ProposerSelector {
   fun selectProposerForRound(roundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator>
 }
@@ -47,3 +48,6 @@ class ProposerSelectorImpl(
     return SafeFuture.completedFuture(Validator(proposer.toArray()))
   }
 }
+
+fun BeaconBlockHeader.toConsensusRoundIdentifier(): ConsensusRoundIdentifier =
+  ConsensusRoundIdentifier(this.number.toLong(), this.round.toInt())

@@ -21,13 +21,13 @@ import com.github.michaelbull.result.Result
 import encodeHex
 import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
+import maru.consensus.toConsensusRoundIdentifier
 import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
-import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface StateTransition {
@@ -52,8 +52,9 @@ class StateTransitionImpl(
   ): SafeFuture<Result<BeaconState, StateTransition.StateTransitionError>> {
     val validatorsForBlockFuture = validatorProvider.getValidatorsForBlock(block.beaconBlockHeader)
     val proposerForBlockFuture =
-      proposerSelector.selectProposerForRound(
-        ConsensusRoundIdentifier(block.beaconBlockHeader.number.toLong(), block.beaconBlockHeader.round.toInt()),
+      proposerSelector.getProposerForBlock(
+        block.beaconBlockHeader
+          .toConsensusRoundIdentifier(),
       )
 
     return validatorsForBlockFuture.thenComposeCombined(
@@ -98,6 +99,7 @@ class StateTransitionImpl(
                   )
                 Ok(postState)
               }
+
               is Err ->
                 Err(
                   StateTransition.StateTransitionError(
