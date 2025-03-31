@@ -37,6 +37,7 @@ import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
+import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
@@ -75,7 +76,7 @@ class QbftEmptyBlockCreatorTest {
   private val clock = Clock.systemDefaultZone()
 
   @Test
-  fun `can create empty block`() {
+  fun `can create empty block even though there was a nonempty payload built`() {
     val parentBlock = DataGenerators.randomSealedBeaconBlock(0U)
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(
@@ -99,14 +100,35 @@ class QbftEmptyBlockCreatorTest {
         beaconChain = beaconChain,
         round = 1,
       )
+    val genesisBlockHash = executionLayerManager.latestBlockMetadata().blockHash
     val emptyBlockCreator =
       EmptyBlockCreator(executionLayerManager, mainBlockCreator, {
-        val latestBlockHash = executionLayerManager.latestBlockMetadata().blockHash
         FinalizationState(
-          latestBlockHash,
-          latestBlockHash,
+          genesisBlockHash,
+          genesisBlockHash,
         )
       }, validator)
+    // Create a non-empty proposal
+    val nonEmptyBlockTimestamp = clock.millis() / 1000
+    executionLayerManager.setHeadAndStartBlockBuilding(
+      headHash = genesisBlockHash,
+      safeHash = genesisBlockHash,
+      finalizedHash = genesisBlockHash,
+      nextBlockTimestamp = nonEmptyBlockTimestamp,
+      feeRecipient = validator.address,
+    )
+    besuInstance.execute(TransactionsHelper().createTransfers(1u))
+    Thread.sleep(1000)
+    val nonEmptyBlock = mainBlockCreator.createBlock(nonEmptyBlockTimestamp, parentHeader)
+    val proposedTransactions =
+      nonEmptyBlock
+        .toBeaconBlock()
+        .beaconBlockBody.executionPayload.transactions
+    assertThat(
+      proposedTransactions,
+    ).hasSize(1)
+
+    // Try to create an empty block instead of a non-empty proposal
     val blockTimestamp = clock.millis() / 1000
     val createdBlock = emptyBlockCreator.createBlock(blockTimestamp, parentHeader)
     val createBeaconBlock = createdBlock.toBeaconBlock()
