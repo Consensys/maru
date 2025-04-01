@@ -16,6 +16,8 @@
 package maru.consensus.qbft.adapters
 
 import java.time.Clock
+import maru.database.BeaconChain
+import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.common.bft.BftHelpers
 import org.hyperledger.besu.consensus.common.bft.BlockTimer
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -38,6 +40,7 @@ class QbftFinalStateAdapter(
   private val blockTimer: BlockTimer,
   private val blockCreatorFactory: QbftBlockCreatorFactory,
   private val clock: Clock,
+  private val beaconChain: BeaconChain,
 ) : QbftFinalState {
   override fun getValidatorMulticaster(): ValidatorMulticaster = validatorMulticaster
 
@@ -47,7 +50,10 @@ class QbftFinalStateAdapter(
 
   override fun isLocalNodeValidator(): Boolean = getValidators().contains(localAddress)
 
-  override fun getValidators(): Collection<Address> = validatorProvider.validatorsAtHead
+  override fun getValidators(): Collection<Address> =
+    beaconChain.getLatestBeaconState().validators.map {
+      Address.wrap(Bytes.wrap(it.address))
+    }
 
   override fun getLocalAddress(): Address = localAddress
 

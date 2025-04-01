@@ -15,11 +15,6 @@
  */
 package maru.consensus.qbft.adapters
 
-<<<<<<<< HEAD:consensus/src/test/kotlin/maru/consensus/qbft/adapters/QbftBlockCodecAdaptorTest.kt
-import maru.consensus.qbft.adapters.QbftBlockAdapter
-import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
-========
->>>>>>>> upstream/main:consensus/src/test/kotlin/maru/consensus/qbft/adapters/QbftBlockCodecAdapterTest.kt
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.ethereum.rlp.RLP

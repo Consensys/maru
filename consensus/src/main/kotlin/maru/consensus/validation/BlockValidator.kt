@@ -87,7 +87,7 @@ object BlockValidators {
         SafeFuture.completedFuture(ok())
       }
     }
-git
+
   val TimestampValidator =
     BlockValidator { block, _, parentBlockHeader ->
       if (block.beaconBlockHeader.timestamp <= parentBlockHeader.timestamp) {

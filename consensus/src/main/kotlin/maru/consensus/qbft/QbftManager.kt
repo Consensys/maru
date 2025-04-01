@@ -106,6 +106,7 @@ class QbftManager(
         blockTimer,
         qbftBlockCreatorFactory,
         clock,
+        beaconChain,
       )
 
     // TODO connect this to the maru NewBlockHandler

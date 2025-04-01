@@ -148,9 +148,13 @@ class JsonRpcExecutionLayerManager private constructor(
             payloadId = null // Not necessary, but it helps to reinforce the order of calls
             executionPayload
           }
+        } else {
+          SafeFuture.failedFuture(
+            IllegalStateException("engine_getPayload request failed! Cause: " + payloadResponse.errorMessage),
+          )
         }
       }
-    }
+  }
 
   override fun latestBlockMetadata(): BlockMetadata = latestBlockCache.currentBlockMetadata
 

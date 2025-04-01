@@ -19,12 +19,13 @@ import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.datatypes.Address
+import maru.consensus.ProposerSelector as MaruProposerSelector
 
 class ProposerSelectorAdapter(
-  private val proposerSelector: maru.consensus.ProposerSelector,
+  private val proposerSelector: MaruProposerSelector,
 ) : ProposerSelector {
   override fun selectProposerForRound(roundIdentifier: ConsensusRoundIdentifier): Address? {
-    val validator = proposerSelector.selectProposerForRound(roundIdentifier).get()
+    val validator = proposerSelector.getProposerForBlock(roundIdentifier).get()
     return Address.wrap(Bytes.wrap(validator.address))
   }
 }

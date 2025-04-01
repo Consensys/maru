@@ -92,7 +92,7 @@ class EngineApiBlockCreator(
     val blockBuildingResult =
       try {
         manager
-          .finishBlockBuildingAndBuildNextBlock()
+          .finishBlockBuilding()
           .thenApply {
             state.updateLatestStatus(it.blockHash)
             log.info("Updating latest state")
