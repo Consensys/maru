@@ -19,10 +19,8 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import encodeHex
-import java.util.Optional
 import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
-import maru.consensus.qbft.adapters.toBeaconBlock
 import maru.consensus.state.StateTransition
 import maru.consensus.toConsensusRoundIdentifier
 import maru.consensus.validation.BlockValidator.BlockValidationError
@@ -38,11 +36,9 @@ import maru.executionlayer.extensions.hasValidExecutionPayload
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import org.hyperledger.besu.consensus.common.bft.BftHelpers
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-interface BlockValidator : QbftBlockValidator {
+interface BlockValidator {
   data class BlockValidationError(
     val message: String,
   )
@@ -54,19 +50,6 @@ interface BlockValidator : QbftBlockValidator {
   }
 
   fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>>
-
-  override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
-    val beaconBlock = qbftBlock.toBeaconBlock()
-    val blockValidationResult = validateBlock(beaconBlock).get()
-    return if (blockValidationResult is Err) {
-      QbftBlockValidator.ValidationResult(
-        false,
-        Optional.of(blockValidationResult.error.toString()),
-      )
-    } else {
-      QbftBlockValidator.ValidationResult(true, Optional.empty())
-    }
-  }
 }
 
 class CompositeBlockValidator(

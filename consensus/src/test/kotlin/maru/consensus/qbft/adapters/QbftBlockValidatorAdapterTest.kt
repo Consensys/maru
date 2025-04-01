@@ -18,7 +18,6 @@ package maru.consensus.qbft.adapters
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.getError
 import java.util.Optional
-import maru.consensus.state.StateTransition.Companion.ok
 import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
 import maru.core.ext.DataGenerators
