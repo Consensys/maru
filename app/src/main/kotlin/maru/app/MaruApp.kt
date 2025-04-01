@@ -15,6 +15,7 @@
  */
 package maru.app
 
+import java.nio.file.Path
 import java.time.Clock
 import java.time.Duration
 import maru.config.MaruConfig
@@ -24,11 +25,12 @@ import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
-import maru.consensus.delegated.ElDelegatedConsensusFactory
-import maru.consensus.dummy.DummyConsensusProtocolFactory
+import maru.consensus.qbft.QbftConsensusProtocolFactory
+import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.client.Web3jMetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
@@ -65,24 +67,29 @@ class MaruApp(
       forksSchedule = beaconGenesisConfig,
       minTimeTillNextBlock = config.executionClientConfig.minTimeBetweenGetPayloadAttempts,
     )
+
+  private val metricsSystem = NoOpMetricsSystem()
+  private val dbPath = Path.of("/Users/jframe/code/maru/tmp/db") // TODO make this configurable
+
+  private val beaconChain =
+    KvDatabaseFactory.createRocksDbDatabase(
+      databasePath = dbPath,
+      metricsSystem = metricsSystem,
+      metricCategory = MaruMetricsCategory.STORAGE,
+    )
+
   private val protocolStarter =
     ProtocolStarter(
       forksSchedule = beaconGenesisConfig,
       protocolFactory =
         OmniProtocolFactory(
-          dummyConsensusFactory =
-            DummyConsensusProtocolFactory(
-              forksSchedule = beaconGenesisConfig,
-              clock = clock,
+          qbftConsensusFactory =
+            QbftConsensusProtocolFactory(
+              beaconChain = beaconChain,
               maruConfig = config,
+              metricsSystem = metricsSystem,
               metadataProvider = metadataProvider,
-              newBlockHandler = newBlockHandlerMultiplexer,
-              nextBlockTimestampProvider = nextBlockTimestampProvider,
-            ),
-          elDelegatedConsensusFactory =
-            ElDelegatedConsensusFactory(
-              ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
-              newBlockHandler = newBlockHandlerMultiplexer,
+              forksSchedule = beaconGenesisConfig,
             ),
         ),
       metadataProvider = metadataProvider,

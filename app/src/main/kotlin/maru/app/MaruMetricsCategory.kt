@@ -13,26 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.app
 
-import maru.consensus.qbft.QbftConsensusConfig
-import maru.core.Protocol
+import java.util.Optional
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 
-interface ProtocolFactory {
-  fun create(forkSpec: ForkSpec): Protocol
-}
+enum class MaruMetricsCategory : MetricCategory {
+  STORAGE {
+    override fun getName(): String = "storage"
 
-class OmniProtocolFactory(
-  private val qbftConsensusFactory: ProtocolFactory,
-) : ProtocolFactory {
-  override fun create(forkSpec: ForkSpec): Protocol =
-    when (forkSpec.configuration) {
-      is QbftConsensusConfig -> {
-        qbftConsensusFactory.create(forkSpec)
-      }
-
-      else -> {
-        throw IllegalArgumentException("Fork $forkSpec is unknown!")
-      }
-    }
+    override fun getApplicationPrefix(): Optional<String> = Optional.empty()
+  },
 }

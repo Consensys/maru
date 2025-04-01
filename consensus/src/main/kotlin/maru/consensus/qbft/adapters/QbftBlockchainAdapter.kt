@@ -27,10 +27,5 @@ class QbftBlockchainAdapter(
 
   override fun getChainHeadBlockNumber(): Long = getLatestHeader().number.toLong()
 
-  private fun getLatestHeader(): BeaconBlockHeader {
-    val latestHeader =
-      beaconChain.getLatestBeaconState()?.latestBeaconBlockHeader
-        ?: throw IllegalStateException("No chain head header available")
-    return latestHeader
-  }
+  private fun getLatestHeader(): BeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
 }

@@ -13,26 +13,18 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.qbft
 
-import maru.consensus.qbft.QbftConsensusConfig
 import maru.core.Protocol
+import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
 
-interface ProtocolFactory {
-  fun create(forkSpec: ForkSpec): Protocol
-}
+class QbftConsensus(
+  private val qbftController: QbftController,
+) : Protocol {
+  override fun start() {
+    qbftController.start()
+  }
 
-class OmniProtocolFactory(
-  private val qbftConsensusFactory: ProtocolFactory,
-) : ProtocolFactory {
-  override fun create(forkSpec: ForkSpec): Protocol =
-    when (forkSpec.configuration) {
-      is QbftConsensusConfig -> {
-        qbftConsensusFactory.create(forkSpec)
-      }
-
-      else -> {
-        throw IllegalArgumentException("Fork $forkSpec is unknown!")
-      }
-    }
+  override fun stop() {
+  }
 }
