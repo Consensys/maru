@@ -49,16 +49,16 @@ interface BlockValidator {
     fun error(message: String): Result<Unit, BlockValidationError> = Err(BlockValidationError(message))
   }
 
-  fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>>
+  fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>>
 }
 
 class CompositeBlockValidator(
   private val blockValidators: List<BlockValidator>,
 ) : BlockValidator {
-  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
     val validationResultFutures =
       blockValidators
-        .map { it.validateBlock(newBlock) }
+        .map { it.validateBlock(block) }
         .stream()
     return SafeFuture.collectAll(validationResultFutures).thenApply { validationResults ->
       val errors = validationResults.mapNotNull { it.component2() }
@@ -71,44 +71,17 @@ class CompositeBlockValidator(
   }
 }
 
-class StateRootValidator(
-  private val stateTransition: StateTransition,
-) : BlockValidator {
-  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    stateTransition
-      .processBlock(newBlock)
-      .thenApply { postState ->
-        val stateRootHeader =
-          postState.latestBeaconBlockHeader.copy(
-            stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
-          )
-        val expectedStateRoot = HashUtil.stateRoot(postState.copy(latestBeaconBlockHeader = stateRootHeader))
-        if (!newBlock.beaconBlockHeader.stateRoot.contentEquals(expectedStateRoot)) {
-          error(
-            "State root in header does not match state root " +
-              "stateRoot=${newBlock.beaconBlockHeader.stateRoot.encodeHex()} " +
-              "expectedStateRoot=${expectedStateRoot.encodeHex()}",
-          )
-        } else {
-          ok()
-        }
-      }.exceptionally {
-        error("State root validation failed: ${it.message}")
-      }
-}
-
 class BlockNumberValidator(
-  private val beaconChain: BeaconChain,
+  private val parentBlockHeader: BeaconBlockHeader,
 ) : BlockValidator {
-  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
-    val currentState = beaconChain.getLatestBeaconState()
-    val parentBlockNumber = currentState.latestBeaconBlockHeader.number
-    return if (newBlock.beaconBlockHeader.number != parentBlockNumber + 1u) {
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+    val parentBlockNumber = parentBlockHeader.number
+    return if (block.beaconBlockHeader.number != parentBlockNumber + 1u) {
       SafeFuture.completedFuture(
         error(
           "Block number is not the next block number " +
-            "blockNumber=${newBlock.beaconBlockHeader.number} " +
-            "nextBlockNumber=${parentBlockNumber + 1u}",
+            "blockNumber=${block.beaconBlockHeader.number} " +
+            "parentBlockNumber=$parentBlockNumber",
         ),
       )
     } else {
@@ -118,16 +91,16 @@ class BlockNumberValidator(
 }
 
 class TimestampValidator(
-  private val beaconChain: BeaconChain,
+  private val parentBlockHeader: BeaconBlockHeader,
 ) : BlockValidator {
-  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
-    val parentBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
-    return if (newBlock.beaconBlockHeader.timestamp <= parentBlockHeader.timestamp) {
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+    val parentBlockTimeStamp = parentBlockHeader.timestamp
+    return if (block.beaconBlockHeader.timestamp <= parentBlockTimeStamp) {
       SafeFuture.completedFuture(
         error(
           "Block timestamp is not greater than previous block timestamp " +
-            "blockTimestamp=${newBlock.beaconBlockHeader.timestamp} " +
-            "parentBlockTimestamp=${parentBlockHeader.timestamp}",
+            "blockTimestamp=${block.beaconBlockHeader.timestamp} " +
+            "parentBlockTimestamp=$parentBlockTimeStamp",
         ),
       )
     } else {
@@ -139,15 +112,15 @@ class TimestampValidator(
 class ProposerValidator(
   private val proposerSelector: ProposerSelector,
 ) : BlockValidator {
-  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
     proposerSelector
-      .getProposerForBlock(newBlock.beaconBlockHeader.toConsensusRoundIdentifier())
+      .getProposerForBlock(block.beaconBlockHeader.toConsensusRoundIdentifier())
       .thenApply { proposerForNewBlock ->
-        if (newBlock.beaconBlockHeader.proposer != proposerForNewBlock) {
+        if (block.beaconBlockHeader.proposer != proposerForNewBlock) {
           Err(
             BlockValidationError(
               "Proposer is not expected proposer " +
-                "proposer=${newBlock.beaconBlockHeader.proposer} " +
+                "proposer=${block.beaconBlockHeader.proposer} " +
                 "expectedProposer=$proposerForNewBlock",
             ),
           )
@@ -158,32 +131,56 @@ class ProposerValidator(
 }
 
 class ParentRootValidator(
-  private val beaconChain: BeaconChain,
+  private val parentBlockHeader: BeaconBlockHeader,
 ) : BlockValidator {
-  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
-    val parentBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
-    return if (!newBlock.beaconBlockHeader.parentRoot.contentEquals(parentBlockHeader.hash)) {
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
+    if (!block.beaconBlockHeader.parentRoot.contentEquals(parentBlockHeader.hash)) {
       SafeFuture.completedFuture(
         error(
           "Parent root does not match parent block root " +
-            "parentRoot=${newBlock.beaconBlockHeader.parentRoot.encodeHex()} " +
+            "parentRoot=${block.beaconBlockHeader.parentRoot.encodeHex()} " +
             "expectedParentRoot=${parentBlockHeader.hash.encodeHex()}",
         ),
       )
     } else {
       SafeFuture.completedFuture(ok())
     }
-  }
+}
+
+class StateRootValidator(
+  private val stateTransition: StateTransition,
+) : BlockValidator {
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
+    stateTransition
+      .processBlock(block)
+      .thenApply { postState ->
+        val stateRootHeader =
+          postState.latestBeaconBlockHeader.copy(
+            stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
+          )
+        val expectedStateRoot = HashUtil.stateRoot(postState.copy(latestBeaconBlockHeader = stateRootHeader))
+        if (!block.beaconBlockHeader.stateRoot.contentEquals(expectedStateRoot)) {
+          error(
+            "State root in header does not match state root " +
+              "stateRoot=${block.beaconBlockHeader.stateRoot.encodeHex()} " +
+              "expectedStateRoot=${expectedStateRoot.encodeHex()}",
+          )
+        } else {
+          ok()
+        }
+      }.exceptionally {
+        error("State root validation failed: ${it.message}")
+      }
 }
 
 class BodyRootValidator : BlockValidator {
-  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
-    val beaconBodyRoot = HashUtil.bodyRoot(newBlock.beaconBlockBody)
-    return if (!newBlock.beaconBlockHeader.bodyRoot.contentEquals(beaconBodyRoot)) {
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+    val beaconBodyRoot = HashUtil.bodyRoot(block.beaconBlockBody)
+    return if (!block.beaconBlockHeader.bodyRoot.contentEquals(beaconBodyRoot)) {
       SafeFuture.completedFuture(
         error(
           "Body root in header does not match body root " +
-            "bodyRoot=${newBlock.beaconBlockHeader.bodyRoot.encodeHex()} " +
+            "bodyRoot=${block.beaconBlockHeader.bodyRoot.encodeHex()} " +
             "expectedBodyRoot=${beaconBodyRoot.encodeHex()}",
         ),
       )
@@ -202,6 +199,19 @@ class PrevCommitSealValidator(
   data class Config(
     val prevBlockOffset: UInt,
   )
+
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+    val prevBlockNumber = block.beaconBlockHeader.number - config.prevBlockOffset
+
+    val prevBlock =
+      beaconChain.getSealedBeaconBlock(prevBlockNumber)?.beaconBlock ?: return SafeFuture.completedFuture(
+        error("Previous block not found, previousBlockNumber=$prevBlockNumber"),
+      )
+
+    return validatorProvider
+      .getValidatorsForBlock(prevBlock.beaconBlockHeader.number)
+      .thenApply { validatorsForPrevBlock -> verifySeals(block, prevBlock, validatorsForPrevBlock) }
+  }
 
   private fun verifySeals(
     newBlock: BeaconBlock,
@@ -239,27 +249,13 @@ class PrevCommitSealValidator(
     }
     return ok()
   }
-
-  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
-    val prevBlockNumber =
-      beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number - (config.prevBlockOffset - 1u)
-
-    val prevBlock =
-      beaconChain.getSealedBeaconBlock(prevBlockNumber) ?: return SafeFuture.completedFuture(
-        error("Previous block not found, previousBlockNumber=$prevBlockNumber"),
-      )
-
-    return validatorProvider
-      .getValidatorsForBlock(prevBlock.beaconBlock.beaconBlockHeader.number)
-      .thenApply { validatorsForPrevBlock -> verifySeals(newBlock, prevBlock.beaconBlock, validatorsForPrevBlock) }
-  }
 }
 
 class ExecutionPayloadValidator(
   private val executionLayerClient: ExecutionLayerClient,
 ) : BlockValidator {
-  override fun validateBlock(newBlock: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    executionLayerClient.newPayload(newBlock.beaconBlockBody.executionPayload).thenApply { newPayloadResponse ->
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
+    executionLayerClient.newPayload(block.beaconBlockBody.executionPayload).thenApply { newPayloadResponse ->
       if (newPayloadResponse.isSuccess && newPayloadResponse.payload.hasValidExecutionPayload()) {
         ok()
       } else {

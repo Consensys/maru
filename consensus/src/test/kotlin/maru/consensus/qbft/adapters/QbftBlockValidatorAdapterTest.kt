@@ -35,9 +35,7 @@ class QbftBlockValidatorAdapterTest {
     val blockValidatorError = BlockValidator.error("Error")
     blockValidator =
       object : BlockValidator {
-        override fun validateBlock(
-          newBlock: BeaconBlock,
-        ): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
+        override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
           SafeFuture.completedFuture(blockValidatorError)
       }
     val qbftBlockValidatorAdapter =
@@ -56,9 +54,7 @@ class QbftBlockValidatorAdapterTest {
   fun `validateBlock should return true when valid block`() {
     blockValidator =
       object : BlockValidator {
-        override fun validateBlock(
-          newBlock: BeaconBlock,
-        ): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
+        override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
           SafeFuture.completedFuture(BlockValidator.ok())
       }
 
