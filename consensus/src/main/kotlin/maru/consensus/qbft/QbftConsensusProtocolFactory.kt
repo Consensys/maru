@@ -19,6 +19,7 @@ import java.math.BigInteger
 import java.time.Clock
 import java.time.Duration
 import java.time.temporal.ChronoUnit
+import java.util.Optional
 import kotlin.random.Random
 import kotlin.random.nextULong
 import maru.config.MaruConfig
@@ -57,7 +58,6 @@ import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.config.BftConfigOptions
-import org.hyperledger.besu.consensus.common.ForksSchedule
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.common.bft.BlockTimer
@@ -73,6 +73,7 @@ import org.hyperledger.besu.consensus.qbft.core.validation.MessageValidatorFacto
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.cryptoservices.KeyPairSecurityModule
 import org.hyperledger.besu.cryptoservices.NodeKey
+import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.util.Subscribers
@@ -80,6 +81,8 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
+import org.hyperledger.besu.consensus.common.ForkSpec as BesuForkSpec
+import org.hyperledger.besu.consensus.common.ForksSchedule as BesuForksSchedule
 
 private const val MESSAGE_QUEUE_LIMIT = 1000 // TODO: Make this configurable
 private val ROUND_EXPIRY = Duration.of(1, ChronoUnit.SECONDS) // TODO: Make this configurable
@@ -136,13 +139,13 @@ class QbftConsensusProtocolFactory(
     initGenesisBlock(setOf(Validator(localAddress.toArrayUnsafe())))
 
     // TODO create besu forksSchedule from maru forksSchedule
-    val forksSchedule = ForksSchedule<BftConfigOptions>(emptyList())
+    val besuForksSchedule = createForksSchedule(forksSchedule)
 
     val clock = Clock.systemUTC()
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
     val bftEventQueue = BftEventQueue(MESSAGE_QUEUE_LIMIT)
     val roundTimer = RoundTimer(bftEventQueue, ROUND_EXPIRY, bftExecutors)
-    val blockTimer = BlockTimer(bftEventQueue, forksSchedule, bftExecutors, clock)
+    val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
     val finalState =
       QbftFinalStateAdapter(
         localAddress,
@@ -207,6 +210,47 @@ class QbftConsensusProtocolFactory(
       )
 
     return QbftConsensus(qbftController)
+  }
+
+  private fun createForksSchedule(schedule: maru.consensus.ForksSchedule): BesuForksSchedule<BftConfigOptions> {
+    val forkSpecs =
+      schedule.getForks().map {
+        val bftConfig = createBftConfig(it)
+        BesuForkSpec<BftConfigOptions>(0, bftConfig)
+      }
+    return BesuForksSchedule(forkSpecs)
+  }
+
+  private fun createBftConfig(spec: ForkSpec): BftConfigOptions {
+    val bftConfig =
+      object : BftConfigOptions {
+        override fun getEpochLength(): Long = 0
+
+        override fun getBlockPeriodSeconds(): Int = spec.blockTimeSeconds
+
+        override fun getEmptyBlockPeriodSeconds(): Int = 0
+
+        override fun getBlockPeriodMilliseconds(): Long = 0
+
+        override fun getRequestTimeoutSeconds(): Int = 0
+
+        override fun getGossipedHistoryLimit(): Int = 0
+
+        override fun getMessageQueueLimit(): Int = 0
+
+        override fun getDuplicateMessageLimit(): Int = 0
+
+        override fun getFutureMessagesLimit(): Int = 0
+
+        override fun getFutureMessagesMaxDistance(): Int = 0
+
+        override fun getMiningBeneficiary(): Optional<Address> = Optional.empty()
+
+        override fun getBlockRewardWei(): BigInteger = BigInteger.ZERO
+
+        override fun asMap(): Map<String, Any> = emptyMap()
+      }
+    return bftConfig
   }
 
   private fun initGenesisBlock(validators: Set<Validator> = emptySet()) {

@@ -15,6 +15,7 @@
  */
 package maru.consensus
 
+import java.util.Collections
 import java.util.NavigableSet
 import java.util.TreeSet
 
@@ -58,6 +59,8 @@ class ForksSchedule(
       "No fork found for $timestamp, first known fork is at ${forks.last.timestampSeconds}",
     )
   }
+
+  fun getForks(): Set<ForkSpec> = Collections.unmodifiableSet(forks)
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
