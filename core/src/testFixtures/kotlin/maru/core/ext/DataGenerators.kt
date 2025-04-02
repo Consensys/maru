@@ -96,8 +96,12 @@ object DataGenerators {
       headerHashFunction = HEADER_HASH_FUNCTION,
     )
 
-  fun randomExecutionPayload(): ExecutionPayload =
-    ExecutionPayload(
+  fun randomExecutionPayload(numberOfTransactions: Int = 5): ExecutionPayload {
+    val transactions =
+      (1..numberOfTransactions).map {
+        Random.nextBytes(110)
+      }
+    return ExecutionPayload(
       parentHash = Random.nextBytes(32),
       feeRecipient = Random.nextBytes(20),
       stateRoot = Random.nextBytes(32),
@@ -111,8 +115,9 @@ object DataGenerators {
       extraData = Random.nextBytes(32),
       baseFeePerGas = BigInteger.valueOf(Random.nextLong(0, Long.MAX_VALUE)),
       blockHash = Random.nextBytes(32),
-      transactions = emptyList(),
+      transactions = transactions,
     )
+  }
 
   fun randomBlockMetadata(timestamp: Long): BlockMetadata =
     BlockMetadata(
