@@ -89,7 +89,6 @@ class DelayedQbftBlockCreatorTest {
       HashUtil.stateRoot(
         BeaconState(
           createBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT),
-          HashUtil.bodyRoot(createBeaconBlock.beaconBlockBody),
           validatorSet,
         ),
       )

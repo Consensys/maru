@@ -58,7 +58,6 @@ object DataGenerators {
       )
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
-      latestBeaconBlockRoot = Random.nextBytes(32),
       validators = buildSet(3) { Validator(Random.nextBytes(128)) },
     )
   }

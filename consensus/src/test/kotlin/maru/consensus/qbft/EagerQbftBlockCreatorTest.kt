@@ -157,7 +157,6 @@ class EagerQbftBlockCreatorTest {
       HashUtil.stateRoot(
         BeaconState(
           createdBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT),
-          HashUtil.bodyRoot(createdBeaconBlock.beaconBlockBody),
           validatorSet,
         ),
       )
