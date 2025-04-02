@@ -288,7 +288,7 @@ class QbftConsensusProtocolFactory(
         BeaconBlockHeader(
           number = 0UL,
           timestamp = 0UL,
-          proposer = Validator(ByteArray(32)),
+          proposer = Validator(ByteArray(20)), // TODO enforce that proposer has length of 20 bytes
           parentRoot = ByteArray(32),
           stateRoot = ByteArray(32),
           bodyRoot = beaconBodyRoot,
