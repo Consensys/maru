@@ -15,6 +15,7 @@
  */
 package maru.database.kv
 
+import kotlin.jvm.optionals.getOrDefault
 import kotlin.jvm.optionals.getOrNull
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
@@ -27,7 +28,12 @@ import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
 
 class KvDatabase(
   private val kvStoreAccessor: KvStoreAccessor,
+  private val config: Config,
 ) : BeaconChain {
+  data class Config(
+    val genesisState: BeaconState,
+  )
+
   companion object {
     object Schema {
       val BeaconStateByBlockRoot: KvStoreColumn<ByteArray, BeaconState> =
@@ -59,7 +65,10 @@ class KvDatabase(
     }
   }
 
-  override fun getLatestBeaconState(): BeaconState = kvStoreAccessor.get(Schema.LatestBeaconState).get()
+  override fun getLatestBeaconState(): BeaconState =
+    kvStoreAccessor
+      .get(Schema.LatestBeaconState)
+      .getOrDefault(config.genesisState)
 
   override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? =
     kvStoreAccessor.get(Schema.BeaconStateByBlockRoot, beaconBlockRoot).getOrNull()
