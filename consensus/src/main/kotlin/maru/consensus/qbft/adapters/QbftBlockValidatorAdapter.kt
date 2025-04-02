@@ -13,26 +13,13 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.qbft.adapters
 
-import maru.consensus.qbft.QbftConsensusConfig
-import maru.core.Protocol
+import java.util.Optional
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 
-interface ProtocolFactory {
-  fun create(forkSpec: ForkSpec): Protocol
-}
-
-class OmniProtocolFactory(
-  private val qbftConsensusFactory: ProtocolFactory,
-) : ProtocolFactory {
-  override fun create(forkSpec: ForkSpec): Protocol =
-    when (forkSpec.configuration) {
-      is QbftConsensusConfig -> {
-        qbftConsensusFactory.create(forkSpec)
-      }
-
-      else -> {
-        throw IllegalArgumentException("Fork $forkSpec is unknown!")
-      }
-    }
+class QbftBlockValidatorAdapter : QbftBlockValidator {
+  override fun validateBlock(block: QbftBlock?): QbftBlockValidator.ValidationResult? =
+    QbftBlockValidator.ValidationResult(true, Optional.empty())
 }

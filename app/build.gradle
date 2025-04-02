@@ -7,11 +7,13 @@ dependencies {
   implementation(project(":consensus"))
   implementation(project(":core"))
   implementation(project(":executionlayer"))
+  implementation(project(":storage"))
 
   testImplementation("org.hyperledger.besu.internal:core")
 
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
+  implementation("org.hyperledger.besu.internal:metrics-core")
 
   testImplementation(testFixtures(project(":core")))
   testImplementation(testFixtures(project(":config")))

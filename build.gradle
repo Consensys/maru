@@ -24,6 +24,7 @@ allprojects {
   apply plugin: 'java-library'
 
   repositories {
+    mavenLocal()
     maven {
       url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
       content { includeGroupByRegex('org\\.hyperledger\\..*') }
