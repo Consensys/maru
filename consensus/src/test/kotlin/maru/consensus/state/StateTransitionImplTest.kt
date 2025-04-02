@@ -15,7 +15,6 @@
  */
 package maru.consensus.state
 
-import com.github.michaelbull.result.Ok
 import maru.consensus.ValidatorProvider
 import maru.core.BeaconState
 import maru.core.HashUtil
@@ -47,7 +46,6 @@ class StateTransitionImplTest {
     val stateTransition = StateTransitionImpl(validatorProvider = validatorProvider)
 
     val result = stateTransition.processBlock(newBlock).get()
-    val expectedResult = Ok(expectedPostState)
-    assertThat(result).isEqualTo(expectedResult)
+    assertThat(result).isEqualTo(expectedPostState)
   }
 }

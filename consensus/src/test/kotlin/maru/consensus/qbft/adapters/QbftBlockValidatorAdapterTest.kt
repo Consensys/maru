@@ -18,7 +18,6 @@ package maru.consensus.qbft.adapters
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.getError
 import java.util.Optional
-import maru.consensus.state.StateTransition.Companion.ok
 import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
 import maru.core.ext.DataGenerators
@@ -36,9 +35,7 @@ class QbftBlockValidatorAdapterTest {
     val blockValidatorError = BlockValidator.error("Error")
     blockValidator =
       object : BlockValidator {
-        override fun validateBlock(
-          newBlock: BeaconBlock,
-        ): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
+        override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
           SafeFuture.completedFuture(blockValidatorError)
       }
     val qbftBlockValidatorAdapter =
@@ -57,9 +54,7 @@ class QbftBlockValidatorAdapterTest {
   fun `validateBlock should return true when valid block`() {
     blockValidator =
       object : BlockValidator {
-        override fun validateBlock(
-          newBlock: BeaconBlock,
-        ): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
+        override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
           SafeFuture.completedFuture(BlockValidator.ok())
       }
 
