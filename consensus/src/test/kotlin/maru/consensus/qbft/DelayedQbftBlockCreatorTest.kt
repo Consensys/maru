@@ -16,7 +16,6 @@
 package maru.consensus.qbft
 
 import java.math.BigInteger
-import java.util.Collections
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
@@ -51,6 +50,7 @@ class DelayedQbftBlockCreatorTest {
   private val proposerSelector = Mockito.mock(ProposerSelector::class.java)
   private val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
+  private val validatorSet = DataGenerators.randomValidators()
 
   @Test
   fun `can create block`() {
@@ -64,7 +64,7 @@ class DelayedQbftBlockCreatorTest {
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 0))).thenReturn(Address.ZERO)
     whenever(
       validatorProvider.getValidatorsAfterBlock(10U),
-    ).thenReturn(completedFuture(DataGenerators.randomValidators()))
+    ).thenReturn(completedFuture(validatorSet))
 
     val blockCreator =
       DelayedQbftBlockCreator(
@@ -90,7 +90,7 @@ class DelayedQbftBlockCreatorTest {
         BeaconState(
           createBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT),
           HashUtil.bodyRoot(createBeaconBlock.beaconBlockBody),
-          Collections.emptySet(),
+          validatorSet,
         ),
       )
     assertThat(

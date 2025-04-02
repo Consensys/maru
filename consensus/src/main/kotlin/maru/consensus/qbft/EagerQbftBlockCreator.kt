@@ -50,11 +50,11 @@ class EagerQbftBlockCreator(
     val finalizedState = finalizationStateProvider(beaconBlockHeader)
     manager
       .setHeadAndStartBlockBuilding(
-        manager.latestBlockMetadata().blockHash,
-        finalizedState.safeBlockHash,
-        finalizedState.finalizedBlockHash,
-        headerTimeStampSeconds,
-        blockBuilderIdentity.address,
+        headHash = manager.latestBlockMetadata().blockHash,
+        safeHash = finalizedState.safeBlockHash,
+        finalizedHash = finalizedState.finalizedBlockHash,
+        nextBlockTimestamp = headerTimeStampSeconds,
+        feeRecipient = blockBuilderIdentity.address,
       ).get()
     Thread.sleep(config.blockBuildingDuration.inWholeMilliseconds)
     return delegate.createBlock(headerTimeStampSeconds, parentHeader)

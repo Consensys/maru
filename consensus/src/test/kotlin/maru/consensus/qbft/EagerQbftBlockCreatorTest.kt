@@ -17,7 +17,6 @@ package maru.consensus.qbft
 
 import java.time.Clock
 import java.time.Duration
-import java.util.Collections
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ValidatorProvider
@@ -25,6 +24,7 @@ import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
+import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.core.Validator
@@ -75,6 +75,7 @@ class EagerQbftBlockCreatorTest {
   private val validator = Validator(Random.nextBytes(20))
   private val executionLayerManager = createExecutionLayerManager()
   private val clock = Clock.systemUTC()
+  private val validatorSet = DataGenerators.randomValidators() + validator
 
   @Test
   fun `can create a non empty block with new timestamp`() {
@@ -91,7 +92,7 @@ class EagerQbftBlockCreatorTest {
     )
     whenever(
       validatorProvider.getValidatorsAfterBlock(parentBlock.beaconBlock.beaconBlockHeader.number),
-    ).thenReturn(completedFuture(DataGenerators.randomValidators()))
+    ).thenReturn(completedFuture(validatorSet))
 
     val mainBlockCreator =
       DelayedQbftBlockCreator(
@@ -142,44 +143,44 @@ class EagerQbftBlockCreatorTest {
     // Try to create an empty block instead of a non-empty proposal
     val blockTimestamp = clock.millis() / 1000
     val createdBlock = eagerQbftBlockCreator.createBlock(blockTimestamp, parentHeader)
-    val createBeaconBlock = createdBlock.toBeaconBlock()
+    val createdBeaconBlock = createdBlock.toBeaconBlock()
 
     // block header fields
-    val blockHeader = createBeaconBlock.beaconBlockHeader
-    assertThat(blockHeader.number).isEqualTo(1UL)
-    assertThat(blockHeader.round).isEqualTo(1U)
-    assertThat(blockHeader.timestamp).isEqualTo(blockTimestamp.toULong())
-    assertThat(blockHeader.proposer).isEqualTo(validator)
+    val createdBlockHeader = createdBeaconBlock.beaconBlockHeader
+    assertThat(createdBlockHeader.number).isEqualTo(1UL)
+    assertThat(createdBlockHeader.round).isEqualTo(1U)
+    assertThat(createdBlockHeader.timestamp).isEqualTo(blockTimestamp.toULong())
+    assertThat(createdBlockHeader.proposer).isEqualTo(validator)
 
     // block header roots
     val stateRoot =
       HashUtil.stateRoot(
         BeaconState(
-          createBeaconBlock.beaconBlockHeader.copy(stateRoot = ByteArray(32)),
-          HashUtil.bodyRoot(createBeaconBlock.beaconBlockBody),
-          Collections.emptySet(),
+          createdBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT),
+          HashUtil.bodyRoot(createdBeaconBlock.beaconBlockBody),
+          validatorSet,
         ),
       )
     assertThat(
-      blockHeader.bodyRoot,
+      createdBlockHeader.bodyRoot,
     ).isEqualTo(
-      HashUtil.bodyRoot(createBeaconBlock.beaconBlockBody),
+      HashUtil.bodyRoot(createdBeaconBlock.beaconBlockBody),
     )
-    assertThat(blockHeader.stateRoot).isEqualTo(stateRoot)
-    assertThat(blockHeader.parentRoot).isEqualTo(parentHeader.toBeaconBlockHeader().hash())
+    assertThat(createdBlockHeader.stateRoot).isEqualTo(stateRoot)
+    assertThat(createdBlockHeader.parentRoot).isEqualTo(parentHeader.toBeaconBlockHeader().hash())
     assertThat(
-      createBeaconBlock.beaconBlockHeader.hash(),
-    ).isEqualTo(HashUtil.headerHash(createBeaconBlock.beaconBlockHeader))
+      createdBeaconBlock.beaconBlockHeader.hash(),
+    ).isEqualTo(HashUtil.headerHash(createdBeaconBlock.beaconBlockHeader))
 
     // block body fields
-    val blockBody = createBeaconBlock.beaconBlockBody
+    val createdBlockBody = createdBeaconBlock.beaconBlockBody
     assertThat(
-      blockBody.prevCommitSeals,
+      createdBlockBody.prevCommitSeals,
     ).isEqualTo(
       parentBlock.commitSeals,
     )
-    assertThat(blockBody.executionPayload.timestamp).isEqualTo(blockTimestamp.toULong())
-    assertThat(blockBody.executionPayload.transactions).isNotEmpty
+    assertThat(createdBlockBody.executionPayload.timestamp).isEqualTo(blockTimestamp.toULong())
+    assertThat(createdBlockBody.executionPayload.transactions).isNotEmpty
   }
 
   private fun createExecutionLayerManager(): ExecutionLayerManager {
