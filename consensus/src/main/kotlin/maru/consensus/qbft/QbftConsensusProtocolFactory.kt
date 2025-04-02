@@ -20,6 +20,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Optional
+import java.util.concurrent.Executors
 import kotlin.random.Random
 import kotlin.random.nextULong
 import maru.config.MaruConfig
@@ -209,7 +210,10 @@ class QbftConsensusProtocolFactory(
         blockCodec,
       )
 
-    return QbftConsensus(qbftController)
+    val eventMultiplexer = QbftEventMultiplexer(qbftController)
+    val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
+    val eventQueueExecutor = Executors.newSingleThreadExecutor()
+    return QbftConsensus(qbftController, eventProcessor, bftExecutors, eventQueueExecutor)
   }
 
   private fun createForksSchedule(schedule: maru.consensus.ForksSchedule): BesuForksSchedule<BftConfigOptions> {
