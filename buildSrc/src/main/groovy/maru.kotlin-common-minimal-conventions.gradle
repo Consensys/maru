@@ -11,11 +11,8 @@ java {
 }
 
 repositories {
+  mavenLocal()
   mavenCentral()
-  maven {
-    url 'https://artifacts.consensys.net/public/teku/maven/'
-    content { includeGroupAndSubgroups('tech.pegasys') }
-  }
 //  maven {
 //    url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
 //    content { includeGroupAndSubgroups('org.hyperledger.besu') }

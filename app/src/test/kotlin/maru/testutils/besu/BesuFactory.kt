@@ -32,12 +32,12 @@ object BesuFactory {
 
     val jsonRpcConfiguration = JsonRpcConfiguration.createDefault()
     jsonRpcConfiguration.isEnabled = true
-    jsonRpcConfiguration.port = besuNode.configuration.jsonRpcPort.get()
+//    jsonRpcConfiguration.port = besuNode.configuration.jsonRpcPort.get()
     jsonRpcConfiguration.setHostsAllowlist(listOf("*"))
 
     val engineApiConfiguration = JsonRpcConfiguration.createEngineDefault()
     engineApiConfiguration.isEnabled = true
-    engineApiConfiguration.port = besuNode.configuration.engineJsonRpcPort.get()
+//    engineApiConfiguration.port = besuNode.configuration.engineJsonRpcPort.get()
     engineApiConfiguration.isAuthenticationEnabled = false
     engineApiConfiguration.setHostsAllowlist(listOf("*"))
 
@@ -56,6 +56,40 @@ object BesuFactory {
         .engineJsonRpcConfiguration(engineApiConfiguration)
         .jsonRpcDebug()
         .dataPath(besuNode.homeDirectory())
+        .build()
+    return BesuNodeFactory().create(nodeConfiguration)
+  }
+
+  fun copyTestBesuWithIncrementedPorts(besuNode: BesuNode): BesuNode {
+    val genesisFile = GenesisConfigurationFactory.readGenesisFile(cancunGenesis)
+
+    val jsonRpcConfiguration = JsonRpcConfiguration.createDefault()
+    jsonRpcConfiguration.isEnabled = true
+    jsonRpcConfiguration.port = besuNode.jsonRpcPort.get()
+    jsonRpcConfiguration.setHostsAllowlist(listOf("*"))
+
+    val engineApiConfiguration = JsonRpcConfiguration.createEngineDefault()
+    engineApiConfiguration.isEnabled = true
+    engineApiConfiguration.port = besuNode.engineJsonRpcPort.get() + 1
+    engineApiConfiguration.isAuthenticationEnabled = false
+    engineApiConfiguration.setHostsAllowlist(listOf("*"))
+
+    val nodeConfiguration =
+      BesuNodeConfigurationBuilder()
+        .name("test node")
+        .genesisConfigProvider {
+          Optional.of(
+            genesisFile,
+          )
+        }.jsonRpcConfiguration(jsonRpcConfiguration)
+        .devMode(false)
+        .bootnodeEligible(false)
+        .miningEnabled()
+        .jsonRpcTxPool()
+        .engineJsonRpcConfiguration(engineApiConfiguration)
+        .jsonRpcDebug()
+        .dataPath(besuNode.homeDirectory())
+        .p2pPort(Integer.valueOf(besuNode.p2pPort) + 1)
         .build()
     return BesuNodeFactory().create(nodeConfiguration)
   }

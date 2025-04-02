@@ -37,7 +37,9 @@ class HopliteFriendlinessTest {
         communication-time-margin=100m
 
         [p2p-config]
-        port = 3322
+        networks = ["/ip4/127.0.0.1/tcp/4242"]
+        static-peers = ["127.0.0.1:4243"]
+        private-key-file = "/tmp/key1"
 
         [validator]
         validator-key = "0xdead"
@@ -53,7 +55,12 @@ class HopliteFriendlinessTest {
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig =
+            P2P(
+              networks = listOf("/ip4/127.0.0.1/tcp/4242"),
+              staticPeers = listOf("127.0.0.1:4243"),
+              privateKeyFile = "/tmp/key1",
+            ),
           validator = ValidatorDtoToml(validatorKey = Secret("0xdead")),
         ),
       )
@@ -89,7 +96,7 @@ class HopliteFriendlinessTest {
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(networks = listOf("/ip4/127.0.0.1/tcp/4242")),
           validator = Validator(validatorKey = Bytes.fromHexString("0xdead").toArray()),
         ),
       )

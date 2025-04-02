@@ -25,8 +25,31 @@ data class ExecutionClientConfig(
 )
 
 data class P2P(
-  val port: UInt = 9000u,
-)
+  val networks: List<String> = listOf("/ip4/127.0.0.1/tcp/9000"),
+  val nodeKey: ByteArray = ByteArray(0),
+  val staticPeers: List<String> = emptyList(),
+  val privateKeyFile: String = "",
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as P2P
+
+    if (networks != other.networks) return false
+    if (!nodeKey.contentEquals(other.nodeKey)) return false
+    if (staticPeers != other.staticPeers) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = networks.hashCode()
+    result = 31 * result + nodeKey.contentHashCode()
+    result = 31 * result + staticPeers.hashCode()
+    return result
+  }
+}
 
 data class Validator(
   val validatorKey: ByteArray,

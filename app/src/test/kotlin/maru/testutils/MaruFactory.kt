@@ -26,6 +26,9 @@ object MaruFactory {
   private fun buildMaruConfigString(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
+    networks: List<String>,
+    staticPeersList: List<String>,
+    privateKeyFile: String,
   ): String =
     """
     [execution-client]
@@ -37,7 +40,9 @@ object MaruFactory {
     communication-time-margin=100m
 
     [p2p-config]
-    port = 3322
+    networks = ${networks.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}
+    staticPeers = ${staticPeersList.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}
+    private-key-file = "$privateKeyFile"
 
     [validator]
     validator-key = "0xdead"
@@ -46,12 +51,18 @@ object MaruFactory {
   fun buildTestMaru(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
+    networks: List<String>,
+    staticPeers: List<String>,
+    privateKeyFile: String,
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
         buildMaruConfigString(
           ethereumJsonRpcUrl = ethereumJsonRpcUrl,
           engineApiRpc = engineApiRpc,
+          networks = networks,
+          staticPeersList = staticPeers,
+          privateKeyFile = privateKeyFile,
         ),
       )
     val consensusGenesisResource = this::class.java.getResource("/e2e/config/dummy-consensus.json")

@@ -50,7 +50,14 @@ class MaruDummyConsensusTest {
     cluster.start(besuNode)
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
     val engineRpcUrl = besuNode.engineRpcUrl().get()
-    maruNode = MaruFactory.buildTestMaru(ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl, engineApiRpc = engineRpcUrl)
+    maruNode =
+      MaruFactory.buildTestMaru(
+        ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
+        engineApiRpc = engineRpcUrl,
+        networks = listOf("/ip4/,"),
+        staticPeers = listOf(),
+        privateKeyFile = "/tmp/key1",
+      )
     maruNode.start()
   }
 
