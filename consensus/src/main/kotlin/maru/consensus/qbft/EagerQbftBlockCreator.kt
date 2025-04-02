@@ -15,22 +15,33 @@
  */
 package maru.consensus.qbft
 
+import kotlin.time.Duration
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockHeader
 import maru.core.Validator
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.crypto.SECPSignature
-import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator as BesuQbftBlockCreator
 
-class EmptyBlockCreator(
+/**
+ * Responsible for QBFT block creation. As opposed to DelayedQbftBlockCreator, Eager one will send the FCU request to
+ * the execution client to start the block building process and will wait for the required time until a block is built,
+ * blocking the thread
+ */
+class EagerQbftBlockCreator(
   private val manager: ExecutionLayerManager,
-  private val delegate: BesuQbftBlockCreator,
+  private val delegate: QbftBlockCreator,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
-) : BesuQbftBlockCreator {
+  private val config: Config,
+) : QbftBlockCreator {
+  data class Config(
+    val blockBuildingDuration: Duration,
+  )
+
   override fun createBlock(
     headerTimeStampSeconds: Long,
     parentHeader: QbftBlockHeader,
@@ -45,6 +56,7 @@ class EmptyBlockCreator(
         headerTimeStampSeconds,
         blockBuilderIdentity.address,
       ).get()
+    Thread.sleep(config.blockBuildingDuration.inWholeMilliseconds)
     return delegate.createBlock(headerTimeStampSeconds, parentHeader)
   }
 
@@ -52,5 +64,5 @@ class EmptyBlockCreator(
     block: QbftBlock,
     roundNumber: Int,
     commitSeals: MutableCollection<SECPSignature>,
-  ): QbftBlock = QbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
+  ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
 }

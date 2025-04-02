@@ -19,6 +19,7 @@ import java.time.Clock
 import java.time.Duration
 import java.util.Collections
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
@@ -57,7 +58,7 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
-class QbftEmptyBlockCreatorTest {
+class EagerQbftBlockCreatorTest {
   private var cluster =
     Cluster(
       ClusterConfigurationBuilder().build(),
@@ -73,10 +74,10 @@ class QbftEmptyBlockCreatorTest {
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
   private val validator = Validator(Random.nextBytes(20))
   private val executionLayerManager = createExecutionLayerManager()
-  private val clock = Clock.systemDefaultZone()
+  private val clock = Clock.systemUTC()
 
   @Test
-  fun `can create empty block even though there was a nonempty payload built`() {
+  fun `can create a non empty block with new timestamp`() {
     val parentBlock = DataGenerators.randomSealedBeaconBlock(0U)
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(
@@ -93,7 +94,7 @@ class QbftEmptyBlockCreatorTest {
     ).thenReturn(completedFuture(DataGenerators.randomValidators()))
 
     val mainBlockCreator =
-      QbftBlockCreator(
+      DelayedQbftBlockCreator(
         manager = executionLayerManager,
         proposerSelector = proposerSelector,
         validatorProvider = validatorProvider,
@@ -101,27 +102,37 @@ class QbftEmptyBlockCreatorTest {
         round = 1,
       )
     val genesisBlockHash = executionLayerManager.latestBlockMetadata().blockHash
-    val emptyBlockCreator =
-      EmptyBlockCreator(executionLayerManager, mainBlockCreator, {
-        FinalizationState(
-          genesisBlockHash,
-          genesisBlockHash,
-        )
-      }, validator)
+    val eagerQbftBlockCreator =
+      EagerQbftBlockCreator(
+        manager = executionLayerManager,
+        delegate = mainBlockCreator,
+        finalizationStateProvider = {
+          FinalizationState(
+            genesisBlockHash,
+            genesisBlockHash,
+          )
+        },
+        blockBuilderIdentity = validator,
+        config =
+          EagerQbftBlockCreator.Config(
+            blockBuildingDuration = 900.milliseconds,
+          ),
+      )
     // Create a non-empty proposal
-    val nonEmptyBlockTimestamp = clock.millis() / 1000
+    val rejectedBlockTimestamp = clock.millis() / 1000
     executionLayerManager.setHeadAndStartBlockBuilding(
       headHash = genesisBlockHash,
       safeHash = genesisBlockHash,
       finalizedHash = genesisBlockHash,
-      nextBlockTimestamp = nonEmptyBlockTimestamp,
+      nextBlockTimestamp = rejectedBlockTimestamp,
       feeRecipient = validator.address,
     )
-    besuInstance.execute(TransactionsHelper().createTransfers(1u))
+    val transaction = TransactionsHelper().createTransfers(1u)
+    besuInstance.execute(transaction)
     Thread.sleep(1000)
-    val nonEmptyBlock = mainBlockCreator.createBlock(nonEmptyBlockTimestamp, parentHeader)
+    val rejectedBlock = mainBlockCreator.createBlock(rejectedBlockTimestamp, parentHeader)
     val proposedTransactions =
-      nonEmptyBlock
+      rejectedBlock
         .toBeaconBlock()
         .beaconBlockBody.executionPayload.transactions
     assertThat(
@@ -130,7 +141,7 @@ class QbftEmptyBlockCreatorTest {
 
     // Try to create an empty block instead of a non-empty proposal
     val blockTimestamp = clock.millis() / 1000
-    val createdBlock = emptyBlockCreator.createBlock(blockTimestamp, parentHeader)
+    val createdBlock = eagerQbftBlockCreator.createBlock(blockTimestamp, parentHeader)
     val createBeaconBlock = createdBlock.toBeaconBlock()
 
     // block header fields
@@ -167,7 +178,8 @@ class QbftEmptyBlockCreatorTest {
     ).isEqualTo(
       parentBlock.commitSeals,
     )
-    assertThat(blockBody.executionPayload.transactions).isEmpty()
+    assertThat(blockBody.executionPayload.timestamp).isEqualTo(blockTimestamp.toULong())
+    assertThat(blockBody.executionPayload.transactions).isNotEmpty
   }
 
   private fun createExecutionLayerManager(): ExecutionLayerManager {

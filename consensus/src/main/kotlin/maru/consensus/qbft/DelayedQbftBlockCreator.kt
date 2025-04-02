@@ -41,9 +41,11 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.crypto.SECPSignature
 
 /**
- * Responsible for QBFT block creation.
+ * Responsible for QBFT block creation. As opposed to EagerBlockCreator, Delayed one relies on the fact that FCU was
+ * called some time in advance. So at the time of `createBlock` it actually ends the block creation process, not
+ * starts it
  */
-class QbftBlockCreator(
+class DelayedQbftBlockCreator(
   private val manager: ExecutionLayerManager,
   private val proposerSelector: ProposerSelector,
   private val validatorProvider: ValidatorProvider,

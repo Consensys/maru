@@ -35,13 +35,14 @@ class QbftBlockCreatorFactory(
   private val beaconChain: BeaconChain,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
+  private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
 ) : QbftBlockCreatorFactory {
   override fun create(round: Int): BesuQbftBlockCreator {
     requireNotNull(round >= 0) {
       "round must not be negatvie!"
     }
     val mainBlockCreator =
-      QbftBlockCreator(
+      DelayedQbftBlockCreator(
         manager = manager,
         proposerSelector = proposerSelector,
         validatorProvider = validatorProvider,
@@ -51,11 +52,12 @@ class QbftBlockCreatorFactory(
     return if (round == 0) {
       mainBlockCreator
     } else {
-      EmptyBlockCreator(
+      EagerQbftBlockCreator(
         manager = manager,
         delegate = mainBlockCreator,
         finalizationStateProvider = finalizationStateProvider,
         blockBuilderIdentity = blockBuilderIdentity,
+        config = eagerQbftBlockCreatorConfig,
       )
     }
   }

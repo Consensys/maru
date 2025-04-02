@@ -45,7 +45,7 @@ import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 
-class QbftBlockCreatorTest {
+class DelayedQbftBlockCreatorTest {
   private val executionLayerManager = Mockito.mock(ExecutionLayerManager::class.java)
   private val proposerSelector = Mockito.mock(ProposerSelector::class.java)
   private val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
@@ -66,7 +66,7 @@ class QbftBlockCreatorTest {
     ).thenReturn(completedFuture(DataGenerators.randomValidators()))
 
     val blockCreator =
-      QbftBlockCreator(
+      DelayedQbftBlockCreator(
         manager = executionLayerManager,
         proposerSelector = proposerSelector,
         validatorProvider = validatorProvider,
@@ -123,7 +123,7 @@ class QbftBlockCreatorTest {
     ).thenReturn(SafeFuture.failedFuture(IllegalStateException("Execution payload not available")))
 
     val blockCreator =
-      QbftBlockCreator(
+      DelayedQbftBlockCreator(
         manager = executionLayerManager,
         proposerSelector = proposerSelector,
         validatorProvider = validatorProvider,
@@ -147,7 +147,8 @@ class QbftBlockCreatorTest {
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlockHeader.hash())).thenReturn(null)
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 0))).thenReturn(Address.ZERO)
 
-    val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 0)
+    val blockCreator =
+      DelayedQbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 0)
     assertThatThrownBy {
       blockCreator.createBlock(1000L, parentHeader)
     }.isInstanceOf(
@@ -163,7 +164,7 @@ class QbftBlockCreatorTest {
     val round = 0
 
     val blockCreator =
-      QbftBlockCreator(
+      DelayedQbftBlockCreator(
         manager = executionLayerManager,
         proposerSelector = proposerSelector,
         validatorProvider = validatorProvider,
