@@ -38,7 +38,7 @@ class QbftBlockCreatorFactory(
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
 ) : QbftBlockCreatorFactory {
   override fun create(round: Int): BesuQbftBlockCreator {
-    requireNotNull(round >= 0) {
+    require(round >= 0) {
       "round must not be negatvie!"
     }
     val mainBlockCreator =
