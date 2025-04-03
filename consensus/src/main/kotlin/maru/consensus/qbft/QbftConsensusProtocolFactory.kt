@@ -21,15 +21,12 @@ import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Optional
 import java.util.concurrent.Executors
-import kotlin.random.Random
-import kotlin.random.nextULong
 import maru.config.MaruConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ProposerSelectorImpl
 import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
-import maru.consensus.dummy.EmptyBlockValidator
 import maru.consensus.qbft.adapters.ProposerSelectorAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockInterfaceAdapter
@@ -222,7 +219,8 @@ class QbftConsensusProtocolFactory(
     if (finalState.isLocalNodeProposerForRound(nextRoundIdentifier)) {
       val latestElBlockMetadata = metadataProvider.getLatestBlockMetadata().get()
       val forkByTimestamp = forksSchedule.getForkByTimestamp(clock.millis())
-      executionLayerManager.setHeadAndStartBlockBuilding(
+      executionLayerManager
+        .setHeadAndStartBlockBuilding(
           headHash = latestElBlockMetadata.blockHash,
           safeHash = latestElBlockMetadata.blockHash,
           finalizedHash = latestElBlockMetadata.blockHash,
@@ -313,15 +311,17 @@ class QbftConsensusProtocolFactory(
           round = 0U,
           headerHashFunction = HashUtil::headerHash,
         )
-      val genesisStateRoot =
+      val tmpGenesisStateRoot =
         BeaconState(
           latestBeaconBlockHeader = tmpExpectedNewBlockHeader,
           latestBeaconBlockRoot = beaconBodyRoot,
           validators = validators,
         )
-      val stateRootHash = HashUtil.stateRoot(genesisStateRoot)
+      val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
+
       val genesisBlockHeader = tmpExpectedNewBlockHeader.copy(stateRoot = stateRootHash)
       val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
+      val genesisStateRoot = BeaconState(genesisBlockHeader, beaconBodyRoot, validators)
       updater.putBeaconState(genesisStateRoot)
       updater.putSealedBeaconBlock(SealedBeaconBlock(genesisBlock, emptyList()))
       updater.commit()
