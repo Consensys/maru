@@ -15,11 +15,25 @@
  */
 package maru.consensus.qbft.adapters
 
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
 import java.util.Optional
+import maru.consensus.validation.BlockValidator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 
-class QbftBlockValidatorAdapter : QbftBlockValidator {
-  override fun validateBlock(block: QbftBlock?): QbftBlockValidator.ValidationResult? =
-    QbftBlockValidator.ValidationResult(true, Optional.empty())
+class QbftBlockValidatorAdapter(
+  private val blockValidator: BlockValidator,
+) : QbftBlockValidator {
+  override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
+    val beaconBlock = qbftBlock.toBeaconBlock()
+    return when (val blockValidationResult = blockValidator.validateBlock(beaconBlock).get()) {
+      is Ok -> QbftBlockValidator.ValidationResult(true, Optional.empty())
+      is Err ->
+        QbftBlockValidator.ValidationResult(
+          false,
+          Optional.of(blockValidationResult.error.toString()),
+        )
+    }
+  }
 }

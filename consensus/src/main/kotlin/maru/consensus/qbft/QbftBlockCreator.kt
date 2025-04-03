@@ -77,7 +77,7 @@ class QbftBlockCreator(
         timestamp = headerTimeStampSeconds.toULong(),
         proposer = Validator(proposer.toArrayUnsafe()),
         parentRoot = parentBeaconBlockHeader.hash(),
-        stateRoot = ByteArray(0), // temporary state root to avoid circular dependency
+        stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT, // temporary state root to avoid circular dependency
         bodyRoot = HashUtil.bodyRoot(beaconBlockBody),
         headerHashFunction = HashUtil::headerHash,
       )
@@ -88,7 +88,7 @@ class QbftBlockCreator(
         ).get()
     val stateRoot =
       HashUtil.stateRoot(
-        BeaconState(stateRootBlockHeader, HashUtil.bodyRoot(beaconBlockBody), validators),
+        BeaconState(stateRootBlockHeader, validators),
       )
     val finalBlockHeader = stateRootBlockHeader.copy(stateRoot = stateRoot)
     val beaconBlock =
