@@ -54,6 +54,7 @@ import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
+import maru.executionlayer.manager.NoopValidator
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
@@ -62,6 +63,7 @@ import org.hyperledger.besu.config.BftConfigOptions
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.common.bft.BlockTimer
+import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
 import org.hyperledger.besu.consensus.common.bft.RoundTimer
 import org.hyperledger.besu.consensus.common.bft.statemachine.FutureMessageBuffer
@@ -111,12 +113,12 @@ class QbftConsensusProtocolFactory(
         maruConfig.executionClientConfig.engineApiJsonRpcEndpoint.toString(),
         forkSpec.configuration.elFork,
       )
-    val jsonRpcExecutionLayerManager =
+    val executionLayerManager =
       JsonRpcExecutionLayerManager
         .create(
           executionLayerClient = executionLayerClient,
           metadataProvider = metadataProvider,
-          payloadValidator = EmptyBlockValidator,
+          payloadValidator = NoopValidator,
         ).get()
 
     val validatorKey = maruConfig.validator?.validatorKey ?: throw IllegalArgumentException("Validator key not found")
@@ -134,7 +136,7 @@ class QbftConsensusProtocolFactory(
     val proposerSelector = ProposerSelectorAdapter(ProposerSelectorImpl(beaconChain, staticValidatorProvider))
     val validatorMulticaster = NoopValidatorMulticaster()
     val qbftBlockCreatorFactory =
-      QbftBlockCreatorFactoryImpl(jsonRpcExecutionLayerManager, proposerSelector, staticValidatorProvider, beaconChain)
+      QbftBlockCreatorFactoryImpl(executionLayerManager, proposerSelector, staticValidatorProvider, beaconChain)
 
     // initialise database, TODO this should be done in the main app
     initGenesisBlock(setOf(Validator(localAddress.toArrayUnsafe())))
@@ -213,6 +215,22 @@ class QbftConsensusProtocolFactory(
     val eventMultiplexer = QbftEventMultiplexer(qbftController)
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor()
+
+    // TODO this should not be done here
+    // start block building immediately if we are the proposer for the next block
+    val nextRoundIdentifier = ConsensusRoundIdentifier(chainHeaderNumber + 1, 0)
+    if (finalState.isLocalNodeProposerForRound(nextRoundIdentifier)) {
+      val latestElBlockMetadata = metadataProvider.getLatestBlockMetadata().get()
+      val forkByTimestamp = forksSchedule.getForkByTimestamp(clock.millis())
+      executionLayerManager.setHeadAndStartBlockBuilding(
+          headHash = latestElBlockMetadata.blockHash,
+          safeHash = latestElBlockMetadata.blockHash,
+          finalizedHash = latestElBlockMetadata.blockHash,
+          nextBlockTimestamp = latestElBlockMetadata.unixTimestampSeconds + forkByTimestamp.blockTimeSeconds,
+          feeRecipient = localAddress.toArrayUnsafe(),
+        ).get()
+    }
+
     return QbftConsensus(qbftController, eventProcessor, bftExecutors, eventQueueExecutor)
   }
 
@@ -264,22 +282,22 @@ class QbftConsensusProtocolFactory(
       // TODO use state transition to create genesis state
       val updater = beaconChain.newUpdater()
 
-      // TODO: we should have a true empty block here
+      // TODO: we should have a true empty genesis block here
       val executionPayload =
         ExecutionPayload(
-          parentHash = Random.nextBytes(32),
-          feeRecipient = Random.nextBytes(20),
-          stateRoot = Random.nextBytes(32),
-          receiptsRoot = Random.nextBytes(32),
-          logsBloom = Random.nextBytes(256),
-          prevRandao = Random.nextBytes(32),
-          blockNumber = Random.nextULong(),
-          gasLimit = Random.nextULong(),
-          gasUsed = Random.nextULong(),
-          timestamp = Random.nextULong(),
-          extraData = Random.nextBytes(32),
-          baseFeePerGas = BigInteger.valueOf(Random.nextLong(0, Long.MAX_VALUE)),
-          blockHash = Random.nextBytes(32),
+          parentHash = ByteArray(32),
+          feeRecipient = ByteArray(32),
+          stateRoot = ByteArray(32),
+          receiptsRoot = ByteArray(32),
+          logsBloom = ByteArray(256),
+          prevRandao = ByteArray(32),
+          blockNumber = 0UL,
+          gasLimit = 0UL,
+          gasUsed = 0UL,
+          timestamp = 0UL,
+          extraData = ByteArray(32),
+          baseFeePerGas = BigInteger.ZERO,
+          blockHash = ByteArray(32),
           transactions = emptyList(),
         )
       val beaconBlockBody = BeaconBlockBody(emptyList(), executionPayload)
