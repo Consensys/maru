@@ -54,7 +54,7 @@ class DelayedQbftBlockCreator(
 ) : QbftBlockCreator {
   companion object {
     fun createSealedBlock(
-      block: QbftBlock,
+      qbftBlock: QbftBlock,
       roundNumber: Int,
       commitSeals: Collection<SECPSignature>,
     ): QbftBlock {
@@ -62,12 +62,12 @@ class DelayedQbftBlockCreator(
         commitSeals.map {
           Seal(it.encodedBytes().toArrayUnsafe())
         }
-      val block1 = block.toBeaconBlock()
-      val beaconBlockHeader = block1.beaconBlockHeader
+      val beaconBlock = qbftBlock.toBeaconBlock()
+      val beaconBlockHeader = beaconBlock.beaconBlockHeader
       val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toUInt())
       val sealedBlockBody =
         SealedBeaconBlock(
-          BeaconBlock(updatedBlockHeader, block1.beaconBlockBody),
+          BeaconBlock(updatedBlockHeader, beaconBlock.beaconBlockBody),
           seals,
         )
       return QbftSealedBlockAdapter(sealedBlockBody)
@@ -124,5 +124,5 @@ class DelayedQbftBlockCreator(
     block: QbftBlock,
     roundNumber: Int,
     commitSeals: Collection<SECPSignature>,
-  ): QbftBlock = Companion.createSealedBlock(block = block, roundNumber = roundNumber, commitSeals = commitSeals)
+  ): QbftBlock = Companion.createSealedBlock(qbftBlock = block, roundNumber = roundNumber, commitSeals = commitSeals)
 }
