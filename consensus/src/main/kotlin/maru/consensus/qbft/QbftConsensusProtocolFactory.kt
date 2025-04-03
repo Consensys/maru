@@ -343,7 +343,7 @@ class QbftConsensusProtocolFactory(
           timestamp = 0UL,
           proposer = Validator(ByteArray(20)), // TODO enforce that proposer has length of 20 bytes
           parentRoot = ByteArray(32),
-          stateRoot = ByteArray(32),
+          stateRoot = ByteArray(0),
           bodyRoot = beaconBodyRoot,
           round = 0U,
           headerHashFunction = HashUtil::headerHash,
