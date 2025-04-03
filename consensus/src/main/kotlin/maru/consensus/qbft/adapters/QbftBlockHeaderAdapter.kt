@@ -46,4 +46,6 @@ class QbftBlockHeaderAdapter(
   }
 
   override fun hashCode(): Int = beaconBlockHeader.hashCode()
+
+  override fun toString(): String = beaconBlockHeader.toString()
 }

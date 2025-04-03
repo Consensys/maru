@@ -30,6 +30,7 @@ import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.adapters.ProposerSelectorAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockInterfaceAdapter
+import maru.consensus.qbft.adapters.QbftBlockValidatorAdapter
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
 import maru.consensus.qbft.adapters.QbftFinalStateAdapter
 import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
@@ -37,6 +38,11 @@ import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.consensus.qbft.network.NoopGossiper
 import maru.consensus.qbft.network.NoopValidatorMulticaster
+import maru.consensus.state.FinalizationState
+import maru.consensus.state.StateTransitionImpl
+import maru.consensus.validation.BlockValidators
+import maru.consensus.validation.CompositeBlockValidator
+import maru.consensus.validation.ExecutionPayloadValidator
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
@@ -130,10 +136,11 @@ class QbftConsensusProtocolFactory(
     val localAddress = Util.publicKeyToAddress(nodeKey.publicKey)
     val staticValidatorProvider = StaticValidatorProvider(setOf(Validator(localAddress.toArrayUnsafe())))
     val validatorProvider = QbftValidatorProviderAdapter(staticValidatorProvider)
-    val proposerSelector = ProposerSelectorAdapter(ProposerSelectorImpl(beaconChain, staticValidatorProvider))
+    val proposerSelector = ProposerSelectorImpl(beaconChain, staticValidatorProvider)
+    val qbftProposerSelector = ProposerSelectorAdapter(proposerSelector)
     val validatorMulticaster = NoopValidatorMulticaster()
     val qbftBlockCreatorFactory =
-      QbftBlockCreatorFactoryImpl(executionLayerManager, proposerSelector, staticValidatorProvider, beaconChain)
+      QbftBlockCreatorFactoryImpl(executionLayerManager, qbftProposerSelector, staticValidatorProvider, beaconChain)
 
     // initialise database, TODO this should be done in the main app
     initGenesisBlock(setOf(Validator(localAddress.toArrayUnsafe())))
@@ -151,7 +158,7 @@ class QbftConsensusProtocolFactory(
         localAddress,
         nodeKey,
         validatorProvider,
-        proposerSelector,
+        qbftProposerSelector,
         validatorMulticaster,
         roundTimer,
         blockTimer,
@@ -163,11 +170,40 @@ class QbftConsensusProtocolFactory(
     // TODO connect this to the maru NewBlockHandler
     val minedBlockObservers = Subscribers.create<QbftMinedBlockObserver>()
 
+    val finalizationStateProvider = { header: BeaconBlockHeader -> FinalizationState(header.hash, header.hash) }
+    val nextBlockTimestampProvider = { roundIdentifier: ConsensusRoundIdentifier ->
+      val currentBlockTime = besuForksSchedule.getFork(roundIdentifier.sequenceNumber).value.blockPeriodSeconds
+      (clock.millis() / 1000.0).toLong() + currentBlockTime
+    }
+    val beaconBlockImporter =
+      BeaconBlockImporterImpl(
+        executionLayerManager,
+        finalizationStateProvider,
+        nextBlockTimestampProvider,
+        finalState::isLocalNodeProposerForRound,
+        Validator(localAddress.toArray()),
+      )
+
+    val blockValidator =
+      CompositeBlockValidator(
+        blockValidators =
+          listOf(
+            BlockValidators.BlockNumberValidator,
+            BlockValidators.TimestampValidator,
+            BlockValidators.ProposerValidator,
+            BlockValidators.ParentRootValidator,
+            BlockValidators.BodyRootValidator,
+            ExecutionPayloadValidator(executionLayerClient),
+          ),
+      )
+    val stateTransition = StateTransitionImpl(blockValidator, staticValidatorProvider, proposerSelector)
+    val blockImporter = QbftBlockImportCoordinator(beaconChain, stateTransition, beaconBlockImporter)
+
     val blockCodec = QbftBlockCodecAdapter()
     val blockInterface = QbftBlockInterfaceAdapter()
-    val protocolSchedule = QbftProtocolScheduleAdapter()
+    val protocolSchedule = QbftProtocolScheduleAdapter(blockImporter, QbftBlockValidatorAdapter())
     val messageValidatorFactory =
-      MessageValidatorFactory(proposerSelector, protocolSchedule, validatorProvider, blockInterface)
+      MessageValidatorFactory(qbftProposerSelector, protocolSchedule, validatorProvider, blockInterface)
     val messageFactory = MessageFactory(nodeKey, blockCodec)
     val qbftRoundFactory =
       QbftRoundFactory(
@@ -224,7 +260,8 @@ class QbftConsensusProtocolFactory(
           headHash = latestElBlockMetadata.blockHash,
           safeHash = latestElBlockMetadata.blockHash,
           finalizedHash = latestElBlockMetadata.blockHash,
-          nextBlockTimestamp = latestElBlockMetadata.unixTimestampSeconds + forkByTimestamp.blockTimeSeconds,
+          nextBlockTimestamp =
+            latestElBlockMetadata.unixTimestampSeconds + forkByTimestamp.blockTimeSeconds,
           feeRecipient = localAddress.toArrayUnsafe(),
         ).get()
     }

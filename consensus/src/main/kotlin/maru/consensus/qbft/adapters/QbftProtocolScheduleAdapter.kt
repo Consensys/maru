@@ -20,12 +20,12 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftProtocolSchedule
 
-class QbftProtocolScheduleAdapter : QbftProtocolSchedule {
-  override fun getBlockImporter(blockHeader: QbftBlockHeader?): QbftBlockImporter? {
-    TODO("Not yet implemented")
-  }
+// TODO: the block importer and validator should be driven from the protocol schedule
+class QbftProtocolScheduleAdapter(
+  private val blockImporter: QbftBlockImporter,
+  private val blockValidator: QbftBlockValidator,
+) : QbftProtocolSchedule {
+  override fun getBlockImporter(blockHeader: QbftBlockHeader): QbftBlockImporter = blockImporter
 
-  override fun getBlockValidator(blockHeader: QbftBlockHeader?): QbftBlockValidator? {
-    TODO("Not yet implemented")
-  }
+  override fun getBlockValidator(blockHeader: QbftBlockHeader): QbftBlockValidator = blockValidator
 }
