@@ -124,5 +124,5 @@ class DelayedQbftBlockCreator(
     block: QbftBlock,
     roundNumber: Int,
     commitSeals: Collection<SECPSignature>,
-  ): QbftBlock = Companion.createSealedBlock(qbftBlock = block, roundNumber = roundNumber, commitSeals = commitSeals)
+  ): QbftBlock = createSealedBlock(qbftBlock = block, roundNumber = roundNumber, commitSeals = commitSeals)
 }
