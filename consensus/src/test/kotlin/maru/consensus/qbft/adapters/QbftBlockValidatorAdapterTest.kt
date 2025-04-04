@@ -22,13 +22,16 @@ import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.ext.DataGenerators
+import maru.database.BeaconChain
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftBlockValidatorAdapterTest {
   private val newBlock = DataGenerators.randomBeaconBlock(10u)
+  private val beaconChain = Mockito.mock(BeaconChain::class.java)
   private lateinit var blockValidatorFactory: (
     BeaconBlockHeader,
   ) -> BlockValidator
@@ -49,6 +52,7 @@ class QbftBlockValidatorAdapterTest {
     val qbftBlockValidatorAdapter =
       QbftBlockValidatorAdapter(
         blockValidatorFactory = blockValidatorFactory,
+        beaconChain,
       )
     val expectedResult =
       QbftBlockValidator.ValidationResult(
@@ -73,6 +77,7 @@ class QbftBlockValidatorAdapterTest {
     val qbftBlockValidatorAdapter =
       QbftBlockValidatorAdapter(
         blockValidatorFactory = blockValidatorFactory,
+        beaconChain,
       )
     val expectedResult = QbftBlockValidator.ValidationResult(true, Optional.empty())
     assertThat(qbftBlockValidatorAdapter.validateBlock(QbftBlockAdapter(newBlock))).isEqualTo(expectedResult)
