@@ -16,23 +16,22 @@
 package maru.consensus
 
 import java.util.concurrent.atomic.AtomicReference
+import maru.core.BeaconBlock
 import maru.core.Protocol
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.hyperledger.besu.ethereum.core.Block
 
 class MetadataOnlyHandlerAdapter(
   private val protocolStarter: ProtocolStarter,
 ) : NewBlockHandler {
-  override fun handleNewBlock(block: Block) {
-    val blockHeader = block.header
+  override fun handleNewBlock(block: BeaconBlock) {
     val blockMetadata =
       BlockMetadata(
-        blockHeader.number.toULong(),
-        blockHeader.blockHash.toArray(),
-        blockHeader.timestamp,
+        block.beaconBlockHeader.number,
+        block.beaconBlockHeader.hash,
+        block.beaconBlockHeader.timestamp.toLong(),
       )
     protocolStarter.handleNewBlock(blockMetadata)
   }

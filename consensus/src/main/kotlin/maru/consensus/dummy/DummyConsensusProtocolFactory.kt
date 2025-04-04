@@ -28,7 +28,6 @@ import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
-import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
@@ -102,10 +101,9 @@ class DummyConsensusProtocolFactory(
       )
 
     val blockCreator =
-      EngineApiBlockCreator(
+      DummyEngineApiBlockCreator(
         manager = jsonRpcExecutionLayerManager,
         state = dummyConsensusState,
-        blockHeaderFunctions = MainnetBlockHeaderFunctions(),
         nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata),
         feeRecipientProvider = DummyConsensusFeeRecipientProvider(forksSchedule),
       )

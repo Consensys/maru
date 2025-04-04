@@ -16,11 +16,11 @@
 package maru.consensus
 
 import java.util.concurrent.ConcurrentHashMap
+import maru.core.BeaconBlock
 import org.apache.logging.log4j.LogManager
-import org.hyperledger.besu.ethereum.core.Block
 
 fun interface NewBlockHandler {
-  fun handleNewBlock(block: Block)
+  fun handleNewBlock(block: BeaconBlock)
 }
 
 class NewBlockHandlerMultiplexer(
@@ -36,7 +36,7 @@ class NewBlockHandlerMultiplexer(
     handlersMap[name] = handler
   }
 
-  override fun handleNewBlock(block: Block) {
+  override fun handleNewBlock(block: BeaconBlock) {
     handlersMap.forEach {
       val (handlerName, handler) = it
       try {
@@ -44,7 +44,7 @@ class NewBlockHandlerMultiplexer(
       } catch (ex: Exception) {
         log.error(
           "New block handler $handlerName failed processing" +
-            " block hash=${block.hash}, number=${block.header.number}!",
+            " block hash=${block.beaconBlockHeader.hash}, number=${block.beaconBlockHeader.number}!",
           ex,
         )
       }

@@ -26,11 +26,10 @@ import org.hyperledger.besu.consensus.common.bft.events.BlockTimerExpiry
 import org.hyperledger.besu.consensus.common.bft.events.NewChainHead
 import org.hyperledger.besu.consensus.common.bft.events.RoundExpiry
 import org.hyperledger.besu.consensus.common.bft.statemachine.BftEventHandler
-import org.hyperledger.besu.ethereum.blockcreation.BlockCreator
 
 class DummyConsensusEventHandler(
   private val executionLayerManager: ExecutionLayerManager,
-  private val blockCreator: BlockCreator,
+  private val blockCreator: DummyEngineApiBlockCreator,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val onNewBlock: NewBlockHandler,
 ) : BftEventHandler {
@@ -59,13 +58,10 @@ class DummyConsensusEventHandler(
       val latestBlockMetadata = executionLayerManager.latestBlockMetadata()
       val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata)
       val blockCreationResult =
-        blockCreator.createEmptyWithdrawalsBlock(
+        blockCreator.createBlock(
           nextBlockTimestamp,
-          // Execution client is aware of the parent header
-          null,
         )
-      log.debug("Block creation timings {}", blockCreationResult.blockCreationTimings)
-      blockCreationResult.block?.also(onNewBlock::handleNewBlock)
+      blockCreationResult?.also(onNewBlock::handleNewBlock)
     } else {
       log.trace(
         "Block timer event discarded as it is not for current block height " +
