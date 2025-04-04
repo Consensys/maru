@@ -40,9 +40,14 @@ import maru.consensus.qbft.network.NoopGossiper
 import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransitionImpl
-import maru.consensus.validation.BlockValidators
+import maru.consensus.validation.BlockNumberValidator
+import maru.consensus.validation.BodyRootValidator
 import maru.consensus.validation.CompositeBlockValidator
 import maru.consensus.validation.ExecutionPayloadValidator
+import maru.consensus.validation.ParentRootValidator
+import maru.consensus.validation.ProposerValidator
+import maru.consensus.validation.StateRootValidator
+import maru.consensus.validation.TimestampValidator
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
@@ -184,24 +189,30 @@ class QbftConsensusProtocolFactory(
         Validator(localAddress.toArray()),
       )
 
-    val blockValidator =
+    val stateTransition = StateTransitionImpl(staticValidatorProvider)
+    val stateRootValidator = StateRootValidator(stateTransition)
+    val bodyRootValidator = BodyRootValidator()
+    val executionPayloadValidator = ExecutionPayloadValidator(executionLayerClient)
+    val blockValidatorFactory = { parentHeader: BeaconBlockHeader ->
       CompositeBlockValidator(
         blockValidators =
           listOf(
-            BlockValidators.BlockNumberValidator,
-            BlockValidators.TimestampValidator,
-            BlockValidators.ProposerValidator,
-            BlockValidators.ParentRootValidator,
-            BlockValidators.BodyRootValidator,
-            ExecutionPayloadValidator(executionLayerClient),
+            stateRootValidator,
+            BlockNumberValidator(parentHeader),
+            TimestampValidator(parentHeader),
+            ProposerValidator(proposerSelector),
+            ParentRootValidator(parentHeader),
+            bodyRootValidator,
+            executionPayloadValidator,
           ),
       )
-    val stateTransition = StateTransitionImpl(blockValidator, staticValidatorProvider, proposerSelector)
+    }
+
     val blockImporter = QbftBlockImportCoordinator(beaconChain, stateTransition, beaconBlockImporter)
 
     val blockCodec = QbftBlockCodecAdapter()
     val blockInterface = QbftBlockInterfaceAdapter()
-    val protocolSchedule = QbftProtocolScheduleAdapter(blockImporter, QbftBlockValidatorAdapter())
+    val protocolSchedule = QbftProtocolScheduleAdapter(blockImporter, QbftBlockValidatorAdapter(blockValidatorFactory))
     val messageValidatorFactory =
       MessageValidatorFactory(qbftProposerSelector, protocolSchedule, validatorProvider, blockInterface)
     val messageFactory = MessageFactory(nodeKey, blockCodec)
@@ -351,14 +362,13 @@ class QbftConsensusProtocolFactory(
       val tmpGenesisStateRoot =
         BeaconState(
           latestBeaconBlockHeader = tmpExpectedNewBlockHeader,
-          latestBeaconBlockRoot = beaconBodyRoot,
           validators = validators,
         )
       val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
 
       val genesisBlockHeader = tmpExpectedNewBlockHeader.copy(stateRoot = stateRootHash)
       val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
-      val genesisStateRoot = BeaconState(genesisBlockHeader, beaconBodyRoot, validators)
+      val genesisStateRoot = BeaconState(genesisBlockHeader, validators)
       updater.putBeaconState(genesisStateRoot)
       updater.putSealedBeaconBlock(SealedBeaconBlock(genesisBlock, emptyList()))
       updater.commit()

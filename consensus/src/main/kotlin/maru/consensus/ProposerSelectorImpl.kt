@@ -37,7 +37,7 @@ class ProposerSelectorImpl(
     val prevBlockProposer = Address.wrap(Bytes.wrap(parentBlockHeader.proposer.address))
 
     val validatorsForRound =
-      validatorProvider.getValidatorsForBlock(parentBlockHeader).get().map {
+      validatorProvider.getValidatorsForBlock(parentBlockHeader.number).get().map {
         Address.wrap(Bytes.wrap(it.address))
       }
     val proposer =

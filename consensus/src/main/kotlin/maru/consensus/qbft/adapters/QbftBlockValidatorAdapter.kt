@@ -19,14 +19,16 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import java.util.Optional
 import maru.consensus.validation.BlockValidator
+import maru.core.BeaconBlockHeader
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 
 class QbftBlockValidatorAdapter(
-  private val blockValidator: BlockValidator,
+  private val blockValidatorFactory: (BeaconBlockHeader) -> BlockValidator,
 ) : QbftBlockValidator {
   override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
     val beaconBlock = qbftBlock.toBeaconBlock()
+    val blockValidator = blockValidatorFactory.invoke(beaconBlock.beaconBlockHeader)
     return when (val blockValidationResult = blockValidator.validateBlock(beaconBlock).get()) {
       is Ok -> QbftBlockValidator.ValidationResult(true, Optional.empty())
       is Err ->

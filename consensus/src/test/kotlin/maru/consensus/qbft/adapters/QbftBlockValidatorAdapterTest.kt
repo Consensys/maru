@@ -20,6 +20,7 @@ import com.github.michaelbull.result.getError
 import java.util.Optional
 import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
+import maru.core.BeaconBlockHeader
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
@@ -28,19 +29,26 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftBlockValidatorAdapterTest {
   private val newBlock = DataGenerators.randomBeaconBlock(10u)
-  private lateinit var blockValidator: BlockValidator
+  private lateinit var blockValidatorFactory: (
+    BeaconBlockHeader,
+  ) -> BlockValidator
 
   @Test
   fun `validateBlock should return false when block validation error`() {
     val blockValidatorError = BlockValidator.error("Error")
-    blockValidator =
-      object : BlockValidator {
-        override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
-          SafeFuture.completedFuture(blockValidatorError)
+    blockValidatorFactory =
+      { parentHeader: BeaconBlockHeader ->
+        object : BlockValidator {
+          override fun validateBlock(
+            block: BeaconBlock,
+          ): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
+            SafeFuture.completedFuture(blockValidatorError)
+        }
       }
+
     val qbftBlockValidatorAdapter =
       QbftBlockValidatorAdapter(
-        blockValidator = blockValidator,
+        blockValidatorFactory = blockValidatorFactory,
       )
     val expectedResult =
       QbftBlockValidator.ValidationResult(
@@ -52,15 +60,19 @@ class QbftBlockValidatorAdapterTest {
 
   @Test
   fun `validateBlock should return true when valid block`() {
-    blockValidator =
-      object : BlockValidator {
-        override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
-          SafeFuture.completedFuture(BlockValidator.ok())
+    blockValidatorFactory =
+      { parentHeader: BeaconBlockHeader ->
+        object : BlockValidator {
+          override fun validateBlock(
+            block: BeaconBlock,
+          ): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
+            SafeFuture.completedFuture(BlockValidator.ok())
+        }
       }
 
     val qbftBlockValidatorAdapter =
       QbftBlockValidatorAdapter(
-        blockValidator = blockValidator,
+        blockValidatorFactory = blockValidatorFactory,
       )
     val expectedResult = QbftBlockValidator.ValidationResult(true, Optional.empty())
     assertThat(qbftBlockValidatorAdapter.validateBlock(QbftBlockAdapter(newBlock))).isEqualTo(expectedResult)
