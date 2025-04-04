@@ -39,7 +39,7 @@ class QbftBlockCreatorFactory(
 ) : QbftBlockCreatorFactory {
   override fun create(round: Int): BesuQbftBlockCreator {
     require(round >= 0) {
-      "round must not be negatvie!"
+      "round must not be negative!"
     }
     val mainBlockCreator =
       DelayedQbftBlockCreator(
