@@ -175,14 +175,21 @@ class QbftConsensusProtocolFactory(
     // TODO connect this to the maru NewBlockHandler
     val minedBlockObservers = Subscribers.create<QbftMinedBlockObserver>()
 
-    val finalizationStateProvider = { header: BeaconBlockHeader -> FinalizationState(header.hash, header.hash) }
+    val finalizationStateProvider = { beaconBlockBody: BeaconBlockBody ->
+      val hash = beaconBlockBody.executionPayload.blockHash
+      FinalizationState(hash, hash)
+    }
     val nextBlockTimestampProvider = { roundIdentifier: ConsensusRoundIdentifier ->
       val currentBlockTime = besuForksSchedule.getFork(roundIdentifier.sequenceNumber).value.blockPeriodSeconds
       (clock.millis() / 1000.0).toLong() + currentBlockTime
     }
     val shouldBuildNextBlock =
       { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->
-        proposerSelector.getProposerForBlock(beaconState, roundIdentifier).equals(localAddress)
+        proposerSelector
+          .getProposerForBlock(beaconState, roundIdentifier)
+          .get()
+          .address
+          .equals(localAddress)
       }
     val beaconBlockImporter =
       BeaconBlockImporterImpl(

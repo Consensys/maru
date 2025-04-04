@@ -17,7 +17,7 @@ package maru.consensus.qbft
 
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlock
-import maru.core.BeaconBlockHeader
+import maru.core.BeaconBlockBody
 import maru.core.BeaconState
 import maru.core.Validator
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -34,7 +34,7 @@ fun interface BeaconBlockImporter {
 
 class BeaconBlockImporterImpl(
   private val executionLayerManager: ExecutionLayerManager,
-  private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
+  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: (ConsensusRoundIdentifier) -> Long,
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
@@ -44,7 +44,7 @@ class BeaconBlockImporterImpl(
     beaconBlock: BeaconBlock,
   ): SafeFuture<ForkChoiceUpdatedResult> {
     val beaconBlockHeader = beaconBlock.beaconBlockHeader
-    val finalizationState = finalizationStateProvider(beaconBlockHeader)
+    val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
     val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
     return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier)) {
       executionLayerManager.setHeadAndStartBlockBuilding(
