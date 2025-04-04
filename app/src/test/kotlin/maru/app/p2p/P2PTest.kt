@@ -23,11 +23,13 @@ import java.nio.file.Path
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 import maru.app.MaruApp.TestTopicHandler
+import maru.p2p.P2PNetworkBuilder
 import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatNoException
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
@@ -41,8 +43,9 @@ import tech.pegasys.teku.networking.p2p.gossip.PreparedGossipMessage
 import tech.pegasys.teku.networking.p2p.gossip.TopicHandler
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
+import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
 
-private const val ORIGINAL_MESSAGE = "68656c6c6f"
+private const val ORIGINAL_MESSAGE = "deaddeadbeefbeef"
 
 class P2PTest {
   companion object {
@@ -301,7 +304,7 @@ class P2PTest {
         ethereumJsonRpcUrl = besuNode1.jsonRpcBaseUrl().get(),
         engineApiRpc = besuNode1.engineRpcUrl().get(),
         networks = listOf(PEER_ADDRESS_NODE_1),
-        staticPeers = listOf(PEER_ADDRESS_NODE_2),
+        staticPeers = listOf(),
         privateKeyFile = key1File,
       )
     maruNode1.start()
@@ -312,27 +315,40 @@ class P2PTest {
         ethereumJsonRpcUrl = besuNode1.jsonRpcBaseUrl().get(),
         engineApiRpc = besuNode1.engineRpcUrl().get(),
         networks = listOf(PEER_ADDRESS_NODE_2),
-        staticPeers = listOf(PEER_ADDRESS_NODE_1),
+        staticPeers = listOf(),
         privateKeyFile = key2File,
       )
     maruNode2.start()
     val p2PNetwork2 = maruNode2.getP2PNetwork()
 
-//    maruNode2.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_1))
+    maruNode2.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_1))
 
     sleep(4000)
 
     assertThat(p2PNetwork1!!.peerCount).isEqualTo(1)
     assertThat(p2PNetwork2!!.peerCount).isEqualTo(1)
+//
+//    maruNode2.getP2PNetwork()!!.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1))).let { op ->
+//      op.map { p ->
+//        p.sendRequest(
+//          P2PNetworkBuilder.rpcMethod,
+//          Bytes.fromHexString("deadbeef"),
+//          MaruRpcResponseHandler()
+//        )
+//      }
+//    }
+
+    sleep(4000)
 
     maruNode2.getP2PNetwork()!!.subscribe("topic", TestTopicHandler())
     maruNode1.getP2PNetwork()!!.subscribe("topic", TestTopicHandler())
 
     sleep(4000)
 
+    // this throws an exception if we do not have a peer that is subscribed to the topic
     val future = p2PNetwork1.gossip("topic", Bytes.fromHexString(ORIGINAL_MESSAGE))
 
-    assertThat(future.get(4000, TimeUnit.MILLISECONDS)).isEqualTo(ValidationResult.Valid)
+    assertThatNoException().isThrownBy { future.get(4000, TimeUnit.MILLISECONDS) }
 
     maruNode1.stop()
     maruNode2.stop()
@@ -343,7 +359,8 @@ class P2PTest {
       payload: Bytes?,
       arrivalTimestamp: Optional<tech.pegasys.teku.infrastructure.unsigned.UInt64>?,
     ): PreparedGossipMessage {
-      TODO("Not yet implemented")
+      // TODO: don't know where / how this is used
+      return P2PNetworkBuilder.MaruPreparedGossipMessage(Bytes.fromHexString("deadbaaf"), Optional.empty())
     }
 
     override fun handleMessage(message: PreparedGossipMessage?): SafeFuture<ValidationResult> {
@@ -351,13 +368,19 @@ class P2PTest {
       message.let {
         data = message!!.originalMessage
       }
-      if (data!!.equals(Bytes.fromHexString("deadbeef"))) {
-        return SafeFuture.completedFuture(ValidationResult.Valid)
+      return if (data!!.equals(Bytes.fromHexString(ORIGINAL_MESSAGE))) {
+        SafeFuture.completedFuture(ValidationResult.Valid)
       } else {
-        return SafeFuture.completedFuture(ValidationResult.Invalid)
+        SafeFuture.completedFuture(ValidationResult.Invalid)
       }
     }
 
-    override fun getMaxMessageSize(): Int = 43434343
+    override fun getMaxMessageSize(): Int = 43434343 // TODO: what is a good max size here? 10MB?
+  }
+
+  class MaruRpcResponseHandler : RpcResponseHandler<Bytes> {
+    override fun onResponse(response: Bytes?): SafeFuture<*> = SafeFuture.completedFuture(response)
+
+    override fun onCompleted(error: Optional<out Throwable>?): Unit = throw error!!.get()
   }
 }

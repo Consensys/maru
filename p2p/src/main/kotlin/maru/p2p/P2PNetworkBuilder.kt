@@ -38,7 +38,6 @@ import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.buffer.ByteBuf
 import java.util.Optional
-import java.util.function.Function
 import kotlin.random.Random
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -68,7 +67,7 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
 private const val ORIGINAL_MESSAGE = "68656c6c6f"
 
-class P2PNetworkBuilder {
+open class P2PNetworkBuilder {
   private var privateKey: PrivKey? = null
   private var ipv4Address: Multiaddr? = null
   private var ipv6Address: Multiaddr? = null
@@ -143,8 +142,8 @@ class P2PNetworkBuilder {
     val libP2PNodeId = LibP2PNodeId(peerId)
 
     val metricTrackingExecutorFactory = MetricTrackingExecutorFactory(metricsSystem)
-    val asyncRunner = AsyncRunnerFactory.createDefault(metricTrackingExecutorFactory).create("maru", 10)
-    val maruRpcMethod = MaruRpcMethod() // TODO: MaruRpcMethod needs to be implemented
+    val asyncRunner = AsyncRunnerFactory.createDefault(metricTrackingExecutorFactory).create("maru", 2)
+    val maruRpcMethod = rpcMethod // TODO: MaruRpcMethod needs to be implemented
     val rpcHandler = RpcHandler(asyncRunner, maruRpcMethod)
 
     val peerManager =
@@ -153,10 +152,11 @@ class P2PNetworkBuilder {
         ReputationManager.NOOP,
         mutableListOf<PeerHandler>(MaruPeerHandler()),
         mutableListOf(rpcHandler),
-        { p -> 50.0 },
+        { _ -> 50.0 },
       ) // TODO need to implement the scoring function
 
-    val host = createHost(privateKey!!, gossip, peerManager) // Add additional connection handlers here
+    val host = createHost(privateKey!!, listOf(gossip, peerManager), gossip)
+    // Add additional connection handlers and protocol bindings as needed
 
     val advertisedAddresses = mutableListOf<Multiaddr>()
     ipv4Address?.let { advertisedAddresses.add(it) }
@@ -193,23 +193,22 @@ class P2PNetworkBuilder {
     val preparedMessage: PreparedGossipMessage =
       gossipTopicHandlers
         .getHandlerForTopic(topic)
-        .map<PreparedGossipMessage>(
-          Function<TopicHandler, PreparedGossipMessage> { handler: TopicHandler ->
-            handler.prepareMessage(
-              payload,
-              arrivalTimestamp,
-            )
-          },
-        ).orElse(
+        .map { handler: TopicHandler ->
+          handler.prepareMessage(
+            payload,
+            arrivalTimestamp,
+          )
+        }.orElse(
           // TODO: this is not the correct behavior, we should not be creating a message if there is no handler
           MaruPreparedGossipMessage(payload, arrivalTimestamp),
         )
     return PreparedPubsubMessage(msg, preparedMessage)
   }
 
-  protected fun createHost(
+  private fun createHost(
     privKey: PrivKey,
-    vararg connectionHandlers: ConnectionHandler,
+    connectionHandlers: List<ConnectionHandler>,
+    gossip: Gossip,
   ): Host {
     // networkInterfaces is a list of IP addresses. At least one IP address (IPv4) is required.
     // If two IP addresses are provided, one must be IPv4 and the other must be IPv6.
@@ -238,6 +237,7 @@ class P2PNetworkBuilder {
           )
         }
         connectionHandlers.forEach { b.connectionHandlers.add(it) }
+        b.protocols.add(gossip) // TODO: add the rest of the protocols
       }
     return host
   }
@@ -253,25 +253,17 @@ class P2PNetworkBuilder {
   }
 
   open class MaruRpcMethod : RpcMethod<MaruRpcRequestHandler, Bytes, RpcResponseHandler<Bytes>> {
-    override fun getIds(): MutableList<String> {
-      TODO("Not yet implemented3")
-    }
+    override fun getIds(): MutableList<String> = mutableListOf("/mplex/6.7.0")
 
-    override fun createIncomingRequestHandler(p0: String?): RpcRequestHandler {
-      TODO("Not yet implemented4")
-    }
+    override fun createIncomingRequestHandler(p0: String?): RpcRequestHandler = MaruRpcRequestHandler()
 
     override fun createOutgoingRequestHandler(
       p0: String?,
       p1: Bytes?,
       p2: RpcResponseHandler<Bytes>?,
-    ): MaruRpcRequestHandler {
-      TODO("Not yet implemented5")
-    }
+    ): MaruRpcRequestHandler = MaruRpcRequestHandler()
 
-    override fun encodeRequest(p0: Bytes?): Bytes {
-      TODO("Not yet implemented6")
-    }
+    override fun encodeRequest(p0: Bytes?): Bytes = p0!!
   }
 
   open class MaruRpcRequestHandler : RpcRequestHandler {
@@ -312,14 +304,14 @@ class P2PNetworkBuilder {
     ): PreparedGossipMessage = MaruPreparedGossipMessage(payload!!, arrivalTimestamp!!)
 
     override fun handleMessage(message: PreparedGossipMessage?): SafeFuture<ValidationResult> {
-      var data: Bytes? = null
+      var data: Bytes?
       message.let {
         data = message!!.originalMessage
       }
-      if (data!!.equals(ORIGINAL_MESSAGE)) {
-        return SafeFuture.completedFuture(ValidationResult.Valid)
+      return if (data!!.equals(ORIGINAL_MESSAGE)) {
+        SafeFuture.completedFuture(ValidationResult.Valid)
       } else {
-        return SafeFuture.completedFuture(ValidationResult.Invalid)
+        SafeFuture.completedFuture(ValidationResult.Invalid)
       }
     }
 
@@ -327,8 +319,8 @@ class P2PNetworkBuilder {
   }
 
   class MaruPreparedGossipMessage(
-    val origMessage: Bytes,
-    val arrTimestamp: Optional<UInt64>,
+    private val origMessage: Bytes,
+    private val arrTimestamp: Optional<UInt64>,
   ) : PreparedGossipMessage {
     override fun getMessageId(): Bytes = Bytes.of(42)
 
@@ -338,5 +330,9 @@ class P2PNetworkBuilder {
     override fun getOriginalMessage(): Bytes = origMessage
 
     override fun getArrivalTimestamp(): Optional<UInt64> = arrTimestamp
+  }
+
+  companion object {
+    var rpcMethod = MaruRpcMethod()
   }
 }
