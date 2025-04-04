@@ -16,6 +16,7 @@
 package maru.consensus
 
 import kotlin.collections.map
+import maru.core.BeaconState
 import maru.core.Validator
 import maru.database.BeaconChain
 import org.apache.tuweni.bytes.Bytes
@@ -38,6 +39,20 @@ class ProposerSelectorImpl(
 
     val validatorsForRound =
       validatorProvider.getValidatorsForBlock(parentBlockHeader.number).get().map {
+        Address.wrap(Bytes.wrap(it.address))
+      }
+    val proposer =
+      BftProposerSelector.selectProposerForRound(roundIdentifier, prevBlockProposer, validatorsForRound, true)
+    return SafeFuture.completedFuture(Validator(proposer.toArray()))
+  }
+
+  fun getProposerForBlock(
+    parentBeaconState: BeaconState,
+    roundIdentifier: ConsensusRoundIdentifier,
+  ): SafeFuture<Validator> {
+    val prevBlockProposer = Address.wrap(Bytes.wrap(parentBeaconState.latestBeaconBlockHeader.proposer.address))
+    val validatorsForRound =
+      parentBeaconState.validators.map {
         Address.wrap(Bytes.wrap(it.address))
       }
     val proposer =

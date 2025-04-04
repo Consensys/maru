@@ -18,6 +18,7 @@ package maru.consensus.qbft
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
+import maru.core.BeaconState
 import maru.core.Validator
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
@@ -25,21 +26,27 @@ import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface BeaconBlockImporter {
-  fun importBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult>
+  fun importBlock(
+    beaconState: BeaconState,
+    beaconBlock: BeaconBlock,
+  ): SafeFuture<ForkChoiceUpdatedResult>
 }
 
 class BeaconBlockImporterImpl(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val nextBlockTimestampProvider: (ConsensusRoundIdentifier) -> Long,
-  private val shouldBuildNextBlock: (ConsensusRoundIdentifier) -> Boolean,
+  private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
 ) : BeaconBlockImporter {
-  override fun importBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
+  override fun importBlock(
+    beaconState: BeaconState,
+    beaconBlock: BeaconBlock,
+  ): SafeFuture<ForkChoiceUpdatedResult> {
     val beaconBlockHeader = beaconBlock.beaconBlockHeader
     val finalizationState = finalizationStateProvider(beaconBlockHeader)
     val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
-    return if (shouldBuildNextBlock(nextBlocksRoundIdentifier)) {
+    return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier)) {
       executionLayerManager.setHeadAndStartBlockBuilding(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
         safeHash = finalizationState.safeBlockHash,

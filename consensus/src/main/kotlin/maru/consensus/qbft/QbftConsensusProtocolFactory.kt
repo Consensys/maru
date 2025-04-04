@@ -180,12 +180,16 @@ class QbftConsensusProtocolFactory(
       val currentBlockTime = besuForksSchedule.getFork(roundIdentifier.sequenceNumber).value.blockPeriodSeconds
       (clock.millis() / 1000.0).toLong() + currentBlockTime
     }
+    val shouldBuildNextBlock =
+      { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->
+        proposerSelector.getProposerForBlock(beaconState, roundIdentifier).equals(localAddress)
+      }
     val beaconBlockImporter =
       BeaconBlockImporterImpl(
         executionLayerManager,
         finalizationStateProvider,
         nextBlockTimestampProvider,
-        finalState::isLocalNodeProposerForRound,
+        shouldBuildNextBlock,
         Validator(localAddress.toArray()),
       )
 

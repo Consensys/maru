@@ -46,7 +46,7 @@ class QbftBlockImportCoordinator(
         updater
           .putBeaconState(resultingState)
           .putSealedBeaconBlock(sealedBeaconBlock)
-        beaconBlockImporter.importBlock(beaconBlock).get()
+        beaconBlockImporter.importBlock(resultingState, beaconBlock).get()
       } catch (e: Exception) {
         log.info("Database update failed: ${e.message}")
         updater.rollback()
