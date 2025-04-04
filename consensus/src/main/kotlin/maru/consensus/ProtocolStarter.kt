@@ -23,13 +23,13 @@ import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
-class MetadataOnlyHandlerAdapter(
+class ProtocolStarterBlockHandler(
   private val protocolStarter: ProtocolStarter,
 ) : NewBlockHandler {
   override fun handleNewBlock(block: BeaconBlock) {
     val blockMetadata =
       BlockMetadata(
-        block.beaconBlockHeader.number,
+        block.beaconBlockBody.executionPayload.blockNumber,
         block.beaconBlockHeader.hash,
         block.beaconBlockHeader.timestamp.toLong(),
       )
@@ -56,9 +56,9 @@ class ProtocolStarter(
 
   @Synchronized
   fun handleNewBlock(block: BlockMetadata) {
-    log.debug("New block {} received", { block.blockNumber })
+    log.debug("New block number={} received", { block.blockNumber })
 
-    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(block)
+    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(block.unixTimestampSeconds)
     val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()

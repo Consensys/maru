@@ -29,7 +29,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.app.MaruApp
-import maru.e2e.Mappers.executionPayloadV3FromBlock
 import maru.e2e.TestEnvironment.waitForInclusion
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -128,16 +127,13 @@ class CliqueToPosTest {
     everyoneArePeered()
     waitTillTimestamp("Prague", pragueSwitchTimestamp)
 
+    log.info("Sequencer has switched to PoS")
     repeat(4) {
       TestEnvironment.sendArbitraryTransaction().waitForInclusion()
     }
-    log.info("Sequencer has switched to PoS")
 
-    val latestBlock = getBlockByNumber(7)!!
-    assertThat(latestBlock.timestamp.toLong()).isGreaterThan(parsePragueSwitchTimestamp())
-    (6L..9L).forEach {
-      setAllFollowersHeadToBlockNumberPrague(it)
-    }
+    val latestBlock = getBlockByNumber(6)!!
+    assertThat(latestBlock.timestamp.toLong()).isGreaterThanOrEqualTo(parsePragueSwitchTimestamp())
     assertNodeBlockHeight(9, TestEnvironment.sequencerL2Client)
 
     waitForAllBlockHeightsToMatch()
@@ -174,7 +170,8 @@ class CliqueToPosTest {
           // For some reason Erigon needs a restart after PoS transition
           restartNodeKeepingState(nodeName, nodeEthereumClient)
         }
-        syncTarget(nodeEngineApiClient, 9)
+        // TODO: Should be done by Maru or its internal components at least
+        //  syncTarget(nodeEngineApiClient, 9)
         if (nodeName.contains("follower-geth")) {
           // For some reason it doesn't set latest block correctly, but the block is available
           val blockByNumber =
@@ -251,41 +248,6 @@ class CliqueToPosTest {
         ).isGreaterThanOrEqualTo(expectedBlockNumber)
           .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
       }
-  }
-
-  private fun sendNewPayloadByBlockNumber(
-    blockNumber: Long,
-    target: Web3JExecutionEngineClient,
-  ): ExecutionPayloadV3 {
-    val targetBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
-    val blockPayload = executionPayloadV3FromBlock(targetBlock)
-    val newPayloadResult = target.newPayloadV4(blockPayload, listOf(), Bytes32.ZERO, emptyList()).get()
-    log.debug("New payload result: {}", newPayloadResult)
-    return blockPayload
-  }
-
-  private fun syncTarget(
-    target: Web3JExecutionEngineClient,
-    headBlockNumber: Long,
-  ) {
-    val headPayload = sendNewPayloadByBlockNumber(headBlockNumber, target)
-
-    val fcuResult =
-      target
-        .forkChoiceUpdatedV1(
-          ForkChoiceStateV1(headPayload.blockHash, headPayload.blockHash, headPayload.blockHash),
-          Optional.empty(),
-        ).get()
-
-    log.debug("Fork choice updated result: {}", fcuResult)
-  }
-
-  private fun setAllFollowersHeadToBlockNumberPrague(blockNumber: Long): String {
-    val postMergeBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
-    val getNewPayloadFromPostMergeBlockNumber = executionPayloadV3FromBlock(postMergeBlock)
-    sendNewPayloadToFollowersPrague(getNewPayloadFromPostMergeBlockNumber)
-    fcuFollowersToBlockHashPrague(postMergeBlock.hash)
-    return postMergeBlock.hash
   }
 
   private fun sendCliqueTransactions() {

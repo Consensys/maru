@@ -45,6 +45,7 @@ class HopliteFriendlinessTest {
 
     [followers]
     follower1 = "http://localhost:1234"
+    follower2 = "http://localhost:4321"
     """.trimIndent()
 
   @Test
@@ -69,6 +70,7 @@ class HopliteFriendlinessTest {
           followers =
             mapOf(
               "follower1" to URI.create("http://localhost:1234").toURL(),
+              "follower2" to URI.create("http://localhost:4321").toURL(),
             ),
         ),
       )
@@ -124,6 +126,7 @@ class HopliteFriendlinessTest {
             FollowersConfig(
               mapOf(
                 "follower1" to ExecutionClientConfig(URI.create("http://localhost:1234").toURL()),
+                "follower2" to ExecutionClientConfig(URI.create("http://localhost:4321").toURL()),
               ),
             ),
         ),

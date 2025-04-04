@@ -13,19 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app
+package maru.consensus.dummy
 
-import maru.consensus.NewBlockHandler
-import maru.consensus.qbft.BeaconBlockImporter
-import maru.core.BeaconBlock
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
+import java.util.concurrent.atomic.AtomicReference
+import maru.executionlayer.manager.BlockMetadata
 
-class BlockImportHandler(
-  private val engineLayerManager: JsonRpcExecutionLayerManager,
-  private val blockImporter: BeaconBlockImporter,
-) : NewBlockHandler {
-  override fun handleNewBlock(block: BeaconBlock) {
-    engineLayerManager.importPayload(block.beaconBlockBody.executionPayload).get()
-    blockImporter.importBlock(block)
+class LatestBlockMetadataCache(
+  currentBlockMetadata: BlockMetadata,
+) {
+  private var latestBlockMetadataCache = AtomicReference(currentBlockMetadata)
+
+  fun getLatestBlockMetadata(): BlockMetadata = latestBlockMetadataCache.get()
+
+  fun updateLatestBlockMetadata(blockMetadata: BlockMetadata) {
+    latestBlockMetadataCache.set(blockMetadata)
   }
 }

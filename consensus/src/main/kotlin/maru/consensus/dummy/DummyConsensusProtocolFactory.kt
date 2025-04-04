@@ -82,8 +82,10 @@ class DummyConsensusProtocolFactory(
           metadataProvider = metadataProvider,
           payloadValidator = EmptyBlockValidator,
         ).get()
-    val latestBlockMetadata = jsonRpcExecutionLayerManager.latestBlockMetadata()
-    val latestBlockHash = latestBlockMetadata.blockHash
+
+    val latestBlockMetadata = metadataProvider.getLatestBlockMetadata().get()
+    val blockMetadataCache = LatestBlockMetadataCache(latestBlockMetadata)
+    val latestBlockHash = blockMetadataCache.getLatestBlockMetadata().blockHash
 
     val finalizationState = FinalizationState(latestBlockHash, latestBlockHash)
     val dummyConsensusState =
@@ -104,20 +106,23 @@ class DummyConsensusProtocolFactory(
       DummyEngineApiBlockCreator(
         manager = jsonRpcExecutionLayerManager,
         state = dummyConsensusState,
-        nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata),
+        nextBlockTimestamp =
+          nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(
+            latestBlockMetadata.unixTimestampSeconds,
+          ),
         feeRecipientProvider = DummyConsensusFeeRecipientProvider(forksSchedule),
       )
     val eventHandler =
       DummyConsensusEventHandler(
-        executionLayerManager = jsonRpcExecutionLayerManager,
         blockCreator = blockCreator,
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         onNewBlock = newBlockHandler,
+        blockMetadataCache = blockMetadataCache,
       )
     return DummyConsensus(
       forksSchedule = forksSchedule,
       eventHandler = eventHandler,
-      blockMetadataProvider = jsonRpcExecutionLayerManager::latestBlockMetadata,
+      blockMetadataProvider = blockMetadataCache::getLatestBlockMetadata,
       nextBlockTimestampProvider = nextBlockTimestampProvider,
       clock = clock,
       config = DummyConsensus.Config(maruConfig.dummyConsensusOptions!!.communicationMargin),
