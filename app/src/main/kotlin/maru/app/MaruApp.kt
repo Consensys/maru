@@ -17,9 +17,11 @@ package maru.app
 
 import java.time.Clock
 import java.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import maru.config.MaruConfig
 import maru.consensus.ForksSchedule
 import maru.consensus.MetadataOnlyHandlerAdapter
+import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
@@ -37,6 +39,7 @@ class MaruApp(
   config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
+  newBlockHandlers: Map<String, NewBlockHandler> = emptyMap(),
 ) {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -51,19 +54,19 @@ class MaruApp(
 
   private val ethereumJsonRpcClient =
     buildJsonRpcClient(
-      config.executionClientConfig.ethereumJsonRpcEndpoint
+      config.sotNode.endpoint
         .toString(),
     )
 
-  private val newBlockHandlerMultiplexer = NewBlockHandlerMultiplexer(emptyMap())
+  private val newBlockHandlerMultiplexer = NewBlockHandlerMultiplexer(newBlockHandlers)
 
   private val metadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
 
-  private val nextBlockTimestampProvider =
+  private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
-      minTimeTillNextBlock = config.executionClientConfig.minTimeBetweenGetPayloadAttempts,
+      minTimeTillNextBlock = 0.seconds,
     )
   private val protocolStarter =
     ProtocolStarter(
@@ -77,7 +80,6 @@ class MaruApp(
               maruConfig = config,
               metadataProvider = metadataProvider,
               newBlockHandler = newBlockHandlerMultiplexer,
-              nextBlockTimestampProvider = nextBlockTimestampProvider,
             ),
           elDelegatedConsensusFactory =
             ElDelegatedConsensusFactory(
@@ -86,7 +88,7 @@ class MaruApp(
             ),
         ),
       metadataProvider = metadataProvider,
-      nextBlockTimestampProvider = nextBlockTimestampProvider,
+      nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
     ).also {
       newBlockHandlerMultiplexer.addHandler("protocol starter", MetadataOnlyHandlerAdapter(it))
     }

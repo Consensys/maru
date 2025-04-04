@@ -17,12 +17,23 @@ package maru.config
 
 import com.sksamuel.hoplite.Masked
 import fromHexToByteArray
+import java.net.URL
 import kotlin.time.Duration
 
 data class ValidatorDtoToml(
-  val validatorKey: Masked,
+  val key: Masked,
+  val endpoint: URL,
+  val minTimeBetweenGetPayloadAttempts: Duration,
 ) {
-  fun domainFriendly(): Validator = Validator(validatorKey.value.fromHexToByteArray())
+  fun domainFriendly(): Validator =
+    Validator(
+      key = key.value.fromHexToByteArray(),
+      client =
+        ValidatorClientConfig(
+          engineApiClientConfig = EngineApiClientConfig(endpoint = endpoint),
+          minTimeBetweenGetPayloadAttempts = minTimeBetweenGetPayloadAttempts,
+        ),
+    )
 }
 
 data class DummyConsensusOptionsDtoToml(
@@ -32,16 +43,18 @@ data class DummyConsensusOptionsDtoToml(
 }
 
 data class MaruConfigDtoToml(
-  private val executionClient: ExecutionClientConfig,
+  private val sotNode: ExecutionClientConfig,
   private val dummyConsensusOptions: DummyConsensusOptionsDtoToml?,
   private val p2pConfig: P2P?,
   private val validator: ValidatorDtoToml?,
+  private val followers: Map<String, URL>?,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
-      executionClientConfig = executionClient,
+      sotNode = sotNode,
       dummyConsensusOptions = dummyConsensusOptions?.domainFriendly(),
       p2pConfig = p2pConfig,
       validator = validator?.domainFriendly(),
+      followers = FollowersConfig(followers = followers?.mapValues { ExecutionClientConfig(it.value) } ?: emptyMap()),
     )
 }

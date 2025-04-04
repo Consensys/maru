@@ -21,7 +21,7 @@ import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
-import maru.consensus.NextBlockTimestampProvider
+import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.ProtocolFactory
 import maru.consensus.state.FinalizationState
 import maru.executionlayer.client.ExecutionLayerClient
@@ -38,13 +38,15 @@ class DummyConsensusProtocolFactory(
   private val forksSchedule: ForksSchedule,
   private val maruConfig: MaruConfig,
   private val clock: Clock,
-  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val metadataProvider: MetadataProvider,
   private val newBlockHandler: NewBlockHandler,
 ) : ProtocolFactory {
   init {
     require(maruConfig.dummyConsensusOptions != null) {
       "Next fork is dummy consensus one, but dummyConsensusOptions are undefined!"
+    }
+    require(maruConfig.validator != null) {
+      "Validator is required for Dummy Consensus protocol factory!"
     }
   }
 
@@ -67,9 +69,11 @@ class DummyConsensusProtocolFactory(
       } instead of ${DummyConsensusConfig::class.simpleName}"
     }
 
+    val validatorConfig = maruConfig.validator!!
     val executionLayerClient =
       buildExecutionEngineClient(
-        maruConfig.executionClientConfig.engineApiJsonRpcEndpoint.toString(),
+        validatorConfig.client.engineApiClientConfig.endpoint
+          .toString(),
         forkSpec.configuration.elFork,
       )
     val jsonRpcExecutionLayerManager =
@@ -88,6 +92,13 @@ class DummyConsensusProtocolFactory(
         clock = clock,
         finalizationState_ = finalizationState,
         latestBlockHash_ = latestBlockHash,
+      )
+
+    val nextBlockTimestampProvider =
+      NextBlockTimestampProviderImpl(
+        clock = clock,
+        forksSchedule = forksSchedule,
+        minTimeTillNextBlock = validatorConfig.client.minTimeBetweenGetPayloadAttempts,
       )
 
     val blockCreator =

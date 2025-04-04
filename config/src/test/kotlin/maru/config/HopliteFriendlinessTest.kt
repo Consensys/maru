@@ -23,38 +23,77 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class HopliteFriendlinessTest {
+  private val emptyFollowersConfig =
+    """
+    [sot-node]
+    endpoint = "http://localhost:8545"
+
+    [dummy-consensus-options]
+    communication-time-margin=100m
+
+    [p2p-config]
+    port = 3322
+
+    [validator]
+    key = "0xdead"
+    min-time-between-get-payload-attempts=800m
+    endpoint = "http://localhost:8555"
+    """.trimIndent()
+  private val rawConfig =
+    """
+    $emptyFollowersConfig
+
+    [followers]
+    follower1 = "http://localhost:1234"
+    """.trimIndent()
+
   @Test
   fun appConfigFileIsParseable() {
     val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        """
-        [execution-client]
-        ethereum-json-rpc-endpoint = "http://localhost:8545"
-        engine-api-json-rpc-endpoint = "http://localhost:8555"
-        min-time-between-get-payload-attempts=800m
-
-        [dummy-consensus-options]
-        communication-time-margin=100m
-
-        [p2p-config]
-        port = 3322
-
-        [validator]
-        validator-key = "0xdead"
-        """.trimIndent(),
-      )
+      Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          executionClient =
+          sotNode =
             ExecutionClientConfig(
-              ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
-              engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+              endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
-          validator = ValidatorDtoToml(validatorKey = Secret("0xdead")),
+          validator =
+            ValidatorDtoToml(
+              endpoint = URI.create("http://localhost:8555").toURL(),
+              key = Secret("0xdead"),
+              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+            ),
+          followers =
+            mapOf(
+              "follower1" to URI.create("http://localhost:1234").toURL(),
+            ),
+        ),
+      )
+  }
+
+  @Test
+  fun supportsEmptyFollowers() {
+    val config =
+      Utils.parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
+    assertThat(config)
+      .isEqualTo(
+        MaruConfigDtoToml(
+          sotNode =
+            ExecutionClientConfig(
+              endpoint = URI.create("http://localhost:8545").toURL(),
+            ),
+          dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
+          p2pConfig = P2P(port = 3322u),
+          validator =
+            ValidatorDtoToml(
+              endpoint = URI.create("http://localhost:8555").toURL(),
+              key = Secret("0xdead"),
+              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+            ),
+          followers = null,
         ),
       )
   }
@@ -62,35 +101,61 @@ class HopliteFriendlinessTest {
   @Test
   fun appConfigFileIsConvertableToDomain() {
     val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        """
-        [execution-client]
-        ethereum-json-rpc-endpoint = "http://localhost:8545"
-        engine-api-json-rpc-endpoint = "http://localhost:8555"
-        min-time-between-get-payload-attempts=800m
-
-        [dummy-consensus-options]
-        communication-time-margin=100m
-
-        [p2p-config]
-        port = 3322
-
-        [validator]
-        validator-key = "0xdead"
-        """.trimIndent(),
-      )
+      Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
-          executionClientConfig =
+          sotNode =
             ExecutionClientConfig(
-              engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
-              ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+              endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
-          validator = Validator(validatorKey = "0xdead".fromHexToByteArray()),
+          validator =
+            Validator(
+              client =
+                ValidatorClientConfig(
+                  engineApiClientConfig = EngineApiClientConfig(URI.create("http://localhost:8555").toURL()),
+                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+                ),
+              key = "0xdead".fromHexToByteArray(),
+            ),
+          followers =
+            FollowersConfig(
+              mapOf(
+                "follower1" to ExecutionClientConfig(URI.create("http://localhost:1234").toURL()),
+              ),
+            ),
+        ),
+      )
+  }
+
+  @Test
+  fun emptyFollowersAreConvertableToDomain() {
+    val config =
+      Utils.parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
+    assertThat(config.domainFriendly())
+      .isEqualTo(
+        MaruConfig(
+          sotNode =
+            ExecutionClientConfig(
+              endpoint = URI.create("http://localhost:8545").toURL(),
+            ),
+          dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
+          p2pConfig = P2P(port = 3322u),
+          validator =
+            Validator(
+              client =
+                ValidatorClientConfig(
+                  engineApiClientConfig = EngineApiClientConfig(URI.create("http://localhost:8555").toURL()),
+                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+                ),
+              key = "0xdead".fromHexToByteArray(),
+            ),
+          followers =
+            FollowersConfig(
+              emptyMap(),
+            ),
         ),
       )
   }
