@@ -25,7 +25,6 @@ import maru.consensus.state.StateTransition
 import maru.consensus.toConsensusRoundIdentifier
 import maru.consensus.validation.BlockValidator.BlockValidationError
 import maru.consensus.validation.BlockValidator.Companion.error
-import maru.consensus.validation.BlockValidator.Companion.ok
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.HashUtil
@@ -49,10 +48,10 @@ interface BlockValidator {
     fun error(message: String): Result<Unit, BlockValidationError> = Err(BlockValidationError(message))
 
     fun require(
-      boolean: Boolean,
+      condition: Boolean,
       errorMessageProvider: () -> String,
     ): Result<Unit, BlockValidationError> =
-      if (boolean) {
+      if (condition) {
         ok()
       } else {
         error(errorMessageProvider())
