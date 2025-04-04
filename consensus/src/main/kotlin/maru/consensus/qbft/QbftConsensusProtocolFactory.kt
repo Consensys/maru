@@ -212,7 +212,8 @@ class QbftConsensusProtocolFactory(
 
     val blockCodec = QbftBlockCodecAdapter()
     val blockInterface = QbftBlockInterfaceAdapter()
-    val protocolSchedule = QbftProtocolScheduleAdapter(blockImporter, QbftBlockValidatorAdapter(blockValidatorFactory))
+    val protocolSchedule =
+      QbftProtocolScheduleAdapter(blockImporter, QbftBlockValidatorAdapter(blockValidatorFactory, beaconChain))
     val messageValidatorFactory =
       MessageValidatorFactory(qbftProposerSelector, protocolSchedule, validatorProvider, blockInterface)
     val messageFactory = MessageFactory(nodeKey, blockCodec)
