@@ -145,7 +145,7 @@ class QbftConsensusProtocolFactory(
     val qbftProposerSelector = ProposerSelectorAdapter(proposerSelector)
     val validatorMulticaster = NoopValidatorMulticaster()
     val qbftBlockCreatorFactory =
-      QbftBlockCreatorFactoryImpl(executionLayerManager, qbftProposerSelector, staticValidatorProvider, beaconChain)
+      QbftBlockCreatorFactory(executionLayerManager, qbftProposerSelector, staticValidatorProvider, beaconChain)
 
     // initialise database, TODO this should be done in the main app
     initGenesisBlock(setOf(Validator(localAddress.toArrayUnsafe())))
