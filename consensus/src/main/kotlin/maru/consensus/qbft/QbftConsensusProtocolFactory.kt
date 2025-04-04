@@ -80,6 +80,7 @@ import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftBlockHeightMana
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftRoundFactory
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMinedBlockObserver
+import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
 import org.hyperledger.besu.consensus.qbft.core.validation.MessageValidatorFactory
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.cryptoservices.KeyPairSecurityModule
@@ -174,6 +175,11 @@ class QbftConsensusProtocolFactory(
 
     // TODO connect this to the maru NewBlockHandler
     val minedBlockObservers = Subscribers.create<QbftMinedBlockObserver>()
+    minedBlockObservers.subscribe(
+      { qbftBlock ->
+        bftEventQueue.add(QbftNewChainHead(qbftBlock.header))
+      },
+    )
 
     val finalizationStateProvider = { beaconBlockBody: BeaconBlockBody ->
       val hash = beaconBlockBody.executionPayload.blockHash
