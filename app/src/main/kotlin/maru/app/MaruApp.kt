@@ -69,7 +69,7 @@ class MaruApp(
     )
 
   private val metricsSystem = NoOpMetricsSystem()
-  private val dbPath = Path.of("/Users/jframe/code/maru/tmp/db") // TODO make this configurable
+  private val dbPath = Path.of("db") // TODO make this configurable
 
   private val beaconChain =
     KvDatabaseFactory.createRocksDbDatabase(
