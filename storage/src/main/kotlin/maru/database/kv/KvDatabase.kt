@@ -56,13 +56,6 @@ class KvDatabase(
           1,
           KvStoreSerializers.BeaconStateSerializer,
         )
-
-      val BlockRootByBlockNumber: KvStoreColumn<ULong, ByteArray> =
-        KvStoreColumn.create(
-          3,
-          KvStoreSerializers.ULongSerializer,
-          KvStoreSerializers.BytesSerializer,
-        )
     }
   }
 
