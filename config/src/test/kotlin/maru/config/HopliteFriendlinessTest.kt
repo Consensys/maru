@@ -36,6 +36,7 @@ class HopliteFriendlinessTest {
 
     [validator]
     key = "0xdead"
+    jwt-secret-path = "/secret/path"
     min-time-between-get-payload-attempts=800m
     endpoint = "http://localhost:8555"
     """.trimIndent()
@@ -44,8 +45,8 @@ class HopliteFriendlinessTest {
     $emptyFollowersConfig
 
     [followers]
-    follower1 = "http://localhost:1234"
-    follower2 = "http://localhost:4321"
+    follower1 = { endpoint = "http://localhost:1234", jwt-secret-path = "/secret/path" }
+    follower2 = { endpoint = "http://localhost:4321" }
     """.trimIndent()
 
   @Test
@@ -56,7 +57,7 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfigDtoToml(
           sotNode =
-            ExecutionClientConfig(
+            ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
@@ -65,12 +66,18 @@ class HopliteFriendlinessTest {
             ValidatorDtoToml(
               endpoint = URI.create("http://localhost:8555").toURL(),
               key = Secret("0xdead"),
+              jwtSecretPath = "/secret/path",
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           followers =
             mapOf(
-              "follower1" to URI.create("http://localhost:1234").toURL(),
-              "follower2" to URI.create("http://localhost:4321").toURL(),
+              "follower1" to
+                ApiEndpointDtoToml(
+                  URI.create("http://localhost:1234").toURL(),
+                  jwtSecretPath =
+                    "/secret/path",
+                ),
+              "follower2" to ApiEndpointDtoToml(URI.create("http://localhost:4321").toURL()),
             ),
         ),
       )
@@ -84,7 +91,7 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfigDtoToml(
           sotNode =
-            ExecutionClientConfig(
+            ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
@@ -93,6 +100,7 @@ class HopliteFriendlinessTest {
             ValidatorDtoToml(
               endpoint = URI.create("http://localhost:8555").toURL(),
               key = Secret("0xdead"),
+              jwtSecretPath = "/secret/path",
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           followers = null,
@@ -108,7 +116,7 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfig(
           sotNode =
-            ExecutionClientConfig(
+            ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
@@ -117,7 +125,7 @@ class HopliteFriendlinessTest {
             Validator(
               client =
                 ValidatorClientConfig(
-                  engineApiClientConfig = EngineApiClientConfig(URI.create("http://localhost:8555").toURL()),
+                  engineApiClientConfig = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
                   minTimeBetweenGetPayloadAttempts = 800.milliseconds,
                 ),
               key = "0xdead".fromHexToByteArray(),
@@ -125,8 +133,8 @@ class HopliteFriendlinessTest {
           followers =
             FollowersConfig(
               mapOf(
-                "follower1" to ExecutionClientConfig(URI.create("http://localhost:1234").toURL()),
-                "follower2" to ExecutionClientConfig(URI.create("http://localhost:4321").toURL()),
+                "follower1" to ApiEndpointConfig(URI.create("http://localhost:1234").toURL(), "/secret/path"),
+                "follower2" to ApiEndpointConfig(URI.create("http://localhost:4321").toURL()),
               ),
             ),
         ),
@@ -141,7 +149,7 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfig(
           sotNode =
-            ExecutionClientConfig(
+            ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
@@ -150,7 +158,11 @@ class HopliteFriendlinessTest {
             Validator(
               client =
                 ValidatorClientConfig(
-                  engineApiClientConfig = EngineApiClientConfig(URI.create("http://localhost:8555").toURL()),
+                  engineApiClientConfig =
+                    ApiEndpointConfig(
+                      URI.create("http://localhost:8555").toURL(),
+                      "/secret/path",
+                    ),
                   minTimeBetweenGetPayloadAttempts = 800.milliseconds,
                 ),
               key = "0xdead".fromHexToByteArray(),

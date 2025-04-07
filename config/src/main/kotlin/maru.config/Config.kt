@@ -18,21 +18,18 @@ package maru.config
 import java.net.URL
 import kotlin.time.Duration
 
-data class ExecutionClientConfig(
+data class ApiEndpointConfig(
   val endpoint: URL,
-)
-
-data class EngineApiClientConfig(
-  val endpoint: URL,
+  val jwtSecretPath: String? = null,
 )
 
 data class ValidatorClientConfig(
-  val engineApiClientConfig: EngineApiClientConfig,
+  val engineApiClientConfig: ApiEndpointConfig,
   val minTimeBetweenGetPayloadAttempts: Duration,
 )
 
 data class FollowersConfig(
-  val followers: Map<String, ExecutionClientConfig>,
+  val followers: Map<String, ApiEndpointConfig>,
 )
 
 data class P2P(
@@ -61,7 +58,7 @@ data class DummyConsensusOptions(
 )
 
 data class MaruConfig(
-  val sotNode: ExecutionClientConfig,
+  val sotNode: ApiEndpointConfig,
   val dummyConsensusOptions: DummyConsensusOptions?,
   val p2pConfig: P2P?,
   val validator: Validator?,

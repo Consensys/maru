@@ -18,14 +18,14 @@ package maru.app
 import maru.consensus.NewBlockHandler
 import maru.consensus.qbft.BeaconBlockImporter
 import maru.core.BeaconBlock
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
+import maru.executionlayer.manager.ExecutionLayerManager
 
 class BlockImportHandler(
-  private val engineLayerManager: JsonRpcExecutionLayerManager,
+  private val engineLayerManager: ExecutionLayerManager,
   private val blockImporter: BeaconBlockImporter,
 ) : NewBlockHandler {
   override fun handleNewBlock(block: BeaconBlock) {
     engineLayerManager.importPayload(block.beaconBlockBody.executionPayload).get()
-    blockImporter.importBlock(block)
+    blockImporter.importBlock(block).get()
   }
 }

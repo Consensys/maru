@@ -16,7 +16,6 @@
 package maru.app
 
 import java.time.Clock
-import java.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
@@ -29,18 +28,9 @@ import maru.consensus.ProtocolStarter
 import maru.consensus.ProtocolStarterBlockHandler
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.dummy.DummyConsensusProtocolFactory
-import maru.consensus.qbft.FollowerBeaconBlockImporter
-import maru.consensus.state.FinalizationState
-import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
 import maru.executionlayer.client.Web3jMetadataProvider
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
-import maru.executionlayer.manager.NoopValidator
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
-import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 class MaruApp(
   config: MaruConfig,
@@ -56,12 +46,12 @@ class MaruApp(
     if (config.validator == null) {
       log.info("Maru is running in follower-only node")
     }
+    log.info(config.toString())
   }
 
   private val ethereumJsonRpcClient =
-    buildJsonRpcClient(
-      config.sotNode.endpoint
-        .toString(),
+    Helpers.createWeb3jClient(
+      config.sotNode,
     )
 
   private val metadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
@@ -104,44 +94,9 @@ class MaruApp(
 
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler> =
     followers.followers
-      .mapValues { it ->
-        val web3JEngineApiClient: Web3JClient =
-          Web3jClientBuilder()
-            .endpoint(it.value.endpoint.toString())
-            .timeout(Duration.ofMinutes(1))
-            .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-            .executionClientEventsPublisher { }
-            .build()
-        val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
-        val executionLayerClient = PragueWeb3jJsonRpcExecutionLayerClient(web3jExecutionLayerClient)
-        val executionLayerManager =
-          JsonRpcExecutionLayerManager
-            .create(
-              executionLayerClient = executionLayerClient,
-              metadataProvider = metadataProvider,
-              payloadValidator = NoopValidator,
-            ).get()
-        val latestBlockMetadata = metadataProvider.getLatestBlockMetadata().get()
-        val blockImporter =
-          FollowerBeaconBlockImporter(
-            executionLayerManager = executionLayerManager,
-            finalizationStateProvider = {
-              FinalizationState(
-                latestBlockMetadata.blockHash,
-                latestBlockMetadata.blockHash,
-              )
-            },
-          )
-        BlockImportHandler(executionLayerManager, blockImporter)
+      .mapValues {
+        Helpers.createBlockImporter(it.value, metadataProvider)
       }
-
-  private fun buildJsonRpcClient(endpoint: String): Web3JClient =
-    Web3jClientBuilder()
-      .endpoint(endpoint)
-      .timeout(Duration.ofMinutes(1))
-      .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-      .executionClientEventsPublisher { }
-      .build()
 
   fun start() {
     protocolStarter.start()

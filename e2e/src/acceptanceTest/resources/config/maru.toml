@@ -13,4 +13,7 @@ min-time-between-get-payload-attempts=6000m
 endpoint = "http://localhost:8550"
 
 [followers]
-"follower-besu"="http://localhost:9550"
+"follower-besu" = { endpoint = "http://localhost:9550" }
+"follower-erigon" = { endpoint = "http://localhost:11551", jwt-secret-path = "../docker/jwt" }
+"follower-nethermind" = { endpoint = "http://localhost:10550", jwt-secret-path = "../docker/jwt" }
+"follower-geth" = { endpoint = "http://localhost:8561", jwt-secret-path = "../docker/jwt" }
