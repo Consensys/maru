@@ -66,6 +66,7 @@ import maru.executionlayer.manager.NoopValidator
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
+import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.config.BftConfigOptions
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
@@ -191,11 +192,9 @@ class QbftConsensusProtocolFactory(
     }
     val shouldBuildNextBlock =
       { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->
-        proposerSelector
-          .getProposerForBlock(beaconState, roundIdentifier)
-          .get()
-          .address
-          .equals(localAddress)
+        val nextProposerAddress =
+          Address.wrap(Bytes.wrap(proposerSelector.getProposerForBlock(beaconState, roundIdentifier).get().address))
+        nextProposerAddress.equals(localAddress)
       }
     val beaconBlockImporter =
       BeaconBlockImporterImpl(

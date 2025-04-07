@@ -22,6 +22,8 @@ import maru.core.BeaconState
 import maru.core.Validator
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -39,6 +41,8 @@ class BeaconBlockImporterImpl(
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
 ) : BeaconBlockImporter {
+  private val log: Logger = LogManager.getLogger(this::class.java)
+
   override fun importBlock(
     beaconState: BeaconState,
     beaconBlock: BeaconBlock,
@@ -47,6 +51,7 @@ class BeaconBlockImporterImpl(
     val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
     val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
     return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier)) {
+      log.debug("Importing block {} and starting building of next block", beaconBlockHeader)
       executionLayerManager.setHeadAndStartBlockBuilding(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
         safeHash = finalizationState.safeBlockHash,
@@ -55,6 +60,7 @@ class BeaconBlockImporterImpl(
         feeRecipient = blockBuilderIdentity.address,
       )
     } else {
+      log.debug("Importing block {}", beaconBlockHeader)
       executionLayerManager
         .setHead(
           headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
