@@ -13,26 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.qbft.network
 
-import maru.consensus.qbft.QbftConsensusConfig
-import maru.core.Protocol
+import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
+import org.hyperledger.besu.datatypes.Address
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 
-interface ProtocolFactory {
-  fun create(forkSpec: ForkSpec): Protocol
-}
+class NoopValidatorMulticaster : ValidatorMulticaster {
+  override fun send(message: MessageData) {
+  }
 
-class OmniProtocolFactory(
-  private val qbftConsensusFactory: ProtocolFactory,
-) : ProtocolFactory {
-  override fun create(forkSpec: ForkSpec): Protocol =
-    when (forkSpec.configuration) {
-      is QbftConsensusConfig -> {
-        qbftConsensusFactory.create(forkSpec)
-      }
-
-      else -> {
-        throw IllegalArgumentException("Fork $forkSpec is unknown!")
-      }
-    }
+  override fun send(
+    message: MessageData,
+    denyList: Collection<Address?>?,
+  ) {
+  }
 }

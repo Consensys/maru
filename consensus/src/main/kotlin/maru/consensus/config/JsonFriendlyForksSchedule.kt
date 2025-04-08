@@ -22,6 +22,7 @@ import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
+import maru.consensus.qbft.QbftConsensusConfig
 
 data class JsonFriendlyForksSchedule(
   val config: Map<String, Map<String, String>>,
@@ -54,6 +55,13 @@ data class JsonFriendlyForksSchedule(
 
       "delegated" -> {
         ElDelegatedConsensus.ElDelegatedConfig
+      }
+
+      "qbft" -> {
+        QbftConsensusConfig(
+          feeRecipient = obj["feeRecipient"]!!.fromHexToByteArray(),
+          elFork = ElFork.valueOf(obj["elFork"]!!),
+        )
       }
 
       else -> throw IllegalArgumentException("Unsupported fork type $type!")

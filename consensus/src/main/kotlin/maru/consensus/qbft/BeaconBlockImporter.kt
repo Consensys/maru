@@ -17,29 +17,41 @@ package maru.consensus.qbft
 
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlock
-import maru.core.BeaconBlockHeader
+import maru.core.BeaconBlockBody
+import maru.core.BeaconState
 import maru.core.Validator
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface BeaconBlockImporter {
-  fun importBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult>
+  fun importBlock(
+    beaconState: BeaconState,
+    beaconBlock: BeaconBlock,
+  ): SafeFuture<ForkChoiceUpdatedResult>
 }
 
 class BeaconBlockImporterImpl(
   private val executionLayerManager: ExecutionLayerManager,
-  private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
+  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: (ConsensusRoundIdentifier) -> Long,
-  private val shouldBuildNextBlock: (ConsensusRoundIdentifier) -> Boolean,
+  private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
 ) : BeaconBlockImporter {
-  override fun importBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
+  private val log: Logger = LogManager.getLogger(this::class.java)
+
+  override fun importBlock(
+    beaconState: BeaconState,
+    beaconBlock: BeaconBlock,
+  ): SafeFuture<ForkChoiceUpdatedResult> {
     val beaconBlockHeader = beaconBlock.beaconBlockHeader
-    val finalizationState = finalizationStateProvider(beaconBlockHeader)
+    val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
     val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
-    return if (shouldBuildNextBlock(nextBlocksRoundIdentifier)) {
+    return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier)) {
+      log.debug("Importing block {} and starting building of next block", beaconBlockHeader)
       executionLayerManager.setHeadAndStartBlockBuilding(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
         safeHash = finalizationState.safeBlockHash,
@@ -48,6 +60,7 @@ class BeaconBlockImporterImpl(
         feeRecipient = blockBuilderIdentity.address,
       )
     } else {
+      log.debug("Importing block {}", beaconBlockHeader)
       executionLayerManager
         .setHead(
           headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,

@@ -19,14 +19,23 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import java.util.Optional
 import maru.consensus.validation.BlockValidator
+import maru.core.BeaconBlockHeader
+import maru.database.BeaconChain
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 
 class QbftBlockValidatorAdapter(
-  private val blockValidator: BlockValidator,
+  private val blockValidatorFactory: (BeaconBlockHeader) -> BlockValidator,
+  private val beaconChain: BeaconChain,
 ) : QbftBlockValidator {
   override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
     val beaconBlock = qbftBlock.toBeaconBlock()
+    val parentHeaderRoot = beaconBlock.beaconBlockHeader.parentRoot
+    val parentBlock =
+      beaconChain.getSealedBeaconBlock(
+        parentHeaderRoot,
+      ) ?: throw IllegalStateException("Parent beacon block unavailable, unable to validate block")
+    val blockValidator = blockValidatorFactory.invoke(parentBlock.beaconBlock.beaconBlockHeader)
     return when (val blockValidationResult = blockValidator.validateBlock(beaconBlock).get()) {
       is Ok -> QbftBlockValidator.ValidationResult(true, Optional.empty())
       is Err ->

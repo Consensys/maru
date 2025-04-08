@@ -13,26 +13,26 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.qbft
 
-import maru.consensus.qbft.QbftConsensusConfig
+import java.util.concurrent.Executor
 import maru.core.Protocol
+import org.hyperledger.besu.consensus.common.bft.BftExecutors
+import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
 
-interface ProtocolFactory {
-  fun create(forkSpec: ForkSpec): Protocol
-}
+class QbftConsensus(
+  private val qbftController: QbftController,
+  private val eventProcessor: QbftEventProcessor,
+  private val bftExecutors: BftExecutors,
+  private val eventQueueExecutor: Executor,
+) : Protocol {
+  override fun start() {
+    eventProcessor.start()
+    bftExecutors.start()
+    qbftController.start()
+    eventQueueExecutor.execute(eventProcessor)
+  }
 
-class OmniProtocolFactory(
-  private val qbftConsensusFactory: ProtocolFactory,
-) : ProtocolFactory {
-  override fun create(forkSpec: ForkSpec): Protocol =
-    when (forkSpec.configuration) {
-      is QbftConsensusConfig -> {
-        qbftConsensusFactory.create(forkSpec)
-      }
-
-      else -> {
-        throw IllegalArgumentException("Fork $forkSpec is unknown!")
-      }
-    }
+  override fun stop() {
+  }
 }

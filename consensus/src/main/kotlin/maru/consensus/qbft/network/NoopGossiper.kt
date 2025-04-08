@@ -13,26 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.qbft.network
 
-import maru.consensus.qbft.QbftConsensusConfig
-import maru.core.Protocol
+import org.hyperledger.besu.consensus.common.bft.Gossiper
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.Message
 
-interface ProtocolFactory {
-  fun create(forkSpec: ForkSpec): Protocol
-}
-
-class OmniProtocolFactory(
-  private val qbftConsensusFactory: ProtocolFactory,
-) : ProtocolFactory {
-  override fun create(forkSpec: ForkSpec): Protocol =
-    when (forkSpec.configuration) {
-      is QbftConsensusConfig -> {
-        qbftConsensusFactory.create(forkSpec)
-      }
-
-      else -> {
-        throw IllegalArgumentException("Fork $forkSpec is unknown!")
-      }
-    }
+class NoopGossiper : Gossiper {
+  override fun send(message: Message?) {
+  }
 }
