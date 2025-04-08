@@ -18,8 +18,8 @@ package maru.consensus
 import maru.core.Validator
 import maru.database.BeaconChain
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
+import org.hyperledger.besu.consensus.common.bft.blockcreation.BftProposerSelector
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector as BesuProposerSelector
 
 fun interface ProposerSelector {
   fun getProposerForBlock(consensusRoundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator>
@@ -31,7 +31,7 @@ class ProposerSelectorImpl(
   private val config: Config,
 ) : ProposerSelector {
   data class Config(
-    val changeEachBlock: Boolean,
+    val changeEachBlock: Boolean = true,
     val genesisBlockNumber: ULong,
     val genesisBlockProposer: Validator,
   )
@@ -53,7 +53,7 @@ class ProposerSelectorImpl(
         )
     return validatorProvider.getValidatorsForBlock(blockNumber).thenApply { validators ->
       val proposerAddress =
-        BesuProposerSelector.selectProposerForRound(
+        BftProposerSelector.selectProposerForRound(
           consensusRoundIdentifier,
           prevBlockProposer,
           validators
