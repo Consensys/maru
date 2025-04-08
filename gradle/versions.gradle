@@ -140,7 +140,7 @@ dependencyManagement {
       entry 'log4j-slf4j2-impl'
     }
 
-    def besuVersion = "25.3-develop-a2a5859"
+    def besuVersion = "25.4.0"
 
     imports {
       mavenBom "org.hyperledger.besu:bom:$besuVersion"
