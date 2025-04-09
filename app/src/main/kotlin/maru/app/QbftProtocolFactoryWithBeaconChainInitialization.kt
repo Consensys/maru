@@ -15,7 +15,6 @@
  */
 package maru.app
 
-import java.math.BigInteger
 import maru.app.Mappers.toDomain
 import maru.config.MaruConfig
 import maru.consensus.ForkSpec
@@ -58,7 +57,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private fun initializeDb(updater: BeaconChain.Updater) {
     val genesisExecutionPayload =
       executionLayerClient
-        .ethGetBlockByNumber(DefaultBlockParameter.valueOf(BigInteger.ZERO), true)
+        .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), true)
         .send()
         .block
         .toDomain()

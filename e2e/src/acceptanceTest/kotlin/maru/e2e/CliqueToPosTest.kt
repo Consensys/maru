@@ -63,6 +63,7 @@ class CliqueToPosTest {
     private lateinit var maru: MaruApp
     private var pragueSwitchTimestamp: Long = 0
     private val genesisDir = File("../docker/initialization")
+    private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
 
     private fun parsePragueSwitchTimestamp(): Long {
       val objectMapper = ObjectMapper()
@@ -84,9 +85,11 @@ class CliqueToPosTest {
     @JvmStatic
     fun beforeAll() {
       deleteGenesisFiles()
+      dataDir.deleteRecursively()
       qbftCluster.before()
 
       pragueSwitchTimestamp = parsePragueSwitchTimestamp()
+      dataDir.mkdirs()
       maru = MaruFactory.buildTestMaru(pragueSwitchTimestamp)
     }
 
@@ -133,8 +136,9 @@ class CliqueToPosTest {
     }
     log.info("Sequencer has switched to PoS")
 
-    val latestBlock = getBlockByNumber(7)!!
-    assertThat(latestBlock.timestamp.toLong()).isGreaterThan(parsePragueSwitchTimestamp())
+    val postMergeBlock = getBlockByNumber(7)!!
+    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThan(parsePragueSwitchTimestamp())
+
     (6L..9L).forEach {
       setAllFollowersHeadToBlockNumberPrague(it)
     }
@@ -197,7 +201,7 @@ class CliqueToPosTest {
     await.timeout(1.minutes.toJavaDuration()).pollInterval(5.seconds.toJavaDuration()).untilAsserted {
       val unixTimestamp = System.currentTimeMillis() / 1000
       log.info(
-        "Waiting {} seconds for the {} switch",
+        "Waiting {} seconds for the {} switch at timestamp $timestamp",
         timestamp - unixTimestamp,
         label,
       )

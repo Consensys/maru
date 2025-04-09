@@ -32,6 +32,12 @@ data class P2P(
 data class Validator(
   val validatorKey: ByteArray,
 ) {
+  init {
+    require(validatorKey.size == 32) {
+      "validator key must be 32 bytes long"
+    }
+  }
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false

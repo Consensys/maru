@@ -42,7 +42,7 @@ class HopliteFriendlinessTest {
         port = 3322
 
         [validator]
-        validator-key = "0xdead"
+        validator-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
         """.trimIndent(),
       )
     assertThat(config)
@@ -56,7 +56,10 @@ class HopliteFriendlinessTest {
             ),
           qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
-          validator = ValidatorDtoToml(validatorKey = Secret("0xdead")),
+          validator =
+            ValidatorDtoToml(
+              validatorKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
+            ),
         ),
       )
   }
@@ -79,7 +82,7 @@ class HopliteFriendlinessTest {
         port = 3322
 
         [validator]
-        validator-key = "0xdead"
+        validator-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
         """.trimIndent(),
       )
     assertThat(config.domainFriendly())
@@ -93,7 +96,10 @@ class HopliteFriendlinessTest {
             ),
           qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
-          validator = Validator(validatorKey = "0xdead".fromHexToByteArray()),
+          validator =
+            Validator(
+              validatorKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
+            ),
         ),
       )
   }

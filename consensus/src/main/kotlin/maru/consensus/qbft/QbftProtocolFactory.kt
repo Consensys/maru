@@ -285,20 +285,6 @@ class QbftProtocolFactory(
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor()
 
-    // start block building immediately if we are the proposer for the next block
-    val nextRoundIdentifier = ConsensusRoundIdentifier(chainHeaderNumber + 1, 0)
-    if (finalState.isLocalNodeProposerForRound(nextRoundIdentifier)) {
-      val latestElBlockMetadata = metadataProvider.getLatestBlockMetadata().get()
-      executionLayerManager
-        .setHeadAndStartBlockBuilding(
-          headHash = latestElBlockMetadata.blockHash,
-          safeHash = latestElBlockMetadata.blockHash,
-          finalizedHash = latestElBlockMetadata.blockHash,
-          nextBlockTimestamp = clock.millis() / 1000,
-          feeRecipient = localAddress.toArrayUnsafe(),
-        ).get()
-    }
-
     return QbftConsensus(qbftController, eventProcessor, bftExecutors, eventQueueExecutor, beaconChain)
   }
 
