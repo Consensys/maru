@@ -170,6 +170,17 @@ class CliqueToPosTest {
           .timeout(30.seconds.toJavaDuration())
       }
 
+    if (nodeName.contains("besu")) {
+      // Required to change validation rules from Clique to PostMerge
+      syncTarget(nodeEngineApiClient, 5)
+      awaitCondition
+        .ignoreExceptions()
+        .alias(nodeName)
+        .untilAsserted {
+          assertNodeBlockHeight(5, nodeEthereumClient)
+        }
+    }
+
     awaitCondition
       .ignoreExceptions()
       .alias(nodeName)

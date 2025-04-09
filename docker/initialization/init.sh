@@ -9,7 +9,7 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     cp -T "genesis-geth.json.template" "genesis-geth.json"
     cp -T "genesis-nethermind.json.template" "genesis-nethermind.json"
 
-    merge_timestamp=$(($(date +%s) + 60))
+    merge_timestamp=$(($(date +%s) + 35))
     echo "Timestamp: $merge_timestamp"
     sed -i "s/%SWITCH_TIME%/$merge_timestamp/g" genesis-besu.json
     sed -i "s/%SWITCH_TIME%/$merge_timestamp/g" genesis-geth.json

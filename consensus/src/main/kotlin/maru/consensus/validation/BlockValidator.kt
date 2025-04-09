@@ -85,7 +85,7 @@ class BlockNumberValidator(
     val parentBlockNumber = parentBlockHeader.number
     return SafeFuture.completedFuture(
       BlockValidator.require(block.beaconBlockHeader.number == parentBlockNumber + 1u) {
-        "Block number is not the next block number blockNumber=${block.beaconBlockHeader.number} " +
+        "Beacon block number is not the next block number blockNumber=${block.beaconBlockHeader.number} " +
           "parentBlockNumber=$parentBlockNumber"
       },
     )
@@ -134,7 +134,10 @@ class ParentRootValidator(
             .hash,
         ),
       ) {
-        "Parent root does not match parent block root parentRoot=${block.beaconBlockHeader.parentRoot.encodeHex()} " +
+        "Beacon parent root does not match parent block root parentRoot=${
+          block.beaconBlockHeader.parentRoot
+            .encodeHex()
+        } " +
           "expectedParentRoot=${parentBlockHeader.hash.encodeHex()}"
       },
     )
