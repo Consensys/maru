@@ -13,17 +13,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.consensus
 
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
-import maru.consensus.ElFork
-import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
-import maru.consensus.NextBlockTimestampProviderImpl
+import maru.consensus.qbft.QbftConsensusConfig
 import maru.executionlayer.manager.BlockMetadata
 import org.assertj.core.api.Assertions.assertThat
 
@@ -31,8 +28,8 @@ class NextBlockTimestampProviderTest {
   private val forksSchedule =
     ForksSchedule(
       listOf(
-        ForkSpec(0, 1, DummyConsensusConfig(ByteArray(20), ElFork.Prague)),
-        ForkSpec(10, 2, DummyConsensusConfig(ByteArray(20), ElFork.Prague)),
+        ForkSpec(0, 1, QbftConsensusConfig(ByteArray(20), ElFork.Prague)),
+        ForkSpec(10, 2, QbftConsensusConfig(ByteArray(20), ElFork.Prague)),
       ),
     )
   private val baseLastBlockMetadata = BlockMetadata(1UL, ByteArray(32), 9)

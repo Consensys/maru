@@ -17,6 +17,7 @@ package maru.consensus.qbft
 
 import java.util.concurrent.Executor
 import maru.core.Protocol
+import maru.database.BeaconChain
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
 
@@ -25,6 +26,7 @@ class QbftConsensus(
   private val eventProcessor: QbftEventProcessor,
   private val bftExecutors: BftExecutors,
   private val eventQueueExecutor: Executor,
+  private val beaconChain: BeaconChain,
 ) : Protocol {
   override fun start() {
     eventProcessor.start()
@@ -34,5 +36,9 @@ class QbftConsensus(
   }
 
   override fun stop() {
+    eventProcessor.stop()
+    bftExecutors.stop()
+    qbftController.stop()
+    beaconChain.close()
   }
 }

@@ -15,6 +15,7 @@
  */
 package maru.consensus.qbft.adapters
 
+import maru.core.BeaconBlockHeader
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
@@ -23,9 +24,10 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftProtocolSchedule
 // TODO: the block importer and validator should be driven from the protocol schedule
 class QbftProtocolScheduleAdapter(
   private val blockImporter: QbftBlockImporter,
-  private val blockValidator: QbftBlockValidator,
+  private val blockValidatorFactory: (BeaconBlockHeader) -> QbftBlockValidator,
 ) : QbftProtocolSchedule {
   override fun getBlockImporter(blockHeader: QbftBlockHeader): QbftBlockImporter = blockImporter
 
-  override fun getBlockValidator(blockHeader: QbftBlockHeader): QbftBlockValidator = blockValidator
+  override fun getBlockValidator(blockHeader: QbftBlockHeader): QbftBlockValidator =
+    blockValidatorFactory(blockHeader.toBeaconBlockHeader())
 }

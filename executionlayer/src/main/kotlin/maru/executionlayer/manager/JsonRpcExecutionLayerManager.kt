@@ -178,24 +178,8 @@ class JsonRpcExecutionLayerManager private constructor(
           Bytes32.wrap(finalizedHash),
         ),
         payloadAttributes?.toPayloadAttributesV1(),
-      ).thenCompose { response ->
+      ).thenApply { response ->
         log.debug("Forkchoice update response with payload attributes {}", response)
-        if (response.isFailure) {
-          // TODO: Temporary hack for protocol switches. Should go when QBFT fully works along with dummy consensus
-          executionLayerClient
-            .forkChoiceUpdate(
-              ForkChoiceStateV1(
-                Bytes32.wrap(headHash),
-                Bytes32.wrap(safeHash),
-                Bytes32.wrap(finalizedHash),
-              ),
-              null,
-            )
-        } else {
-          SafeFuture.completedFuture(response)
-        }
-      }.thenApply { response ->
-        log.debug("Forkchoice update response after a retry without payload attributes {}", response)
         if (response.isFailure) {
           throw IllegalStateException(
             "forkChoiceUpdate request failed! nextBlockTimestamp=${

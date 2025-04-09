@@ -16,9 +16,10 @@
 package maru.config
 
 import com.sksamuel.hoplite.Secret
-import fromHexToByteArray
 import java.net.URI
+import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
+import maru.extensions.fromHexToByteArray
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -33,8 +34,9 @@ class HopliteFriendlinessTest {
         engine-api-json-rpc-endpoint = "http://localhost:8555"
         min-time-between-get-payload-attempts=800m
 
-        [dummy-consensus-options]
-        communication-time-margin=100m
+        [qbft-options]
+        communication-margin=100m
+        data-path="/some/path"
 
         [p2p-config]
         port = 3322
@@ -52,7 +54,7 @@ class HopliteFriendlinessTest {
               engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
-          dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
           validator = ValidatorDtoToml(validatorKey = Secret("0xdead")),
         ),
@@ -69,8 +71,9 @@ class HopliteFriendlinessTest {
         engine-api-json-rpc-endpoint = "http://localhost:8555"
         min-time-between-get-payload-attempts=800m
 
-        [dummy-consensus-options]
-        communication-time-margin=100m
+        [qbft-options]
+        communication-margin=100m
+        data-path="/some/path"
 
         [p2p-config]
         port = 3322
@@ -88,7 +91,7 @@ class HopliteFriendlinessTest {
               ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
-          dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
           validator = Validator(validatorKey = "0xdead".fromHexToByteArray()),
         ),

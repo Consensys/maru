@@ -1,7 +1,7 @@
 {
   "config": {
     "0": {
-      "type": "dummy",
+      "type": "qbft",
       "blockTimeSeconds": 1,
       "feeRecipient": "0x0000000000000000000000000000000000000000",
       "elFork": "Prague"

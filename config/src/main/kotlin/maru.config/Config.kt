@@ -16,6 +16,7 @@
 package maru.config
 
 import java.net.URL
+import java.nio.file.Path
 import kotlin.time.Duration
 
 data class ExecutionClientConfig(
@@ -45,14 +46,15 @@ data class Validator(
   override fun hashCode(): Int = validatorKey.contentHashCode()
 }
 
-data class DummyConsensusOptions(
+data class QbftOptions(
   // Since we cannot finish block production instantly at expected time, we need to set some safety margin
   val communicationMargin: Duration,
+  val dataPath: Path,
 )
 
 data class MaruConfig(
   val executionClientConfig: ExecutionClientConfig,
-  val dummyConsensusOptions: DummyConsensusOptions?,
+  val qbftOptions: QbftOptions,
   val p2pConfig: P2P?,
   val validator: Validator?,
 ) {

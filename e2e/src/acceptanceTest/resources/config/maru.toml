@@ -3,8 +3,9 @@ ethereum-json-rpc-endpoint = "http://localhost:8545"
 engine-api-json-rpc-endpoint = "http://localhost:8550"
 min-time-between-get-payload-attempts=6000m
 
-[dummy-consensus-options]
-communication-time-margin=100m
+[qbft-options]
+communication-margin=100m
+data-path="/tmp/maru-db"
 
 [p2p-config]
 port = 3322

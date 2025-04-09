@@ -32,13 +32,13 @@ class QbftEventMultiplexer(
 
   fun handleEvent(event: BftEvent) {
     try {
-      when (event.getType()) {
+      when (event.type) {
         BftEvents.Type.ROUND_EXPIRY -> eventHandler.handleRoundExpiry(event as RoundExpiry)
         BftEvents.Type.NEW_CHAIN_HEAD -> eventHandler.handleNewBlockEvent(event as QbftNewChainHead)
         BftEvents.Type.BLOCK_TIMER_EXPIRY -> eventHandler.handleBlockTimerExpiry(event as BlockTimerExpiry)
         BftEvents.Type.MESSAGE -> eventHandler.handleMessageEvent(event as BftReceivedMessageEvent)
         else -> {
-          throw IllegalStateException("Unhandled event type: ${event.getType()}")
+          throw IllegalStateException("Unhandled event type: ${event.type}")
         }
       }
     } catch (e: Exception) {

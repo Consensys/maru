@@ -18,7 +18,6 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
-import encodeHex
 import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.StateTransition
@@ -32,6 +31,7 @@ import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.extensions.hasValidExecutionPayload
+import maru.extensions.encodeHex
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import org.hyperledger.besu.consensus.common.bft.BftHelpers

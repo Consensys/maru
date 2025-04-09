@@ -18,6 +18,12 @@ package maru.core
 data class Validator(
   val address: ByteArray,
 ) {
+  init {
+    require(address.size == 20) {
+      "Addresses should be 20 bytes long"
+    }
+  }
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false

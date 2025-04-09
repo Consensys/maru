@@ -18,7 +18,6 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
-import encodeHex
 import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.StateTransitionImpl
@@ -34,6 +33,7 @@ import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
 import maru.executionlayer.client.ExecutionLayerClient
+import maru.extensions.encodeHex
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat

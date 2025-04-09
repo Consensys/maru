@@ -15,14 +15,13 @@
  */
 package maru.consensus.config
 
-import fromHexToByteArray
 import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
-import maru.consensus.dummy.DummyConsensusConfig
 import maru.consensus.qbft.QbftConsensusConfig
+import maru.extensions.fromHexToByteArray
 
 data class JsonFriendlyForksSchedule(
   val config: Map<String, Map<String, String>>,
@@ -46,13 +45,6 @@ data class JsonFriendlyForksSchedule(
     obj: Map<String, String>,
   ): ConsensusConfig =
     when (type) {
-      "dummy" -> {
-        DummyConsensusConfig(
-          feeRecipient = obj["feeRecipient"]!!.fromHexToByteArray(),
-          elFork = ElFork.valueOf(obj["elFork"]!!),
-        )
-      }
-
       "delegated" -> {
         ElDelegatedConsensus.ElDelegatedConfig
       }

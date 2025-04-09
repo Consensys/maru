@@ -15,7 +15,6 @@
  */
 package maru.app
 
-import java.nio.file.Path
 import java.time.Clock
 import java.time.Duration
 import maru.config.MaruConfig
@@ -25,8 +24,9 @@ import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
-import maru.consensus.qbft.QbftConsensusProtocolFactory
-import maru.database.kv.KvDatabaseFactory
+import maru.consensus.delegated.ElDelegatedConsensusFactory
+import maru.consensus.state.FinalizationState
+import maru.core.BeaconBlockHeader
 import maru.executionlayer.client.Web3jMetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -48,6 +48,7 @@ class MaruApp(
     }
     if (config.validator == null) {
       log.info("Maru is running in follower-only node")
+      throw IllegalArgumentException("Follower-only mode is not supported yet!")
     }
   }
 
@@ -69,27 +70,29 @@ class MaruApp(
     )
 
   private val metricsSystem = NoOpMetricsSystem()
-  private val dbPath = Path.of("db") // TODO make this configurable
-
-  private val beaconChain =
-    KvDatabaseFactory.createRocksDbDatabase(
-      databasePath = dbPath,
-      metricsSystem = metricsSystem,
-      metricCategory = MaruMetricsCategory.STORAGE,
-    )
+  private val finalizationStateProviderStub = { _: BeaconBlockHeader ->
+    val latestBlockHash = metadataProvider.getLatestBlockMetadata().get().blockHash
+    FinalizationState(latestBlockHash, latestBlockHash)
+  }
 
   private val protocolStarter =
     ProtocolStarter(
       forksSchedule = beaconGenesisConfig,
       protocolFactory =
         OmniProtocolFactory(
+          elDelegatedConsensusFactory =
+            ElDelegatedConsensusFactory(
+              ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
+              newBlockHandler = newBlockHandlerMultiplexer,
+            ),
           qbftConsensusFactory =
-            QbftConsensusProtocolFactory(
-              beaconChain = beaconChain,
+            QbftProtocolFactoryWithBeaconChainInitialization(
               maruConfig = config,
               metricsSystem = metricsSystem,
               metadataProvider = metadataProvider,
               forksSchedule = beaconGenesisConfig,
+              finalizationStateProvider = finalizationStateProviderStub,
+              executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
             ),
         ),
       metadataProvider = metadataProvider,
@@ -113,5 +116,6 @@ class MaruApp(
 
   fun stop() {
     protocolStarter.stop()
+    log.info("Maru is down")
   }
 }

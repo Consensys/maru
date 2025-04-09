@@ -15,6 +15,7 @@
  */
 package maru.consensus
 
+import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.qbft.QbftConsensusConfig
 import maru.core.Protocol
 
@@ -24,11 +25,16 @@ interface ProtocolFactory {
 
 class OmniProtocolFactory(
   private val qbftConsensusFactory: ProtocolFactory,
+  private val elDelegatedConsensusFactory: ProtocolFactory,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol =
     when (forkSpec.configuration) {
       is QbftConsensusConfig -> {
         qbftConsensusFactory.create(forkSpec)
+      }
+
+      is ElDelegatedConsensus.ElDelegatedConfig -> {
+        elDelegatedConsensusFactory.create(forkSpec)
       }
 
       else -> {

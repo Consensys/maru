@@ -13,17 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database
+package maru.app
 
-import maru.core.BeaconState
-import maru.core.SealedBeaconBlock
+import maru.core.Validator
+import org.apache.tuweni.bytes.Bytes32
+import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
+import org.hyperledger.besu.ethereum.core.Util
 
-interface Updater : AutoCloseable {
-  fun putBeaconState(beaconState: BeaconState): Updater
+object Crypto {
+  fun privateKeyToValidator(rawPrivateKey: ByteArray): Validator {
+    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(rawPrivateKey))
+    val keyPair = signatureAlgorithm.createKeyPair(privateKey)
 
-  fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): Updater
-
-  fun commit(): Unit
-
-  fun rollback(): Unit
+    return Validator(Util.publicKeyToAddress(keyPair.publicKey).toArray())
+  }
 }
