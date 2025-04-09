@@ -31,7 +31,6 @@ class ProposerSelectorImpl(
   private val config: Config,
 ) : ProposerSelector {
   data class Config(
-    val changeEachBlock: Boolean = true,
     val genesisBlockNumber: ULong,
     val genesisBlockProposer: Validator,
   )
@@ -62,7 +61,7 @@ class ProposerSelectorImpl(
               it
                 .toAddress()
             }.toList(),
-          config.changeEachBlock,
+          true,
         )
       Validator(proposerAddress.toArray())
     }

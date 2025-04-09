@@ -41,6 +41,11 @@ class ProposerSelectorImplTest {
       )
     }
   private val genesisSealedBlock = SealedBeaconBlock(genesisBlock, emptyList())
+  private val config =
+    ProposerSelectorImpl.Config(
+      genesisBlockNumber = genesisBlockNumber,
+      genesisBlockProposer = genesisProposer,
+    )
 
   private val validatorProvider =
     object : ValidatorProvider {
@@ -51,12 +56,6 @@ class ProposerSelectorImplTest {
   @Test
   fun `select proposer for genesis block`() {
     val beaconChain = mock<BeaconChain>()
-    val config =
-      ProposerSelectorImpl.Config(
-        changeEachBlock = true,
-        genesisBlockNumber = genesisBlockNumber,
-        genesisBlockProposer = genesisProposer,
-      )
     val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider, config)
     val consensusRoundIdentifier = ConsensusRoundIdentifier(genesisBlockNumber.toLong(), 0)
     val result = proposerSelector.getProposerForBlock(consensusRoundIdentifier).get()
@@ -65,19 +64,12 @@ class ProposerSelectorImplTest {
   }
 
   @Test
-  fun `select proposer for next block, new blocks, same round, changeEachBlock = true`() {
+  fun `select proposer for next block, new blocks, same round`() {
     /*
       The proposer should change for each block.
       We test for the first 5 blocks, same as number of validators in the test.
       So after 5 blocks each validator should have been selected once.
      */
-
-    val config =
-      ProposerSelectorImpl.Config(
-        changeEachBlock = true,
-        genesisBlockNumber = genesisBlockNumber,
-        genesisBlockProposer = genesisProposer,
-      )
     val beaconChain = mock<BeaconChain>()
     whenever(beaconChain.getSealedBeaconBlock(genesisBlockNumber.toLong().toULong())).thenReturn(genesisSealedBlock)
     val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider, config)
@@ -102,19 +94,12 @@ class ProposerSelectorImplTest {
   }
 
   @Test
-  fun `select proposer for next block, same block, new rounds, changeEachBlock = true`() {
+  fun `select proposer for next block, same block, new rounds`() {
     /*
       The proposer should change for each block and round
       We test for the first 5 rounds of the same block number, same as number of validators in the test.
       So after 5 rounds each validator should have been selected once.
      */
-
-    val config =
-      ProposerSelectorImpl.Config(
-        changeEachBlock = true,
-        genesisBlockNumber = genesisBlockNumber,
-        genesisBlockProposer = genesisProposer,
-      )
     val beaconChain = mock<BeaconChain>()
     whenever(beaconChain.getSealedBeaconBlock(genesisBlockNumber.toLong().toULong())).thenReturn(genesisSealedBlock)
     val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider, config)
@@ -127,81 +112,11 @@ class ProposerSelectorImplTest {
       returnedValidators.add(result)
     }
 
-    assertThat(returnedValidators).isEqualTo(validators)
-  }
-
-  @Test
-  fun `select proposer for next block, new blocks, same round, changeEachBlock = false`() {
-    /*
-      The proposer should NOT change for each block.
-      We test for the first 5 blocks with round 0, same as number of validators in the test.
-      So every for every new block and round 0 the first validator should be selected.
-     */
-    val config =
-      ProposerSelectorImpl.Config(
-        changeEachBlock = false,
-        genesisBlockNumber = genesisBlockNumber,
-        genesisBlockProposer = genesisProposer,
-      )
-    val beaconChain = mock<BeaconChain>()
-    whenever(beaconChain.getSealedBeaconBlock(genesisBlockNumber.toLong().toULong())).thenReturn(genesisSealedBlock)
-    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider, config)
-
-    val returnedValidators = mutableSetOf<Validator>()
-    for (blockNumber in genesisBlockNumber + 1uL..genesisBlockNumber + totalValidators.toULong()) {
-      val consensusRoundIdentifier = ConsensusRoundIdentifier(blockNumber.toLong(), 0)
-      val result = proposerSelector.getProposerForBlock(consensusRoundIdentifier).get()
-      assertThat(result in validators).isTrue()
-      val prevBlock =
-        DataGenerators.randomBeaconBlock(blockNumber).let { randomBeaconBlock ->
-          randomBeaconBlock.copy(
-            beaconBlockHeader = randomBeaconBlock.beaconBlockHeader.copy(proposer = result),
-          )
-        }
-      val prevSealedBlock = SealedBeaconBlock(prevBlock, emptyList())
-      whenever(beaconChain.getSealedBeaconBlock(blockNumber.toLong().toULong())).thenReturn(prevSealedBlock)
-      returnedValidators.add(result)
-    }
-
-    assertThat(returnedValidators).hasSize(1)
-    assertThat(returnedValidators.first()).isEqualTo(genesisProposer)
-  }
-
-  @Test
-  fun `select proposer for next block, same block, new rounds, changeEachBlock = false`() {
-    /*
-     The proposer should change for each new round.
-     We test for the first 5 rounds, same as number of validators in the test.
-     So after 5 rounds each validator should have been selected once.
-     */
-    val config =
-      ProposerSelectorImpl.Config(
-        changeEachBlock = false,
-        genesisBlockNumber = genesisBlockNumber,
-        genesisBlockProposer = genesisProposer,
-      )
-    val beaconChain = mock<BeaconChain>()
-    whenever(beaconChain.getSealedBeaconBlock(genesisBlockNumber.toLong().toULong())).thenReturn(genesisSealedBlock)
-    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider, config)
-
-    val returnedValidators = mutableSetOf<Validator>()
-    for (roundNumber in 0..<totalValidators) {
-      val consensusRoundIdentifier = ConsensusRoundIdentifier((genesisBlockNumber + 1uL).toLong(), roundNumber)
-      val result = proposerSelector.getProposerForBlock(consensusRoundIdentifier).get()
-      assertThat(result in validators).isTrue()
-      returnedValidators.add(result)
-    }
     assertThat(returnedValidators).isEqualTo(validators)
   }
 
   @Test
   fun `test previous block not found`() {
-    val config =
-      ProposerSelectorImpl.Config(
-        changeEachBlock = true,
-        genesisBlockNumber = genesisBlockNumber,
-        genesisBlockProposer = genesisProposer,
-      )
     val blockNumber = genesisBlockNumber + 2uL
     val beaconChain = mock<BeaconChain>()
     whenever(beaconChain.getSealedBeaconBlock(anyLong().toULong())).thenReturn(null)
