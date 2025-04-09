@@ -226,7 +226,7 @@ class BlockValidatorTest {
         ).get()
     val expectedResult =
       error(
-        "Block number is not the next block number " +
+        "Beacon block number is not the next block number " +
           "blockNumber=${invalidBlock.beaconBlockHeader.number} " +
           "parentBlockNumber=${validCurrBlock.beaconBlockHeader.number}",
       )
@@ -247,7 +247,7 @@ class BlockValidatorTest {
         ).get()
     val expectedResult =
       error(
-        "Block number is not the next block number " +
+        "Beacon block number is not the next block number " +
           "blockNumber=${invalidBlock.beaconBlockHeader.number} " +
           "parentBlockNumber=${validCurrBlock.beaconBlockHeader.number}",
       )
@@ -324,7 +324,7 @@ class BlockValidatorTest {
         ).get()
     val expectedResult =
       error(
-        "Parent root does not match parent block root " +
+        "Parent beacon root does not match parent block root " +
           "parentRoot=${invalidBlockHeader.parentRoot.encodeHex()} " +
           "expectedParentRoot=${validCurrBlockHeader.hash.encodeHex()}",
       )

@@ -134,7 +134,7 @@ class ParentRootValidator(
             .hash,
         ),
       ) {
-        "Beacon parent root does not match parent block root parentRoot=${
+        "Parent beacon root does not match parent block root parentRoot=${
           block.beaconBlockHeader.parentRoot
             .encodeHex()
         } " +
