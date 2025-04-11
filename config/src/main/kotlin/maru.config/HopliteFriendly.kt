@@ -51,7 +51,7 @@ data class DummyConsensusOptionsDtoToml(
 }
 
 data class MaruConfigDtoToml(
-  private val sotNode: ApiEndpointDtoToml,
+  private val sotEndpoint: ApiEndpointDtoToml,
   private val dummyConsensusOptions: DummyConsensusOptionsDtoToml?,
   private val p2pConfig: P2P?,
   private val validator: ValidatorDtoToml?,
@@ -59,7 +59,7 @@ data class MaruConfigDtoToml(
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
-      sotNode = sotNode.toDomain(),
+      sotNode = sotEndpoint.toDomain(),
       dummyConsensusOptions = dummyConsensusOptions?.domainFriendly(),
       p2pConfig = p2pConfig,
       validator = validator?.domainFriendly(),

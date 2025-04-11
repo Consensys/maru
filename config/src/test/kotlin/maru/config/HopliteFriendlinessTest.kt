@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
 class HopliteFriendlinessTest {
   private val emptyFollowersConfig =
     """
-    [sot-node]
+    [sot-endpoint]
     endpoint = "http://localhost:8545"
 
     [dummy-consensus-options]
@@ -56,7 +56,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          sotNode =
+          sotEndpoint =
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
@@ -90,7 +90,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          sotNode =
+          sotEndpoint =
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),

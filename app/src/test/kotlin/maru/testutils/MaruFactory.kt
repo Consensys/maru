@@ -32,7 +32,7 @@ object MaruFactory {
     engineApiRpc: String,
   ): String =
     """
-    [sot-node]
+    [sot-endpoint]
     endpoint = "$ethereumJsonRpcUrl"
 
     [dummy-consensus-options]

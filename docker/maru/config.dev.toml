@@ -1,4 +1,4 @@
-[sot-node]
+[sot-endpoint]
 endpoint = "http://sequencer:8545"
 
 [dummy-consensus-options]
