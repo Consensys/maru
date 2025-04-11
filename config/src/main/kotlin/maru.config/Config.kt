@@ -22,7 +22,6 @@ import kotlin.time.Duration
 data class ExecutionClientConfig(
   val ethereumJsonRpcEndpoint: URL,
   val engineApiJsonRpcEndpoint: URL,
-  val minTimeBetweenGetPayloadAttempts: Duration,
 )
 
 data class P2P(
@@ -44,9 +43,7 @@ data class Validator(
 
     other as Validator
 
-    if (!validatorKey.contentEquals(other.validatorKey)) return false
-
-    return true
+    return validatorKey.contentEquals(other.validatorKey)
   }
 
   override fun hashCode(): Int = validatorKey.contentHashCode()

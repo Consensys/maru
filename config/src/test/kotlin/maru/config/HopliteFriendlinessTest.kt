@@ -32,7 +32,6 @@ class HopliteFriendlinessTest {
         [execution-client]
         ethereum-json-rpc-endpoint = "http://localhost:8545"
         engine-api-json-rpc-endpoint = "http://localhost:8555"
-        min-time-between-get-payload-attempts=800m
 
         [qbft-options]
         communication-margin=100m
@@ -52,7 +51,6 @@ class HopliteFriendlinessTest {
             ExecutionClientConfig(
               ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
               engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
@@ -72,7 +70,6 @@ class HopliteFriendlinessTest {
         [execution-client]
         ethereum-json-rpc-endpoint = "http://localhost:8545"
         engine-api-json-rpc-endpoint = "http://localhost:8555"
-        min-time-between-get-payload-attempts=800m
 
         [qbft-options]
         communication-margin=100m
@@ -92,7 +89,6 @@ class HopliteFriendlinessTest {
             ExecutionClientConfig(
               engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
               ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),

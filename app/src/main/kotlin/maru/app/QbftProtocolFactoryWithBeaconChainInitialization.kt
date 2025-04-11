@@ -18,7 +18,6 @@ package maru.app
 import maru.app.Mappers.toDomain
 import maru.config.MaruConfig
 import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
 import maru.consensus.ProtocolFactory
 import maru.consensus.qbft.QbftProtocolFactory
 import maru.consensus.state.FinalizationState
@@ -44,7 +43,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val maruConfig: MaruConfig,
   private val metricsSystem: MetricsSystem,
   private val metadataProvider: MetadataProvider,
-  private val forksSchedule: ForksSchedule,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val executionLayerClient: Web3j,
 ) : ProtocolFactory {
@@ -107,7 +105,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         maruConfig = maruConfig,
         metricsSystem = metricsSystem,
         metadataProvider = metadataProvider,
-        forksSchedule = forksSchedule,
         finalizationStateProvider = finalizationStateProvider,
       )
     return qbftProtocolFactory.create(forkSpec)

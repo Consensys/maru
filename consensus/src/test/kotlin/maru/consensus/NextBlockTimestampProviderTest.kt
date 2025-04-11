@@ -19,7 +19,6 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
-import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.qbft.QbftConsensusConfig
 import maru.executionlayer.manager.BlockMetadata
 import org.assertj.core.api.Assertions.assertThat
@@ -43,7 +42,6 @@ class NextBlockTimestampProviderTest {
       NextBlockTimestampProviderImpl(
         createCLockForTimestamp(9999L),
         forksSchedule,
-        minTimeTillNextBlock = 0.milliseconds,
       )
 
     val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
@@ -52,26 +50,11 @@ class NextBlockTimestampProviderTest {
   }
 
   @Test
-  fun `if current time till next block is too short, it returns next integer second`() {
-    val nextBlockTimestampProvider =
-      NextBlockTimestampProviderImpl(
-        createCLockForTimestamp(9901L),
-        forksSchedule,
-        minTimeTillNextBlock = 100.milliseconds,
-      )
-
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
-
-    assertThat(result).isEqualTo(11L)
-  }
-
-  @Test
   fun `if current time is overdue it targets next integer second`() {
     val nextBlockTimestampProvider =
       NextBlockTimestampProviderImpl(
         createCLockForTimestamp(11123),
         forksSchedule,
-        minTimeTillNextBlock = 100.milliseconds,
       )
 
     val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
@@ -85,7 +68,6 @@ class NextBlockTimestampProviderTest {
       NextBlockTimestampProviderImpl(
         createCLockForTimestamp(11123),
         forksSchedule,
-        minTimeTillNextBlock = 100.milliseconds,
       )
 
     val lastBlockMetadata = baseLastBlockMetadata.copy(unixTimestampSeconds = 10L)
