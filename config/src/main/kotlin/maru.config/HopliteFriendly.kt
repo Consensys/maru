@@ -17,12 +17,31 @@ package maru.config
 
 import com.sksamuel.hoplite.Masked
 import fromHexToByteArray
+import java.net.URL
 import kotlin.time.Duration
 
 data class ValidatorDtoToml(
-  val validatorKey: Masked,
+  val privateKey: Masked,
+  val elClientEndpoint: URL,
+  val jwtSecretPath: String? = null,
+  val minTimeBetweenGetPayloadAttempts: Duration,
 ) {
-  fun domainFriendly(): Validator = Validator(validatorKey.value.fromHexToByteArray())
+  fun domainFriendly(): Validator =
+    Validator(
+      key = privateKey.value.fromHexToByteArray(),
+      client =
+        ValidatorClientConfig(
+          engineApiClientConfig = ApiEndpointDtoToml(elClientEndpoint, jwtSecretPath).toDomain(),
+          minTimeBetweenGetPayloadAttempts = minTimeBetweenGetPayloadAttempts,
+        ),
+    )
+}
+
+data class ApiEndpointDtoToml(
+  val endpoint: URL,
+  val jwtSecretPath: String? = null,
+) {
+  fun toDomain(): ApiEndpointConfig = ApiEndpointConfig(endpoint = endpoint, jwtSecretPath = jwtSecretPath)
 }
 
 data class DummyConsensusOptionsDtoToml(
@@ -32,16 +51,18 @@ data class DummyConsensusOptionsDtoToml(
 }
 
 data class MaruConfigDtoToml(
-  private val executionClient: ExecutionClientConfig,
+  private val sotEndpoint: ApiEndpointDtoToml,
   private val dummyConsensusOptions: DummyConsensusOptionsDtoToml?,
   private val p2pConfig: P2P?,
   private val validator: ValidatorDtoToml?,
+  private val followers: Map<String, ApiEndpointDtoToml>?,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
-      executionClientConfig = executionClient,
+      sotNode = sotEndpoint.toDomain(),
       dummyConsensusOptions = dummyConsensusOptions?.domainFriendly(),
       p2pConfig = p2pConfig,
       validator = validator?.domainFriendly(),
+      followers = FollowersConfig(followers = followers?.mapValues { it.value.toDomain() } ?: emptyMap()),
     )
 }
