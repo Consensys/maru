@@ -35,10 +35,10 @@ class HopliteFriendlinessTest {
     port = 3322
 
     [validator]
-    key = "0xdead"
+    private-key = "0xdead"
     jwt-secret-path = "/secret/path"
     min-time-between-get-payload-attempts=800m
-    endpoint = "http://localhost:8555"
+    el-client-endpoint = "http://localhost:8555"
     """.trimIndent()
   private val rawConfig =
     """
@@ -64,8 +64,8 @@ class HopliteFriendlinessTest {
           p2pConfig = P2P(port = 3322u),
           validator =
             ValidatorDtoToml(
-              endpoint = URI.create("http://localhost:8555").toURL(),
-              key = Secret("0xdead"),
+              elClientEndpoint = URI.create("http://localhost:8555").toURL(),
+              privateKey = Secret("0xdead"),
               jwtSecretPath = "/secret/path",
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
@@ -98,8 +98,8 @@ class HopliteFriendlinessTest {
           p2pConfig = P2P(port = 3322u),
           validator =
             ValidatorDtoToml(
-              endpoint = URI.create("http://localhost:8555").toURL(),
-              key = Secret("0xdead"),
+              elClientEndpoint = URI.create("http://localhost:8555").toURL(),
+              privateKey = Secret("0xdead"),
               jwtSecretPath = "/secret/path",
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),

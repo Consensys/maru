@@ -55,9 +55,9 @@ object Mapper {
         round = 0u,
         timestamp = block.timestamp.toLong().toULong(),
         proposer = Validator(block.miner.fromHexToByteArray()),
-        parentRoot = ByteArray(32),
-        stateRoot = ByteArray(32),
-        bodyRoot = ByteArray(32),
+        parentRoot = BeaconBlockHeader.EMPTY_HASH,
+        stateRoot = BeaconBlockHeader.EMPTY_HASH,
+        bodyRoot = BeaconBlockHeader.EMPTY_HASH,
         headerHashFunction = hasher,
       )
     return BeaconBlock(beaconBlockHeader, beaconBlockBody)

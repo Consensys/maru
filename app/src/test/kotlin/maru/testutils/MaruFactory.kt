@@ -42,9 +42,9 @@ object MaruFactory {
     port = 3322
 
     [validator]
-    key = "0xdead"
+    private-key = "0xdead"
     min-time-between-get-payload-attempts=800m
-    endpoint = "$engineApiRpc"
+    el-client-endpoint = "$engineApiRpc"
     """.trimIndent()
 
   private fun pickConsensusConfig(elFork: ElFork): String =

@@ -8,9 +8,9 @@ communication-time-margin=100m
 port = 3322
 
 [validator]
-key = "0xdead"
+private-key = "0xdead"
 min-time-between-get-payload-attempts=6000m
-endpoint = "http://localhost:8550"
+el-client-endpoint = "http://localhost:8550"
 
 [followers]
 "follower-besu" = { endpoint = "http://localhost:9550" }

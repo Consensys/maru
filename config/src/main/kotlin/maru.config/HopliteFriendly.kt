@@ -21,17 +21,17 @@ import java.net.URL
 import kotlin.time.Duration
 
 data class ValidatorDtoToml(
-  val key: Masked,
-  val endpoint: URL,
+  val privateKey: Masked,
+  val elClientEndpoint: URL,
   val jwtSecretPath: String? = null,
   val minTimeBetweenGetPayloadAttempts: Duration,
 ) {
   fun domainFriendly(): Validator =
     Validator(
-      key = key.value.fromHexToByteArray(),
+      key = privateKey.value.fromHexToByteArray(),
       client =
         ValidatorClientConfig(
-          engineApiClientConfig = ApiEndpointDtoToml(endpoint, jwtSecretPath).toDomain(),
+          engineApiClientConfig = ApiEndpointDtoToml(elClientEndpoint, jwtSecretPath).toDomain(),
           minTimeBetweenGetPayloadAttempts = minTimeBetweenGetPayloadAttempts,
         ),
     )
