@@ -13,25 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.app
 
-data class Validator(
-  val address: ByteArray,
-) {
-  init {
-    require(address.size == 20) {
-      "Addresses should be 20 bytes long"
-    }
+import maru.core.Validator
+import org.apache.tuweni.bytes.Bytes32
+import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
+import org.hyperledger.besu.ethereum.core.Util
+
+object Crypto {
+  fun privateKeyToValidator(rawPrivateKey: ByteArray): Validator {
+    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(rawPrivateKey))
+    val keyPair = signatureAlgorithm.createKeyPair(privateKey)
+
+    return Validator(Util.publicKeyToAddress(keyPair.publicKey).toArray())
   }
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as Validator
-
-    return address.contentEquals(other.address)
-  }
-
-  override fun hashCode(): Int = address.contentHashCode()
 }

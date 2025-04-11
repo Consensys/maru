@@ -64,6 +64,7 @@ class ProtocolStarter(
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()
     if (currentProtocolWithFork?.fork != nextForkSpec) {
+      log.debug("Switching from forkSpec={} to newForkFpec={}", currentProtocolWithFork?.fork, nextForkSpec)
       val newProtocol: Protocol = protocolFactory.create(nextForkSpec)
 
       val newProtocolWithFork =
@@ -71,7 +72,7 @@ class ProtocolStarter(
           newProtocol,
           nextForkSpec,
         )
-      log.debug("Switching from {} to protocol {}", currentProtocolWithFork, newProtocolWithFork)
+      log.debug("Switched from {} to protocol {}", currentProtocolWithFork, newProtocolWithFork)
       currentProtocolWithForkReference.set(
         newProtocolWithFork,
       )

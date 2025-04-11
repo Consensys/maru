@@ -37,7 +37,7 @@ class InMemoryBeaconChain(
   override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
     sealedBeaconBlockByBlockNumber[beaconBlockNumber]
 
-  override fun newUpdater(): Updater = InMemoryUpdater(this)
+  override fun newUpdater(): BeaconChain.Updater = InMemoryUpdater(this)
 
   override fun close() {
     // No-op for in-memory beacon chain
@@ -45,20 +45,20 @@ class InMemoryBeaconChain(
 
   private class InMemoryUpdater(
     private val beaconChain: InMemoryBeaconChain,
-  ) : Updater {
+  ) : BeaconChain.Updater {
     private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
     private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
     private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
 
     private var newBeaconState: BeaconState? = null
 
-    override fun putBeaconState(beaconState: BeaconState): Updater {
+    override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
       beaconStateByBlockRoot[beaconState.latestBeaconBlockHeader.hash] = beaconState
       newBeaconState = beaconState
       return this
     }
 
-    override fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): Updater {
+    override fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): BeaconChain.Updater {
       sealedBeaconBlockByBlockRoot[sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash] = sealedBeaconBlock
       sealedBeaconBlockByBlockNumber[sealedBeaconBlock.beaconBlock.beaconBlockHeader.number] = sealedBeaconBlock
       return this

@@ -18,6 +18,8 @@ package maru.consensus.qbft
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.StateTransition
 import maru.database.BeaconChain
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
 
@@ -32,6 +34,8 @@ class QbftBlockImportCoordinator(
   private val stateTransition: StateTransition,
   private val beaconBlockImporter: BeaconBlockImporter,
 ) : QbftBlockImporter {
+  private val log: Logger = LogManager.getLogger(this::class.java)
+
   override fun importBlock(qbftBlock: QbftBlock): Boolean {
     val sealedBeaconBlock = qbftBlock.toSealedBeaconBlock()
     val beaconBlock = sealedBeaconBlock.beaconBlock
@@ -42,8 +46,9 @@ class QbftBlockImportCoordinator(
         updater
           .putBeaconState(resultingState)
           .putSealedBeaconBlock(sealedBeaconBlock)
-        beaconBlockImporter.importBlock(beaconBlock).get()
+        beaconBlockImporter.importBlock(resultingState, beaconBlock).get()
       } catch (e: Exception) {
+        log.info("Database update failed: ${e.message}")
         updater.rollback()
         return false
       }

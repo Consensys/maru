@@ -18,6 +18,7 @@ package maru.consensus.qbft
 import kotlin.random.Random
 import kotlin.test.assertEquals
 import maru.consensus.state.FinalizationState
+import maru.core.BeaconState
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -49,7 +50,12 @@ class BeaconBlockImporterImplTest {
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = { nextBlockTimestamp },
-        shouldBuildNextBlock = { shouldBuildNextBlock },
+        shouldBuildNextBlock = {
+          beaconState: BeaconState,
+          roundIdentifier: ConsensusRoundIdentifier,
+          ->
+          shouldBuildNextBlock
+        },
         blockBuilderIdentity = blockBuilderIdentity,
       )
   }
@@ -58,6 +64,7 @@ class BeaconBlockImporterImplTest {
   fun `importBlock should call setHeadAndStartBlockBuilding when shouldBuildNextBlock returns true`() {
     shouldBuildNextBlock = true
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(1UL)
+    val randomBeaconState = DataGenerators.randomBeaconState(1UL)
 
     val expectedResponse = SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
     whenever(
@@ -70,7 +77,7 @@ class BeaconBlockImporterImplTest {
       ),
     ).thenReturn(expectedResponse)
 
-    val result = beaconBlockImporter.importBlock(randomBeaconBlock)
+    val result = beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
     assertEquals(expectedResponse, result)
     verify(executionLayerManager).setHeadAndStartBlockBuilding(
       headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
@@ -84,6 +91,7 @@ class BeaconBlockImporterImplTest {
   @Test
   fun `importBlock should call setHead when shouldBuildNextBlock returns false`() {
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(1UL)
+    val randomBeaconState = DataGenerators.randomBeaconState(1UL)
 
     val expectedResponse = SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
     whenever(
@@ -94,7 +102,7 @@ class BeaconBlockImporterImplTest {
       ),
     ).thenReturn(expectedResponse)
 
-    val result = beaconBlockImporter.importBlock(randomBeaconBlock)
+    val result = beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
     assertEquals(expectedResponse, result)
     verify(executionLayerManager).setHead(
       headHash = eq(randomBeaconBlock.beaconBlockBody.executionPayload.blockHash),
@@ -106,9 +114,12 @@ class BeaconBlockImporterImplTest {
   @Test
   fun `importBlock should pass next block's round identifier`() {
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(1UL)
+    val randomBeaconState = DataGenerators.randomBeaconState(1UL)
     val expectedConsensusRoundIdentifier = ConsensusRoundIdentifier(2, 0)
-    val shouldBuildNextBlockPredicate: (ConsensusRoundIdentifier) -> Boolean = mock()
-    whenever(shouldBuildNextBlockPredicate.invoke(eq(expectedConsensusRoundIdentifier))).thenReturn(true)
+    val shouldBuildNextBlockPredicate: (BeaconState, ConsensusRoundIdentifier) -> Boolean = mock()
+    whenever(
+      shouldBuildNextBlockPredicate.invoke(eq(randomBeaconState), eq(expectedConsensusRoundIdentifier)),
+    ).thenReturn(true)
     val nextBlockTimestampProvider: (ConsensusRoundIdentifier) -> Long = mock()
     whenever(nextBlockTimestampProvider.invoke(eq(expectedConsensusRoundIdentifier))).thenReturn(nextBlockTimestamp)
     beaconBlockImporter =
@@ -120,9 +131,9 @@ class BeaconBlockImporterImplTest {
         blockBuilderIdentity = blockBuilderIdentity,
       )
 
-    beaconBlockImporter.importBlock(randomBeaconBlock)
+    beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
 
-    verify(shouldBuildNextBlockPredicate, times(1)).invoke(eq(expectedConsensusRoundIdentifier))
+    verify(shouldBuildNextBlockPredicate, times(1)).invoke(eq(randomBeaconState), eq(expectedConsensusRoundIdentifier))
     verify(nextBlockTimestampProvider, times(1)).invoke(eq(expectedConsensusRoundIdentifier))
   }
 }

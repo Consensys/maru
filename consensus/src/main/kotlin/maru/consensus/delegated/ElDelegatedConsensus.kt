@@ -45,7 +45,7 @@ class ElDelegatedConsensus(
   private val blockTimeSeconds: Int,
 ) : Protocol {
   // Only for comparisons in the tests to set common ground
-  object ElDelegatedConfig : ConsensusConfig
+  data object ElDelegatedConfig : ConsensusConfig
 
   private val log: Logger = LogManager.getLogger(this::class.java)
 

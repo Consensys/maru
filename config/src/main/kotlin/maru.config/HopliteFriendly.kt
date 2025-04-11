@@ -16,8 +16,7 @@
 package maru.config
 
 import com.sksamuel.hoplite.Masked
-import fromHexToByteArray
-import kotlin.time.Duration
+import maru.extensions.fromHexToByteArray
 
 data class ValidatorDtoToml(
   val validatorKey: Masked,
@@ -25,22 +24,16 @@ data class ValidatorDtoToml(
   fun domainFriendly(): Validator = Validator(validatorKey.value.fromHexToByteArray())
 }
 
-data class DummyConsensusOptionsDtoToml(
-  val communicationTimeMargin: Duration,
-) {
-  fun domainFriendly(): DummyConsensusOptions = DummyConsensusOptions(communicationTimeMargin)
-}
-
 data class MaruConfigDtoToml(
   private val executionClient: ExecutionClientConfig,
-  private val dummyConsensusOptions: DummyConsensusOptionsDtoToml?,
+  private val qbftOptions: QbftOptions,
   private val p2pConfig: P2P?,
   private val validator: ValidatorDtoToml?,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
       executionClientConfig = executionClient,
-      dummyConsensusOptions = dummyConsensusOptions?.domainFriendly(),
+      qbftOptions = qbftOptions,
       p2pConfig = p2pConfig,
       validator = validator?.domainFriendly(),
     )

@@ -13,12 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.consensus.qbft
 
 import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
 
-data class DummyConsensusConfig(
+data class QbftConsensusConfig(
   val feeRecipient: ByteArray,
   val elFork: ElFork,
 ) : ConsensusConfig {
@@ -33,7 +33,7 @@ data class DummyConsensusConfig(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as DummyConsensusConfig
+    other as QbftConsensusConfig
 
     if (!feeRecipient.contentEquals(other.feeRecipient)) return false
     if (elFork != other.elFork) return false

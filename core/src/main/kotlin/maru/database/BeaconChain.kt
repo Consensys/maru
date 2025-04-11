@@ -28,4 +28,14 @@ interface BeaconChain : AutoCloseable {
   fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock?
 
   fun newUpdater(): Updater
+
+  interface Updater : AutoCloseable {
+    fun putBeaconState(beaconState: BeaconState): Updater
+
+    fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): Updater
+
+    fun commit(): Unit
+
+    fun rollback(): Unit
+  }
 }

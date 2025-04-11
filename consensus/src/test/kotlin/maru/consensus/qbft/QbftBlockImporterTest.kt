@@ -19,6 +19,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import maru.consensus.qbft.adapters.QbftSealedBlockAdapter
 import maru.consensus.state.StateTransition
+import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
@@ -54,7 +55,7 @@ class QbftBlockImporterTest {
       QbftBlockImportCoordinator(
         beaconChain = beaconChain,
         stateTransition = stateTransition,
-        beaconBlockImporter = { beaconBlockImporterResponse },
+        beaconBlockImporter = { beaconState: BeaconState, beaconBlock: BeaconBlock -> beaconBlockImporterResponse },
       )
   }
 

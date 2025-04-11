@@ -25,10 +25,12 @@ import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.delegated.ElDelegatedConsensusFactory
-import maru.consensus.dummy.DummyConsensusProtocolFactory
+import maru.consensus.state.FinalizationState
+import maru.core.BeaconBlockHeader
 import maru.executionlayer.client.Web3jMetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
@@ -46,6 +48,7 @@ class MaruApp(
     }
     if (config.validator == null) {
       log.info("Maru is running in follower-only node")
+      throw IllegalArgumentException("Follower-only mode is not supported yet!")
     }
   }
 
@@ -63,26 +66,31 @@ class MaruApp(
     NextBlockTimestampProviderImpl(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
-      minTimeTillNextBlock = config.executionClientConfig.minTimeBetweenGetPayloadAttempts,
     )
+
+  private val metricsSystem = NoOpMetricsSystem()
+  private val finalizationStateProviderStub = { _: BeaconBlockHeader ->
+    val latestBlockHash = metadataProvider.getLatestBlockMetadata().get().blockHash
+    FinalizationState(latestBlockHash, latestBlockHash)
+  }
+
   private val protocolStarter =
     ProtocolStarter(
       forksSchedule = beaconGenesisConfig,
       protocolFactory =
         OmniProtocolFactory(
-          dummyConsensusFactory =
-            DummyConsensusProtocolFactory(
-              forksSchedule = beaconGenesisConfig,
-              clock = clock,
-              maruConfig = config,
-              metadataProvider = metadataProvider,
-              newBlockHandler = newBlockHandlerMultiplexer,
-              nextBlockTimestampProvider = nextBlockTimestampProvider,
-            ),
           elDelegatedConsensusFactory =
             ElDelegatedConsensusFactory(
               ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
               newBlockHandler = newBlockHandlerMultiplexer,
+            ),
+          qbftConsensusFactory =
+            QbftProtocolFactoryWithBeaconChainInitialization(
+              maruConfig = config,
+              metricsSystem = metricsSystem,
+              metadataProvider = metadataProvider,
+              finalizationStateProvider = finalizationStateProviderStub,
+              executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
             ),
         ),
       metadataProvider = metadataProvider,
@@ -106,5 +114,6 @@ class MaruApp(
 
   fun stop() {
     protocolStarter.stop()
+    log.info("Maru is down")
   }
 }

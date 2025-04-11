@@ -13,8 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.consensus.qbft.network
 
-fun interface FeeRecipientProvider {
-  fun getFeeRecipient(timestamp: Long): ByteArray
+import org.hyperledger.besu.consensus.common.bft.Gossiper
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.Message
+
+class NoopGossiper : Gossiper {
+  override fun send(message: Message?) {
+  }
 }

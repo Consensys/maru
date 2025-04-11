@@ -13,17 +13,13 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.consensus
 
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
-import kotlin.time.Duration.Companion.milliseconds
-import maru.consensus.ElFork
-import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
-import maru.consensus.NextBlockTimestampProviderImpl
+import maru.consensus.qbft.QbftConsensusConfig
 import maru.executionlayer.manager.BlockMetadata
 import org.assertj.core.api.Assertions.assertThat
 
@@ -31,8 +27,8 @@ class NextBlockTimestampProviderTest {
   private val forksSchedule =
     ForksSchedule(
       listOf(
-        ForkSpec(0, 1, DummyConsensusConfig(ByteArray(20), ElFork.Prague)),
-        ForkSpec(10, 2, DummyConsensusConfig(ByteArray(20), ElFork.Prague)),
+        ForkSpec(0, 1, QbftConsensusConfig(ByteArray(20), ElFork.Prague)),
+        ForkSpec(10, 2, QbftConsensusConfig(ByteArray(20), ElFork.Prague)),
       ),
     )
   private val baseLastBlockMetadata = BlockMetadata(1UL, ByteArray(32), 9)
@@ -46,7 +42,6 @@ class NextBlockTimestampProviderTest {
       NextBlockTimestampProviderImpl(
         createCLockForTimestamp(9999L),
         forksSchedule,
-        minTimeTillNextBlock = 0.milliseconds,
       )
 
     val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
@@ -55,26 +50,11 @@ class NextBlockTimestampProviderTest {
   }
 
   @Test
-  fun `if current time till next block is too short, it returns next integer second`() {
-    val nextBlockTimestampProvider =
-      NextBlockTimestampProviderImpl(
-        createCLockForTimestamp(9901L),
-        forksSchedule,
-        minTimeTillNextBlock = 100.milliseconds,
-      )
-
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
-
-    assertThat(result).isEqualTo(11L)
-  }
-
-  @Test
   fun `if current time is overdue it targets next integer second`() {
     val nextBlockTimestampProvider =
       NextBlockTimestampProviderImpl(
         createCLockForTimestamp(11123),
         forksSchedule,
-        minTimeTillNextBlock = 100.milliseconds,
       )
 
     val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
@@ -88,7 +68,6 @@ class NextBlockTimestampProviderTest {
       NextBlockTimestampProviderImpl(
         createCLockForTimestamp(11123),
         forksSchedule,
-        minTimeTillNextBlock = 100.milliseconds,
       )
 
     val lastBlockMetadata = baseLastBlockMetadata.copy(unixTimestampSeconds = 10L)

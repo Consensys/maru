@@ -18,7 +18,6 @@ package maru.consensus
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.time.Duration.Companion.milliseconds
 import maru.core.Protocol
 import maru.core.ext.DataGenerators
 import maru.executionlayer.client.MetadataProvider
@@ -185,7 +184,6 @@ class ProtocolStarterTest {
         NextBlockTimestampProviderImpl(
           clock = Clock.fixed(Instant.ofEpochMilli(clockMilliseconds), ZoneOffset.UTC),
           forksSchedule = forksSchedule,
-          0.milliseconds,
         ),
     )
 }

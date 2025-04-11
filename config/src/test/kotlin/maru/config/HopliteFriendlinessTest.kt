@@ -16,9 +16,11 @@
 package maru.config
 
 import com.sksamuel.hoplite.Secret
-import fromHexToByteArray
 import java.net.URI
+import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import maru.extensions.fromHexToByteArray
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -31,16 +33,16 @@ class HopliteFriendlinessTest {
         [execution-client]
         ethereum-json-rpc-endpoint = "http://localhost:8545"
         engine-api-json-rpc-endpoint = "http://localhost:8555"
-        min-time-between-get-payload-attempts=800m
 
-        [dummy-consensus-options]
-        communication-time-margin=100m
+        [qbft-options]
+        communication-margin=100m
+        data-path="/some/path"
 
         [p2p-config]
         port = 3322
 
         [validator]
-        validator-key = "0xdead"
+        validator-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
         """.trimIndent(),
       )
     assertThat(config)
@@ -50,11 +52,13 @@ class HopliteFriendlinessTest {
             ExecutionClientConfig(
               ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
               engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
-          dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
-          validator = ValidatorDtoToml(validatorKey = Secret("0xdead")),
+          validator =
+            ValidatorDtoToml(
+              validatorKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
+            ),
         ),
       )
   }
@@ -67,16 +71,16 @@ class HopliteFriendlinessTest {
         [execution-client]
         ethereum-json-rpc-endpoint = "http://localhost:8545"
         engine-api-json-rpc-endpoint = "http://localhost:8555"
-        min-time-between-get-payload-attempts=800m
 
-        [dummy-consensus-options]
-        communication-time-margin=100m
+        [qbft-options]
+        communication-margin=100m
+        data-path="/some/path"
 
         [p2p-config]
         port = 3322
 
         [validator]
-        validator-key = "0xdead"
+        validator-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
         """.trimIndent(),
       )
     assertThat(config.domainFriendly())
@@ -86,11 +90,42 @@ class HopliteFriendlinessTest {
             ExecutionClientConfig(
               engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
               ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
-          dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
-          validator = Validator(validatorKey = "0xdead".fromHexToByteArray()),
+          validator =
+            Validator(
+              validatorKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
+            ),
+        ),
+      )
+  }
+
+  private val qbftOptions =
+    """
+    communication-margin=100m
+    data-path="/some/path"
+    message-queue-limit = 1000
+    round-expiry = 1000
+    duplicateMessageLimit = 100
+    future-message-max-distance = 10
+    future-messages-limit = 1000
+    """.trimIndent()
+
+  @Test
+  fun qbftOptionsAreParseable() {
+    val config =
+      Utils.parseTomlConfig<QbftOptions>(qbftOptions)
+    assertThat(config)
+      .isEqualTo(
+        QbftOptions(
+          communicationMargin = 100.milliseconds,
+          dataPath = Path("/some/path"),
+          messageQueueLimit = 1000,
+          roundExpiry = 1.seconds,
+          duplicateMessageLimit = 100,
+          futureMessageMaxDistance = 10L,
+          futureMessagesLimit = 1000L,
         ),
       )
   }

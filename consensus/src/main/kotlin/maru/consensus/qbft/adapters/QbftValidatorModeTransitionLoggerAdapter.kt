@@ -13,17 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database
+package maru.consensus.qbft.adapters
 
-import maru.core.BeaconState
-import maru.core.SealedBeaconBlock
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
+import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorModeTransitionLogger
 
-interface Updater : AutoCloseable {
-  fun putBeaconState(beaconState: BeaconState): Updater
-
-  fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): Updater
-
-  fun commit(): Unit
-
-  fun rollback(): Unit
+class QbftValidatorModeTransitionLoggerAdapter : QbftValidatorModeTransitionLogger {
+  override fun logTransitionChange(parentHeader: QbftBlockHeader) {
+  }
 }

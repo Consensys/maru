@@ -13,16 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.app
 
-import maru.core.ExecutionPayload
-import maru.executionlayer.manager.ExecutionPayloadValidator
+import java.util.Optional
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 
-object EmptyBlockValidator : ExecutionPayloadValidator {
-  override fun validate(executionPayload: ExecutionPayload): ExecutionPayloadValidator.ValidationResult =
-    if (executionPayload.transactions.isEmpty()) {
-      ExecutionPayloadValidator.ValidationResult.Invalid("Block ${executionPayload.blockNumber} is empty!")
-    } else {
-      ExecutionPayloadValidator.ValidationResult.Valid(executionPayload)
-    }
+enum class MaruMetricsCategory : MetricCategory {
+  STORAGE {
+    override fun getName(): String = "storage"
+
+    override fun getApplicationPrefix(): Optional<String> = Optional.empty()
+  },
 }

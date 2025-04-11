@@ -35,7 +35,14 @@ class PragueWeb3jJsonRpcExecutionLayerClient(
 ) : ExecutionLayerClient {
   override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
     web3jEngineClient.getPayloadV4(payloadId).thenApply {
-      Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
+      when {
+        it.payload != null ->
+          Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
+        it.errorMessage != null ->
+          Response.fromErrorMessage(it.errorMessage)
+        else ->
+          throw IllegalStateException("Failed to get payload!")
+      }
     }
 
   override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =

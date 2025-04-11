@@ -50,7 +50,7 @@ object DataGenerators {
         number = number,
         round = Random.nextUInt(),
         timestamp = Random.nextULong(),
-        proposer = Validator(Random.nextBytes(128)),
+        proposer = Validator(Random.nextBytes(20)),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
@@ -58,7 +58,7 @@ object DataGenerators {
       )
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
-      validators = buildSet(3) { Validator(Random.nextBytes(128)) },
+      validators = buildSet(3) { Validator(Random.nextBytes(20)) },
     )
   }
 
@@ -94,7 +94,7 @@ object DataGenerators {
       number = number,
       round = Random.nextUInt(),
       timestamp = Random.nextULong(),
-      proposer = Validator(Random.nextBytes(128)),
+      proposer = Validator(Random.nextBytes(20)),
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
       bodyRoot = Random.nextBytes(32),

@@ -13,25 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.core
+package maru.consensus.qbft.network
 
-data class Validator(
-  val address: ByteArray,
-) {
-  init {
-    require(address.size == 20) {
-      "Addresses should be 20 bytes long"
-    }
+import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
+import org.hyperledger.besu.datatypes.Address
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
+
+class NoopValidatorMulticaster : ValidatorMulticaster {
+  override fun send(message: MessageData) {
   }
 
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as Validator
-
-    return address.contentEquals(other.address)
+  override fun send(
+    message: MessageData,
+    denyList: Collection<Address?>?,
+  ) {
   }
-
-  override fun hashCode(): Int = address.contentHashCode()
 }

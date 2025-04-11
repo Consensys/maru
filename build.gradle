@@ -1,4 +1,5 @@
 import net.ltgt.gradle.errorprone.CheckSeverity
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 plugins {
   alias(libs.plugins.errorprone)
@@ -24,6 +25,7 @@ allprojects {
   apply plugin: 'java-library'
 
   repositories {
+    mavenLocal()
     maven {
       url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
       content { includeGroupByRegex('org\\.hyperledger\\..*') }
@@ -162,6 +164,7 @@ allprojects {
     }
     useJUnitPlatform {}
     testLogging {
+      exceptionFormat TestExceptionFormat.FULL
       events 'passed', 'skipped', 'failed'
       showStandardStreams = true
     }
