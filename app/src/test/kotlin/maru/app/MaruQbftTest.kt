@@ -152,7 +152,7 @@ class MaruQbftTest {
             ).sendAsync()
         }.map { it.get().block }
 
-    val blockTimeSeconds = 2L
+    val blockTimeSeconds = 1L
     val timestampsSeconds = blocks.map { it.timestamp.toLong() }
     (2.until(blocks.size)).forEach {
       assertThat(timestampsSeconds[it - 1]).isLessThan(timestampsSeconds[it])
