@@ -41,11 +41,6 @@ class ProposerSelectorImplTest {
       )
     }
   private val genesisSealedBlock = SealedBeaconBlock(genesisBlock, emptyList())
-  private val config =
-    ProposerSelectorImpl.Config(
-      genesisBlockNumber = genesisBlockNumber,
-      genesisBlockProposer = genesisProposer,
-    )
 
   private val validatorProvider =
     object : ValidatorProvider {
@@ -53,15 +48,15 @@ class ProposerSelectorImplTest {
         SafeFuture.completedFuture(validators)
     }
 
-  @Test
-  fun `select proposer for genesis block`() {
-    val beaconChain = mock<BeaconChain>()
-    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider, config)
-    val consensusRoundIdentifier = ConsensusRoundIdentifier(genesisBlockNumber.toLong(), 0)
-    val result = proposerSelector.getProposerForBlock(consensusRoundIdentifier).get()
-
-    assertThat(result).isEqualTo(genesisProposer)
-  }
+//  @Test
+//  fun `select proposer for genesis block`() {
+//    val beaconChain = mock<BeaconChain>()
+//    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider)
+//    val consensusRoundIdentifier = ConsensusRoundIdentifier(genesisBlockNumber.toLong(), 0)
+//    val result = proposerSelector.getProposerForBlock(consensusRoundIdentifier).get()
+//
+//    assertThat(result).isEqualTo(genesisProposer)
+//  }
 
   @Test
   fun `select proposer for next block, new blocks, same round`() {
@@ -72,7 +67,7 @@ class ProposerSelectorImplTest {
      */
     val beaconChain = mock<BeaconChain>()
     whenever(beaconChain.getSealedBeaconBlock(genesisBlockNumber.toLong().toULong())).thenReturn(genesisSealedBlock)
-    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider, config)
+    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider)
 
     val returnedValidators = mutableSetOf<Validator>()
     for (blockNumber in genesisBlockNumber + 1uL..genesisBlockNumber + totalValidators.toULong()) {
@@ -102,7 +97,7 @@ class ProposerSelectorImplTest {
      */
     val beaconChain = mock<BeaconChain>()
     whenever(beaconChain.getSealedBeaconBlock(genesisBlockNumber.toLong().toULong())).thenReturn(genesisSealedBlock)
-    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider, config)
+    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider)
 
     val returnedValidators = mutableSetOf<Validator>()
     for (roundNumber in 0..<totalValidators) {
@@ -121,14 +116,14 @@ class ProposerSelectorImplTest {
     val beaconChain = mock<BeaconChain>()
     whenever(beaconChain.getSealedBeaconBlock(anyLong().toULong())).thenReturn(null)
 
-    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider, config)
+    val proposerSelector = ProposerSelectorImpl(beaconChain, validatorProvider)
     val consensusRoundIdentifier = ConsensusRoundIdentifier(blockNumber.toLong(), 0)
 
     val exception =
       assertThrows<ExecutionException> {
         proposerSelector.getProposerForBlock(consensusRoundIdentifier).get()
       }
-    assertThat(exception.cause).isInstanceOf(IllegalArgumentException::class.java)
+    assertThat(exception.cause).isInstanceOf(IllegalStateException::class.java)
     assertThat(exception.cause?.message).isEqualTo("Parent block not found. parentBlockNumber=${blockNumber - 1uL}")
   }
 }

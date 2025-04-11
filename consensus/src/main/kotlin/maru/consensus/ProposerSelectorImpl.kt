@@ -25,6 +25,10 @@ import org.hyperledger.besu.consensus.common.bft.blockcreation.BftProposerSelect
 import org.hyperledger.besu.datatypes.Address
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
+fun interface ProposerSelector {
+  fun getProposerForBlock(consensusRoundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator>
+}
+
 class ProposerSelectorImpl(
   private val beaconChain: BeaconChain,
   private val validatorProvider: ValidatorProvider,
@@ -33,7 +37,9 @@ class ProposerSelectorImpl(
     val prevBlockNumber = roundIdentifier.sequenceNumber - 1
     val parentBlock =
       beaconChain.getSealedBeaconBlock(prevBlockNumber.toULong())
-        ?: return SafeFuture.failedFuture(IllegalStateException("Parent state not found"))
+        ?: return SafeFuture.failedFuture(
+          IllegalStateException("Parent block not found. parentBlockNumber=$prevBlockNumber"),
+        )
     val parentBlockHeader = parentBlock.beaconBlock.beaconBlockHeader
     val prevBlockProposer = Address.wrap(Bytes.wrap(parentBlockHeader.proposer.address))
 
