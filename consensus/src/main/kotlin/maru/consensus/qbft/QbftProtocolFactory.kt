@@ -17,9 +17,9 @@ package maru.consensus.qbft
 
 import java.time.Clock
 import java.time.Duration
-import java.time.temporal.ChronoUnit
 import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import maru.config.MaruConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
@@ -88,12 +88,6 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClie
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
-const val MESSAGE_QUEUE_LIMIT = 1000 // TODO: Make this configurable
-val ROUND_EXPIRY: Duration = Duration.of(1, ChronoUnit.SECONDS) // TODO: Make this configurable
-const val DUPLICATE_MESSAGE_LIMIT = 100 // TODO: Make this configurable
-const val FUTURE_MESSAGE_MAX_DISTANCE = 10L // TODO: Make this configurable
-const val FUTURE_MESSAGES_LIMIT = 1000L // TODO: Make this configurable
-
 class QbftProtocolFactory(
   private val beaconChain: BeaconChain,
   private val maruConfig: MaruConfig,
@@ -152,12 +146,17 @@ class QbftProtocolFactory(
         eagerQbftBlockCreatorConfig = EagerQbftBlockCreator.Config(blockBuildingDuration),
       )
 
-    val besuForksSchedule = ForksScheduleAdapter(forkSpec)
+    val besuForksSchedule = ForksScheduleAdapter(forkSpec, maruConfig.qbftOptions)
 
     val clock = Clock.systemUTC()
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
-    val bftEventQueue = BftEventQueue(MESSAGE_QUEUE_LIMIT)
-    val roundTimer = RoundTimer(bftEventQueue, ROUND_EXPIRY, bftExecutors)
+    val bftEventQueue = BftEventQueue(maruConfig.qbftOptions.messageQueueLimit)
+    val roundTimer =
+      RoundTimer(
+        /* queue = */ bftEventQueue,
+        /* baseExpiryPeriod = */ maruConfig.qbftOptions.roundExpiry.toJavaDuration(),
+        /* bftExecutors = */ bftExecutors,
+      )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
     val finalState =
       QbftFinalStateAdapter(
@@ -255,14 +254,19 @@ class QbftProtocolFactory(
         /* validatorModeTransitionLogger = */ transitionLogger,
       )
     val gossiper = NoopGossiper()
-    val duplicateMessageTracker = MessageTracker(DUPLICATE_MESSAGE_LIMIT)
+    val duplicateMessageTracker = MessageTracker(maruConfig.qbftOptions.duplicateMessageLimit)
     val chainHeaderNumber =
       beaconChain
         .getLatestBeaconState()
         .latestBeaconBlockHeader
         .number
         .toLong()
-    val futureMessageBuffer = FutureMessageBuffer(FUTURE_MESSAGE_MAX_DISTANCE, FUTURE_MESSAGES_LIMIT, chainHeaderNumber)
+    val futureMessageBuffer =
+      FutureMessageBuffer(
+        /* futureMessagesMaxDistance = */ maruConfig.qbftOptions.futureMessageMaxDistance,
+        /* futureMessagesLimit = */ maruConfig.qbftOptions.futureMessagesLimit,
+        /* chainHeight = */ chainHeaderNumber,
+      )
     val qbftController =
       QbftController(
         /* blockchain = */ blockChain,

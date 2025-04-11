@@ -18,6 +18,7 @@ package maru.config
 import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 data class ExecutionClientConfig(
   val ethereumJsonRpcEndpoint: URL,
@@ -53,6 +54,11 @@ data class QbftOptions(
   // Since we cannot finish block production instantly at expected time, we need to set some safety margin
   val communicationMargin: Duration,
   val dataPath: Path,
+  val messageQueueLimit: Int = 1000,
+  val roundExpiry: Duration = 1.seconds,
+  val duplicateMessageLimit: Int = 100,
+  val futureMessageMaxDistance: Long = 10L,
+  val futureMessagesLimit: Long = 1000L,
 )
 
 data class MaruConfig(

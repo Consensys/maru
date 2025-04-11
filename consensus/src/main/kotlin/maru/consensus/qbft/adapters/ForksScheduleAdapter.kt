@@ -17,11 +17,8 @@ package maru.consensus.qbft.adapters
 
 import java.math.BigInteger
 import java.util.Optional
+import maru.config.QbftOptions
 import maru.consensus.ForkSpec
-import maru.consensus.qbft.DUPLICATE_MESSAGE_LIMIT
-import maru.consensus.qbft.FUTURE_MESSAGES_LIMIT
-import maru.consensus.qbft.FUTURE_MESSAGE_MAX_DISTANCE
-import maru.consensus.qbft.MESSAGE_QUEUE_LIMIT
 import maru.consensus.qbft.QbftConsensusConfig
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.config.BftConfigOptions
@@ -31,42 +28,46 @@ import org.hyperledger.besu.consensus.common.ForksSchedule as BesuForksSchedule
 
 class ForksScheduleAdapter(
   currentSpec: ForkSpec,
-) : BesuForksSchedule<BftConfigOptions>(maruForkSpecsToBesu(currentSpec)) {
+  config: QbftOptions,
+) : BesuForksSchedule<BftConfigOptions>(maruForkSpecsToBesu(currentSpec, config)) {
   companion object {
-    fun maruForkSpecsToBesu(currentSpec: ForkSpec): MutableCollection<BesuForkSpec<BftConfigOptions>> =
-      mutableListOf(BesuForkSpec(0, createBftConfig(currentSpec)))
+    fun maruForkSpecsToBesu(
+      currentSpec: ForkSpec,
+      config: QbftOptions,
+    ): MutableCollection<BesuForkSpec<BftConfigOptions>> =
+      mutableListOf(BesuForkSpec(0, createBftConfig(currentSpec, config)))
 
-    private fun createBftConfig(spec: ForkSpec): BftConfigOptions {
-      val bftConfig =
-        object : BftConfigOptions {
-          override fun getEpochLength(): Long = 0
+    private fun createBftConfig(
+      spec: ForkSpec,
+      config: QbftOptions,
+    ): BftConfigOptions =
+      object : BftConfigOptions {
+        override fun getEpochLength(): Long = 0
 
-          override fun getBlockPeriodSeconds(): Int = spec.blockTimeSeconds
+        override fun getBlockPeriodSeconds(): Int = spec.blockTimeSeconds
 
-          override fun getEmptyBlockPeriodSeconds(): Int = 0
+        override fun getEmptyBlockPeriodSeconds(): Int = 0
 
-          override fun getBlockPeriodMilliseconds(): Long = 0
+        override fun getBlockPeriodMilliseconds(): Long = 0
 
-          override fun getRequestTimeoutSeconds(): Int = 0
+        override fun getRequestTimeoutSeconds(): Int = 0
 
-          override fun getGossipedHistoryLimit(): Int = 0
+        override fun getGossipedHistoryLimit(): Int = 0
 
-          override fun getMessageQueueLimit(): Int = MESSAGE_QUEUE_LIMIT
+        override fun getMessageQueueLimit(): Int = config.messageQueueLimit
 
-          override fun getDuplicateMessageLimit(): Int = DUPLICATE_MESSAGE_LIMIT
+        override fun getDuplicateMessageLimit(): Int = config.duplicateMessageLimit
 
-          override fun getFutureMessagesLimit(): Int = FUTURE_MESSAGES_LIMIT.toInt()
+        override fun getFutureMessagesLimit(): Int = config.futureMessagesLimit.toInt()
 
-          override fun getFutureMessagesMaxDistance(): Int = FUTURE_MESSAGE_MAX_DISTANCE.toInt()
+        override fun getFutureMessagesMaxDistance(): Int = config.futureMessageMaxDistance.toInt()
 
-          override fun getMiningBeneficiary(): Optional<Address> =
-            Optional.of(Address.wrap(Bytes.wrap((spec.configuration as QbftConsensusConfig).feeRecipient)))
+        override fun getMiningBeneficiary(): Optional<Address> =
+          Optional.of(Address.wrap(Bytes.wrap((spec.configuration as QbftConsensusConfig).feeRecipient)))
 
-          override fun getBlockRewardWei(): BigInteger = BigInteger.ZERO
+        override fun getBlockRewardWei(): BigInteger = BigInteger.ZERO
 
-          override fun asMap(): Map<String, Any> = emptyMap()
-        }
-      return bftConfig
-    }
+        override fun asMap(): Map<String, Any> = emptyMap()
+      }
   }
 }
