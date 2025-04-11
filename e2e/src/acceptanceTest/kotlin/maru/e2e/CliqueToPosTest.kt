@@ -172,6 +172,7 @@ class CliqueToPosTest {
 
     if (nodeName.contains("besu")) {
       // Required to change validation rules from Clique to PostMerge
+      // TODO: investigate this issue more. It stopped happening with Dummy Consensus at some point
       syncTarget(nodeEngineApiClient, 5)
       awaitCondition
         .ignoreExceptions()

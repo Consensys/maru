@@ -1,7 +1,6 @@
 [execution-client]
 ethereum-json-rpc-endpoint = "http://sequencer:8545"
 engine-api-json-rpc-endpoint = "http://follower-geth:8555"
-min-time-between-get-payload-attempts=800m
 
 [qbft-options]
 communication-margin=100m

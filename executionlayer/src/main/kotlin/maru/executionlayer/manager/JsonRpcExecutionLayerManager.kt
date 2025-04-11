@@ -88,8 +88,8 @@ class JsonRpcExecutionLayerManager private constructor(
     feeRecipient: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult> {
     log.debug(
-      "Trying to create a block number {} with timestamp {}",
-      latestBlockCache.currentBlockMetadata.blockNumber + 1u,
+      "Trying to create a blockNumber={} with timestamp={}",
+      latestBlockCache.currentBlockMetadata.blockNumber + 2u,
       nextBlockTimestamp,
     )
     val payloadAttributes =
@@ -97,9 +97,9 @@ class JsonRpcExecutionLayerManager private constructor(
         timestamp = nextBlockTimestamp,
         suggestedFeeRecipient = feeRecipient,
       )
-    log.debug("Starting block building with payload attributes {}", payloadAttributes)
+    log.debug("Starting block building with payloadAttributes={}", payloadAttributes)
     return forkChoiceUpdate(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
-      log.debug("Setting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
+      log.debug("Setting payload Id, latestBlockMetadata={}", latestBlockCache.currentBlockMetadata)
       payloadId = it.payloadId
     }
   }

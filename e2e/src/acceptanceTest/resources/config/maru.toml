@@ -1,7 +1,6 @@
 [execution-client]
 ethereum-json-rpc-endpoint = "http://localhost:8545"
 engine-api-json-rpc-endpoint = "http://localhost:8550"
-min-time-between-get-payload-attempts=6000m
 
 [qbft-options]
 communication-margin=100m

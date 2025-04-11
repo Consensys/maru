@@ -15,20 +15,18 @@
  */
 package maru.consensus.qbft
 
-import java.math.BigInteger
 import java.time.Clock
 import java.time.Duration
-import java.time.temporal.ChronoUnit
-import java.util.Optional
 import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import maru.config.MaruConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
 import maru.consensus.ProposerSelectorImpl
 import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
+import maru.consensus.qbft.adapters.ForksScheduleAdapter
 import maru.consensus.qbft.adapters.ProposerSelectorAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockInterfaceAdapter
@@ -64,7 +62,6 @@ import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.executionlayer.manager.NoopValidator
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
-import org.hyperledger.besu.config.BftConfigOptions
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.common.bft.BlockTimer
@@ -90,21 +87,12 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
-import org.hyperledger.besu.consensus.common.ForkSpec as BesuForkSpec
-import org.hyperledger.besu.consensus.common.ForksSchedule as BesuForksSchedule
-
-private const val MESSAGE_QUEUE_LIMIT = 1000 // TODO: Make this configurable
-private val ROUND_EXPIRY = Duration.of(1, ChronoUnit.SECONDS) // TODO: Make this configurable
-private const val DUPLICATE_MESSAGE_LIMIT = 100 // TODO: Make this configurable
-private const val FUTURE_MESSAGE_MAX_DISTANCE = 10L // TODO: Make this configurable
-private const val FUTURE_MESSAGES_LIMIT = 1000L // TODO: Make this configurable
 
 class QbftProtocolFactory(
   private val beaconChain: BeaconChain,
   private val maruConfig: MaruConfig,
   private val metricsSystem: MetricsSystem,
   private val metadataProvider: MetadataProvider,
-  private val forksSchedule: ForksSchedule,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
@@ -158,13 +146,17 @@ class QbftProtocolFactory(
         eagerQbftBlockCreatorConfig = EagerQbftBlockCreator.Config(blockBuildingDuration),
       )
 
-    // TODO create besu forksSchedule from maru forksSchedule
-    val besuForksSchedule = createForksSchedule(forksSchedule)
+    val besuForksSchedule = ForksScheduleAdapter(forkSpec, maruConfig.qbftOptions)
 
     val clock = Clock.systemUTC()
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
-    val bftEventQueue = BftEventQueue(MESSAGE_QUEUE_LIMIT)
-    val roundTimer = RoundTimer(bftEventQueue, ROUND_EXPIRY, bftExecutors)
+    val bftEventQueue = BftEventQueue(maruConfig.qbftOptions.messageQueueLimit)
+    val roundTimer =
+      RoundTimer(
+        /* queue = */ bftEventQueue,
+        /* baseExpiryPeriod = */ maruConfig.qbftOptions.roundExpiry.toJavaDuration(),
+        /* bftExecutors = */ bftExecutors,
+      )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
     val finalState =
       QbftFinalStateAdapter(
@@ -262,14 +254,19 @@ class QbftProtocolFactory(
         /* validatorModeTransitionLogger = */ transitionLogger,
       )
     val gossiper = NoopGossiper()
-    val duplicateMessageTracker = MessageTracker(DUPLICATE_MESSAGE_LIMIT)
+    val duplicateMessageTracker = MessageTracker(maruConfig.qbftOptions.duplicateMessageLimit)
     val chainHeaderNumber =
       beaconChain
         .getLatestBeaconState()
         .latestBeaconBlockHeader
         .number
         .toLong()
-    val futureMessageBuffer = FutureMessageBuffer(FUTURE_MESSAGE_MAX_DISTANCE, FUTURE_MESSAGES_LIMIT, chainHeaderNumber)
+    val futureMessageBuffer =
+      FutureMessageBuffer(
+        /* futureMessagesMaxDistance = */ maruConfig.qbftOptions.futureMessageMaxDistance,
+        /* futureMessagesLimit = */ maruConfig.qbftOptions.futureMessagesLimit,
+        /* chainHeight = */ chainHeaderNumber,
+      )
     val qbftController =
       QbftController(
         /* blockchain = */ blockChain,
@@ -285,48 +282,13 @@ class QbftProtocolFactory(
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor()
 
-    return QbftConsensus(qbftController, eventProcessor, bftExecutors, eventQueueExecutor, beaconChain)
-  }
-
-  private fun createForksSchedule(schedule: ForksSchedule): BesuForksSchedule<BftConfigOptions> {
-    val forkSpecs =
-      schedule.getForks().map {
-        val bftConfig = createBftConfig(it)
-        BesuForkSpec(0, bftConfig)
-      }
-    return BesuForksSchedule(forkSpecs)
-  }
-
-  private fun createBftConfig(spec: ForkSpec): BftConfigOptions {
-    val bftConfig =
-      object : BftConfigOptions {
-        override fun getEpochLength(): Long = 0
-
-        override fun getBlockPeriodSeconds(): Int = spec.blockTimeSeconds
-
-        override fun getEmptyBlockPeriodSeconds(): Int = 0
-
-        override fun getBlockPeriodMilliseconds(): Long = 0
-
-        override fun getRequestTimeoutSeconds(): Int = 0
-
-        override fun getGossipedHistoryLimit(): Int = 0
-
-        override fun getMessageQueueLimit(): Int = 0
-
-        override fun getDuplicateMessageLimit(): Int = 0
-
-        override fun getFutureMessagesLimit(): Int = 0
-
-        override fun getFutureMessagesMaxDistance(): Int = 0
-
-        override fun getMiningBeneficiary(): Optional<Address> = Optional.empty()
-
-        override fun getBlockRewardWei(): BigInteger = BigInteger.ZERO
-
-        override fun asMap(): Map<String, Any> = emptyMap()
-      }
-    return bftConfig
+    return QbftConsensus(
+      qbftController = qbftController,
+      eventProcessor = eventProcessor,
+      bftExecutors = bftExecutors,
+      eventQueueExecutor = eventQueueExecutor,
+      beaconChain = beaconChain,
+    )
   }
 
   private fun buildExecutionEngineClient(

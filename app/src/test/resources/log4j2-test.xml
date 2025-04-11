@@ -15,6 +15,7 @@
 <!--    <Logger name="org.hyperledger.besu.consensus.merge.blockcreation.MergeCoordinator"-->
 <!--            level="TRACE"/>-->
     <Logger name="org.hyperledger.besu" level="INFO"/>
+    <Logger name="org.hyperledger.besu.consensus.qbft" level="TRACE"/>
     <Root level="INFO" additivity="false">
       <appender-ref ref="console"/>
     </Root>

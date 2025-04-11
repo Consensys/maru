@@ -66,7 +66,6 @@ class MaruApp(
     NextBlockTimestampProviderImpl(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
-      minTimeTillNextBlock = config.executionClientConfig.minTimeBetweenGetPayloadAttempts,
     )
 
   private val metricsSystem = NoOpMetricsSystem()
@@ -90,7 +89,6 @@ class MaruApp(
               maruConfig = config,
               metricsSystem = metricsSystem,
               metadataProvider = metadataProvider,
-              forksSchedule = beaconGenesisConfig,
               finalizationStateProvider = finalizationStateProviderStub,
               executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
             ),

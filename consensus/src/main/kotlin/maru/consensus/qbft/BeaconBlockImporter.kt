@@ -51,16 +51,22 @@ class BeaconBlockImporterImpl(
     val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
     val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
     return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier)) {
-      log.debug("Importing block {} and starting building of next block", beaconBlockHeader)
+      val nextBlockTimestamp = nextBlockTimestampProvider(nextBlocksRoundIdentifier)
+      log.debug(
+        "Importing blockHeader={} with timestamp={} and starting building of next block with timestamp={}",
+        beaconBlockHeader,
+        beaconBlock.beaconBlockBody.executionPayload.timestamp,
+        nextBlockTimestamp,
+      )
       executionLayerManager.setHeadAndStartBlockBuilding(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
         safeHash = finalizationState.safeBlockHash,
         finalizedHash = finalizationState.finalizedBlockHash,
-        nextBlockTimestamp = nextBlockTimestampProvider(nextBlocksRoundIdentifier),
+        nextBlockTimestamp = nextBlockTimestamp,
         feeRecipient = blockBuilderIdentity.address,
       )
     } else {
-      log.debug("Importing block {}", beaconBlockHeader)
+      log.debug("Importing blockHeader={}", beaconBlockHeader)
       executionLayerManager
         .setHead(
           headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
