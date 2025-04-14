@@ -18,7 +18,6 @@ package maru.consensus.qbft
 import java.time.Clock
 import java.time.Duration
 import java.util.concurrent.Executors
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.config.MaruConfig
 import maru.consensus.ElFork
@@ -94,6 +93,7 @@ class QbftProtocolFactory(
   private val metricsSystem: MetricsSystem,
   private val metadataProvider: MetadataProvider,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
+  private val clock: Clock,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
@@ -135,7 +135,6 @@ class QbftProtocolFactory(
     val proposerSelector = ProposerSelectorImpl
     val qbftProposerSelector = ProposerSelectorAdapter(beaconChain, proposerSelector)
     val validatorMulticaster = NoopValidatorMulticaster()
-    val blockBuildingDuration = forkSpec.blockTimeSeconds.seconds - maruConfig.qbftOptions.communicationMargin
     val qbftBlockCreatorFactory =
       QbftBlockCreatorFactory(
         manager = executionLayerManager,
@@ -144,7 +143,12 @@ class QbftProtocolFactory(
         beaconChain = beaconChain,
         finalizationStateProvider = finalizationStateProvider,
         blockBuilderIdentity = Validator(localAddress.toArray()),
-        eagerQbftBlockCreatorConfig = EagerQbftBlockCreator.Config(blockBuildingDuration),
+        eagerQbftBlockCreatorConfig =
+          EagerQbftBlockCreator.Config(
+            forkSpec.blockTimeSeconds,
+            maruConfig.qbftOptions.communicationMargin,
+          ),
+        clock = clock,
       )
 
     val besuForksSchedule = ForksScheduleAdapter(forkSpec, maruConfig.qbftOptions)

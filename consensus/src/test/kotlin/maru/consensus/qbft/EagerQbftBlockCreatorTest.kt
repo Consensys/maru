@@ -116,8 +116,10 @@ class EagerQbftBlockCreatorTest {
         blockBuilderIdentity = validator,
         config =
           EagerQbftBlockCreator.Config(
-            blockBuildingDuration = 900.milliseconds,
+            blockTimeSeconds = 1,
+            communicationMargin = 100.milliseconds,
           ),
+        clock = clock,
       )
     // Create a non-empty proposal
     val rejectedBlockTimestamp = clock.millis() / 1000

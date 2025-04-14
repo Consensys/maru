@@ -15,6 +15,7 @@
  */
 package maru.app
 
+import java.time.Clock
 import maru.config.MaruConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ProtocolFactory
@@ -45,6 +46,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val metadataProvider: MetadataProvider,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val executionLayerClient: Web3j,
+  private val clock: Clock,
 ) : ProtocolFactory {
   init {
     require(maruConfig.validator != null) { "The validator is required when QBFT protocol is instantiated!" }
@@ -106,6 +108,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         metricsSystem = metricsSystem,
         metadataProvider = metadataProvider,
         finalizationStateProvider = finalizationStateProvider,
+        clock = clock,
       )
     return qbftProtocolFactory.create(forkSpec)
   }

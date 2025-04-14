@@ -92,6 +92,7 @@ class MaruApp(
               metadataProvider = metadataProvider,
               finalizationStateProvider = finalizationStateProviderStub,
               executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
+              clock = clock,
             ),
         ),
       metadataProvider = metadataProvider,

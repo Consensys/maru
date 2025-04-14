@@ -15,6 +15,7 @@
  */
 package maru.consensus.qbft
 
+import java.time.Clock
 import kotlin.time.Duration
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
@@ -39,11 +40,13 @@ class EagerQbftBlockCreator(
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
   private val config: Config,
+  private val clock: Clock,
 ) : QbftBlockCreator {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   data class Config(
-    val blockBuildingDuration: Duration,
+    val blockTimeSeconds: Int,
+    val communicationMargin: Duration,
   )
 
   override fun createBlock(
@@ -60,7 +63,7 @@ class EagerQbftBlockCreator(
         nextBlockTimestamp = headerTimeStampSeconds,
         feeRecipient = blockBuilderIdentity.address,
       ).get()
-    val sleepTime = config.blockBuildingDuration.inWholeMilliseconds
+    val sleepTime = computeSleepDurationMilliseconds(headerTimeStampSeconds)
     log.debug("Block building has started, sleeping for $sleepTime milliseconds")
     Thread.sleep(sleepTime)
     log.debug("Block building has finished, time to collect block building results")
@@ -72,4 +75,9 @@ class EagerQbftBlockCreator(
     roundNumber: Int,
     commitSeals: MutableCollection<SECPSignature>,
   ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
+
+  // Target next whole second or skip a round. This helps block time consistency
+  private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long =
+    (headerTimeStampSeconds + config.blockTimeSeconds) * 1000 - clock.millis() -
+      config.communicationMargin.inWholeMilliseconds
 }
