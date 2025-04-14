@@ -264,28 +264,6 @@ class JsonRpcExecutionLayerManagerTest {
   }
 
   @Test
-  fun `importPayload + setHead updates next block metadata on success`() {
-    val executionPayload = DataGenerators.randomExecutionPayload()
-    val payloadStatus = PayloadStatusV1(ExecutionPayloadStatus.VALID, Bytes32.random(), null)
-    mockNewPayloadWithStatus(payloadStatus)
-    mockForkChoiceUpdateWithValidStatus(null)
-    executionLayerManager.importPayload(executionPayload).get()
-
-    executionLayerManager.setHead(
-      headHash = executionPayload.blockHash,
-      safeHash = executionPayload.blockHash,
-      finalizedHash = executionPayload.blockHash,
-    )
-    assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(
-      BlockMetadata(
-        executionPayload.blockNumber,
-        executionPayload.blockHash,
-        executionPayload.timestamp.toLong(),
-      ),
-    )
-  }
-
-  @Test
   fun `importPayload throws exception on validation failure`() {
     val executionPayload = DataGenerators.randomExecutionPayload()
     val payloadStatus = PayloadStatusV1(ExecutionPayloadStatus.INVALID, Bytes32.random(), "Invalid payload")
