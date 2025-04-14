@@ -92,7 +92,7 @@ class MaruQbftTest {
   }
 
   @Test
-  fun `QBFT is able to produce blocks with the expected block time`() {
+  fun `Maru is producing blocks with expected block time`() {
     val blocksToProduce = 10
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
@@ -102,7 +102,7 @@ class MaruQbftTest {
   }
 
   @Test
-  fun `QBFT works if Besu stops mid flight`() {
+  fun `Maru works if Besu stops mid flight`() {
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
@@ -120,7 +120,7 @@ class MaruQbftTest {
   }
 
   @Test
-  fun `QBFT works if Maru stops mid flight`() {
+  fun `Maru works after restart`() {
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
