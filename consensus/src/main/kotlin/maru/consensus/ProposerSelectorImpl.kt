@@ -18,6 +18,7 @@ package maru.consensus
 import kotlin.collections.map
 import maru.core.BeaconState
 import maru.core.Validator
+import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.BftProposerSelector
@@ -32,10 +33,13 @@ fun interface ProposerSelector {
 }
 
 object ProposerSelectorImpl : ProposerSelector {
+  private val log = LogManager.getLogger(this.javaClass)
+
   override fun getProposerForBlock(
     parentBeaconState: BeaconState,
     roundIdentifier: ConsensusRoundIdentifier,
   ): SafeFuture<Validator> {
+    log.trace("Get proposer for $roundIdentifier")
     val prevBlockProposer = Address.wrap(Bytes.wrap(parentBeaconState.latestBeaconBlockHeader.proposer.address))
     val validatorsForRound =
       parentBeaconState.validators.map {

@@ -26,7 +26,7 @@ class ProposerSelectorAdapter(
   private val beaconChain: BeaconChain,
   private val proposerSelector: MaruProposerSelector,
 ) : ProposerSelector {
-  override fun selectProposerForRound(roundIdentifier: ConsensusRoundIdentifier): Address? {
+  override fun selectProposerForRound(roundIdentifier: ConsensusRoundIdentifier): Address {
     val prevBlockNumber = roundIdentifier.sequenceNumber - 1
     val parentBeaconState =
       beaconChain.getBeaconState(prevBlockNumber.toULong()) ?: throw IllegalStateException(

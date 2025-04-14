@@ -40,7 +40,7 @@ class EagerQbftBlockCreator(
   private val blockBuilderIdentity: Validator,
   private val config: Config,
 ) : QbftBlockCreator {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   data class Config(
     val blockBuildingDuration: Duration,
@@ -61,7 +61,7 @@ class EagerQbftBlockCreator(
         feeRecipient = blockBuilderIdentity.address,
       ).get()
     val sleepTime = config.blockBuildingDuration.inWholeMilliseconds
-    log.debug("Block building has started, sleeping for $headerTimeStampSeconds seconds")
+    log.debug("Block building has started, sleeping for $sleepTime milliseconds")
     Thread.sleep(sleepTime)
     log.debug("Block building has finished, time to collect block building results")
     return delegate.createBlock(headerTimeStampSeconds, parentHeader)

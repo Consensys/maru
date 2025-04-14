@@ -70,6 +70,7 @@ class MaruApp(
 
   private val metricsSystem = NoOpMetricsSystem()
   private val finalizationStateProviderStub = { _: BeaconBlockHeader ->
+    LogManager.getLogger("FinalizationStateProvider").debug("fetching the latest finalized state")
     val latestBlockHash = metadataProvider.getLatestBlockMetadata().get().blockHash
     FinalizationState(latestBlockHash, latestBlockHash)
   }
