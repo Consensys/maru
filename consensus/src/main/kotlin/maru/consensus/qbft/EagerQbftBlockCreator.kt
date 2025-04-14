@@ -76,6 +76,7 @@ class EagerQbftBlockCreator(
     commitSeals: MutableCollection<SECPSignature>,
   ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
 
+  // TODO: replace this logic with NextBlockTimestampProvider once PR #76 is merged
   // Target next whole second or skip a round. This helps block time consistency
   private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long =
     (headerTimeStampSeconds + config.blockTimeSeconds) * 1000 - clock.millis() -
