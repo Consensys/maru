@@ -39,7 +39,7 @@ object MaruFactory {
     engine-api-json-rpc-endpoint = "$engineApiRpc"
 
     [qbft-options]
-    communication-margin=100m
+    communication-margin=200m
     data-path="$dataPath"
 
     [p2p-config]

@@ -89,7 +89,7 @@ class BlockValidatorTest {
   private val beaconChain = InMemoryBeaconChain(currBeaconState)
 
   private val proposerSelector =
-    ProposerSelector { consensusRoundIdentifier ->
+    ProposerSelector { beaconState, consensusRoundIdentifier ->
       when (consensusRoundIdentifier) {
         validNewBlockHeader.toConsensusRoundIdentifier() -> SafeFuture.completedFuture(validNewBlockHeader.proposer)
         else -> throw IllegalArgumentException("Unexpected consensus round identifier")
@@ -126,7 +126,7 @@ class BlockValidatorTest {
       }
 
     val proposerValidator =
-      ProposerValidator(proposerSelector = proposerSelector).also {
+      ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain).also {
         assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
       }
 
@@ -297,7 +297,7 @@ class BlockValidatorTest {
   fun `test invalid block proposer`() {
     val invalidBlockHeader = validNewBlockHeader.copy(proposer = nonValidatorNode)
     val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
-    val proposerValidator = ProposerValidator(proposerSelector = proposerSelector)
+    val proposerValidator = ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain)
     val result =
       proposerValidator
         .validateBlock(

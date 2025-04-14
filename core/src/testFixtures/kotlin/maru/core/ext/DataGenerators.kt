@@ -45,12 +45,13 @@ object DataGenerators {
   private val HEADER_HASH_FUNCTION = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
 
   fun randomBeaconState(number: ULong): BeaconState {
+    val validators = randomValidators()
     val beaconBlockHeader =
       BeaconBlockHeader(
         number = number,
         round = Random.nextUInt(),
         timestamp = Random.nextULong(),
-        proposer = Validator(Random.nextBytes(20)),
+        proposer = validators.random(),
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
@@ -58,7 +59,7 @@ object DataGenerators {
       )
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
-      validators = buildSet(3) { Validator(Random.nextBytes(20)) },
+      validators = validators,
     )
   }
 
@@ -89,12 +90,15 @@ object DataGenerators {
       executionPayload = randomExecutionPayload(),
     )
 
-  fun randomBeaconBlockHeader(number: ULong): BeaconBlockHeader =
+  fun randomBeaconBlockHeader(
+    number: ULong,
+    proposer: Validator = Validator(Random.nextBytes(20)),
+  ): BeaconBlockHeader =
     BeaconBlockHeader(
       number = number,
       round = Random.nextUInt(),
       timestamp = Random.nextULong(),
-      proposer = Validator(Random.nextBytes(20)),
+      proposer = proposer,
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
       bodyRoot = Random.nextBytes(32),
@@ -157,13 +161,5 @@ object DataGenerators {
 
   fun randomValidator(): Validator = Validator(Random.nextBytes(20))
 
-  fun randomValidators(): Set<Validator> =
-    buildSet(3) {
-      add(
-        Validator(
-          Random
-            .nextBytes(20),
-        ),
-      )
-    }
+  fun randomValidators(): Set<Validator> = List(3) { randomValidator() }.toSet()
 }

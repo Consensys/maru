@@ -18,7 +18,6 @@ package maru.consensus
 import kotlin.collections.map
 import maru.core.BeaconState
 import maru.core.Validator
-import maru.database.BeaconChain
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.BftProposerSelector
@@ -26,33 +25,14 @@ import org.hyperledger.besu.datatypes.Address
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface ProposerSelector {
-  fun getProposerForBlock(consensusRoundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator>
+  fun getProposerForBlock(
+    parentBeaconState: BeaconState,
+    roundIdentifier: ConsensusRoundIdentifier,
+  ): SafeFuture<Validator>
 }
 
-class ProposerSelectorImpl(
-  private val beaconChain: BeaconChain,
-  private val validatorProvider: ValidatorProvider,
-) : ProposerSelector {
-  override fun getProposerForBlock(roundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator> {
-    val prevBlockNumber = roundIdentifier.sequenceNumber - 1
-    val parentBlock =
-      beaconChain.getSealedBeaconBlock(prevBlockNumber.toULong())
-        ?: return SafeFuture.failedFuture(
-          IllegalStateException("Parent block not found. parentBlockNumber=$prevBlockNumber"),
-        )
-    val parentBlockHeader = parentBlock.beaconBlock.beaconBlockHeader
-    val prevBlockProposer = Address.wrap(Bytes.wrap(parentBlockHeader.proposer.address))
-
-    val validatorsForRound =
-      validatorProvider.getValidatorsForBlock(parentBlockHeader.number).get().map {
-        Address.wrap(Bytes.wrap(it.address))
-      }
-    val proposer =
-      BftProposerSelector.selectProposerForRound(roundIdentifier, prevBlockProposer, validatorsForRound, true)
-    return SafeFuture.completedFuture(Validator(proposer.toArray()))
-  }
-
-  fun getProposerForBlock(
+object ProposerSelectorImpl : ProposerSelector {
+  override fun getProposerForBlock(
     parentBeaconState: BeaconState,
     roundIdentifier: ConsensusRoundIdentifier,
   ): SafeFuture<Validator> {

@@ -22,6 +22,7 @@ class InMemoryBeaconChain(
   initialBeaconState: BeaconState,
 ) : BeaconChain {
   private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
+  private val beaconStateByBlockNumber = mutableMapOf<ULong, BeaconState>()
   private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
   private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
 
@@ -30,6 +31,8 @@ class InMemoryBeaconChain(
   override fun getLatestBeaconState(): BeaconState = latestBeaconState
 
   override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? = beaconStateByBlockRoot[beaconBlockRoot]
+
+  override fun getBeaconState(beaconBlockNumber: ULong): BeaconState? = beaconStateByBlockNumber[beaconBlockNumber]
 
   override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
     sealedBeaconBlockByBlockRoot[beaconBlockRoot]

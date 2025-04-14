@@ -15,17 +15,26 @@
  */
 package maru.consensus.qbft.adapters
 
-import org.apache.tuweni.bytes.Bytes
+import maru.consensus.toAddress
+import maru.database.BeaconChain
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.datatypes.Address
 import maru.consensus.ProposerSelector as MaruProposerSelector
 
 class ProposerSelectorAdapter(
+  private val beaconChain: BeaconChain,
   private val proposerSelector: MaruProposerSelector,
 ) : ProposerSelector {
   override fun selectProposerForRound(roundIdentifier: ConsensusRoundIdentifier): Address? {
-    val validator = proposerSelector.getProposerForBlock(roundIdentifier).get()
-    return Address.wrap(Bytes.wrap(validator.address))
+    val prevBlockNumber = roundIdentifier.sequenceNumber - 1
+    val parentBeaconState =
+      beaconChain.getBeaconState(prevBlockNumber.toULong()) ?: throw IllegalStateException(
+        "Parent block not found. parentBlockNumber=$prevBlockNumber",
+      )
+    return proposerSelector
+      .getProposerForBlock(parentBeaconState, roundIdentifier)
+      .get()
+      .toAddress()
   }
 }

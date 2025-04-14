@@ -119,7 +119,8 @@ class QbftProtocolFactory(
           payloadValidator = NoopValidator,
         ).get()
 
-    val validatorKey = maruConfig.validator?.validatorKey ?: throw IllegalArgumentException("Validator key not found")
+    val validatorKey =
+      maruConfig.validator?.validatorKey ?: throw IllegalArgumentException("Validator key not found")
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(validatorKey))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
@@ -131,8 +132,8 @@ class QbftProtocolFactory(
     val localAddress = Util.publicKeyToAddress(keyPair.publicKey)
     val staticValidatorProvider = StaticValidatorProvider(setOf(Validator(localAddress.toArrayUnsafe())))
     val validatorProvider = QbftValidatorProviderAdapter(staticValidatorProvider)
-    val proposerSelector = ProposerSelectorImpl(beaconChain, staticValidatorProvider)
-    val qbftProposerSelector = ProposerSelectorAdapter(proposerSelector)
+    val proposerSelector = ProposerSelectorImpl
+    val qbftProposerSelector = ProposerSelectorAdapter(beaconChain, proposerSelector)
     val validatorMulticaster = NoopValidatorMulticaster()
     val blockBuildingDuration = forkSpec.blockTimeSeconds.seconds - maruConfig.qbftOptions.communicationMargin
     val qbftBlockCreatorFactory =
@@ -206,7 +207,8 @@ class QbftProtocolFactory(
     val bodyRootValidator = BodyRootValidator()
     val executionPayloadValidator = ExecutionPayloadValidator(executionLayerClient)
     val blockValidatorFactory = { blockHeader: BeaconBlockHeader ->
-      val parentHeader = beaconChain.getSealedBeaconBlock(blockHeader.number - 1UL)!!.beaconBlock.beaconBlockHeader
+      val parentHeader =
+        beaconChain.getSealedBeaconBlock(blockHeader.number - 1UL)!!.beaconBlock.beaconBlockHeader
       val compositeValidator =
         CompositeBlockValidator(
           blockValidators =
@@ -214,7 +216,7 @@ class QbftProtocolFactory(
               stateRootValidator,
               BlockNumberValidator(parentHeader),
               TimestampValidator(parentHeader),
-              ProposerValidator(proposerSelector),
+              ProposerValidator(proposerSelector, beaconChain),
               ParentRootValidator(parentHeader),
               bodyRootValidator,
               executionPayloadValidator,

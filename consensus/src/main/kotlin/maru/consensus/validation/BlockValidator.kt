@@ -111,10 +111,11 @@ class TimestampValidator(
 
 class ProposerValidator(
   private val proposerSelector: ProposerSelector,
+  private val beaconChain: BeaconChain,
 ) : BlockValidator {
   override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
     proposerSelector
-      .getProposerForBlock(block.beaconBlockHeader.toConsensusRoundIdentifier())
+      .getProposerForBlock(beaconChain.getLatestBeaconState(), block.beaconBlockHeader.toConsensusRoundIdentifier())
       .thenApply { proposerForNewBlock ->
         BlockValidator.require(block.beaconBlockHeader.proposer == proposerForNewBlock) {
           "Proposer is not expected proposer proposer=${block.beaconBlockHeader.proposer} " +

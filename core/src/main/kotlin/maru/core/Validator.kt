@@ -15,6 +15,8 @@
  */
 package maru.core
 
+import maru.extensions.encodeHex
+
 data class Validator(
   val address: ByteArray,
 ) {
@@ -34,4 +36,6 @@ data class Validator(
   }
 
   override fun hashCode(): Int = address.contentHashCode()
+
+  override fun toString(): String = "Validator(address=${address.encodeHex()})"
 }

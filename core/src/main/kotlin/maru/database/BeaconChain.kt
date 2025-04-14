@@ -23,6 +23,8 @@ interface BeaconChain : AutoCloseable {
 
   fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState?
 
+  fun getBeaconState(beaconBlockNumber: ULong): BeaconState?
+
   fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock?
 
   fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock?
