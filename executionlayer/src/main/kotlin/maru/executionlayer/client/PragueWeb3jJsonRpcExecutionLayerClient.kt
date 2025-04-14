@@ -17,8 +17,8 @@ package maru.executionlayer.client
 
 import java.util.Optional
 import maru.core.ExecutionPayload
-import maru.executionlayer.extensions.toDomainExecutionPayload
-import maru.executionlayer.extensions.toExecutionPayloadV3
+import maru.mappers.Mappers.toDomainExecutionPayload
+import maru.mappers.Mappers.toExecutionPayloadV3
 import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
@@ -38,8 +38,10 @@ class PragueWeb3jJsonRpcExecutionLayerClient(
       when {
         it.payload != null ->
           Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
+
         it.errorMessage != null ->
           Response.fromErrorMessage(it.errorMessage)
+
         else ->
           throw IllegalStateException("Failed to get payload!")
       }

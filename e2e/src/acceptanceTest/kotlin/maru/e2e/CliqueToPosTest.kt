@@ -29,8 +29,9 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.app.MaruApp
-import maru.e2e.Mappers.executionPayloadV3FromBlock
 import maru.e2e.TestEnvironment.waitForInclusion
+import maru.mappers.Mappers.toDomain
+import maru.mappers.Mappers.toExecutionPayloadV3
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
@@ -274,7 +275,7 @@ class CliqueToPosTest {
     target: Web3JExecutionEngineClient,
   ): ExecutionPayloadV3 {
     val targetBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
-    val blockPayload = executionPayloadV3FromBlock(targetBlock)
+    val blockPayload = targetBlock.toDomain().toExecutionPayloadV3()
     val newPayloadResult = target.newPayloadV4(blockPayload, listOf(), Bytes32.ZERO, emptyList()).get()
     log.debug("New payload result: {}", newPayloadResult)
     return blockPayload
@@ -298,7 +299,7 @@ class CliqueToPosTest {
 
   private fun setAllFollowersHeadToBlockNumberPrague(blockNumber: Long): String {
     val postMergeBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
-    val getNewPayloadFromPostMergeBlockNumber = executionPayloadV3FromBlock(postMergeBlock)
+    val getNewPayloadFromPostMergeBlockNumber = postMergeBlock.toDomain().toExecutionPayloadV3()
     sendNewPayloadToFollowersPrague(getNewPayloadFromPostMergeBlockNumber)
     fcuFollowersToBlockHashPrague(postMergeBlock.hash)
     return postMergeBlock.hash

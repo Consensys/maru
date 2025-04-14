@@ -19,7 +19,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.core.ExecutionPayload
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.MetadataProvider
-import maru.executionlayer.extensions.toPayloadAttributesV1
+import maru.mappers.Mappers.toPayloadAttributesV1
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
@@ -134,7 +134,7 @@ class JsonRpcExecutionLayerManager private constructor(
     }
     return executionLayerClient
       .getPayload(Bytes8(Bytes.wrap(payloadId!!)))
-      .thenCompose { payloadResponse ->
+      .thenApply { payloadResponse ->
         if (payloadResponse.isSuccess) {
           val executionPayload = payloadResponse.payload
           val validationResult = payloadValidator.validate(executionPayload)
@@ -142,16 +142,16 @@ class JsonRpcExecutionLayerManager private constructor(
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
             throw RuntimeException(validationResult.reason)
           }
-          importPayload(executionPayload).thenApply {
-            log.debug("Unsetting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
-
-            payloadId = null // Not necessary, but it helps to reinforce the order of calls
-            executionPayload
-          }
-        } else {
-          SafeFuture.failedFuture(
-            IllegalStateException("engine_getPayload request failed! Cause: " + payloadResponse.errorMessage),
+          latestBlockCache.updateNext(
+            BlockMetadata(
+              executionPayload.blockNumber,
+              executionPayload.blockHash,
+              executionPayload.timestamp.toLong(),
+            ),
           )
+          executionPayload
+        } else {
+          throw IllegalStateException("engine_getPayload request failed! Cause: " + payloadResponse.errorMessage)
         }
       }
   }
@@ -197,13 +197,8 @@ class JsonRpcExecutionLayerManager private constructor(
       if (payloadStatusResponse.isSuccess) {
         val payloadStatus = payloadStatusResponse.payload.asInternalExecutionPayload()
         if (payloadStatus.status.get() == ExecutionPayloadStatus.VALID) {
-          latestBlockCache.updateNext(
-            BlockMetadata(
-              executionPayload.blockNumber,
-              executionPayload.blockHash,
-              executionPayload.timestamp.toLong(),
-            ),
-          )
+          log.debug("Unsetting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
+          payloadId = null // Not necessary, but it helps to reinforce the order of calls
         } else {
           throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatus.validationError.get())
         }

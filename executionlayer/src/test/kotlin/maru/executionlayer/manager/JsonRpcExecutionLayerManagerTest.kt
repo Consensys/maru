@@ -243,7 +243,7 @@ class JsonRpcExecutionLayerManagerTest {
     mockGetPayloadWithRandomData(payloadId, executionPayload)
     mockNewPayloadWithStatus(payloadStatus)
 
-    executionLayerManager.finishBlockBuilding().get()
+    executionLayerManager.importPayload(executionLayerManager.finishBlockBuilding().get())
 
     executionLayerManager
       .setHeadAndStartBlockBuilding(

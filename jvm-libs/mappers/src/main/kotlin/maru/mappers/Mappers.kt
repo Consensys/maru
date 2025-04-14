@@ -13,12 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app
+package maru.mappers
 
 import java.math.BigInteger
 import maru.core.ExecutionPayload
+import maru.executionlayer.manager.PayloadAttributes
 import maru.extensions.fromHexToByteArray
 import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.bytes.Bytes32
+import org.apache.tuweni.units.bigints.UInt256
 import org.bouncycastle.math.ec.custom.sec.SecP256K1Curve
 import org.hyperledger.besu.crypto.SECPSignature
 import org.hyperledger.besu.datatypes.AccessListEntry
@@ -28,10 +31,11 @@ import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.ethereum.core.encoding.EncodingContext
 import org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder
 import org.web3j.protocol.core.methods.response.EthBlock
-import org.web3j.protocol.core.methods.response.EthBlock.TransactionObject
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
+import tech.pegasys.teku.infrastructure.bytes.Bytes20
+import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
-// TODO: This is a copypaste from
-// https://github.com/Consensys/linea-monorepo/blob/main/jvm-libs/linea/web3j-extensions/src/main/kotlin/net/consensys/linea/web3j/DomainObjectMappers.kt clean up later
 object Mappers {
   private fun recIdFromV(v: BigInteger): Pair<Byte, BigInteger?> {
     val recId: Byte
@@ -44,9 +48,7 @@ object Mappers {
     } else if (v > Transaction.REPLAY_PROTECTED_V_MIN) {
       chainId = v.subtract(Transaction.REPLAY_PROTECTED_V_BASE).divide(Transaction.TWO)
       recId =
-        v
-          .subtract(Transaction.TWO.multiply(chainId).add(Transaction.REPLAY_PROTECTED_V_BASE))
-          .byteValueExact()
+        v.subtract(Transaction.TWO.multiply(chainId).add(Transaction.REPLAY_PROTECTED_V_BASE)).byteValueExact()
     } else {
       throw RuntimeException("An unsupported encoded `v` value of $v was found")
     }
@@ -54,7 +56,7 @@ object Mappers {
   }
 
   // TODO: Test
-  private fun TransactionObject.toByteArray(): ByteArray {
+  private fun EthBlock.TransactionObject.toByteArray(): ByteArray {
     val isFrontier = this.type == "0x0"
     val (recId, chainId) =
       if (isFrontier) {
@@ -110,7 +112,7 @@ object Mappers {
   fun EthBlock.Block.toDomain(): ExecutionPayload {
     val transactions =
       this.transactions.map {
-        val transaction = it.get() as TransactionObject
+        val transaction = it.get() as EthBlock.TransactionObject
         transaction.toByteArray()
       }
 
@@ -131,4 +133,51 @@ object Mappers {
       transactions = transactions, // Transactions are omitted
     )
   }
+
+  fun ExecutionPayloadV3.toDomainExecutionPayload() =
+    ExecutionPayload(
+      parentHash = this.parentHash.toArray(),
+      feeRecipient = this.feeRecipient.wrappedBytes.toArray(),
+      stateRoot = this.stateRoot.toArray(),
+      receiptsRoot = this.receiptsRoot.toArray(),
+      logsBloom = this.logsBloom.toArray(),
+      prevRandao = this.prevRandao.toArray(),
+      blockNumber = this.blockNumber.longValue().toULong(),
+      gasLimit = this.gasLimit.longValue().toULong(),
+      gasUsed = this.gasUsed.longValue().toULong(),
+      timestamp = this.timestamp.longValue().toULong(),
+      extraData = this.extraData.toArray(),
+      baseFeePerGas =
+        this.baseFeePerGas.toBigInteger(),
+      blockHash = this.blockHash.toArray(),
+      transactions = this.transactions.map { it.toArray() },
+    )
+
+  fun ExecutionPayload.toExecutionPayloadV3() =
+    ExecutionPayloadV3(
+      /* parentHash */ Bytes32.wrap(this.parentHash),
+      /* feeRecipient */ Bytes20(Bytes.wrap(this.feeRecipient)),
+      /* stateRoot */ Bytes32.wrap(this.stateRoot),
+      /* receiptsRoot */ Bytes32.wrap(this.receiptsRoot),
+      /* logsBloom */ Bytes.wrap(this.logsBloom),
+      /* prevRandao */ Bytes32.wrap(this.prevRandao),
+      /* blockNumber */ UInt64.valueOf(this.blockNumber.toString()),
+      /* gasLimit */ UInt64.valueOf(this.gasLimit.toString()),
+      /* gasUsed */ UInt64.valueOf(this.gasUsed.toString()),
+      /* timestamp */ UInt64.valueOf(this.timestamp.toString()),
+      /* extraData */ Bytes.wrap(this.extraData),
+      /* baseFeePerGas */ UInt256.valueOf(this.baseFeePerGas),
+      /* blockHash */ Bytes32.wrap(this.blockHash),
+      /* transactions */ this.transactions.map { Bytes.wrap(it) },
+      /* withdrawals */ emptyList(),
+      /* blobGasUsed */ UInt64.ZERO,
+      /* excessBlobGas */ UInt64.ZERO,
+    )
+
+  fun PayloadAttributes.toPayloadAttributesV1(): PayloadAttributesV1 =
+    PayloadAttributesV1(
+      UInt64.fromLongBits(this.timestamp),
+      Bytes32.wrap(this.prevRandao),
+      Bytes20(Bytes.wrap(this.suggestedFeeRecipient)),
+    )
 }

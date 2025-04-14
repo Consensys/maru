@@ -16,3 +16,18 @@
 plugins {
   id 'maru.kotlin-library-conventions'
 }
+
+dependencies {
+  implementation(project(":core"))
+  implementation(project(":jvm-libs:extensions"))
+
+  implementation "tech.pegasys.teku.internal:unsigned"
+  implementation "tech.pegasys.teku.internal:bytes"
+  implementation "tech.pegasys.teku.internal:executionclient"
+  implementation("org.hyperledger.besu.internal:metrics-core")
+  implementation("org.hyperledger.besu.internal:algorithms")
+  implementation("org.hyperledger.besu.internal:core")
+  implementation("org.hyperledger.besu:besu-datatypes")
+  implementation "io.tmio:tuweni-bytes"
+  implementation "org.hyperledger.besu:plugin-api"
+}

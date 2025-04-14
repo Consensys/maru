@@ -15,7 +15,6 @@
  */
 package maru.app
 
-import maru.app.Mappers.toDomain
 import maru.config.MaruConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ProtocolFactory
@@ -32,6 +31,7 @@ import maru.core.Validator
 import maru.database.BeaconChain
 import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.client.MetadataProvider
+import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.KeccakHasher
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.stateRoot
