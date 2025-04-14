@@ -21,6 +21,8 @@ import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockHeader
 import maru.core.Validator
 import maru.executionlayer.manager.ExecutionLayerManager
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
@@ -38,6 +40,8 @@ class EagerQbftBlockCreator(
   private val blockBuilderIdentity: Validator,
   private val config: Config,
 ) : QbftBlockCreator {
+  private val log: Logger = LogManager.getLogger(this::class.java)
+
   data class Config(
     val blockBuildingDuration: Duration,
   )
@@ -56,7 +60,10 @@ class EagerQbftBlockCreator(
         nextBlockTimestamp = headerTimeStampSeconds,
         feeRecipient = blockBuilderIdentity.address,
       ).get()
-    Thread.sleep(config.blockBuildingDuration.inWholeMilliseconds)
+    val sleepTime = config.blockBuildingDuration.inWholeMilliseconds
+    log.debug("Block building has started, sleeping for $headerTimeStampSeconds seconds")
+    Thread.sleep(sleepTime)
+    log.debug("Block building has finished, time to collect block building results")
     return delegate.createBlock(headerTimeStampSeconds, parentHeader)
   }
 
