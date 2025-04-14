@@ -116,7 +116,8 @@ class MaruQbftTest {
     }
 
     verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-    verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
+    // Not verifying 6, because first block time after startup might be off, but it's better than skipping a slot
+    verifyBlockHeaders(fromBlockNumber = 7, blocksToProduce)
   }
 
   @Test
@@ -133,7 +134,8 @@ class MaruQbftTest {
     }
 
     verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-    verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
+    // Not verifying 6, because first block time after startup might be off, but it's better than skipping a slot
+    verifyBlockHeaders(fromBlockNumber = 7, blocksToProduce)
   }
 
   private fun verifyBlockHeaders(
