@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
 class HopliteFriendlinessTest {
   private val emptyFollowersConfig =
     """
-    [sot-endpoint]
+    [sot-eth-endpoint]
     endpoint = "http://localhost:8545"
 
     [dummy-consensus-options]
@@ -38,13 +38,13 @@ class HopliteFriendlinessTest {
     private-key = "0xdead"
     jwt-secret-path = "/secret/path"
     min-time-between-get-payload-attempts=800m
-    el-client-endpoint = "http://localhost:8555"
+    el-client-engine-api-endpoint = "http://localhost:8555"
     """.trimIndent()
   private val rawConfig =
     """
     $emptyFollowersConfig
 
-    [followers]
+    [follower-engine-apis]
     follower1 = { endpoint = "http://localhost:1234", jwt-secret-path = "/secret/path" }
     follower2 = { endpoint = "http://localhost:4321" }
     """.trimIndent()
@@ -56,7 +56,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          sotEndpoint =
+          sotEthEndpoint =
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
@@ -64,12 +64,12 @@ class HopliteFriendlinessTest {
           p2pConfig = P2P(port = 3322u),
           validator =
             ValidatorDtoToml(
-              elClientEndpoint = URI.create("http://localhost:8555").toURL(),
+              elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
               privateKey = Secret("0xdead"),
               jwtSecretPath = "/secret/path",
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
-          followers =
+          followerEngineApis =
             mapOf(
               "follower1" to
                 ApiEndpointDtoToml(
@@ -90,7 +90,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          sotEndpoint =
+          sotEthEndpoint =
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
@@ -98,12 +98,12 @@ class HopliteFriendlinessTest {
           p2pConfig = P2P(port = 3322u),
           validator =
             ValidatorDtoToml(
-              elClientEndpoint = URI.create("http://localhost:8555").toURL(),
+              elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
               privateKey = Secret("0xdead"),
               jwtSecretPath = "/secret/path",
               minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
-          followers = null,
+          followerEngineApis = null,
         ),
       )
   }

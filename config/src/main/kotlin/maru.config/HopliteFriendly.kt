@@ -22,7 +22,7 @@ import kotlin.time.Duration
 
 data class ValidatorDtoToml(
   val privateKey: Masked,
-  val elClientEndpoint: URL,
+  val elClientEngineApiEndpoint: URL,
   val jwtSecretPath: String? = null,
   val minTimeBetweenGetPayloadAttempts: Duration,
 ) {
@@ -31,7 +31,7 @@ data class ValidatorDtoToml(
       key = privateKey.value.fromHexToByteArray(),
       client =
         ValidatorClientConfig(
-          engineApiClientConfig = ApiEndpointDtoToml(elClientEndpoint, jwtSecretPath).toDomain(),
+          engineApiClientConfig = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
           minTimeBetweenGetPayloadAttempts = minTimeBetweenGetPayloadAttempts,
         ),
     )
@@ -51,18 +51,18 @@ data class DummyConsensusOptionsDtoToml(
 }
 
 data class MaruConfigDtoToml(
-  private val sotEndpoint: ApiEndpointDtoToml,
+  private val sotEthEndpoint: ApiEndpointDtoToml,
   private val dummyConsensusOptions: DummyConsensusOptionsDtoToml?,
   private val p2pConfig: P2P?,
   private val validator: ValidatorDtoToml?,
-  private val followers: Map<String, ApiEndpointDtoToml>?,
+  private val followerEngineApis: Map<String, ApiEndpointDtoToml>?,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
-      sotNode = sotEndpoint.toDomain(),
+      sotNode = sotEthEndpoint.toDomain(),
       dummyConsensusOptions = dummyConsensusOptions?.domainFriendly(),
       p2pConfig = p2pConfig,
       validator = validator?.domainFriendly(),
-      followers = FollowersConfig(followers = followers?.mapValues { it.value.toDomain() } ?: emptyMap()),
+      followers = FollowersConfig(followers = followerEngineApis?.mapValues { it.value.toDomain() } ?: emptyMap()),
     )
 }

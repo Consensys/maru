@@ -32,7 +32,7 @@ object MaruFactory {
     engineApiRpc: String,
   ): String =
     """
-    [sot-endpoint]
+    [sot-eth-endpoint]
     endpoint = "$ethereumJsonRpcUrl"
 
     [dummy-consensus-options]
@@ -44,7 +44,7 @@ object MaruFactory {
     [validator]
     private-key = "0xdead"
     min-time-between-get-payload-attempts=800m
-    el-client-endpoint = "$engineApiRpc"
+    el-client-engine-api-endpoint = "$engineApiRpc"
     """.trimIndent()
 
   private fun pickConsensusConfig(elFork: ElFork): String =

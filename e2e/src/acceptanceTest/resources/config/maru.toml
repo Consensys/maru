@@ -1,4 +1,4 @@
-[sot-endpoint]
+[sot-eth-endpoint]
 endpoint = "http://localhost:8545"
 
 [dummy-consensus-options]
@@ -9,10 +9,9 @@ port = 3322
 
 [validator]
 private-key = "0xdead"
-min-time-between-get-payload-attempts=6000m
-el-client-endpoint = "http://localhost:8550"
+el-client-engine-api-endpoint = "http://localhost:8550"
 
-[followers]
+[follower-engine-apis]
 "follower-besu" = { endpoint = "http://localhost:9550" }
 "follower-erigon" = { endpoint = "http://localhost:11551", jwt-secret-path = "../docker/jwt" }
 "follower-nethermind" = { endpoint = "http://localhost:10550", jwt-secret-path = "../docker/jwt" }
