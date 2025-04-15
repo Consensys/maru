@@ -9,6 +9,7 @@ port = 3322
 
 [validator]
 private-key = "0xdead"
+min-time-between-get-payload-attempts=6000m
 el-client-engine-api-endpoint = "http://localhost:8550"
 
 [follower-engine-apis]
