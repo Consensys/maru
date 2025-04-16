@@ -51,7 +51,7 @@ class JsonRpcExecutionLayerManager(
       )
     log.debug("Starting block building with payloadAttributes={}", payloadAttributes)
     return forkChoiceUpdate(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
-      log.debug("Setting payload Id, timestamp={}", nextBlockTimestamp)
+      log.debug("Setting payload Id, nextBlockTimestamp={}", nextBlockTimestamp)
       payloadId = it.payloadId
     }
   }
@@ -121,6 +121,8 @@ class JsonRpcExecutionLayerManager(
               payloadStatusResponse,
           )
         }
+        log.debug("Unsetting payload id, after importing blockNumber={}", executionPayload.blockNumber)
+        payloadId = null // Not necessary, but it helps to reinforce the order of calls
         payloadStatusResponse.payload.asInternalExecutionPayload().toDomain()
       } else {
         throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatusResponse.errorMessage)

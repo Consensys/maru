@@ -161,6 +161,8 @@ class CliqueToPosTest {
     nodeName: String,
     engineApiConfig: ApiEndpointConfig,
   ) {
+    // To fail right away in case switch failed in the first place
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client)
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
     restartNodeFromScratch(nodeName, nodeEthereumClient)
     log.info("Container $nodeName restarted")

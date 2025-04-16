@@ -239,7 +239,9 @@ class ExecutionPayloadValidator(
       BlockValidator.require(
         newPayloadStatus.status.isValid(),
       ) {
-        "Execution payload validation failed: ${newPayloadStatus.validationError}"
+        "Execution payload validation failed: ${newPayloadStatus.validationError}," +
+          " status=${newPayloadStatus.status}," +
+          " latestValidHash=${newPayloadStatus.latestValidHash}"
       }
     }
 }
@@ -251,7 +253,9 @@ object EmptyBlockValidator : BlockValidator {
         block.beaconBlockBody.executionPayload.transactions
           .isNotEmpty(),
       ) {
-        "Block number=${block.beaconBlockHeader.number} hash=${block.beaconBlockHeader.hash.encodeHex()} is empty!"
+        "Block number=${block.beaconBlockHeader.number} " +
+          "executionPayloadBlockNumber=${block.beaconBlockBody.executionPayload.blockNumber} " +
+          "hash=${block.beaconBlockHeader.hash.encodeHex()} is empty!"
       },
     )
 }
