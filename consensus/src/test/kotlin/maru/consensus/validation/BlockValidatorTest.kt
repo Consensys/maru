@@ -487,7 +487,7 @@ class BlockValidatorTest {
         ).get()
     val expectedResult =
       error(
-        "Execution payload validation failed: Invalid execution payload",
+        "Execution payload validation failed: Invalid execution payload, status=INVALID, latestValidHash=null",
       )
     assertThat(result).isEqualTo(expectedResult)
   }
@@ -519,6 +519,7 @@ class BlockValidatorTest {
     val expectedResult =
       error(
         "Block number=${validNewBlock.beaconBlockHeader.number} " +
+          "executionPayloadBlockNumber=${validNewBlock.beaconBlockBody.executionPayload.blockNumber} " +
           "hash=${validNewBlock.beaconBlockHeader.hash.encodeHex()} is empty!",
       )
     assertThat(result).isEqualTo(expectedResult)
