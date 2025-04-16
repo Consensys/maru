@@ -18,10 +18,10 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
-import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
+import maru.consensus.qbft.ProposerSelector
+import maru.consensus.qbft.toConsensusRoundIdentifier
 import maru.consensus.state.StateTransitionImpl
-import maru.consensus.toConsensusRoundIdentifier
 import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader

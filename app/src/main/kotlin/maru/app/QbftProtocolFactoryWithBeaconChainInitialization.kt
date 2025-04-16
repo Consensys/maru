@@ -15,6 +15,7 @@
  */
 package maru.app
 
+import java.time.Clock
 import java.time.Duration
 import maru.config.MaruConfig
 import maru.consensus.ElFork
@@ -22,14 +23,14 @@ import maru.consensus.ForkSpec
 import maru.consensus.MetadataProvider
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
-import maru.consensus.ProposerSelector
-import maru.consensus.ProposerSelectorImpl
 import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.blockImport.BlockBuildingBeaconBlockImporter
 import maru.consensus.blockImport.FollowerBeaconBlockImporter
 import maru.consensus.blockImport.SealedBeaconBlockImporter
 import maru.consensus.blockImport.TransactionalSealedBeaconBlockImporter
+import maru.consensus.qbft.ProposerSelector
+import maru.consensus.qbft.ProposerSelectorImpl
 import maru.consensus.qbft.QbftConsensusConfig
 import maru.consensus.qbft.QbftProtocolFactory
 import maru.consensus.state.FinalizationState
@@ -71,6 +72,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val executionLayerClient: Web3j,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: NewBlockHandler,
+  private val clock: Clock,
 ) : ProtocolFactory {
   init {
     require(maruConfig.validator != null) { "The validator is required when QBFT protocol is instantiated!" }
@@ -204,6 +206,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         stateTransition = stateTransition,
         proposerSelector = proposerSelector,
         validatorProvider = validatorProvider,
+        clock = clock,
       )
     return qbftProtocolFactory.create(forkSpec)
   }

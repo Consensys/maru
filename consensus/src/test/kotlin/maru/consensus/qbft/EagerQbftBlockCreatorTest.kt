@@ -149,6 +149,7 @@ class EagerQbftBlockCreatorTest {
           ),
         metadataProvider = { BlockMetadata(0UL, genesisBlockHash, genesisBlock.timestamp.toLong()) },
         nextBlockTimestampProvider = nextBlockTimestampProvider,
+        clock = clock,
       )
     // Create a non-empty proposal
     val rejectedBlockTimestamp = clock.millis() / 1000

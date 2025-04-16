@@ -13,16 +13,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.qbft
 
 import kotlin.collections.map
 import maru.core.BeaconState
 import maru.core.Validator
 import org.apache.logging.log4j.LogManager
-import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.BftProposerSelector
-import org.hyperledger.besu.datatypes.Address
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface ProposerSelector {
@@ -39,14 +37,17 @@ object ProposerSelectorImpl : ProposerSelector {
     parentBeaconState: BeaconState,
     roundIdentifier: ConsensusRoundIdentifier,
   ): SafeFuture<Validator> {
-    log.trace("Get proposer for $roundIdentifier")
-    val prevBlockProposer = Address.wrap(Bytes.wrap(parentBeaconState.latestBeaconBlockHeader.proposer.address))
+    log.trace("Get proposer for {}", roundIdentifier)
+    val prevBlockProposerAddress = parentBeaconState.latestBeaconBlockHeader.proposer.toAddress()
     val validatorsForRound =
-      parentBeaconState.validators.map {
-        Address.wrap(Bytes.wrap(it.address))
-      }
+      parentBeaconState.validators.map { it.toAddress() }
     val proposer =
-      BftProposerSelector.selectProposerForRound(roundIdentifier, prevBlockProposer, validatorsForRound, true)
+      BftProposerSelector.selectProposerForRound(
+        /* roundIdentifier = */ roundIdentifier,
+        /* prevBlockProposer = */ prevBlockProposerAddress,
+        /* validatorsForRound = */ validatorsForRound,
+        /* changeEachBlock = */ true,
+      )
     return SafeFuture.completedFuture(Validator(proposer.toArray()))
   }
 }

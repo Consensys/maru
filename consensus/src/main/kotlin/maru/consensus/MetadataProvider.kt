@@ -17,6 +17,9 @@ package maru.consensus
 
 import java.util.concurrent.atomic.AtomicReference
 import maru.core.BeaconBlock
+import org.apache.tuweni.bytes.Bytes32
+import org.web3j.protocol.Web3j
+import org.web3j.protocol.core.DefaultBlockParameter
 
 fun interface MetadataProvider {
   fun getLatestBlockMetadata(): BlockMetadata
@@ -68,5 +71,24 @@ class LatestBlockMetadataCache(
 
   fun updateLatestBlockMetadata(blockMetadata: BlockMetadata) {
     latestBlockMetadataCache.set(blockMetadata)
+  }
+}
+
+class Web3jMetadataProvider(
+  private val web3jEthereumApiClient: Web3j,
+) {
+  fun getLatestBlockMetadata(): BlockMetadata {
+    val block =
+      web3jEthereumApiClient
+        .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false)
+        .send()
+        .block
+    return BlockMetadata(
+      block.number
+        .toLong()
+        .toULong(),
+      Bytes32.fromHexString(block.hash).toArray(),
+      block.timestamp.toLong(),
+    )
   }
 }

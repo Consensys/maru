@@ -23,7 +23,6 @@ import maru.consensus.ForkSpec
 import maru.consensus.MetadataProvider
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
-import maru.consensus.ProposerSelector
 import maru.consensus.ProtocolFactory
 import maru.consensus.ValidatorProvider
 import maru.consensus.blockImport.SealedBeaconBlockImporter
@@ -91,6 +90,7 @@ class QbftProtocolFactory(
   private val stateTransition: StateTransition,
   private val proposerSelector: ProposerSelector,
   private val validatorProvider: ValidatorProvider,
+  private val clock: Clock,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(maruConfig.validator != null) {
@@ -113,6 +113,7 @@ class QbftProtocolFactory(
     val besuValidatorProvider = QbftValidatorProviderAdapter(validatorProvider)
     val qbftProposerSelector = ProposerSelectorAdapter(beaconChain, proposerSelector)
     val validatorMulticaster = NoopValidatorMulticaster()
+
     val qbftBlockCreatorFactory =
       QbftBlockCreatorFactory(
         manager = executionLayerManager,
@@ -127,11 +128,11 @@ class QbftProtocolFactory(
           ),
         metadataProvider = metadataProvider,
         nextBlockTimestampProvider = nextBlockTimestampProvider,
+        clock = clock,
       )
 
     val besuForksSchedule = ForksScheduleAdapter(forkSpec, maruConfig.qbftOptions)
 
-    val clock = Clock.systemUTC()
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
     val bftEventQueue = BftEventQueue(maruConfig.qbftOptions.messageQueueLimit)
     val roundTimer =

@@ -16,6 +16,7 @@
 package maru.executionlayer.manager
 
 import maru.core.ExecutionPayload
+import maru.extensions.encodeHex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 data class ForkChoiceUpdatedResult(
@@ -70,6 +71,10 @@ data class PayloadAttributes(
     result = 31 * result + suggestedFeeRecipient.contentHashCode()
     return result
   }
+
+  override fun toString(): String =
+    "PayloadAttributes(timestamp=$timestamp, prevRandao=${prevRandao.encodeHex()}, " +
+      "suggestedFeeRecipient=${suggestedFeeRecipient.encodeHex()})"
 }
 
 interface ExecutionLayerManager {

@@ -60,11 +60,7 @@ class MaruApp(
 
   private val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
   private val lastBlockMetadataCache: LatestBlockMetadataCache =
-    LatestBlockMetadataCache(
-      asyncMetadataProvider
-        .getLatestBlockMetadata()
-        .get(),
-    )
+    LatestBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
   private val metadataProviderCacheUpdater: NewBlockHandler =
     NewBlockHandler { beaconBlock ->
       val blockMetadata = BlockMetadata.fromBeaconBlock(beaconBlock)
@@ -111,6 +107,7 @@ class MaruApp(
                 executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
                 nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
                 newBlockHandler = qbftConsensusNewBlockHandler,
+                clock = clock,
               ),
           ),
         metadataProvider = lastBlockMetadataCache,

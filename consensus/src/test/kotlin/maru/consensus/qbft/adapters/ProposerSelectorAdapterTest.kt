@@ -16,8 +16,8 @@
 package maru.consensus.qbft.adapters
 
 import kotlin.test.Test
-import maru.consensus.ProposerSelectorImpl
-import maru.consensus.toAddress
+import maru.consensus.qbft.ProposerSelectorImpl
+import maru.consensus.qbft.toAddress
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import org.assertj.core.api.Assertions.assertThat

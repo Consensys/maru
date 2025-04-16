@@ -15,12 +15,12 @@
  */
 package maru.consensus.qbft.adapters
 
-import maru.consensus.toAddress
+import maru.consensus.qbft.toAddress
 import maru.database.BeaconChain
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.datatypes.Address
-import maru.consensus.ProposerSelector as MaruProposerSelector
+import maru.consensus.qbft.ProposerSelector as MaruProposerSelector
 
 class ProposerSelectorAdapter(
   private val beaconChain: BeaconChain,

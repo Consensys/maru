@@ -15,6 +15,7 @@
  */
 package maru.consensus.qbft
 
+import java.time.Clock
 import kotlin.time.Duration
 import maru.consensus.MetadataProvider
 import maru.consensus.NextBlockTimestampProvider
@@ -43,6 +44,7 @@ class EagerQbftBlockCreator(
   private val metadataProvider: MetadataProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val config: Config,
+  private val clock: Clock,
 ) : QbftBlockCreator {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
@@ -65,7 +67,7 @@ class EagerQbftBlockCreator(
         feeRecipient = blockBuilderIdentity.address,
       ).get()
     val sleepTime = computeSleepDurationMilliseconds(headerTimeStampSeconds)
-    log.debug("Block building has started, sleeping for $sleepTime milliseconds")
+    log.debug("Block building has started, sleeping for {} milliseconds", sleepTime)
     Thread.sleep(sleepTime)
     log.debug("Block building has finished, time to collect block building results")
     return delegate.createBlock(headerTimeStampSeconds, parentHeader)
@@ -78,6 +80,6 @@ class EagerQbftBlockCreator(
   ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
 
   private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long =
-    (nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(headerTimeStampSeconds) - headerTimeStampSeconds) * 1000 -
+    (nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(headerTimeStampSeconds)) * 1000 - clock.millis() -
       config.communicationMargin.inWholeMilliseconds
 }

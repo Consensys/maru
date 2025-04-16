@@ -15,6 +15,7 @@
  */
 package maru.consensus
 
+import maru.consensus.qbft.ProposerSelectorImpl
 import maru.core.BeaconState
 import maru.core.Validator
 import maru.core.ext.DataGenerators
