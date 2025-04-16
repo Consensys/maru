@@ -25,77 +25,153 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class HopliteFriendlinessTest {
+  private val emptyFollowersConfig =
+    """
+    [sot-eth-endpoint]
+    endpoint = "http://localhost:8545"
+
+    [qbft-options]
+    communication-margin=100m
+    data-path="/some/path"
+
+    [p2p-config]
+    port = 3322
+
+    [validator]
+    private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+    jwt-secret-path = "/secret/path"
+    min-time-between-get-payload-attempts=800m
+    el-client-engine-api-endpoint = "http://localhost:8555"
+    """.trimIndent()
+  private val rawConfig =
+    """
+    $emptyFollowersConfig
+
+    [follower-engine-apis]
+    follower1 = { endpoint = "http://localhost:1234", jwt-secret-path = "/secret/path" }
+    follower2 = { endpoint = "http://localhost:4321" }
+    """.trimIndent()
+
   @Test
   fun appConfigFileIsParseable() {
     val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        """
-        [execution-client]
-        ethereum-json-rpc-endpoint = "http://localhost:8545"
-        engine-api-json-rpc-endpoint = "http://localhost:8555"
-
-        [qbft-options]
-        communication-margin=100m
-        data-path="/some/path"
-
-        [p2p-config]
-        port = 3322
-
-        [validator]
-        validator-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
-        """.trimIndent(),
-      )
+      Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          executionClient =
-            ExecutionClientConfig(
-              ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
-              engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
+          sotEthEndpoint =
+            ApiEndpointDtoToml(
+              endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
           validator =
             ValidatorDtoToml(
-              validatorKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
+              elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
+              privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
+              jwtSecretPath = "/secret/path",
+              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+            ),
+          followerEngineApis =
+            mapOf(
+              "follower1" to
+                ApiEndpointDtoToml(
+                  URI.create("http://localhost:1234").toURL(),
+                  jwtSecretPath =
+                    "/secret/path",
+                ),
+              "follower2" to ApiEndpointDtoToml(URI.create("http://localhost:4321").toURL()),
             ),
         ),
       )
   }
 
   @Test
-  fun appConfigFileIsConvertableToDomain() {
+  fun supportsEmptyFollowers() {
     val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        """
-        [execution-client]
-        ethereum-json-rpc-endpoint = "http://localhost:8545"
-        engine-api-json-rpc-endpoint = "http://localhost:8555"
-
-        [qbft-options]
-        communication-margin=100m
-        data-path="/some/path"
-
-        [p2p-config]
-        port = 3322
-
-        [validator]
-        validator-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
-        """.trimIndent(),
+      Utils.parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
+    assertThat(config)
+      .isEqualTo(
+        MaruConfigDtoToml(
+          sotEthEndpoint =
+            ApiEndpointDtoToml(
+              endpoint = URI.create("http://localhost:8545").toURL(),
+            ),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
+          p2pConfig = P2P(port = 3322u),
+          validator =
+            ValidatorDtoToml(
+              elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
+              privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
+              jwtSecretPath = "/secret/path",
+              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+            ),
+          followerEngineApis = null,
+        ),
       )
+  }
+
+  @Test
+  fun appConfigFileIsConvertableToDomain() {
+    val config = Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
-          executionClientConfig =
-            ExecutionClientConfig(
-              engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
-              ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
+          sotNode =
+            ApiEndpointConfig(
+              endpoint = URI.create("http://localhost:8545").toURL(),
+            ),
+          p2pConfig = P2P(port = 3322u),
+          validator =
+            Validator(
+              client =
+                ValidatorClientConfig(
+                  engineApiClientConfig = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
+                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+                ),
+              privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
+            ),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
+          followers =
+            FollowersConfig(
+              mapOf(
+                "follower1" to ApiEndpointConfig(URI.create("http://localhost:1234").toURL(), "/secret/path"),
+                "follower2" to ApiEndpointConfig(URI.create("http://localhost:4321").toURL()),
+              ),
+            ),
+        ),
+      )
+  }
+
+  @Test
+  fun emptyFollowersAreConvertableToDomain() {
+    val config =
+      Utils.parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
+    assertThat(config.domainFriendly())
+      .isEqualTo(
+        MaruConfig(
+          sotNode =
+            ApiEndpointConfig(
+              endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
           validator =
             Validator(
-              validatorKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
+              client =
+                ValidatorClientConfig(
+                  engineApiClientConfig =
+                    ApiEndpointConfig(
+                      URI.create("http://localhost:8555").toURL(),
+                      "/secret/path",
+                    ),
+                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+                ),
+              privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
+            ),
+          followers =
+            FollowersConfig(
+              emptyMap(),
             ),
         ),
       )

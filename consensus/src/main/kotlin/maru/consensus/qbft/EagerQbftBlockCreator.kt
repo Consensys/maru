@@ -15,8 +15,9 @@
  */
 package maru.consensus.qbft
 
-import java.time.Clock
 import kotlin.time.Duration
+import maru.consensus.MetadataProvider
+import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockHeader
@@ -39,13 +40,13 @@ class EagerQbftBlockCreator(
   private val delegate: QbftBlockCreator,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
+  private val metadataProvider: MetadataProvider,
+  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val config: Config,
-  private val clock: Clock,
 ) : QbftBlockCreator {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   data class Config(
-    val blockTimeSeconds: Int,
     val communicationMargin: Duration,
   )
 
@@ -57,7 +58,7 @@ class EagerQbftBlockCreator(
     val finalizedState = finalizationStateProvider(beaconBlockHeader)
     manager
       .setHeadAndStartBlockBuilding(
-        headHash = manager.latestBlockMetadata().blockHash,
+        headHash = metadataProvider.getLatestBlockMetadata().blockHash,
         safeHash = finalizedState.safeBlockHash,
         finalizedHash = finalizedState.finalizedBlockHash,
         nextBlockTimestamp = headerTimeStampSeconds,
@@ -76,9 +77,7 @@ class EagerQbftBlockCreator(
     commitSeals: MutableCollection<SECPSignature>,
   ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
 
-  // TODO: replace this logic with NextBlockTimestampProvider once PR #76 is merged
-  // Target next whole second or skip a round. This helps block time consistency
   private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long =
-    (headerTimeStampSeconds + config.blockTimeSeconds) * 1000 - clock.millis() -
+    (nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(headerTimeStampSeconds) - headerTimeStampSeconds) * 1000 -
       config.communicationMargin.inWholeMilliseconds
 }

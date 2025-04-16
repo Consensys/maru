@@ -13,8 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.executionlayer.extensions
+package maru.crypto
 
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
+import maru.core.Validator
+import org.apache.tuweni.bytes.Bytes32
+import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
+import org.hyperledger.besu.ethereum.core.Util
 
-fun PayloadStatusV1.hasValidExecutionPayload() = this.asInternalExecutionPayload().hasValidStatus()
+object Crypto {
+  fun privateKeyToValidator(rawPrivateKey: ByteArray): Validator {
+    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(rawPrivateKey))
+    val keyPair = signatureAlgorithm.createKeyPair(privateKey)
+
+    return Validator(Util.publicKeyToAddress(keyPair.publicKey).toArray())
+  }
+}

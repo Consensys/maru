@@ -13,11 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft
+package maru.consensus.blockimport
 
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import maru.consensus.qbft.adapters.QbftSealedBlockAdapter
+import maru.consensus.blockImport.SealedBeaconBlockImporter
+import maru.consensus.blockImport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.state.StateTransition
 import maru.core.BeaconBlock
 import maru.core.BeaconState
@@ -35,7 +35,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class QbftBlockImporterTest {
+class TransactionalSealedBeaconBlockImporterTest {
   private var executionLayerManager: ExecutionLayerManager = mock()
 
   private val stateTransition: StateTransition = mock()
@@ -44,7 +44,7 @@ class QbftBlockImporterTest {
   private var beaconBlockImporterResponse =
     SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
 
-  private lateinit var qbftBlockImporter: QbftBlockImportCoordinator
+  private lateinit var qbftBlockImporter: SealedBeaconBlockImporter
   private lateinit var initialBeaconState: BeaconState
 
   @BeforeEach
@@ -52,10 +52,15 @@ class QbftBlockImporterTest {
     initialBeaconState = DataGenerators.randomBeaconState(2UL)
     beaconChain = InMemoryBeaconChain(initialBeaconState)
     qbftBlockImporter =
-      QbftBlockImportCoordinator(
+      TransactionalSealedBeaconBlockImporter(
         beaconChain = beaconChain,
         stateTransition = stateTransition,
-        beaconBlockImporter = { beaconState: BeaconState, beaconBlock: BeaconBlock -> beaconBlockImporterResponse },
+        beaconBlockImporter = {
+          _: BeaconState,
+          _: BeaconBlock,
+          ->
+          beaconBlockImporterResponse
+        },
       )
   }
 
@@ -67,7 +72,7 @@ class QbftBlockImporterTest {
 
   @Test
   fun `importBlock returns true on successful import`() {
-    val qbftBlock = QbftSealedBlockAdapter(DataGenerators.randomSealedBeaconBlock(2UL))
+    val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(2UL)
     val beaconState = DataGenerators.randomBeaconState(2UL)
 
     whenever(stateTransition.processBlock(any())).thenReturn(SafeFuture.completedFuture(beaconState))
@@ -78,33 +83,42 @@ class QbftBlockImporterTest {
       ),
     )
 
-    val result = qbftBlockImporter.importBlock(qbftBlock)
-    assertTrue(result)
+    val result = qbftBlockImporter.importBlock(sealedBeaconBlock).get()
+    assertTrue(result.payloadStatus.status.isValid())
     assertThat(beaconChain.getLatestBeaconState()).isEqualTo(beaconState)
   }
 
   @Test
-  fun `importBlock rolls the DB update back on state transition failure`() {
-    val qbftBlock = QbftSealedBlockAdapter(DataGenerators.randomSealedBeaconBlock(2UL))
-    whenever(stateTransition.processBlock(any())).thenThrow(RuntimeException("Test exception"))
+  fun `importBlock rolls the DB update back on state transition failure and returns failed future`() {
+    val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(2UL)
+    val expectedException = RuntimeException("Test exception")
+    whenever(stateTransition.processBlock(any())).thenThrow(expectedException)
     val stateBeforeTransition = beaconChain.getLatestBeaconState()
 
-    val result = qbftBlockImporter.importBlock(qbftBlock)
+    val result = qbftBlockImporter.importBlock(sealedBeaconBlock)
 
-    assertFalse(result)
+    assertThat(result.exceptionNow()).isEqualTo(expectedException)
     val stateAfterTransition = beaconChain.getLatestBeaconState()
     assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
   }
 
   @Test
   fun `importBlock rolls the DB update back on block import`() {
-    val qbftBlock = QbftSealedBlockAdapter(DataGenerators.randomSealedBeaconBlock(2UL))
-    beaconBlockImporterResponse = SafeFuture.failedFuture(RuntimeException("Test exception"))
+    val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(2UL)
+    whenever(stateTransition.processBlock(any())).thenReturn(
+      SafeFuture.completedFuture(
+        DataGenerators.randomBeaconState(
+          2UL,
+        ),
+      ),
+    )
+    val expectedException = RuntimeException("Test exception")
+    beaconBlockImporterResponse = SafeFuture.failedFuture(expectedException)
     val stateBeforeTransition = beaconChain.getLatestBeaconState()
 
-    val result = qbftBlockImporter.importBlock(qbftBlock)
+    val result = qbftBlockImporter.importBlock(sealedBeaconBlock)
 
-    assertFalse(result)
+    assertThat(result.exceptionNow()).isEqualTo(expectedException)
     val stateAfterTransition = beaconChain.getLatestBeaconState()
     assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
   }

@@ -16,8 +16,12 @@
 package maru.mappers
 
 import java.math.BigInteger
+import kotlin.jvm.optionals.getOrNull
 import maru.core.ExecutionPayload
+import maru.executionlayer.manager.ExecutionPayloadStatus
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.PayloadAttributes
+import maru.executionlayer.manager.PayloadStatus
 import maru.extensions.fromHexToByteArray
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
@@ -35,6 +39,8 @@ import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
+import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult as TekuForkChoiceUpdatedResult
+import tech.pegasys.teku.spec.executionlayer.PayloadStatus as TekuPayloadStatus
 
 object Mappers {
   private fun recIdFromV(v: BigInteger): Pair<Byte, BigInteger?> {
@@ -180,4 +186,21 @@ object Mappers {
       Bytes32.wrap(this.prevRandao),
       Bytes20(Bytes.wrap(this.suggestedFeeRecipient)),
     )
+
+  fun TekuPayloadStatus.toDomain(): PayloadStatus =
+    PayloadStatus(
+      ExecutionPayloadStatus.valueOf(this.status.getOrNull().toString()), // TODO: Fix and test
+      this.latestValidHash.getOrNull()?.toArray(),
+      validationError.getOrNull(),
+    )
+
+  fun TekuForkChoiceUpdatedResult.toDomain(): ForkChoiceUpdatedResult {
+    val payload = this.asInternalExecutionPayload()
+    val parsedPayloadId =
+      payload.payloadId
+        .getOrNull()
+        ?.wrappedBytes
+        ?.toArray()
+    return ForkChoiceUpdatedResult(payload.payloadStatus.toDomain(), parsedPayloadId)
+  }
 }

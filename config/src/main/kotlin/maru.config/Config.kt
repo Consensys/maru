@@ -20,9 +20,18 @@ import java.nio.file.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-data class ExecutionClientConfig(
-  val ethereumJsonRpcEndpoint: URL,
-  val engineApiJsonRpcEndpoint: URL,
+data class ApiEndpointConfig(
+  val endpoint: URL,
+  val jwtSecretPath: String? = null,
+)
+
+data class ValidatorClientConfig(
+  val engineApiClientConfig: ApiEndpointConfig,
+  val minTimeBetweenGetPayloadAttempts: Duration,
+)
+
+data class FollowersConfig(
+  val followers: Map<String, ApiEndpointConfig>,
 )
 
 data class P2P(
@@ -30,10 +39,11 @@ data class P2P(
 )
 
 data class Validator(
-  val validatorKey: ByteArray,
+  val privateKey: ByteArray,
+  val client: ValidatorClientConfig,
 ) {
   init {
-    require(validatorKey.size == 32) {
+    require(privateKey.size == 32) {
       "validator key must be 32 bytes long"
     }
   }
@@ -44,10 +54,10 @@ data class Validator(
 
     other as Validator
 
-    return validatorKey.contentEquals(other.validatorKey)
+    return privateKey.contentEquals(other.privateKey)
   }
 
-  override fun hashCode(): Int = validatorKey.contentHashCode()
+  override fun hashCode(): Int = privateKey.contentHashCode()
 }
 
 data class QbftOptions(
@@ -62,28 +72,9 @@ data class QbftOptions(
 )
 
 data class MaruConfig(
-  val executionClientConfig: ExecutionClientConfig,
+  val sotNode: ApiEndpointConfig,
   val qbftOptions: QbftOptions,
   val p2pConfig: P2P?,
   val validator: Validator?,
-) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as MaruConfig
-
-    if (executionClientConfig != other.executionClientConfig) return false
-    if (p2pConfig != other.p2pConfig) return false
-    if (validator != other.validator) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = executionClientConfig.hashCode()
-    result = 31 * result + (p2pConfig?.hashCode() ?: 0)
-    result = 31 * result + (validator?.hashCode() ?: 0)
-    return result
-  }
-}
+  val followers: FollowersConfig,
+)

@@ -15,7 +15,8 @@
  */
 package maru.consensus.qbft
 
-import java.time.Clock
+import maru.consensus.MetadataProvider
+import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockHeader
@@ -37,7 +38,8 @@ class QbftBlockCreatorFactory(
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
-  private val clock: Clock,
+  private val metadataProvider: MetadataProvider,
+  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
 ) : QbftBlockCreatorFactory {
   override fun create(round: Int): BesuQbftBlockCreator {
     val delayedQbftBlockCreator =
@@ -53,8 +55,9 @@ class QbftBlockCreatorFactory(
       delegate = delayedQbftBlockCreator,
       finalizationStateProvider = finalizationStateProvider,
       blockBuilderIdentity = blockBuilderIdentity,
+      metadataProvider = metadataProvider,
+      nextBlockTimestampProvider = nextBlockTimestampProvider,
       config = eagerQbftBlockCreatorConfig,
-      clock = clock,
     )
   }
 }

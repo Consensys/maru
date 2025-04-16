@@ -34,9 +34,8 @@ object MaruFactory {
     dataPath: String,
   ): String =
     """
-    [execution-client]
-    ethereum-json-rpc-endpoint = "$ethereumJsonRpcUrl"
-    engine-api-json-rpc-endpoint = "$engineApiRpc"
+    [sot-eth-endpoint]
+    endpoint = "$ethereumJsonRpcUrl"
 
     [qbft-options]
     communication-margin=200m
@@ -46,7 +45,9 @@ object MaruFactory {
     port = 3322
 
     [validator]
-    validator-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+    private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+    min-time-between-get-payload-attempts=800m
+    el-client-engine-api-endpoint = "$engineApiRpc"
     """.trimIndent()
 
   private fun pickConsensusConfig(elFork: ElFork): String =

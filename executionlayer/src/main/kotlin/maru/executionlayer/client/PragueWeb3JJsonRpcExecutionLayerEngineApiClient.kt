@@ -30,9 +30,9 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClie
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
-class PragueWeb3jJsonRpcExecutionLayerClient(
+class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
   private val web3jEngineClient: Web3JExecutionEngineClient,
-) : ExecutionLayerClient {
+) : ExecutionLayerEngineApiClient {
   override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
     web3jEngineClient.getPayloadV4(payloadId).thenApply {
       when {
@@ -51,7 +51,11 @@ class PragueWeb3jJsonRpcExecutionLayerClient(
     web3jEngineClient
       .newPayloadV4(executionPayload.toExecutionPayloadV3(), emptyList(), Bytes32.ZERO, emptyList())
       .thenApply {
-        Response.fromPayloadReceivedAsJson(it.payload)
+        if (it.payload != null) {
+          Response.fromPayloadReceivedAsJson(it.payload)
+        } else {
+          Response.fromErrorMessage(it.errorMessage)
+        }
       }
 
   override fun forkChoiceUpdate(

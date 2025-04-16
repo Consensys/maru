@@ -13,9 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.executionlayer.client
+package maru.consensus
 
-import maru.executionlayer.manager.BlockMetadata
 import org.apache.tuweni.bytes.Bytes32
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -23,8 +22,8 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class Web3jMetadataProvider(
   private val web3jEthereumApiClient: Web3j,
-) : MetadataProvider {
-  override fun getLatestBlockMetadata(): SafeFuture<BlockMetadata> =
+) {
+  fun getLatestBlockMetadata(): SafeFuture<BlockMetadata> =
     SafeFuture
       .of(
         web3jEthereumApiClient

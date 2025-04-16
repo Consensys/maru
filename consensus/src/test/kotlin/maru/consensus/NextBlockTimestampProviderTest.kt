@@ -20,7 +20,6 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
 import maru.consensus.qbft.QbftConsensusConfig
-import maru.executionlayer.manager.BlockMetadata
 import org.assertj.core.api.Assertions.assertThat
 
 class NextBlockTimestampProviderTest {
@@ -31,7 +30,7 @@ class NextBlockTimestampProviderTest {
         ForkSpec(10, 2, QbftConsensusConfig(ByteArray(20), ElFork.Prague)),
       ),
     )
-  private val baseLastBlockMetadata = BlockMetadata(1UL, ByteArray(32), 9)
+  private val baseLastBlockTimestamp = 9L
 
   private fun createCLockForTimestamp(timestamp: Long): Clock =
     Clock.fixed(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC"))
@@ -44,7 +43,7 @@ class NextBlockTimestampProviderTest {
         forksSchedule,
       )
 
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
+    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockTimestamp)
 
     assertThat(result).isEqualTo(10L)
   }
@@ -57,7 +56,7 @@ class NextBlockTimestampProviderTest {
         forksSchedule,
       )
 
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
+    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockTimestamp)
 
     assertThat(result).isEqualTo(12L)
   }
@@ -69,9 +68,7 @@ class NextBlockTimestampProviderTest {
         createCLockForTimestamp(11123),
         forksSchedule,
       )
-
-    val lastBlockMetadata = baseLastBlockMetadata.copy(unixTimestampSeconds = 10L)
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(lastBlockMetadata)
+    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(10L)
 
     assertThat(result).isEqualTo(12L)
   }

@@ -29,8 +29,7 @@ import maru.core.BeaconBlockHeader
 import maru.core.HashUtil
 import maru.core.Validator
 import maru.database.BeaconChain
-import maru.executionlayer.client.ExecutionLayerClient
-import maru.executionlayer.extensions.hasValidExecutionPayload
+import maru.executionlayer.manager.ExecutionLayerManager
 import maru.extensions.encodeHex
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
@@ -153,15 +152,13 @@ class StateRootValidator(
       .thenApply { postState ->
         val stateRootHeader =
           postState.latestBeaconBlockHeader.copy(
-            stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
+            stateRoot = BeaconBlockHeader.EMPTY_HASH,
           )
         val expectedStateRoot = HashUtil.stateRoot(postState.copy(latestBeaconBlockHeader = stateRootHeader))
         BlockValidator.require(block.beaconBlockHeader.stateRoot.contentEquals(expectedStateRoot)) {
           "State root in header does not match state root stateRoot=${block.beaconBlockHeader.stateRoot.encodeHex()} " +
             "expectedStateRoot=${expectedStateRoot.encodeHex()}"
         }
-      }.exceptionally {
-        error("State root validation failed: ${it.message}")
       }
 }
 
@@ -235,14 +232,14 @@ class PrevCommitSealValidator(
 }
 
 class ExecutionPayloadValidator(
-  private val executionLayerClient: ExecutionLayerClient,
+  private val executionLayerManager: ExecutionLayerManager,
 ) : BlockValidator {
   override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    executionLayerClient.newPayload(block.beaconBlockBody.executionPayload).thenApply { newPayloadResponse ->
+    executionLayerManager.importPayload(block.beaconBlockBody.executionPayload).thenApply { newPayloadStatus ->
       BlockValidator.require(
-        newPayloadResponse.isSuccess && newPayloadResponse.payload.hasValidExecutionPayload(),
+        newPayloadStatus.status.isValid(),
       ) {
-        "Execution payload validation failed: ${newPayloadResponse.errorMessage}"
+        "Execution payload validation failed: ${newPayloadStatus.validationError}"
       }
     }
 }

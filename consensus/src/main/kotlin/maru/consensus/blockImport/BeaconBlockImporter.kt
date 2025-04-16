@@ -13,8 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft
+package maru.consensus.blockImport
 
+import maru.consensus.NewBlockHandler
+import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
@@ -34,14 +36,52 @@ fun interface BeaconBlockImporter {
   ): SafeFuture<ForkChoiceUpdatedResult>
 }
 
-class BeaconBlockImporterImpl(
+class FollowerBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
-  private val nextBlockTimestampProvider: (ConsensusRoundIdentifier) -> Long,
+) : BeaconBlockImporter,
+  NewBlockHandler {
+  private val log = LogManager.getLogger(this.javaClass)
+
+  private fun importBlockInternal(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
+    val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
+    return executionLayerManager
+      .setHead(
+        headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
+        safeHash = finalizationState.safeBlockHash,
+        finalizedHash = finalizationState.finalizedBlockHash,
+      )
+  }
+
+  override fun importBlock(
+    beaconState: BeaconState,
+    beaconBlock: BeaconBlock,
+  ): SafeFuture<ForkChoiceUpdatedResult> = importBlockInternal(beaconBlock)
+
+  override fun handleNewBlock(beaconBlock: BeaconBlock) {
+    val executionPayload = beaconBlock.beaconBlockBody.executionPayload
+    try {
+      executionLayerManager.importPayload(executionPayload).get()
+    } catch (e: Exception) {
+      log.error(
+        "Error importing execution payload for blockNumber=${executionPayload.blockNumber}." +
+          " Trying FCU anyway",
+        e,
+      )
+    }
+    importBlockInternal(beaconBlock = beaconBlock)
+  }
+}
+
+class BlockBuildingBeaconBlockImporter(
+  private val followerBeaconBlockImporter: FollowerBeaconBlockImporter,
+  private val executionLayerManager: ExecutionLayerManager,
+  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
+  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
-  private val blockBuilderIdentity: Validator,
+  private val blockBuilderIdentity: Validator?,
 ) : BeaconBlockImporter {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this::javaClass.name)
 
   override fun importBlock(
     beaconState: BeaconState,
@@ -51,13 +91,21 @@ class BeaconBlockImporterImpl(
     val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
     val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
     return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier)) {
-      val nextBlockTimestamp = nextBlockTimestampProvider(nextBlocksRoundIdentifier)
+      val nextBlockTimestamp =
+        nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(
+          beaconState
+            .latestBeaconBlockHeader.timestamp
+            .toLong(),
+        )
       log.debug(
         "Importing blockHeader={} with timestamp={} and starting building of next block with timestamp={}",
         beaconBlockHeader,
         beaconBlock.beaconBlockBody.executionPayload.timestamp,
         nextBlockTimestamp,
       )
+      require(blockBuilderIdentity != null) {
+        "Block builder identity can't be null if a block can be built by this node!"
+      }
       executionLayerManager.setHeadAndStartBlockBuilding(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
         safeHash = finalizationState.safeBlockHash,
@@ -67,12 +115,7 @@ class BeaconBlockImporterImpl(
       )
     } else {
       log.debug("Importing blockHeader={}", beaconBlockHeader)
-      executionLayerManager
-        .setHead(
-          headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
-          safeHash = finalizationState.safeBlockHash,
-          finalizedHash = finalizationState.finalizedBlockHash,
-        )
+      followerBeaconBlockImporter.importBlock(beaconState, beaconBlock)
     }
   }
 }

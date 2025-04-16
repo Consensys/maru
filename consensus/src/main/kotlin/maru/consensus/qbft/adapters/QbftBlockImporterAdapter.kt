@@ -13,11 +13,9 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft
+package maru.consensus.qbft.adapters
 
-import maru.consensus.qbft.adapters.toSealedBeaconBlock
-import maru.consensus.state.StateTransition
-import maru.database.BeaconChain
+import maru.consensus.blockImport.SealedBeaconBlockImporter
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
@@ -29,32 +27,19 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
  * 2. new block import into an EL node
  * The import is transactional, I.e. all or nothing approach
  */
-class QbftBlockImportCoordinator(
-  private val beaconChain: BeaconChain,
-  private val stateTransition: StateTransition,
-  private val beaconBlockImporter: BeaconBlockImporter,
+class QbftBlockImporterAdapter(
+  private val sealedBeaconBlockImporter: SealedBeaconBlockImporter,
 ) : QbftBlockImporter {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this::javaClass)
 
   override fun importBlock(qbftBlock: QbftBlock): Boolean {
     val sealedBeaconBlock = qbftBlock.toSealedBeaconBlock()
-    val beaconBlock = sealedBeaconBlock.beaconBlock
-
-    beaconChain.newUpdater().use { updater ->
-      try {
-        val resultingState = stateTransition.processBlock(beaconBlock).get()
-        updater
-          .putBeaconState(resultingState)
-          .putSealedBeaconBlock(sealedBeaconBlock)
-        beaconBlockImporter.importBlock(resultingState, beaconBlock).get()
-      } catch (e: Exception) {
-        log.info("Database update failed: ${e.message}")
-        updater.rollback()
-        return false
-      }
-      updater.commit()
+    try {
+      sealedBeaconBlockImporter.importBlock(sealedBeaconBlock).get()
+    } catch (e: Exception) {
+      log.error("Block import failed: ${e.message}", e)
+      return false
     }
-
     return true
   }
 }

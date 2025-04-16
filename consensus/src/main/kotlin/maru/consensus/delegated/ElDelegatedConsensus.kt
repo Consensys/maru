@@ -20,7 +20,16 @@ import maru.consensus.ConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
 import maru.consensus.ProtocolFactory
+import maru.core.BeaconBlock
+import maru.core.BeaconBlockBody
+import maru.core.BeaconBlockHeader
+import maru.core.ExecutionPayload
+import maru.core.HashUtil
 import maru.core.Protocol
+import maru.core.Validator
+import maru.mappers.Mappers.toDomain
+import maru.serialization.rlp.KeccakHasher
+import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
@@ -44,6 +53,10 @@ class ElDelegatedConsensus(
   private val onNewBlock: NewBlockHandler,
   private val blockTimeSeconds: Int,
 ) : Protocol {
+  companion object {
+    private val hasher = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
+  }
+
   // Only for comparisons in the tests to set common ground
   data object ElDelegatedConfig : ConsensusConfig
 
@@ -80,9 +93,9 @@ class ElDelegatedConsensus(
 
     return SafeFuture
       .of(
-        ethereumJsonRpcClient.ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false).sendAsync(),
+        ethereumJsonRpcClient.ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), true).sendAsync(),
       ).thenApply {
-        onNewBlock.handleNewBlock(Mapper.mapWeb3jBlockToBesuBlock(it.block))
+        onNewBlock.handleNewBlock(wrapIntoDummyBeaconBlock(it.block.toDomain()))
       }.handleException {
         log.error(it.message, it)
       }.thenApply {
@@ -94,5 +107,22 @@ class ElDelegatedConsensus(
             SafeFuture.delayedExecutor(blockTimeSeconds.toLong(), TimeUnit.SECONDS),
           )
       }
+  }
+
+  private fun wrapIntoDummyBeaconBlock(executionPayload: ExecutionPayload): BeaconBlock {
+    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptyList(), executionPayload = executionPayload)
+
+    val beaconBlockHeader =
+      BeaconBlockHeader(
+        number = 0u,
+        round = 0u,
+        timestamp = executionPayload.timestamp,
+        proposer = Validator(executionPayload.feeRecipient),
+        parentRoot = BeaconBlockHeader.EMPTY_HASH,
+        stateRoot = BeaconBlockHeader.EMPTY_HASH,
+        bodyRoot = BeaconBlockHeader.EMPTY_HASH,
+        headerHashFunction = hasher,
+      )
+    return BeaconBlock(beaconBlockHeader, beaconBlockBody)
   }
 }

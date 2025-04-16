@@ -24,7 +24,7 @@ import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
-interface ExecutionLayerClient {
+interface ExecutionLayerEngineApiClient {
   fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>>
 
   fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>>

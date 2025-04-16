@@ -18,19 +18,17 @@ package maru.consensus
 import java.time.Clock
 import kotlin.math.ceil
 import kotlin.math.max
-import maru.executionlayer.manager.BlockMetadata
 
 fun interface NextBlockTimestampProvider {
-  fun nextTargetBlockUnixTimestamp(lastBlockMetadata: BlockMetadata): Long
+  fun nextTargetBlockUnixTimestamp(lastBlockTimestamp: Long): Long
 }
 
 class NextBlockTimestampProviderImpl(
   private val clock: Clock,
   private val forksSchedule: ForksSchedule,
 ) : NextBlockTimestampProvider {
-  override fun nextTargetBlockUnixTimestamp(lastBlockMetadata: BlockMetadata): Long {
-    val currentBlockTime = forksSchedule.getForkByTimestamp(lastBlockMetadata.unixTimestampSeconds).blockTimeSeconds
-    val lastBlockTimestamp = lastBlockMetadata.unixTimestampSeconds
+  override fun nextTargetBlockUnixTimestamp(lastBlockTimestamp: Long): Long {
+    val currentBlockTime = forksSchedule.getForkByTimestamp(lastBlockTimestamp).blockTimeSeconds
 
     val nextIntegerSecond = ceil(clock.millis() / 1000.0).toLong()
     return max(lastBlockTimestamp + currentBlockTime, nextIntegerSecond)

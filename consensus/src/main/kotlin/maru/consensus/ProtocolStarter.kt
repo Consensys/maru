@@ -16,23 +16,20 @@
 package maru.consensus
 
 import java.util.concurrent.atomic.AtomicReference
+import maru.core.BeaconBlock
 import maru.core.Protocol
-import maru.executionlayer.client.MetadataProvider
-import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.hyperledger.besu.ethereum.core.Block
 
-class MetadataOnlyHandlerAdapter(
+class ProtocolStarterBlockHandler(
   private val protocolStarter: ProtocolStarter,
 ) : NewBlockHandler {
-  override fun handleNewBlock(block: Block) {
-    val blockHeader = block.header
+  override fun handleNewBlock(beaconBlock: BeaconBlock) {
     val blockMetadata =
       BlockMetadata(
-        blockHeader.number.toULong(),
-        blockHeader.blockHash.toArray(),
-        blockHeader.timestamp,
+        beaconBlock.beaconBlockBody.executionPayload.blockNumber,
+        beaconBlock.beaconBlockHeader.hash,
+        beaconBlock.beaconBlockHeader.timestamp.toLong(),
       )
     protocolStarter.handleNewBlock(blockMetadata)
   }
@@ -57,9 +54,9 @@ class ProtocolStarter(
 
   @Synchronized
   fun handleNewBlock(block: BlockMetadata) {
-    log.debug("New block {} received", { block.blockNumber })
+    log.debug("New block number={} received", { block.blockNumber })
 
-    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(block)
+    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(block.unixTimestampSeconds)
     val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()
@@ -84,7 +81,7 @@ class ProtocolStarter(
   }
 
   override fun start() {
-    val latestBlock = metadataProvider.getLatestBlockMetadata().get()
+    val latestBlock = metadataProvider.getLatestBlockMetadata()
     handleNewBlock(latestBlock)
   }
 

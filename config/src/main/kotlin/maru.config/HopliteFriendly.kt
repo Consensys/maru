@@ -16,25 +16,47 @@
 package maru.config
 
 import com.sksamuel.hoplite.Masked
+import java.net.URL
+import kotlin.time.Duration
 import maru.extensions.fromHexToByteArray
 
 data class ValidatorDtoToml(
-  val validatorKey: Masked,
+  val privateKey: Masked,
+  val elClientEngineApiEndpoint: URL,
+  val jwtSecretPath: String? = null,
+  val minTimeBetweenGetPayloadAttempts: Duration,
 ) {
-  fun domainFriendly(): Validator = Validator(validatorKey.value.fromHexToByteArray())
+  fun domainFriendly(): Validator =
+    Validator(
+      privateKey = privateKey.value.fromHexToByteArray(),
+      client =
+        ValidatorClientConfig(
+          engineApiClientConfig = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
+          minTimeBetweenGetPayloadAttempts = minTimeBetweenGetPayloadAttempts,
+        ),
+    )
+}
+
+data class ApiEndpointDtoToml(
+  val endpoint: URL,
+  val jwtSecretPath: String? = null,
+) {
+  fun toDomain(): ApiEndpointConfig = ApiEndpointConfig(endpoint = endpoint, jwtSecretPath = jwtSecretPath)
 }
 
 data class MaruConfigDtoToml(
-  private val executionClient: ExecutionClientConfig,
   private val qbftOptions: QbftOptions,
+  private val sotEthEndpoint: ApiEndpointDtoToml,
   private val p2pConfig: P2P?,
   private val validator: ValidatorDtoToml?,
+  private val followerEngineApis: Map<String, ApiEndpointDtoToml>?,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
-      executionClientConfig = executionClient,
       qbftOptions = qbftOptions,
+      sotNode = sotEthEndpoint.toDomain(),
       p2pConfig = p2pConfig,
       validator = validator?.domainFriendly(),
+      followers = FollowersConfig(followers = followerEngineApis?.mapValues { it.value.toDomain() } ?: emptyMap()),
     )
 }

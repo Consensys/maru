@@ -17,6 +17,9 @@ package maru.consensus.qbft
 
 import kotlin.random.Random
 import kotlin.test.assertEquals
+import maru.consensus.NextBlockTimestampProvider
+import maru.consensus.blockImport.BlockBuildingBeaconBlockImporter
+import maru.consensus.blockImport.FollowerBeaconBlockImporter
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconState
 import maru.core.Validator
@@ -32,12 +35,13 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class BeaconBlockImporterImplTest {
+class FollowerBeaconBlockImporterTest {
   private lateinit var executionLayerManager: ExecutionLayerManager
   private var nextBlockTimestamp: Long = 123456789L
   private var shouldBuildNextBlock: Boolean = false
   private var blockBuilderIdentity: Validator = Validator(Random.nextBytes(20))
-  private lateinit var beaconBlockImporter: BeaconBlockImporterImpl
+  private lateinit var followerBeaconBlockImporter: FollowerBeaconBlockImporter
+  private lateinit var beaconBlockImporter: BlockBuildingBeaconBlockImporter
   private lateinit var finalizationState: FinalizationState
 
   @BeforeEach
@@ -45,8 +49,11 @@ class BeaconBlockImporterImplTest {
     executionLayerManager = mock(ExecutionLayerManager::class.java)
     finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
 
+    followerBeaconBlockImporter =
+      FollowerBeaconBlockImporter(executionLayerManager, finalizationStateProvider = { finalizationState })
     beaconBlockImporter =
-      BeaconBlockImporterImpl(
+      BlockBuildingBeaconBlockImporter(
+        followerBeaconBlockImporter = followerBeaconBlockImporter,
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = { nextBlockTimestamp },
@@ -112,7 +119,7 @@ class BeaconBlockImporterImplTest {
   }
 
   @Test
-  fun `importBlock should pass next block's round identifier`() {
+  fun `importBlock should pass last block timestamp and next block's round identifier`() {
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(1UL)
     val randomBeaconState = DataGenerators.randomBeaconState(1UL)
     val expectedConsensusRoundIdentifier = ConsensusRoundIdentifier(2, 0)
@@ -120,10 +127,14 @@ class BeaconBlockImporterImplTest {
     whenever(
       shouldBuildNextBlockPredicate.invoke(eq(randomBeaconState), eq(expectedConsensusRoundIdentifier)),
     ).thenReturn(true)
-    val nextBlockTimestampProvider: (ConsensusRoundIdentifier) -> Long = mock()
-    whenever(nextBlockTimestampProvider.invoke(eq(expectedConsensusRoundIdentifier))).thenReturn(nextBlockTimestamp)
+    val nextBlockTimestampProvider: NextBlockTimestampProvider = mock()
+    val expectedParentTimestamp = randomBeaconState.latestBeaconBlockHeader.timestamp.toLong()
+    whenever(
+      nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(eq(expectedParentTimestamp)),
+    ).thenReturn(nextBlockTimestamp)
     beaconBlockImporter =
-      BeaconBlockImporterImpl(
+      BlockBuildingBeaconBlockImporter(
+        followerBeaconBlockImporter = followerBeaconBlockImporter,
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = nextBlockTimestampProvider,
@@ -134,6 +145,6 @@ class BeaconBlockImporterImplTest {
     beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
 
     verify(shouldBuildNextBlockPredicate, times(1)).invoke(eq(randomBeaconState), eq(expectedConsensusRoundIdentifier))
-    verify(nextBlockTimestampProvider, times(1)).invoke(eq(expectedConsensusRoundIdentifier))
+    verify(nextBlockTimestampProvider, times(1)).nextTargetBlockUnixTimestamp(eq(expectedParentTimestamp))
   }
 }

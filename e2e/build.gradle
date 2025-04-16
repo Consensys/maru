@@ -10,7 +10,10 @@ dependencies {
   implementation project(":app")
   implementation project(":consensus")
   implementation project(":config")
+  // For the syncing logic
   implementation project(":jvm-libs:mappers")
+  implementation(project(":serialization"))
+  implementation(project(":jvm-libs:extensions"))
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:time"

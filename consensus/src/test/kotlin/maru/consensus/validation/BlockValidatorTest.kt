@@ -32,7 +32,9 @@ import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
-import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.ExecutionPayloadStatus
+import maru.executionlayer.manager.PayloadStatus
 import maru.extensions.encodeHex
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
@@ -41,10 +43,7 @@ import org.hyperledger.besu.consensus.common.bft.BftHelpers
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
-import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.spec.executionlayer.ExecutionPayloadStatus
 
 class BlockValidatorTest {
   private val validators = (1..3).map { DataGenerators.randomValidator() }
@@ -74,7 +73,7 @@ class BlockValidatorTest {
       parentRoot = validCurrBlockHeader.hash,
       timestamp = validCurrBlockHeader.timestamp + 1u,
       bodyRoot = HashUtil.bodyRoot(validNewBlockBody),
-      stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
+      stateRoot = BeaconBlockHeader.EMPTY_HASH,
     )
   private val validNewStateRoot =
     HashUtil.stateRoot(
@@ -166,18 +165,16 @@ class BlockValidatorTest {
         assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
       }
 
-    val executionLayerClient =
-      mock<ExecutionLayerClient> {
-        on { newPayload(any()) }.thenReturn(
+    val executionLayerEngineApiClient =
+      mock<ExecutionLayerManager> {
+        on { importPayload(any()) }.thenReturn(
           SafeFuture.completedFuture(
-            Response.fromPayloadReceivedAsSsz(
-              PayloadStatusV1(ExecutionPayloadStatus.VALID, null, null),
-            ),
+            DataGenerators.randomValidPayloadStatus(),
           ),
         )
       }
     val executionPayloadValidator =
-      ExecutionPayloadValidator(executionLayerClient).also {
+      ExecutionPayloadValidator(executionLayerEngineApiClient).also {
         assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
       }
 
@@ -478,13 +475,13 @@ class BlockValidatorTest {
           ),
       )
     val invalidExecutionClient =
-      mock<ExecutionLayerClient> {
-        on { newPayload(any()) }.thenReturn(
-          SafeFuture.completedFuture(Response.fromErrorMessage("Invalid execution payload")),
+      mock<ExecutionLayerManager> {
+        on { importPayload(any()) }.thenReturn(
+          SafeFuture.completedFuture(PayloadStatus(ExecutionPayloadStatus.INVALID, null, "Invalid execution payload")),
         )
       }
     val result =
-      ExecutionPayloadValidator(executionLayerClient = invalidExecutionClient)
+      ExecutionPayloadValidator(executionLayerManager = invalidExecutionClient)
         .validateBlock(
           block = validNewBlock.copy(beaconBlockBody = blockBody),
         ).get()

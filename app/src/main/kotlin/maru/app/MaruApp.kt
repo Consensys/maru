@@ -16,24 +16,24 @@
 package maru.app
 
 import java.time.Clock
-import java.time.Duration
+import maru.config.FollowersConfig
 import maru.config.MaruConfig
+import maru.consensus.BlockMetadata
 import maru.consensus.ForksSchedule
-import maru.consensus.MetadataOnlyHandlerAdapter
+import maru.consensus.LatestBlockMetadataCache
+import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
+import maru.consensus.ProtocolStarterBlockHandler
+import maru.consensus.Web3jMetadataProvider
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockHeader
-import maru.executionlayer.client.Web3jMetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
-import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 class MaruApp(
   config: MaruConfig,
@@ -50,19 +50,28 @@ class MaruApp(
       log.info("Maru is running in follower-only node")
       throw IllegalArgumentException("Follower-only mode is not supported yet!")
     }
+    log.info(config.toString())
   }
 
   private val ethereumJsonRpcClient =
-    buildJsonRpcClient(
-      config.executionClientConfig.ethereumJsonRpcEndpoint
-        .toString(),
+    Helpers.createWeb3jClient(
+      config.sotNode,
     )
 
-  private val newBlockHandlerMultiplexer = NewBlockHandlerMultiplexer(emptyMap())
+  private val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
+  private val lastBlockMetadataCache: LatestBlockMetadataCache =
+    LatestBlockMetadataCache(
+      asyncMetadataProvider
+        .getLatestBlockMetadata()
+        .get(),
+    )
+  private val metadataProviderCacheUpdater: NewBlockHandler =
+    NewBlockHandler { beaconBlock ->
+      val blockMetadata = BlockMetadata.fromBeaconBlock(beaconBlock)
+      lastBlockMetadataCache.updateLatestBlockMetadata(blockMetadata)
+    }
 
-  private val metadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
-
-  private val nextBlockTimestampProvider =
+  private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
@@ -71,43 +80,52 @@ class MaruApp(
   private val metricsSystem = NoOpMetricsSystem()
   private val finalizationStateProviderStub = { _: BeaconBlockHeader ->
     LogManager.getLogger("FinalizationStateProvider").debug("fetching the latest finalized state")
-    val latestBlockHash = metadataProvider.getLatestBlockMetadata().get().blockHash
+    val latestBlockHash = lastBlockMetadataCache.getLatestBlockMetadata().blockHash
     FinalizationState(latestBlockHash, latestBlockHash)
   }
 
   private val protocolStarter =
-    ProtocolStarter(
-      forksSchedule = beaconGenesisConfig,
-      protocolFactory =
-        OmniProtocolFactory(
-          elDelegatedConsensusFactory =
-            ElDelegatedConsensusFactory(
-              ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
-              newBlockHandler = newBlockHandlerMultiplexer,
-            ),
-          qbftConsensusFactory =
-            QbftProtocolFactoryWithBeaconChainInitialization(
-              maruConfig = config,
-              metricsSystem = metricsSystem,
-              metadataProvider = metadataProvider,
-              finalizationStateProvider = finalizationStateProviderStub,
-              executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
-              clock = clock,
-            ),
-        ),
-      metadataProvider = metadataProvider,
-      nextBlockTimestampProvider = nextBlockTimestampProvider,
-    ).also {
-      newBlockHandlerMultiplexer.addHandler("protocol starter", MetadataOnlyHandlerAdapter(it))
+    let {
+      val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
+      val delegatedConsensusNewBlockHandler =
+        NewBlockHandlerMultiplexer(
+          mapOf(metadataCacheUpdaterHandlerEntry),
+        )
+      val qbftConsensusNewBlockHandler =
+        NewBlockHandlerMultiplexer(createFollowerHandlers(config.followers) + metadataCacheUpdaterHandlerEntry)
+      ProtocolStarter(
+        forksSchedule = beaconGenesisConfig,
+        protocolFactory =
+          OmniProtocolFactory(
+            elDelegatedConsensusFactory =
+              ElDelegatedConsensusFactory(
+                ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
+                newBlockHandler = delegatedConsensusNewBlockHandler,
+              ),
+            qbftConsensusFactory =
+              QbftProtocolFactoryWithBeaconChainInitialization(
+                maruConfig = config,
+                metricsSystem = metricsSystem,
+                metadataProvider = lastBlockMetadataCache,
+                finalizationStateProvider = finalizationStateProviderStub,
+                executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
+                nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
+                newBlockHandler = qbftConsensusNewBlockHandler,
+              ),
+          ),
+        metadataProvider = lastBlockMetadataCache,
+        nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
+      ).also {
+        delegatedConsensusNewBlockHandler.addHandler("protocol starter", ProtocolStarterBlockHandler(it))
+        qbftConsensusNewBlockHandler.addHandler("qbft", ProtocolStarterBlockHandler(it))
+      }
     }
 
-  private fun buildJsonRpcClient(endpoint: String): Web3JClient =
-    Web3jClientBuilder()
-      .endpoint(endpoint)
-      .timeout(Duration.ofMinutes(1))
-      .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-      .executionClientEventsPublisher { }
-      .build()
+  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler> =
+    followers.followers
+      .mapValues {
+        Helpers.createFollowerBlockImporter(it.value, lastBlockMetadataCache)
+      }
 
   fun start() {
     protocolStarter.start()

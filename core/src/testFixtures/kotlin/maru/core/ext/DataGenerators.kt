@@ -28,7 +28,7 @@ import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
-import maru.executionlayer.manager.BlockMetadata
+import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.PayloadStatus
 import maru.serialization.rlp.KeccakHasher
@@ -141,20 +141,12 @@ object DataGenerators {
     )
   }
 
-  fun randomBlockMetadata(timestamp: Long): BlockMetadata =
-    BlockMetadata(
-      Random.nextULong(),
-      blockHash = Random.nextBytes(32),
-      unixTimestampSeconds = timestamp,
-    )
-
   fun randomValidForkChoiceUpdatedResult(payloadId: ByteArray? = Random.nextBytes(8)): ForkChoiceUpdatedResult {
     val expectedPayloadStatus =
       PayloadStatus(
-        executionPayloadStatus = "VALID",
+        ExecutionPayloadStatus.VALID,
         latestValidHash = Random.nextBytes(32),
         validationError = null,
-        failureCause = null,
       )
     return ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId)
   }
@@ -162,4 +154,7 @@ object DataGenerators {
   fun randomValidator(): Validator = Validator(Random.nextBytes(20))
 
   fun randomValidators(): Set<Validator> = List(3) { randomValidator() }.toSet()
+
+  fun randomValidPayloadStatus(): PayloadStatus =
+    PayloadStatus(ExecutionPayloadStatus.VALID, latestValidHash = Random.nextBytes(32), validationError = null)
 }
