@@ -16,6 +16,7 @@
 package maru.app
 
 import java.time.Clock
+import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.consensus.BlockMetadata
@@ -49,8 +50,9 @@ class MaruApp(
       log.warn("P2P is disabled!")
     }
     if (config.validator == null) {
-      log.info("Maru is running in follower-only node")
-      throw IllegalArgumentException("Follower-only mode is not supported yet!")
+      log.info("Validator is not defined. Maru is running in follower-only node")
+      log.error("Follower-only mode is not supported yet! Exiting application.")
+      exitProcess(1)
     }
     log.info(config.toString())
   }

@@ -108,7 +108,7 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
     cluster.stop()
-    Thread.sleep(3)
+    Thread.sleep(3000)
     cluster.start(besuNode)
 
     repeat(blocksToProduce) {
