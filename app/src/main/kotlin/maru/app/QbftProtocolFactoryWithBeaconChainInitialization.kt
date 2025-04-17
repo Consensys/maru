@@ -51,7 +51,6 @@ import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClien
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.mappers.Mappers.toDomain
-import maru.serialization.rlp.KeccakHasher
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.stateRoot
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -77,8 +76,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
     require(maruConfig.validator != null) { "The validator is required when QBFT protocol is instantiated!" }
   }
 
-  private val hasher = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
-
   private fun initializeDb(updater: BeaconChain.Updater) {
     val genesisExecutionPayload =
       executionLayerClient
@@ -98,7 +95,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         parentRoot = ByteArray(32),
         stateRoot = ByteArray(32),
         bodyRoot = ByteArray(32),
-        headerHashFunction = hasher,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
 
     val initialValidators = setOf(Crypto.privateKeyToValidator(maruConfig.validator!!.privateKey))

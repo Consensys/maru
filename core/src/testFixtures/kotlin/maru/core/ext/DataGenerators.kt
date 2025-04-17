@@ -31,7 +31,6 @@ import maru.core.Validator
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.PayloadStatus
-import maru.serialization.rlp.KeccakHasher
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
 import org.apache.tuweni.bytes.Bytes
@@ -42,8 +41,6 @@ import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.ethereum.core.Transaction
 
 object DataGenerators {
-  private val HEADER_HASH_FUNCTION = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
-
   fun randomBeaconState(number: ULong): BeaconState {
     val validators = randomValidators()
     val beaconBlockHeader =
@@ -55,7 +52,7 @@ object DataGenerators {
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
-        HEADER_HASH_FUNCTION,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
     return BeaconState(
       latestBeaconBlockHeader = beaconBlockHeader,
@@ -102,7 +99,7 @@ object DataGenerators {
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
       bodyRoot = Random.nextBytes(32),
-      headerHashFunction = HEADER_HASH_FUNCTION,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
 
   fun randomExecutionPayload(numberOfTransactions: Int = 5): ExecutionPayload {

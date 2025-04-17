@@ -36,13 +36,11 @@ import maru.consensus.NewBlockHandler
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
-import maru.core.HashUtil
 import maru.core.Validator
 import maru.e2e.TestEnvironment.waitForInclusion
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.extensions.fromHexToByteArray
 import maru.mappers.Mappers.toDomain
-import maru.serialization.rlp.KeccakHasher
 import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -62,8 +60,6 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class CliqueToPosTest {
   companion object {
-    private val hasher = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
-
     private val qbftCluster =
       DockerComposeRule
         .Builder()
@@ -309,7 +305,7 @@ class CliqueToPosTest {
           parentRoot = BeaconBlockHeader.EMPTY_HASH,
           stateRoot = BeaconBlockHeader.EMPTY_HASH,
           bodyRoot = BeaconBlockHeader.EMPTY_HASH,
-          headerHashFunction = hasher,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
         BeaconBlockBody(emptyList(), latestExecutionPayload),
       )

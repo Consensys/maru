@@ -24,11 +24,9 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.ExecutionPayload
-import maru.core.HashUtil
 import maru.core.Protocol
 import maru.core.Validator
 import maru.mappers.Mappers.toDomain
-import maru.serialization.rlp.KeccakHasher
 import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -53,10 +51,6 @@ class ElDelegatedConsensus(
   private val onNewBlock: NewBlockHandler<*>,
   private val blockTimeSeconds: Int,
 ) : Protocol {
-  companion object {
-    private val hasher = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
-  }
-
   // Only for comparisons in the tests to set common ground
   data object ElDelegatedConfig : ConsensusConfig
 
@@ -121,7 +115,7 @@ class ElDelegatedConsensus(
         parentRoot = BeaconBlockHeader.EMPTY_HASH,
         stateRoot = BeaconBlockHeader.EMPTY_HASH,
         bodyRoot = BeaconBlockHeader.EMPTY_HASH,
-        headerHashFunction = hasher,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
     return BeaconBlock(beaconBlockHeader, beaconBlockBody)
   }
