@@ -25,7 +25,7 @@ import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
 import maru.consensus.ValidatorProvider
-import maru.consensus.blockImport.SealedBeaconBlockImporter
+import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.consensus.qbft.adapters.ForksScheduleAdapter
 import maru.consensus.qbft.adapters.ProposerSelectorAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
@@ -84,7 +84,7 @@ class QbftProtocolFactory(
   private val metadataProvider: MetadataProvider,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: NewBlockHandler,
+  private val newBlockHandler: NewBlockHandler<Unit>,
   private val sealedBeaconBlockImporter: SealedBeaconBlockImporter,
   private val executionLayerManager: JsonRpcExecutionLayerManager,
   private val stateTransition: StateTransition,

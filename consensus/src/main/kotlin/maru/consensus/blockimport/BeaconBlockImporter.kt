@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.blockImport
+package maru.consensus.blockimport
 
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
@@ -39,42 +39,32 @@ fun interface BeaconBlockImporter {
 class FollowerBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
-) : BeaconBlockImporter,
-  NewBlockHandler {
+) : NewBlockHandler<ForkChoiceUpdatedResult> {
   private val log = LogManager.getLogger(this.javaClass)
 
-  private fun importBlockInternal(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
-    val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
-    return executionLayerManager
-      .setHead(
-        headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
-        safeHash = finalizationState.safeBlockHash,
-        finalizedHash = finalizationState.finalizedBlockHash,
-      )
-  }
-
-  override fun importBlock(
-    beaconState: BeaconState,
-    beaconBlock: BeaconBlock,
-  ): SafeFuture<ForkChoiceUpdatedResult> = importBlockInternal(beaconBlock)
-
-  override fun handleNewBlock(beaconBlock: BeaconBlock) {
+  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
     val executionPayload = beaconBlock.beaconBlockBody.executionPayload
-    try {
-      executionLayerManager.importPayload(executionPayload).get()
-    } catch (e: Exception) {
-      log.error(
-        "Error importing execution payload for blockNumber=${executionPayload.blockNumber}." +
-          " Trying FCU anyway",
-        e,
-      )
-    }
-    importBlockInternal(beaconBlock = beaconBlock)
+    return executionLayerManager
+      .importPayload(executionPayload)
+      .handleException { e ->
+        log.error(
+          "Error importing execution payload for blockNumber=${executionPayload.blockNumber}." +
+            " sending FCU anyway",
+          e,
+        )
+      }.thenCompose {
+        val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
+        executionLayerManager
+          .setHead(
+            headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
+            safeHash = finalizationState.safeBlockHash,
+            finalizedHash = finalizationState.finalizedBlockHash,
+          )
+      }
   }
 }
 
 class BlockBuildingBeaconBlockImporter(
-  private val followerBeaconBlockImporter: FollowerBeaconBlockImporter,
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
@@ -115,7 +105,11 @@ class BlockBuildingBeaconBlockImporter(
       )
     } else {
       log.debug("Importing blockHeader={}", beaconBlockHeader)
-      followerBeaconBlockImporter.importBlock(beaconState, beaconBlock)
+      executionLayerManager.setHead(
+        headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
+        safeHash = finalizationState.safeBlockHash,
+        finalizedHash = finalizationState.finalizedBlockHash,
+      )
     }
   }
 }

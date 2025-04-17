@@ -24,9 +24,10 @@ import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
 import maru.consensus.MetadataProvider
 import maru.consensus.NewBlockHandler
-import maru.consensus.blockImport.FollowerBeaconBlockImporter
+import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.state.FinalizationState
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -38,7 +39,7 @@ object Helpers {
   fun createFollowerBlockImporter(
     apiEndpointConfig: ApiEndpointConfig,
     metadataProvider: MetadataProvider,
-  ): NewBlockHandler {
+  ): NewBlockHandler<ForkChoiceUpdatedResult> {
     val web3JEngineApiClient: Web3JClient =
       Web3jClientBuilder()
         .endpoint(apiEndpointConfig.endpoint.toString())

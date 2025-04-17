@@ -25,10 +25,9 @@ import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
-import maru.consensus.blockImport.BlockBuildingBeaconBlockImporter
-import maru.consensus.blockImport.FollowerBeaconBlockImporter
-import maru.consensus.blockImport.SealedBeaconBlockImporter
-import maru.consensus.blockImport.TransactionalSealedBeaconBlockImporter
+import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
+import maru.consensus.blockimport.SealedBeaconBlockImporter
+import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.qbft.ProposerSelector
 import maru.consensus.qbft.ProposerSelectorImpl
 import maru.consensus.qbft.QbftConsensusConfig
@@ -71,7 +70,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val executionLayerClient: Web3j,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: NewBlockHandler,
+  private val newBlockHandler: NewBlockHandler<Unit>,
   private val clock: Clock,
 ) : ProtocolFactory {
   init {
@@ -136,8 +135,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         nextProposerAddress.contentEquals(localNodeIdentity.address)
       }
     val blockBuilderIdentity = Crypto.privateKeyToValidator(maruConfig.validator!!.privateKey)
-    val followerBeaconBlockImporter =
-      FollowerBeaconBlockImporter(executionLayerManager, finalizationStateProvider = finalizationStateProvider)
     val beaconBlockImporter =
       BlockBuildingBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
@@ -145,7 +142,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         shouldBuildNextBlock = shouldBuildNextBlock,
         blockBuilderIdentity = blockBuilderIdentity,
-        followerBeaconBlockImporter = followerBeaconBlockImporter,
       )
     return TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition, beaconBlockImporter)
   }

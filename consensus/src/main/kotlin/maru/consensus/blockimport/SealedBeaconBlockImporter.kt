@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.blockImport
+package maru.consensus.blockimport
 
 import maru.consensus.state.StateTransition
 import maru.core.SealedBeaconBlock

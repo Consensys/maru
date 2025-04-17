@@ -39,6 +39,7 @@ import maru.core.BeaconBlockHeader
 import maru.core.HashUtil
 import maru.core.Validator
 import maru.e2e.TestEnvironment.waitForInclusion
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.extensions.fromHexToByteArray
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.KeccakHasher
@@ -218,7 +219,7 @@ class CliqueToPosTest {
   private fun buildBlockImportHandler(
     engineApiConfig: ApiEndpointConfig,
     latestBlock: EthBlock.Block,
-  ): NewBlockHandler {
+  ): NewBlockHandler<ForkChoiceUpdatedResult> {
     val metadataProvider =
       MetadataProvider {
         BlockMetadata(
@@ -312,7 +313,7 @@ class CliqueToPosTest {
         ),
         BeaconBlockBody(emptyList(), latestExecutionPayload),
       )
-    buildBlockImportHandler(engineApiConfig, latestBlock).handleNewBlock(stubBeaconBlock)
+    buildBlockImportHandler(engineApiConfig, latestBlock).handleNewBlock(stubBeaconBlock).get()
   }
 
   private fun sendCliqueTransactions() {

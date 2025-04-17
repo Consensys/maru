@@ -16,8 +16,6 @@
 package maru.consensus.blockimport
 
 import kotlin.test.assertTrue
-import maru.consensus.blockImport.SealedBeaconBlockImporter
-import maru.consensus.blockImport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.state.StateTransition
 import maru.core.BeaconBlock
 import maru.core.BeaconState

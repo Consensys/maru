@@ -18,8 +18,7 @@ package maru.consensus.qbft
 import kotlin.random.Random
 import kotlin.test.assertEquals
 import maru.consensus.NextBlockTimestampProvider
-import maru.consensus.blockImport.BlockBuildingBeaconBlockImporter
-import maru.consensus.blockImport.FollowerBeaconBlockImporter
+import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconState
 import maru.core.Validator
@@ -40,7 +39,6 @@ class FollowerBeaconBlockImporterTest {
   private var nextBlockTimestamp: Long = 123456789L
   private var shouldBuildNextBlock: Boolean = false
   private var blockBuilderIdentity: Validator = Validator(Random.nextBytes(20))
-  private lateinit var followerBeaconBlockImporter: FollowerBeaconBlockImporter
   private lateinit var beaconBlockImporter: BlockBuildingBeaconBlockImporter
   private lateinit var finalizationState: FinalizationState
 
@@ -49,18 +47,12 @@ class FollowerBeaconBlockImporterTest {
     executionLayerManager = mock(ExecutionLayerManager::class.java)
     finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
 
-    followerBeaconBlockImporter =
-      FollowerBeaconBlockImporter(executionLayerManager, finalizationStateProvider = { finalizationState })
     beaconBlockImporter =
       BlockBuildingBeaconBlockImporter(
-        followerBeaconBlockImporter = followerBeaconBlockImporter,
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = { nextBlockTimestamp },
-        shouldBuildNextBlock = {
-          beaconState: BeaconState,
-          roundIdentifier: ConsensusRoundIdentifier,
-          ->
+        shouldBuildNextBlock = { _: BeaconState, _: ConsensusRoundIdentifier ->
           shouldBuildNextBlock
         },
         blockBuilderIdentity = blockBuilderIdentity,
@@ -134,7 +126,6 @@ class FollowerBeaconBlockImporterTest {
     ).thenReturn(nextBlockTimestamp)
     beaconBlockImporter =
       BlockBuildingBeaconBlockImporter(
-        followerBeaconBlockImporter = followerBeaconBlockImporter,
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = nextBlockTimestampProvider,

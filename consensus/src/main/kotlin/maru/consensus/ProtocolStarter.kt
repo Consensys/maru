@@ -20,11 +20,12 @@ import maru.core.BeaconBlock
 import maru.core.Protocol
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class ProtocolStarterBlockHandler(
   private val protocolStarter: ProtocolStarter,
-) : NewBlockHandler {
-  override fun handleNewBlock(beaconBlock: BeaconBlock) {
+) : NewBlockHandler<Unit> {
+  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
     val blockMetadata =
       BlockMetadata(
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
@@ -32,6 +33,7 @@ class ProtocolStarterBlockHandler(
         beaconBlock.beaconBlockHeader.timestamp.toLong(),
       )
     protocolStarter.handleNewBlock(blockMetadata)
+    return SafeFuture.completedFuture(Unit)
   }
 }
 

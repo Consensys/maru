@@ -21,24 +21,24 @@ import maru.core.BeaconBlock
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-fun interface NewBlockHandler {
-  fun handleNewBlock(beaconBlock: BeaconBlock)
+fun interface NewBlockHandler<T> {
+  fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<T>
 }
 
 class NewBlockHandlerMultiplexer(
-  handlersMap: Map<String, NewBlockHandler>,
-) : NewBlockHandler {
+  handlersMap: Map<String, NewBlockHandler<*>>,
+) : NewBlockHandler<Unit> {
   private val handlersMap = ConcurrentHashMap(handlersMap)
   private val log = LogManager.getLogger(NewBlockHandlerMultiplexer::class.java)!!
 
   fun addHandler(
     name: String,
-    handler: NewBlockHandler,
+    handler: NewBlockHandler<*>,
   ) {
     handlersMap[name] = handler
   }
 
-  override fun handleNewBlock(beaconBlock: BeaconBlock) {
+  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
     val handlerFutures: List<CompletableFuture<Void>> =
       handlersMap.map {
         val (handlerName, handler) = it
@@ -57,6 +57,10 @@ class NewBlockHandlerMultiplexer(
           }
         }
       }
-    SafeFuture.allOf(*handlerFutures.toTypedArray()).get()
+    val completableFuture =
+      SafeFuture
+        .allOf(*handlerFutures.toTypedArray())
+        .thenApply { }
+    return SafeFuture.of(completableFuture)
   }
 }

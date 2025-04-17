@@ -15,7 +15,7 @@
  */
 package maru.consensus.qbft.adapters
 
-import maru.consensus.blockImport.SealedBeaconBlockImporter
+import maru.consensus.blockimport.SealedBeaconBlockImporter
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock

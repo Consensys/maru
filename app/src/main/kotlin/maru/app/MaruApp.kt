@@ -31,9 +31,11 @@ import maru.consensus.Web3jMetadataProvider
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockHeader
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
   config: MaruConfig,
@@ -61,10 +63,11 @@ class MaruApp(
   private val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
   private val lastBlockMetadataCache: LatestBlockMetadataCache =
     LatestBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
-  private val metadataProviderCacheUpdater: NewBlockHandler =
+  private val metadataProviderCacheUpdater =
     NewBlockHandler { beaconBlock ->
       val blockMetadata = BlockMetadata.fromBeaconBlock(beaconBlock)
       lastBlockMetadataCache.updateLatestBlockMetadata(blockMetadata)
+      SafeFuture.completedFuture(Unit)
     }
 
   private val nextTargetBlockTimestampProvider =
@@ -113,12 +116,21 @@ class MaruApp(
         metadataProvider = lastBlockMetadataCache,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
       ).also {
-        delegatedConsensusNewBlockHandler.addHandler("protocol starter", ProtocolStarterBlockHandler(it))
-        qbftConsensusNewBlockHandler.addHandler("qbft", ProtocolStarterBlockHandler(it))
+        val protocolStarterBlockHandlerEntry = "protocol starter" to ProtocolStarterBlockHandler(it)
+        delegatedConsensusNewBlockHandler.addHandler(
+          protocolStarterBlockHandlerEntry.first,
+          protocolStarterBlockHandlerEntry.second,
+        )
+        qbftConsensusNewBlockHandler.addHandler(
+          protocolStarterBlockHandlerEntry.first,
+          protocolStarterBlockHandlerEntry.second,
+        )
       }
     }
 
-  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler> =
+  private fun createFollowerHandlers(
+    followers: FollowersConfig,
+  ): Map<String, NewBlockHandler<ForkChoiceUpdatedResult>> =
     followers.followers
       .mapValues {
         Helpers.createFollowerBlockImporter(it.value, lastBlockMetadataCache)
