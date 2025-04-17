@@ -15,19 +15,56 @@
  */
 package maru.consensus.qbft.adapters
 
-import maru.core.BeaconBlockHeader
+import maru.consensus.qbft.ProposerSelector
+import maru.consensus.state.StateTransition
+import maru.consensus.validation.BlockNumberValidator
+import maru.consensus.validation.BodyRootValidator
+import maru.consensus.validation.CompositeBlockValidator
+import maru.consensus.validation.EmptyBlockValidator
+import maru.consensus.validation.ExecutionPayloadValidator
+import maru.consensus.validation.ParentRootValidator
+import maru.consensus.validation.ProposerValidator
+import maru.consensus.validation.StateRootValidator
+import maru.consensus.validation.TimestampValidator
+import maru.database.BeaconChain
+import maru.executionlayer.manager.ExecutionLayerManager
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftProtocolSchedule
 
-// TODO: the block importer and validator should be driven from the protocol schedule
+// TODO: the block importer should be driven from the protocol schedule
 class QbftProtocolScheduleAdapter(
   private val blockImporter: QbftBlockImporter,
-  private val blockValidatorFactory: (BeaconBlockHeader) -> QbftBlockValidator,
+  private val beaconChain: BeaconChain,
+  private val proposerSelector: ProposerSelector,
+  stateTransition: StateTransition,
+  executionLayerManager: ExecutionLayerManager,
 ) : QbftProtocolSchedule {
+  private val stateRootValidator = StateRootValidator(stateTransition)
+  private val bodyRootValidator = BodyRootValidator()
+  private val executionPayloadValidator = ExecutionPayloadValidator(executionLayerManager)
+
   override fun getBlockImporter(blockHeader: QbftBlockHeader): QbftBlockImporter = blockImporter
 
-  override fun getBlockValidator(blockHeader: QbftBlockHeader): QbftBlockValidator =
-    blockValidatorFactory(blockHeader.toBeaconBlockHeader())
+  override fun getBlockValidator(blockHeader: QbftBlockHeader): QbftBlockValidator {
+    val beaconBlockHeader = blockHeader.toBeaconBlockHeader()
+    val parentHeader =
+      beaconChain.getSealedBeaconBlock(beaconBlockHeader.number - 1UL)!!.beaconBlock.beaconBlockHeader
+    val compositeValidator =
+      CompositeBlockValidator(
+        blockValidators =
+          listOf(
+            stateRootValidator,
+            BlockNumberValidator(parentHeader),
+            TimestampValidator(parentHeader),
+            ProposerValidator(proposerSelector, beaconChain),
+            ParentRootValidator(parentHeader),
+            bodyRootValidator,
+            executionPayloadValidator,
+            EmptyBlockValidator,
+          ),
+      )
+    return QbftBlockValidatorAdapter(compositeValidator)
+  }
 }

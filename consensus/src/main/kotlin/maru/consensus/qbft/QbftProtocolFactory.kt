@@ -31,7 +31,6 @@ import maru.consensus.qbft.adapters.ProposerSelectorAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockImporterAdapter
 import maru.consensus.qbft.adapters.QbftBlockInterfaceAdapter
-import maru.consensus.qbft.adapters.QbftBlockValidatorAdapter
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
 import maru.consensus.qbft.adapters.QbftFinalStateAdapter
 import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
@@ -42,15 +41,6 @@ import maru.consensus.qbft.network.NoopGossiper
 import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
-import maru.consensus.validation.BlockNumberValidator
-import maru.consensus.validation.BodyRootValidator
-import maru.consensus.validation.CompositeBlockValidator
-import maru.consensus.validation.EmptyBlockValidator
-import maru.consensus.validation.ExecutionPayloadValidator
-import maru.consensus.validation.ParentRootValidator
-import maru.consensus.validation.ProposerValidator
-import maru.consensus.validation.StateRootValidator
-import maru.consensus.validation.TimestampValidator
 import maru.core.BeaconBlockHeader
 import maru.core.Protocol
 import maru.core.Validator
@@ -162,35 +152,18 @@ class QbftProtocolFactory(
       bftEventQueue.add(QbftNewChainHead(qbftBlock.header))
     }
 
-    val stateRootValidator = StateRootValidator(stateTransition)
-    val bodyRootValidator = BodyRootValidator()
-    val executionPayloadValidator = ExecutionPayloadValidator(executionLayerManager)
-    val blockValidatorFactory = { blockHeader: BeaconBlockHeader ->
-      val parentHeader =
-        beaconChain.getSealedBeaconBlock(blockHeader.number - 1UL)!!.beaconBlock.beaconBlockHeader
-      val compositeValidator =
-        CompositeBlockValidator(
-          blockValidators =
-            listOf(
-              stateRootValidator,
-              BlockNumberValidator(parentHeader),
-              TimestampValidator(parentHeader),
-              ProposerValidator(proposerSelector, beaconChain),
-              ParentRootValidator(parentHeader),
-              bodyRootValidator,
-              executionPayloadValidator,
-              EmptyBlockValidator,
-            ),
-        )
-      QbftBlockValidatorAdapter(compositeValidator)
-    }
-
     val blockImporter = QbftBlockImporterAdapter(sealedBeaconBlockImporter)
 
     val blockCodec = QbftBlockCodecAdapter()
     val blockInterface = QbftBlockInterfaceAdapter()
     val protocolSchedule =
-      QbftProtocolScheduleAdapter(blockImporter, blockValidatorFactory)
+      QbftProtocolScheduleAdapter(
+        blockImporter = blockImporter,
+        beaconChain = beaconChain,
+        proposerSelector = proposerSelector,
+        stateTransition = stateTransition,
+        executionLayerManager = executionLayerManager,
+      )
     val messageValidatorFactory =
       MessageValidatorFactory(
         /* proposerSelector = */ qbftProposerSelector,
