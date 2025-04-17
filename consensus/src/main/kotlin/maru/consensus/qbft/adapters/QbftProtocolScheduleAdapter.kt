@@ -37,13 +37,14 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftProtocolSchedule
 class QbftProtocolScheduleAdapter(
   private val blockImporter: QbftBlockImporter,
   private val beaconChain: BeaconChain,
-  private val proposerSelector: ProposerSelector,
+  proposerSelector: ProposerSelector,
   stateTransition: StateTransition,
   executionLayerManager: ExecutionLayerManager,
 ) : QbftProtocolSchedule {
   private val stateRootValidator = StateRootValidator(stateTransition)
   private val bodyRootValidator = BodyRootValidator()
   private val executionPayloadValidator = ExecutionPayloadValidator(executionLayerManager)
+  private val proposerValidator = ProposerValidator(proposerSelector, beaconChain)
 
   override fun getBlockImporter(blockHeader: QbftBlockHeader): QbftBlockImporter = blockImporter
 
@@ -58,7 +59,7 @@ class QbftProtocolScheduleAdapter(
             stateRootValidator,
             BlockNumberValidator(parentHeader),
             TimestampValidator(parentHeader),
-            ProposerValidator(proposerSelector, beaconChain),
+            proposerValidator,
             ParentRootValidator(parentHeader),
             bodyRootValidator,
             executionPayloadValidator,
