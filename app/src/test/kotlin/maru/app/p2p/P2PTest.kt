@@ -15,6 +15,7 @@
  */
 package maru.app.p2p
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.libp2p.core.pubsub.ValidationResult
 import java.lang.Thread.sleep
@@ -24,6 +25,7 @@ import java.util.Optional
 import java.util.concurrent.TimeUnit
 import maru.app.MaruApp.TestTopicHandler
 import maru.p2p.P2PNetworkBuilder
+import maru.p2p.P2PNetworkBuilder.Companion.rpcMethod
 import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import org.apache.logging.log4j.LogManager
@@ -41,6 +43,7 @@ import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.gossip.PreparedGossipMessage
 import tech.pegasys.teku.networking.p2p.gossip.TopicHandler
+import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
@@ -349,6 +352,51 @@ class P2PTest {
     val future = p2PNetwork1.gossip("topic", Bytes.fromHexString(ORIGINAL_MESSAGE))
 
     assertThatNoException().isThrownBy { future.get(4000, TimeUnit.MILLISECONDS) }
+
+    maruNode1.stop()
+    maruNode2.stop()
+  }
+
+  @Test
+  fun `existing peers can send a request`() {
+    val maruNode1 =
+      MaruFactory.buildTestMaru(
+        ethereumJsonRpcUrl = besuNode1.jsonRpcBaseUrl().get(),
+        engineApiRpc = besuNode1.engineRpcUrl().get(),
+        networks = listOf(PEER_ADDRESS_NODE_1),
+        staticPeers = listOf(),
+        privateKeyFile = key1File,
+      )
+    maruNode1.start()
+    val p2PNetwork1 = maruNode1.getP2PNetwork()
+
+    val maruNode2 =
+      MaruFactory.buildTestMaru(
+        ethereumJsonRpcUrl = besuNode1.jsonRpcBaseUrl().get(),
+        engineApiRpc = besuNode1.engineRpcUrl().get(),
+        networks = listOf(PEER_ADDRESS_NODE_2),
+        staticPeers = listOf(),
+        privateKeyFile = key2File,
+      )
+    maruNode2.start()
+    val p2PNetwork2 = maruNode2.getP2PNetwork()
+
+    maruNode2.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_1))
+
+    sleep(2000) // Allow time for peers to connect
+
+    assertThat(p2PNetwork1!!.peerCount).isEqualTo(1)
+    assertThat(p2PNetwork2!!.peerCount).isEqualTo(1)
+
+    val peer = maruNode2.getP2PNetwork()!!.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1))).get()
+    val responseFuture =
+      peer.sendRequest(
+        rpcMethod,
+        Bytes.fromHexString(ORIGINAL_MESSAGE),
+        MaruRpcResponseHandler(),
+      )
+
+    assertThatNoException().isThrownBy { responseFuture.get(4000, TimeUnit.MILLISECONDS) }
 
     maruNode1.stop()
     maruNode2.stop()

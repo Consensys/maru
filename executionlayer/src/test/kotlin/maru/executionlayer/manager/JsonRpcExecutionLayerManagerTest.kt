@@ -88,7 +88,7 @@ class JsonRpcExecutionLayerManagerTest {
     val payloadStatus = PayloadStatusV1(executionStatus, latestValidHash, null)
     whenever(executionLayerClient.forkChoiceUpdate(any(), any()))
       .thenReturn(
-        SafeFuture.completedFuture(Response(TekuForkChoiceUpdatedResult(payloadStatus, payloadId))),
+        SafeFuture.completedFuture(Response(TekuForkChoiceUpdatedResult(payloadStatus, payloadId), null, true, false)),
       )
     return payloadStatus
   }
@@ -106,6 +106,9 @@ class JsonRpcExecutionLayerManagerTest {
           /* blobsBundle = */ blobsBundle,
           /* shouldOverrideBuilder = */ false,
         ),
+        null,
+        true,
+        false,
       )
     whenever(executionLayerClient.getPayload(eq(payloadId)))
       .thenReturn(SafeFuture.completedFuture(getPayloadResponse))
@@ -113,7 +116,7 @@ class JsonRpcExecutionLayerManagerTest {
 
   private fun mockNewPayloadWithStatus(payloadStatus: PayloadStatusV1) {
     whenever(executionLayerClient.newPayload(any())).thenReturn(
-      SafeFuture.completedFuture(Response(payloadStatus)),
+      SafeFuture.completedFuture(Response(payloadStatus, null, true, false)),
     )
   }
 

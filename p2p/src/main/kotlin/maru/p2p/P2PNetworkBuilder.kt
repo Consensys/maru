@@ -26,6 +26,7 @@ import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.mux.StreamMuxer
 import io.libp2p.core.pubsub.ValidationResult
 import io.libp2p.etc.types.millis
+import io.libp2p.protocol.PingProtocol
 import io.libp2p.pubsub.PubsubApiImpl
 import io.libp2p.pubsub.gossip.Gossip
 import io.libp2p.pubsub.gossip.GossipPeerScoreParams
@@ -37,6 +38,7 @@ import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.ConnectionUpgrader
 import io.libp2p.transport.tcp.TcpTransport
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.ByteBufUtil
 import java.util.Optional
 import kotlin.random.Random
 import org.apache.tuweni.bytes.Bytes
@@ -71,6 +73,7 @@ open class P2PNetworkBuilder {
   private var privateKey: PrivKey? = null
   private var ipv4Address: Multiaddr? = null
   private var ipv6Address: Multiaddr? = null
+  private var peerManager: PeerManager? = null
 
   fun build(): P2PNetwork<Peer> {
     // check everything that is needed is set
@@ -146,7 +149,7 @@ open class P2PNetworkBuilder {
     val maruRpcMethod = rpcMethod // TODO: MaruRpcMethod needs to be implemented
     val rpcHandler = RpcHandler(asyncRunner, maruRpcMethod)
 
-    val peerManager =
+    this.peerManager =
       PeerManager(
         metricsSystem,
         ReputationManager.NOOP,
@@ -155,7 +158,9 @@ open class P2PNetworkBuilder {
         { _ -> 50.0 },
       ) // TODO need to implement the scoring function
 
-    val host = createHost(privateKey!!, listOf(gossip, peerManager), gossip)
+    maruRpcMethod.setPeerManager(peerManager!!)
+
+    val host = createHost(privateKey!!, listOf(gossip, peerManager!!), gossip, rpcHandler)
     // Add additional connection handlers and protocol bindings as needed
 
     val advertisedAddresses = mutableListOf<Multiaddr>()
@@ -209,6 +214,7 @@ open class P2PNetworkBuilder {
     privKey: PrivKey,
     connectionHandlers: List<ConnectionHandler>,
     gossip: Gossip,
+    rpcHandler: RpcHandler<MaruRpcRequestHandler, Bytes, RpcResponseHandler<Bytes>>,
   ): Host {
     // networkInterfaces is a list of IP addresses. At least one IP address (IPv4) is required.
     // If two IP addresses are provided, one must be IPv4 and the other must be IPv6.
@@ -238,6 +244,8 @@ open class P2PNetworkBuilder {
         }
         connectionHandlers.forEach { b.connectionHandlers.add(it) }
         b.protocols.add(gossip) // TODO: add the rest of the protocols
+        b.protocols.add(io.libp2p.protocol.PingBinding(PingProtocol(32)))
+        b.protocols.add(rpcHandler)
       }
     return host
   }
@@ -253,25 +261,47 @@ open class P2PNetworkBuilder {
   }
 
   open class MaruRpcMethod : RpcMethod<MaruRpcRequestHandler, Bytes, RpcResponseHandler<Bytes>> {
-    override fun getIds(): MutableList<String> = mutableListOf("/mplex/6.7.0")
+    private lateinit var peerManager: PeerManager
 
-    override fun createIncomingRequestHandler(p0: String?): RpcRequestHandler = MaruRpcRequestHandler()
+    fun setPeerManager(peerManager: PeerManager) {
+      this.peerManager = peerManager
+    }
+
+    fun getPeerManager(): PeerManager = peerManager
+
+    override fun getIds(): MutableList<String> = mutableListOf("linea")
+
+    override fun createIncomingRequestHandler(p0: String?): RpcRequestHandler {
+      val maruRpcRequestHandler = MaruRpcRequestHandler(null, null, peerManager)
+      println("createIncomingRequestHandler $p0 $maruRpcRequestHandler")
+      return maruRpcRequestHandler
+    }
 
     override fun createOutgoingRequestHandler(
       p0: String?,
       p1: Bytes?,
       p2: RpcResponseHandler<Bytes>?,
-    ): MaruRpcRequestHandler = MaruRpcRequestHandler()
+    ): MaruRpcRequestHandler {
+      val maruRpcRequestHandler = MaruRpcRequestHandler(p1, p2, peerManager)
+      println("createOutgoingRequestHandler $p0 $p1 $maruRpcRequestHandler")
+      return maruRpcRequestHandler
+    }
 
     override fun encodeRequest(p0: Bytes?): Bytes = p0!!
   }
 
-  open class MaruRpcRequestHandler : RpcRequestHandler {
+  open class MaruRpcRequestHandler(
+    private val request: Bytes?,
+    private val responseHandler: RpcResponseHandler<Bytes>?,
+    private val peerManager: PeerManager,
+  ) : RpcRequestHandler {
+    private var data: String = ""
+
     override fun active(
       p0: NodeId?,
       p1: RpcStream?,
     ) {
-      TODO("Not yet implemented7")
+      println("active $this")
     }
 
     override fun processData(
@@ -279,21 +309,25 @@ open class P2PNetworkBuilder {
       p1: RpcStream?,
       p2: ByteBuf?,
     ) {
-      TODO("Not yet implemented8")
+      val hexDump = ByteBufUtil.hexDump(p2!!)
+      println("processData $hexDump $this Request: $request")
+      data += hexDump
+      // if we need to respond here we can figure out which peer it is from the node id and send the response
+      p1!!.closeWriteStream()
     }
 
     override fun readComplete(
       p0: NodeId?,
       p1: RpcStream?,
     ) {
-      TODO("Not yet implemented9")
+      println("readComplete $data")
     }
 
     override fun closed(
       p0: NodeId?,
       p1: RpcStream?,
     ) {
-      TODO("Not yet implemented10")
+      println("closed $data")
     }
   }
 

@@ -25,12 +25,12 @@ allprojects {
 
   repositories {
     maven {
-      url 'file:///Users/stefan/work/teku/build/install/teku/localMaven'
-      content { includeGroupByRegex('tech\\..*') }
-    }
-    maven {
       url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
       content { includeGroupByRegex('org\\.hyperledger\\..*') }
+    }
+    maven {
+      url 'https://dl.cloudsmith.io/public/consensys/teku/maven/'
+      content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
     }
     maven {
       url 'https://artifacts.consensys.net/public/maven/maven/'
