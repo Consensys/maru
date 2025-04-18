@@ -54,6 +54,8 @@ import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.stateRoot
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
+import org.hyperledger.besu.consensus.common.bft.Gossiper
+import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -71,6 +73,8 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: NewBlockHandler<Unit>,
   private val clock: Clock,
+  private val gossiper: Gossiper,
+  private val validatorMulticaster: ValidatorMulticaster,
 ) : ProtocolFactory {
   init {
     require(maruConfig.validator != null) { "The validator is required when QBFT protocol is instantiated!" }
@@ -200,6 +204,8 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         proposerSelector = proposerSelector,
         validatorProvider = validatorProvider,
         clock = clock,
+        gossiper = gossiper,
+        validatorMulticaster = validatorMulticaster,
       )
     return qbftProtocolFactory.create(forkSpec)
   }
