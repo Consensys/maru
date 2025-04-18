@@ -164,7 +164,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
     val engineApiExecutionLayerClient =
       buildExecutionEngineClient(
         maruConfig.validator!!
-          .client.engineApiClientConfig.endpoint
+          .engineApiClient.endpoint
           .toString(),
         qbftConsensusConfig.elFork,
       )
