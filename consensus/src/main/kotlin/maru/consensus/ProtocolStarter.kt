@@ -18,22 +18,22 @@ package maru.consensus
 import java.util.concurrent.atomic.AtomicReference
 import maru.core.BeaconBlock
 import maru.core.Protocol
-import maru.executionlayer.client.MetadataProvider
-import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class ProtocolStarterBlockHandler(
   private val protocolStarter: ProtocolStarter,
-) : NewBlockHandler {
-  override fun handleNewBlock(block: BeaconBlock) {
+) : NewBlockHandler<Unit> {
+  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
     val blockMetadata =
       BlockMetadata(
-        block.beaconBlockBody.executionPayload.blockNumber,
-        block.beaconBlockHeader.hash,
-        block.beaconBlockHeader.timestamp.toLong(),
+        beaconBlock.beaconBlockBody.executionPayload.blockNumber,
+        beaconBlock.beaconBlockHeader.hash,
+        beaconBlock.beaconBlockHeader.timestamp.toLong(),
       )
     protocolStarter.handleNewBlock(blockMetadata)
+    return SafeFuture.completedFuture(Unit)
   }
 }
 
@@ -63,6 +63,7 @@ class ProtocolStarter(
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()
     if (currentProtocolWithFork?.fork != nextForkSpec) {
+      log.debug("Switching from forkSpec={} to newForkFpec={}", currentProtocolWithFork?.fork, nextForkSpec)
       val newProtocol: Protocol = protocolFactory.create(nextForkSpec)
 
       val newProtocolWithFork =
@@ -70,7 +71,7 @@ class ProtocolStarter(
           newProtocol,
           nextForkSpec,
         )
-      log.debug("Switching from {} to protocol {}", currentProtocolWithFork, newProtocolWithFork)
+      log.debug("Switched from {} to protocol {}", currentProtocolWithFork, newProtocolWithFork)
       currentProtocolWithForkReference.set(
         newProtocolWithFork,
       )
@@ -82,7 +83,7 @@ class ProtocolStarter(
   }
 
   override fun start() {
-    val latestBlock = metadataProvider.getLatestBlockMetadata().get()
+    val latestBlock = metadataProvider.getLatestBlockMetadata()
     handleNewBlock(latestBlock)
   }
 

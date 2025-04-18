@@ -16,9 +16,11 @@
 package maru.config
 
 import com.sksamuel.hoplite.Secret
-import fromHexToByteArray
 import java.net.URI
+import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import maru.extensions.fromHexToByteArray
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -28,16 +30,16 @@ class HopliteFriendlinessTest {
     [sot-eth-endpoint]
     endpoint = "http://localhost:8545"
 
-    [dummy-consensus-options]
-    communication-time-margin=100m
+    [qbft-options]
+    communication-margin=100m
+    data-path="/some/path"
 
     [p2p-config]
     port = 3322
 
     [validator]
-    private-key = "0xdead"
+    private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
     jwt-secret-path = "/secret/path"
-    min-time-between-get-payload-attempts=800m
     el-client-engine-api-endpoint = "http://localhost:8555"
     """.trimIndent()
   private val rawConfig =
@@ -60,14 +62,13 @@ class HopliteFriendlinessTest {
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
           validator =
             ValidatorDtoToml(
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
-              privateKey = Secret("0xdead"),
+              privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
               jwtSecretPath = "/secret/path",
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           followerEngineApis =
             mapOf(
@@ -94,14 +95,13 @@ class HopliteFriendlinessTest {
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
           validator =
             ValidatorDtoToml(
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
-              privateKey = Secret("0xdead"),
+              privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
               jwtSecretPath = "/secret/path",
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           followerEngineApis = null,
         ),
@@ -110,8 +110,7 @@ class HopliteFriendlinessTest {
 
   @Test
   fun appConfigFileIsConvertableToDomain() {
-    val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
+    val config = Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
@@ -119,17 +118,13 @@ class HopliteFriendlinessTest {
             ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
           validator =
             Validator(
-              client =
-                ValidatorClientConfig(
-                  engineApiClientConfig = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
-                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
-                ),
-              key = "0xdead".fromHexToByteArray(),
+              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
+              privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
             ),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           followers =
             FollowersConfig(
               mapOf(
@@ -152,25 +147,46 @@ class HopliteFriendlinessTest {
             ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
+          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
           validator =
             Validator(
-              client =
-                ValidatorClientConfig(
-                  engineApiClientConfig =
-                    ApiEndpointConfig(
-                      URI.create("http://localhost:8555").toURL(),
-                      "/secret/path",
-                    ),
-                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
-                ),
-              key = "0xdead".fromHexToByteArray(),
+              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
+              privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
             ),
           followers =
             FollowersConfig(
               emptyMap(),
             ),
+        ),
+      )
+  }
+
+  private val qbftOptions =
+    """
+    communication-margin=100m
+    data-path="/some/path"
+    message-queue-limit = 1000
+    round-expiry = 1000
+    duplicateMessageLimit = 100
+    future-message-max-distance = 10
+    future-messages-limit = 1000
+    """.trimIndent()
+
+  @Test
+  fun qbftOptionsAreParseable() {
+    val config =
+      Utils.parseTomlConfig<QbftOptions>(qbftOptions)
+    assertThat(config)
+      .isEqualTo(
+        QbftOptions(
+          communicationMargin = 100.milliseconds,
+          dataPath = Path("/some/path"),
+          messageQueueLimit = 1000,
+          roundExpiry = 1.seconds,
+          duplicateMessageLimit = 100,
+          futureMessageMaxDistance = 10L,
+          futureMessagesLimit = 1000L,
         ),
       )
   }

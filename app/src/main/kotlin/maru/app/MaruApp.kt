@@ -16,21 +16,27 @@
 package maru.app
 
 import java.time.Clock
-import kotlin.time.Duration.Companion.seconds
+import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
+import maru.consensus.BlockMetadata
 import maru.consensus.ForksSchedule
+import maru.consensus.LatestBlockMetadataCache
 import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.ProtocolStarterBlockHandler
+import maru.consensus.Web3jMetadataProvider
 import maru.consensus.delegated.ElDelegatedConsensusFactory
-import maru.consensus.dummy.DummyConsensusProtocolFactory
-import maru.executionlayer.client.Web3jMetadataProvider
+import maru.consensus.state.FinalizationState
+import maru.core.BeaconBlockHeader
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
   config: MaruConfig,
@@ -44,7 +50,9 @@ class MaruApp(
       log.warn("P2P is disabled!")
     }
     if (config.validator == null) {
-      log.info("Maru is running in follower-only node")
+      log.info("Validator is not defined. Maru is running in follower-only node")
+      log.error("Follower-only mode is not supported yet! Exiting application.")
+      exitProcess(1)
     }
     log.info(config.toString())
   }
@@ -54,48 +62,80 @@ class MaruApp(
       config.sotNode,
     )
 
-  private val metadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
+  private val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
+  private val lastBlockMetadataCache: LatestBlockMetadataCache =
+    LatestBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
+  private val metadataProviderCacheUpdater =
+    NewBlockHandler { beaconBlock ->
+      val blockMetadata = BlockMetadata.fromBeaconBlock(beaconBlock)
+      lastBlockMetadataCache.updateLatestBlockMetadata(blockMetadata)
+      SafeFuture.completedFuture(Unit)
+    }
 
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
-      minTimeTillNextBlock = 0.seconds,
     )
+
+  private val metricsSystem = NoOpMetricsSystem()
+  private val finalizationStateProviderStub = { _: BeaconBlockHeader ->
+    LogManager.getLogger("FinalizationStateProvider").debug("fetching the latest finalized state")
+    val latestBlockHash = lastBlockMetadataCache.getLatestBlockMetadata().blockHash
+    FinalizationState(latestBlockHash, latestBlockHash)
+  }
+
   private val protocolStarter =
     let {
-      val delegatedConsensusNewBlockHandler = NewBlockHandlerMultiplexer(emptyMap())
-      val dummyConsensusNewBlockHandler = NewBlockHandlerMultiplexer(createFollowerHandlers(config.followers))
+      val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
+      val delegatedConsensusNewBlockHandler =
+        NewBlockHandlerMultiplexer(
+          mapOf(metadataCacheUpdaterHandlerEntry),
+        )
+      val qbftConsensusNewBlockHandler =
+        NewBlockHandlerMultiplexer(createFollowerHandlers(config.followers) + metadataCacheUpdaterHandlerEntry)
       ProtocolStarter(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
           OmniProtocolFactory(
-            dummyConsensusFactory =
-              DummyConsensusProtocolFactory(
-                forksSchedule = beaconGenesisConfig,
-                clock = clock,
-                maruConfig = config,
-                metadataProvider = metadataProvider,
-                newBlockHandler = dummyConsensusNewBlockHandler,
-              ),
             elDelegatedConsensusFactory =
               ElDelegatedConsensusFactory(
                 ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
                 newBlockHandler = delegatedConsensusNewBlockHandler,
               ),
+            qbftConsensusFactory =
+              QbftProtocolFactoryWithBeaconChainInitialization(
+                maruConfig = config,
+                metricsSystem = metricsSystem,
+                metadataProvider = lastBlockMetadataCache,
+                finalizationStateProvider = finalizationStateProviderStub,
+                executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
+                nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
+                newBlockHandler = qbftConsensusNewBlockHandler,
+                clock = clock,
+              ),
           ),
-        metadataProvider = metadataProvider,
+        metadataProvider = lastBlockMetadataCache,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
       ).also {
-        delegatedConsensusNewBlockHandler.addHandler("protocol starter", ProtocolStarterBlockHandler(it))
-        dummyConsensusNewBlockHandler.addHandler("protocol starter", ProtocolStarterBlockHandler(it))
+        val protocolStarterBlockHandlerEntry = "protocol starter" to ProtocolStarterBlockHandler(it)
+        delegatedConsensusNewBlockHandler.addHandler(
+          protocolStarterBlockHandlerEntry.first,
+          protocolStarterBlockHandlerEntry.second,
+        )
+        qbftConsensusNewBlockHandler.addHandler(
+          protocolStarterBlockHandlerEntry.first,
+          protocolStarterBlockHandlerEntry.second,
+        )
       }
     }
 
-  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler> =
+  private fun createFollowerHandlers(
+    followers: FollowersConfig,
+  ): Map<String, NewBlockHandler<ForkChoiceUpdatedResult>> =
     followers.followers
       .mapValues {
-        Helpers.createBlockImporter(it.value, metadataProvider)
+        Helpers.createFollowerBlockImporter(it.value, lastBlockMetadataCache)
       }
 
   fun start() {
@@ -105,5 +145,6 @@ class MaruApp(
 
   fun stop() {
     protocolStarter.stop()
+    log.info("Maru is down")
   }
 }

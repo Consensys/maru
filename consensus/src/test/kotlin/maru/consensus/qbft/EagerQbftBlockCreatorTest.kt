@@ -15,11 +15,15 @@
  */
 package maru.consensus.qbft
 
-import fromHexToByteArray
 import java.time.Clock
 import java.time.Duration
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
+import maru.consensus.BlockMetadata
+import maru.consensus.ConsensusConfig
+import maru.consensus.ForkSpec
+import maru.consensus.ForksSchedule
+import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
@@ -31,12 +35,10 @@ import maru.core.HashUtil
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
-import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
-import maru.executionlayer.client.Web3jMetadataProvider
-import maru.executionlayer.manager.BlockMetadata
+import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
-import maru.executionlayer.manager.ExecutionPayloadValidator.ValidationResult
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
+import maru.extensions.fromHexToByteArray
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
@@ -86,6 +88,17 @@ class EagerQbftBlockCreatorTest {
   private val executionLayerManager = createExecutionLayerManager()
   private val clock = Clock.systemUTC()
   private val validatorSet = DataGenerators.randomValidators() + validator
+  private val forksSchedule =
+    ForksSchedule(
+      setOf(
+        ForkSpec(
+          timestampSeconds = 0,
+          blockTimeSeconds = 1,
+          configuration = object : ConsensusConfig {},
+        ),
+      ),
+    )
+  private val nextBlockTimestampProvider = NextBlockTimestampProviderImpl(clock, forksSchedule)
 
   @Test
   fun `can create a non empty block with new timestamp`() {
@@ -132,9 +145,11 @@ class EagerQbftBlockCreatorTest {
         blockBuilderIdentity = validator,
         config =
           EagerQbftBlockCreator.Config(
-            blockBuildingDuration = 900.milliseconds,
+            communicationMargin = 100.milliseconds,
           ),
         metadataProvider = { BlockMetadata(0UL, genesisBlockHash, genesisBlock.timestamp.toLong()) },
+        nextBlockTimestampProvider = nextBlockTimestampProvider,
+        clock = clock,
       )
     // Create a non-empty proposal
     val rejectedBlockTimestamp = clock.millis() / 1000
@@ -207,11 +222,10 @@ class EagerQbftBlockCreatorTest {
         .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
         .executionClientEventsPublisher { }
         .build()
-    return JsonRpcExecutionLayerManager
-      .create(
-        executionLayerClient = PragueWeb3jJsonRpcExecutionLayerClient(Web3JExecutionEngineClient(engineApiClient)),
-        metadataProvider = Web3jMetadataProvider(ethApiClient.eth1Web3j),
-        payloadValidator = { ValidationResult.Valid(it) },
-      ).get()
+    return JsonRpcExecutionLayerManager(
+      PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
+        Web3JExecutionEngineClient(engineApiClient),
+      ),
+    )
   }
 }
