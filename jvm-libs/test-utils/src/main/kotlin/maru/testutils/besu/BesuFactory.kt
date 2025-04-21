@@ -69,10 +69,6 @@ object BesuFactory {
         .replace("\"cancunTime\": 0", "\"cancunTime\": $switchTimestamp")
         .replace("\"pragueTime\": 0", "\"pragueTime\": $switchTimestamp")
         .replace("\"terminalTotalDifficulty\": 0", "\"terminalTotalDifficulty\": $ttd")
-        .replace(
-          "\"terminalTotalDifficulty\": 0",
-          "\"terminalTotalDifficulty\": $ttd",
-        )
     return buildTestBesu(genesisFile)
   }
 }
