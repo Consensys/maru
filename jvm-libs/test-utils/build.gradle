@@ -10,4 +10,9 @@ dependencies {
   implementation("org.hyperledger.besu.internal:merge")
   implementation("org.hyperledger.besu.internal:plugins-rocksdb")
   implementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
+
+  // Web3j dependency for transaction sending
+  implementation "org.web3j:core"
+  implementation 'org.assertj:assertj-core'
+  implementation 'org.awaitility:awaitility-kotlin'
 }

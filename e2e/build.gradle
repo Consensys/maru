@@ -14,6 +14,7 @@ dependencies {
   implementation project(":jvm-libs:mappers")
   implementation(project(":serialization"))
   implementation(project(":jvm-libs:extensions"))
+  implementation project(":jvm-libs:test-utils")
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:time"

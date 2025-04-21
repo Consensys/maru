@@ -42,8 +42,8 @@ import maru.extensions.fromHexToByteArray
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
-import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
+import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -160,7 +160,7 @@ class EagerQbftBlockCreatorTest {
       nextBlockTimestamp = rejectedBlockTimestamp,
       feeRecipient = validator.address,
     )
-    val transaction = TransactionsHelper().createTransfers(1u)
+    val transaction = BesuTransactionsHelper().createTransfers(1u)
     besuInstance.execute(transaction)
     Thread.sleep(1000)
     val rejectedBlock = mainBlockCreator.createBlock(rejectedBlockTimestamp, parentHeader)

@@ -25,8 +25,8 @@ import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
 import maru.testutils.MaruFactory
 import maru.testutils.SpyingValidatorMulticaster
-import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
+import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Commit
@@ -55,7 +55,7 @@ class MaruQbftTest {
     )
   private lateinit var besuNode: BesuNode
   private lateinit var maruNode: MaruApp
-  private lateinit var transactionsHelper: TransactionsHelper
+  private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private lateinit var tmpDir: File
   private lateinit var spyingValidatorMulticaster: SpyingValidatorMulticaster
@@ -63,7 +63,7 @@ class MaruQbftTest {
   @BeforeEach
   fun setUp() {
     val elFork = ElFork.Prague
-    transactionsHelper = TransactionsHelper()
+    transactionsHelper = BesuTransactionsHelper()
     besuNode = BesuFactory.buildTestBesu(elFork)
     cluster = Cluster(NetConditions(NetTransactions()))
 
