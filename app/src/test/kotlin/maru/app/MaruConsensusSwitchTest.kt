@@ -36,7 +36,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
 
-class MaruConsensusSwitch {
+class MaruConsensusSwitchTest {
   private lateinit var cluster: Cluster
   private lateinit var besuNode: BesuNode
   private lateinit var maruNode: MaruApp
