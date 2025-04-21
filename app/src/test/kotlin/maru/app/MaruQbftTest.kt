@@ -16,7 +16,6 @@
 package maru.app
 
 import java.io.File
-import java.math.BigInteger
 import java.nio.file.Files
 import maru.consensus.ElFork
 import maru.consensus.qbft.network.NoopValidatorMulticaster
@@ -44,15 +43,9 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.web3j.protocol.core.DefaultBlockParameter
 
 class MaruQbftTest {
-  private var cluster =
-    Cluster(
-      ClusterConfigurationBuilder().build(),
-      NetConditions(NetTransactions()),
-      ThreadBesuNodeRunner(),
-    )
+  private lateinit var cluster: Cluster
   private lateinit var besuNode: BesuNode
   private lateinit var maruNode: MaruApp
   private lateinit var transactionsHelper: BesuTransactionsHelper
@@ -64,8 +57,13 @@ class MaruQbftTest {
   fun setUp() {
     val elFork = ElFork.Prague
     transactionsHelper = BesuTransactionsHelper()
-    besuNode = BesuFactory.buildTestBesu(elFork)
-    cluster = Cluster(NetConditions(NetTransactions()))
+    besuNode = BesuFactory.buildTestBesu()
+    cluster =
+      Cluster(
+        ClusterConfigurationBuilder().build(),
+        NetConditions(NetTransactions()),
+        ThreadBesuNodeRunner(),
+      )
 
     cluster.start(besuNode)
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
@@ -110,7 +108,7 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
+    Checks(besuNode).verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
 
     for (blockNumber in 1L..blocksToProduce) {
       assertThat(
@@ -189,8 +187,10 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-    verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
+    Checks(besuNode).run {
+      verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
+      verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
+    }
   }
 
   @Test
@@ -206,37 +206,9 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-    verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
-  }
-
-  private fun verifyBlockHeaders(
-    fromBlockNumber: Int,
-    blocksProduced: Int,
-  ) {
-    val blocks =
-      (fromBlockNumber until fromBlockNumber + blocksProduced)
-        .map {
-          besuNode
-            .nodeRequests()
-            .eth()
-            .ethGetBlockByNumber(
-              DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
-              false,
-            ).sendAsync()
-        }.map { it.get().block }
-
-    val blockTimeSeconds = 1L
-    val timestampsSeconds = blocks.map { it.timestamp.toLong() }
-    (2.until(blocks.size)).forEach {
-      assertThat(timestampsSeconds[it - 1]).isLessThan(timestampsSeconds[it])
-      val actualBlockTime = timestampsSeconds[it] - timestampsSeconds[it - 1]
-      assertThat(actualBlockTime)
-        .withFailMessage("Timestamps: $timestampsSeconds")
-        .isGreaterThanOrEqualTo(blockTimeSeconds)
-      assertThat(actualBlockTime)
-        .withFailMessage("Timestamps: $timestampsSeconds")
-        .isLessThanOrEqualTo(blockTimeSeconds)
+    Checks(besuNode).run {
+      verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
+      verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
     }
   }
 }
