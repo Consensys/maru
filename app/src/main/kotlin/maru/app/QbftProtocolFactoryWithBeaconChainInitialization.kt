@@ -20,7 +20,6 @@ import java.time.Duration
 import maru.config.MaruConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
-import maru.consensus.MetadataProvider
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
@@ -65,8 +64,7 @@ import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 class QbftProtocolFactoryWithBeaconChainInitialization(
   private val maruConfig: MaruConfig,
   private val metricsSystem: MetricsSystem,
-  private val metadataProvider: MetadataProvider,
-  private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
+  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val executionLayerClient: Web3j,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: NewBlockHandler<Unit>,
@@ -190,7 +188,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         beaconChain = beaconChain,
         maruConfig = maruConfig,
         metricsSystem = metricsSystem,
-        metadataProvider = metadataProvider,
         finalizationStateProvider = finalizationStateProvider,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         newBlockHandler = newBlockHandler,

@@ -17,12 +17,12 @@ package maru.consensus.qbft
 
 import java.time.Clock
 import kotlin.time.Duration
-import maru.consensus.MetadataProvider
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
-import maru.core.BeaconBlockHeader
+import maru.core.BeaconBlockBody
 import maru.core.Validator
+import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -39,9 +39,9 @@ import org.hyperledger.besu.crypto.SECPSignature
 class EagerQbftBlockCreator(
   private val manager: ExecutionLayerManager,
   private val delegate: QbftBlockCreator,
-  private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
+  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
-  private val metadataProvider: MetadataProvider,
+  private val beaconChain: BeaconChain,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val config: Config,
   private val clock: Clock,
@@ -57,16 +57,31 @@ class EagerQbftBlockCreator(
     parentHeader: QbftBlockHeader,
   ): QbftBlock {
     val beaconBlockHeader = parentHeader.toBeaconBlockHeader()
-    val finalizedState = finalizationStateProvider(beaconBlockHeader)
-    manager
-      .setHeadAndStartBlockBuilding(
-        headHash = metadataProvider.getLatestBlockMetadata().blockHash,
-        safeHash = finalizedState.safeBlockHash,
-        finalizedHash = finalizedState.finalizedBlockHash,
-        nextBlockTimestamp = headerTimeStampSeconds,
-        feeRecipient = blockBuilderIdentity.address,
-      ).get()
+    val parentBeaconBlockBody =
+      beaconChain
+        .getSealedBeaconBlock(beaconBlockHeader.hash)
+        ?.beaconBlock
+        ?.beaconBlockBody
+        ?: throw IllegalStateException("Parent block not found in the database")
+    val finalizedState = finalizationStateProvider(parentBeaconBlockBody)
+    val blockBuildingTriggerResult =
+      manager
+        .setHeadAndStartBlockBuilding(
+          headHash = parentBeaconBlockBody.executionPayload.blockHash,
+          safeHash = finalizedState.safeBlockHash,
+          finalizedHash = finalizedState.finalizedBlockHash,
+          nextBlockTimestamp = headerTimeStampSeconds,
+          feeRecipient = blockBuilderIdentity.address,
+        ).get()
+    log.debug(
+      "Building new block, FCU result={}",
+      blockBuildingTriggerResult,
+    )
     val sleepTime = computeSleepDurationMilliseconds(headerTimeStampSeconds)
+    require(sleepTime > 0) {
+      "The time is too short to build a block! Previous block target UNIX timestamp " +
+        "$headerTimeStampSeconds, current UNIX timestamp ${clock.millis() / 1000}"
+    }
     log.debug("Block building has started, sleeping for {} milliseconds", sleepTime)
     Thread.sleep(sleepTime)
     log.debug("Block building has finished, time to collect block building results")

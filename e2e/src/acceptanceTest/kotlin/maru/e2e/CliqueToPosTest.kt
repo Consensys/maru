@@ -30,8 +30,6 @@ import kotlin.time.toJavaDuration
 import maru.app.Helpers.createFollowerBlockImporter
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
-import maru.consensus.BlockMetadata
-import maru.consensus.MetadataProvider
 import maru.consensus.NewBlockHandler
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
@@ -39,7 +37,6 @@ import maru.core.BeaconBlockHeader
 import maru.core.Validator
 import maru.e2e.TestEnvironment.waitForInclusion
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
-import maru.extensions.fromHexToByteArray
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
@@ -212,22 +209,8 @@ class CliqueToPosTest {
       }
   }
 
-  private fun buildBlockImportHandler(
-    engineApiConfig: ApiEndpointConfig,
-    latestBlock: EthBlock.Block,
-  ): NewBlockHandler<ForkChoiceUpdatedResult> {
-    val metadataProvider =
-      MetadataProvider {
-        BlockMetadata(
-          latestBlock.number
-            .toLong()
-            .toULong(),
-          latestBlock.hash.fromHexToByteArray(),
-          latestBlock.timestamp.toLong(),
-        )
-      }
-    return createFollowerBlockImporter(engineApiConfig, metadataProvider)
-  }
+  private fun buildBlockImportHandler(engineApiConfig: ApiEndpointConfig): NewBlockHandler<ForkChoiceUpdatedResult> =
+    createFollowerBlockImporter(engineApiConfig)
 
   private fun waitTillTimestamp(timestamp: Long) {
     await.timeout(1.minutes.toJavaDuration()).pollInterval(5.seconds.toJavaDuration()).untilAsserted {
@@ -309,7 +292,7 @@ class CliqueToPosTest {
         ),
         BeaconBlockBody(emptyList(), latestExecutionPayload),
       )
-    buildBlockImportHandler(engineApiConfig, latestBlock).handleNewBlock(stubBeaconBlock).get()
+    buildBlockImportHandler(engineApiConfig).handleNewBlock(stubBeaconBlock).get()
   }
 
   private fun sendCliqueTransactions() {
