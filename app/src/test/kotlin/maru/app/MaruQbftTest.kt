@@ -28,6 +28,7 @@ import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Commit
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Prepare
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Proposal
@@ -110,6 +111,11 @@ class MaruQbftTest {
 
     Checks(besuNode).verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
 
+    // Need to wait because otherwise not all of the messages might be emitted at the time of a block being mined
+    await.untilAsserted {
+      validateRoundChange(maxBlockNumber = blocksToProduce.toLong())
+    }
+
     for (blockNumber in 1L..blocksToProduce) {
       assertThat(
         anyPrepareWithBlockNumber(blockNumber),
@@ -125,8 +131,6 @@ class MaruQbftTest {
         .isTrue
     }
     allMessagesAreSignedByTheExpectedSigner()
-    Thread.sleep(2000) // To catch a RoundChange for sure
-    validateRoundChange(maxBlockNumber = blocksToProduce.toLong())
   }
 
   private fun anyPrepareWithBlockNumber(blockNumber: Long): Boolean =
