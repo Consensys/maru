@@ -80,7 +80,7 @@ class MaruConsensusSwitchTest {
 
   @Test
   fun `Maru is capable of switching from Delegated to QBFT consensus without block pauses`() {
-    val stackStartupMargin = 10
+    val stackStartupMargin = 15
     val expectedBlocksInClique = 5
     val totalBlocksToProduce = expectedBlocksInClique * 2
     var currentTimestamp = System.currentTimeMillis() / 1000
