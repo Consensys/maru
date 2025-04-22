@@ -33,7 +33,6 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftProtocolSchedule
 
-// TODO: the block importer should be driven from the protocol schedule
 class QbftProtocolScheduleAdapter(
   private val blockImporter: QbftBlockImporter,
   private val beaconChain: BeaconChain,

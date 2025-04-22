@@ -25,11 +25,6 @@ data class ApiEndpointConfig(
   val jwtSecretPath: String? = null,
 )
 
-data class ValidatorClientConfig(
-  val engineApiClientConfig: ApiEndpointConfig,
-  val minTimeBetweenGetPayloadAttempts: Duration,
-)
-
 data class FollowersConfig(
   val followers: Map<String, ApiEndpointConfig>,
 )
@@ -40,7 +35,7 @@ data class P2P(
 
 data class Validator(
   val privateKey: ByteArray,
-  val client: ValidatorClientConfig,
+  val engineApiClient: ApiEndpointConfig,
 ) {
   init {
     require(privateKey.size == 32) {

@@ -40,7 +40,6 @@ class HopliteFriendlinessTest {
     [validator]
     private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
     jwt-secret-path = "/secret/path"
-    min-time-between-get-payload-attempts=800m
     el-client-engine-api-endpoint = "http://localhost:8555"
     """.trimIndent()
   private val rawConfig =
@@ -70,7 +69,6 @@ class HopliteFriendlinessTest {
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
               privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
               jwtSecretPath = "/secret/path",
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           followerEngineApis =
             mapOf(
@@ -104,7 +102,6 @@ class HopliteFriendlinessTest {
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
               privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
               jwtSecretPath = "/secret/path",
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
             ),
           followerEngineApis = null,
         ),
@@ -124,11 +121,7 @@ class HopliteFriendlinessTest {
           p2pConfig = P2P(port = 3322u),
           validator =
             Validator(
-              client =
-                ValidatorClientConfig(
-                  engineApiClientConfig = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
-                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
-                ),
+              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
               privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
             ),
           qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
@@ -158,15 +151,7 @@ class HopliteFriendlinessTest {
           p2pConfig = P2P(port = 3322u),
           validator =
             Validator(
-              client =
-                ValidatorClientConfig(
-                  engineApiClientConfig =
-                    ApiEndpointConfig(
-                      URI.create("http://localhost:8555").toURL(),
-                      "/secret/path",
-                    ),
-                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
-                ),
+              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
               privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
             ),
           followers =

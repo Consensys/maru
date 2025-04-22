@@ -17,6 +17,7 @@ package maru.testutils
 
 import java.util.concurrent.CopyOnWriteArrayList
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
+import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.messagewrappers.BftMessage
 import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.consensus.qbft.core.messagedata.CommitMessageData
@@ -29,10 +30,13 @@ import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 class SpyingValidatorMulticaster(
   val validatorMulticaster: ValidatorMulticaster,
 ) : ValidatorMulticaster {
+  private val log = LogManager.getLogger(this.javaClass)
   val emittedMessages = CopyOnWriteArrayList<BftMessage<*>>()
 
   override fun send(message: MessageData) {
-    emittedMessages.add(decodedMessage(message))
+    val decodedMessage = decodedMessage(message)
+    log.debug("Got new message {}", decodedMessage)
+    emittedMessages.add(decodedMessage)
     validatorMulticaster.send(message)
   }
 
@@ -40,7 +44,9 @@ class SpyingValidatorMulticaster(
     message: MessageData,
     denylist: Collection<Address>,
   ) {
-    emittedMessages.add(decodedMessage(message))
+    val decodedMessage = decodedMessage(message)
+    log.debug("Got new message {}", decodedMessage)
+    emittedMessages.add(decodedMessage)
     validatorMulticaster.send(message, denylist)
   }
 

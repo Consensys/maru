@@ -22,7 +22,6 @@ import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
-import maru.consensus.MetadataProvider
 import maru.consensus.NewBlockHandler
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.state.FinalizationState
@@ -36,10 +35,7 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object Helpers {
-  fun createFollowerBlockImporter(
-    apiEndpointConfig: ApiEndpointConfig,
-    metadataProvider: MetadataProvider,
-  ): NewBlockHandler<ForkChoiceUpdatedResult> {
+  fun createFollowerBlockImporter(apiEndpointConfig: ApiEndpointConfig): NewBlockHandler<ForkChoiceUpdatedResult> {
     val web3JEngineApiClient: Web3JClient =
       Web3jClientBuilder()
         .endpoint(apiEndpointConfig.endpoint.toString())
@@ -54,13 +50,12 @@ object Helpers {
       JsonRpcExecutionLayerManager(
         executionLayerEngineApiClient = executionLayerClient,
       )
-    val latestBlockMetadata = metadataProvider.getLatestBlockMetadata()
     return FollowerBeaconBlockImporter(
       executionLayerManager = executionLayerManager,
       finalizationStateProvider = {
         FinalizationState(
-          latestBlockMetadata.blockHash,
-          latestBlockMetadata.blockHash,
+          it.executionPayload.blockHash,
+          it.executionPayload.blockHash,
         )
       },
     )

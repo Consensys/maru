@@ -33,7 +33,7 @@ import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.qbft.network.NoopGossiper
 import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.state.FinalizationState
-import maru.core.BeaconBlockHeader
+import maru.core.BeaconBlockBody
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -85,10 +85,9 @@ class MaruApp(
     )
 
   private val metricsSystem = NoOpMetricsSystem()
-  private val finalizationStateProviderStub = { _: BeaconBlockHeader ->
+  private val finalizationStateProviderStub = { it: BeaconBlockBody ->
     LogManager.getLogger("FinalizationStateProvider").debug("fetching the latest finalized state")
-    val latestBlockHash = lastBlockMetadataCache.getLatestBlockMetadata().blockHash
-    FinalizationState(latestBlockHash, latestBlockHash)
+    FinalizationState(it.executionPayload.blockHash, it.executionPayload.blockHash)
   }
 
   private val protocolStarter =
@@ -113,7 +112,6 @@ class MaruApp(
               QbftProtocolFactoryWithBeaconChainInitialization(
                 maruConfig = config,
                 metricsSystem = metricsSystem,
-                metadataProvider = lastBlockMetadataCache,
                 finalizationStateProvider = finalizationStateProviderStub,
                 executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
                 nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
@@ -143,7 +141,7 @@ class MaruApp(
   ): Map<String, NewBlockHandler<ForkChoiceUpdatedResult>> =
     followers.followers
       .mapValues {
-        Helpers.createFollowerBlockImporter(it.value, lastBlockMetadataCache)
+        Helpers.createFollowerBlockImporter(it.value)
       }
 
   fun start() {
