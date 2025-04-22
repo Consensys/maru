@@ -19,7 +19,6 @@ import java.time.Clock
 import java.time.Duration
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
-import maru.consensus.BlockMetadata
 import maru.consensus.ConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -29,16 +28,18 @@ import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
+import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.HashUtil
+import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
-import maru.extensions.fromHexToByteArray
+import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
@@ -102,10 +103,29 @@ class EagerQbftBlockCreatorTest {
 
   @Test
   fun `can create a non empty block with new timestamp`() {
-    val parentBlock = DataGenerators.randomSealedBeaconBlock(0U)
-    val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
-    whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(
-      parentBlock,
+    val genesisExecutionPayload =
+      ethApiClient.eth1Web3j
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          true,
+        ).send()
+        .block
+        .toDomain()
+    val parentBlock =
+      BeaconBlock(
+        beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(0U),
+        beaconBlockBody =
+          DataGenerators
+            .randomBeaconBlockBody()
+            .copy(executionPayload = genesisExecutionPayload),
+      )
+    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptyList())
+
+    val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
+    whenever(
+      beaconChain.getSealedBeaconBlock(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader.hash()),
+    ).thenReturn(
+      sealedGenesisBeaconBlock,
     )
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(1L, 1))).thenReturn(
       Address.wrap(
@@ -114,7 +134,7 @@ class EagerQbftBlockCreatorTest {
       ),
     )
     whenever(
-      validatorProvider.getValidatorsAfterBlock(parentBlock.beaconBlock.beaconBlockHeader.number),
+      validatorProvider.getValidatorsAfterBlock(0u),
     ).thenReturn(completedFuture(validatorSet))
 
     val mainBlockCreator =
@@ -125,13 +145,7 @@ class EagerQbftBlockCreatorTest {
         beaconChain = beaconChain,
         round = 1,
       )
-    val genesisBlock =
-      ethApiClient
-        .eth1Web3j
-        .ethGetBlockByNumber(DefaultBlockParameter.valueOf("earliest"), false)
-        .send()
-        .block
-    val genesisBlockHash = genesisBlock.hash.fromHexToByteArray()
+    val genesisBlockHash = genesisExecutionPayload.blockHash
     val eagerQbftBlockCreator =
       EagerQbftBlockCreator(
         manager = executionLayerManager,
@@ -147,19 +161,20 @@ class EagerQbftBlockCreatorTest {
           EagerQbftBlockCreator.Config(
             communicationMargin = 100.milliseconds,
           ),
-        metadataProvider = { BlockMetadata(0UL, genesisBlockHash, genesisBlock.timestamp.toLong()) },
+        beaconChain = beaconChain,
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         clock = clock,
       )
     // Create a non-empty proposal
     val rejectedBlockTimestamp = clock.millis() / 1000
-    executionLayerManager.setHeadAndStartBlockBuilding(
-      headHash = genesisBlockHash,
-      safeHash = genesisBlockHash,
-      finalizedHash = genesisBlockHash,
-      nextBlockTimestamp = rejectedBlockTimestamp,
-      feeRecipient = validator.address,
-    )
+    executionLayerManager
+      .setHeadAndStartBlockBuilding(
+        headHash = genesisBlockHash,
+        safeHash = genesisBlockHash,
+        finalizedHash = genesisBlockHash,
+        nextBlockTimestamp = rejectedBlockTimestamp,
+        feeRecipient = validator.address,
+      ).get()
     val transaction = TransactionsHelper().createTransfers(1u)
     besuInstance.execute(transaction)
     Thread.sleep(1000)
@@ -208,7 +223,7 @@ class EagerQbftBlockCreatorTest {
     assertThat(
       createdBlockBody.prevCommitSeals,
     ).isEqualTo(
-      parentBlock.commitSeals,
+      sealedGenesisBeaconBlock.commitSeals,
     )
     assertThat(createdBlockBody.executionPayload.timestamp).isEqualTo(blockTimestamp.toULong())
     assertThat(createdBlockBody.executionPayload.transactions).isNotEmpty

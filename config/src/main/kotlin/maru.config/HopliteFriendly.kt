@@ -17,23 +17,17 @@ package maru.config
 
 import com.sksamuel.hoplite.Masked
 import java.net.URL
-import kotlin.time.Duration
 import maru.extensions.fromHexToByteArray
 
 data class ValidatorDtoToml(
   val privateKey: Masked,
   val elClientEngineApiEndpoint: URL,
   val jwtSecretPath: String? = null,
-  val minTimeBetweenGetPayloadAttempts: Duration,
 ) {
   fun domainFriendly(): Validator =
     Validator(
       privateKey = privateKey.value.fromHexToByteArray(),
-      client =
-        ValidatorClientConfig(
-          engineApiClientConfig = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
-          minTimeBetweenGetPayloadAttempts = minTimeBetweenGetPayloadAttempts,
-        ),
+      engineApiClient = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
     )
 }
 

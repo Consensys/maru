@@ -47,12 +47,7 @@ import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
 
 class MaruQbftTest {
-  private var cluster =
-    Cluster(
-      ClusterConfigurationBuilder().build(),
-      NetConditions(NetTransactions()),
-      ThreadBesuNodeRunner(),
-    )
+  private lateinit var cluster: Cluster
   private lateinit var besuNode: BesuNode
   private lateinit var maruNode: MaruApp
   private lateinit var transactionsHelper: TransactionsHelper
@@ -65,8 +60,12 @@ class MaruQbftTest {
     val elFork = ElFork.Prague
     transactionsHelper = TransactionsHelper()
     besuNode = BesuFactory.buildTestBesu(elFork)
-    cluster = Cluster(NetConditions(NetTransactions()))
-
+    cluster =
+      Cluster(
+        ClusterConfigurationBuilder().build(),
+        NetConditions(NetTransactions()),
+        ThreadBesuNodeRunner(),
+      )
     cluster.start(besuNode)
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
     val engineRpcUrl = besuNode.engineRpcUrl().get()

@@ -51,7 +51,6 @@ object MaruFactory {
 
     [validator]
     private-key = "$VALIDATOR_PRIVATE_KEY"
-    min-time-between-get-payload-attempts=800m
     el-client-engine-api-endpoint = "$engineApiRpc"
     """.trimIndent()
 

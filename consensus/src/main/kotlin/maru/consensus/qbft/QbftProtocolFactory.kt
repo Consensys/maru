@@ -20,7 +20,6 @@ import java.util.concurrent.Executors
 import kotlin.time.toJavaDuration
 import maru.config.MaruConfig
 import maru.consensus.ForkSpec
-import maru.consensus.MetadataProvider
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
@@ -39,7 +38,7 @@ import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
-import maru.core.BeaconBlockHeader
+import maru.core.BeaconBlockBody
 import maru.core.Protocol
 import maru.core.Validator
 import maru.database.BeaconChain
@@ -71,8 +70,7 @@ class QbftProtocolFactory(
   private val beaconChain: BeaconChain,
   private val maruConfig: MaruConfig,
   private val metricsSystem: MetricsSystem,
-  private val metadataProvider: MetadataProvider,
-  private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
+  private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: NewBlockHandler<Unit>,
   private val sealedBeaconBlockImporter: SealedBeaconBlockImporter,
@@ -117,7 +115,6 @@ class QbftProtocolFactory(
           EagerQbftBlockCreator.Config(
             maruConfig.qbftOptions.communicationMargin,
           ),
-        metadataProvider = metadataProvider,
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         clock = clock,
       )

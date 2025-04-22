@@ -40,7 +40,7 @@ class ProtocolStarterBlockHandler(
 class ProtocolStarter(
   private val forksSchedule: ForksSchedule,
   private val protocolFactory: ProtocolFactory,
-  private val metadataProvider: MetadataProvider,
+  private val metadataProvider: MetadataProvider, // TODO: we should probably replace it with BeaconChain
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
 ) : Protocol {
   data class ProtocolWithFork(
