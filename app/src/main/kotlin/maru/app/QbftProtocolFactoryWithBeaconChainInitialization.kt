@@ -16,7 +16,7 @@
 package maru.app
 
 import java.time.Clock
-import java.time.Duration
+import maru.config.ApiEndpointConfig
 import maru.config.MaruConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
@@ -58,8 +58,6 @@ import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
-import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 class QbftProtocolFactoryWithBeaconChainInitialization(
   private val maruConfig: MaruConfig,
@@ -161,9 +159,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
 
     val engineApiExecutionLayerClient =
       buildExecutionEngineClient(
-        maruConfig.validator!!
-          .engineApiClient.endpoint
-          .toString(),
+        maruConfig.validator!!.engineApiClient,
         qbftConsensusConfig.elFork,
       )
     val executionLayerManager =
@@ -202,16 +198,10 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   }
 
   private fun buildExecutionEngineClient(
-    endpoint: String,
+    endpoint: ApiEndpointConfig,
     elFork: ElFork,
   ): ExecutionLayerEngineApiClient {
-    val web3JEngineApiClient: Web3JClient =
-      Web3jClientBuilder()
-        .endpoint(endpoint)
-        .timeout(Duration.ofMinutes(1))
-        .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-        .executionClientEventsPublisher { }
-        .build()
+    val web3JEngineApiClient: Web3JClient = Helpers.createWeb3jClient(endpoint)
     val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
     return when (elFork) {
       ElFork.Prague -> PragueWeb3JJsonRpcExecutionLayerEngineApiClient(web3jExecutionLayerClient)
