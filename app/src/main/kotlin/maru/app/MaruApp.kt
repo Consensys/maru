@@ -29,6 +29,7 @@ import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.ProtocolStarterBlockHandler
 import maru.consensus.Web3jMetadataProvider
+import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
@@ -133,7 +134,8 @@ class MaruApp(
   ): Map<String, NewBlockHandler<ForkChoiceUpdatedResult>> =
     followers.followers
       .mapValues {
-        Helpers.createFollowerBlockImporter(it.value)
+        val engineApiClient = Helpers.createWeb3jClient(it.value)
+        FollowerBeaconBlockImporter.create(engineApiClient)
       }
 
   fun start() {
