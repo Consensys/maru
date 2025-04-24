@@ -33,6 +33,7 @@ import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
+import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -43,7 +44,7 @@ class MaruApp(
   config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
-) {
+) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   init {
@@ -85,6 +86,13 @@ class MaruApp(
     FinalizationState(it.executionPayload.blockHash, it.executionPayload.blockHash)
   }
 
+  private val beaconChain =
+    KvDatabaseFactory
+      .createRocksDbDatabase(
+        databasePath = config.persistence.dataPath,
+        metricsSystem = metricsSystem,
+        metricCategory = MaruMetricsCategory.STORAGE,
+      )
   private val protocolStarter =
     let {
       val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
@@ -111,6 +119,7 @@ class MaruApp(
                 executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
                 nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
                 newBlockHandler = qbftConsensusNewBlockHandler,
+                beaconChain = beaconChain,
                 clock = clock,
               ),
           ),
@@ -146,5 +155,9 @@ class MaruApp(
   fun stop() {
     protocolStarter.stop()
     log.info("Maru is down")
+  }
+
+  override fun close() {
+    beaconChain.close()
   }
 }

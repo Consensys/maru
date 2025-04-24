@@ -26,7 +26,6 @@ class QbftConsensus(
   private val eventProcessor: QbftEventProcessor,
   private val bftExecutors: BftExecutors,
   private val eventQueueExecutor: Executor,
-  private val beaconChain: BeaconChain,
 ) : Protocol {
   override fun start() {
     eventProcessor.start()
@@ -39,6 +38,5 @@ class QbftConsensus(
     eventProcessor.stop()
     bftExecutors.stop()
     qbftController.stop()
-    beaconChain.close()
   }
 }

@@ -28,6 +28,8 @@ class InMemoryBeaconChain(
 
   private var latestBeaconState: BeaconState = initialBeaconState
 
+  override fun isInitialized(): Boolean = true
+
   override fun getLatestBeaconState(): BeaconState = latestBeaconState
 
   override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? = beaconStateByBlockRoot[beaconBlockRoot]

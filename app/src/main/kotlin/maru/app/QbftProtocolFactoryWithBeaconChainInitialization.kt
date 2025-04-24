@@ -44,7 +44,6 @@ import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.crypto.Crypto
 import maru.database.BeaconChain
-import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -64,6 +63,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val executionLayerClient: Web3j,
+  private val beaconChain: BeaconChain,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: NewBlockHandler<Unit>,
   private val clock: Clock,
@@ -148,15 +148,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
     }
     val qbftConsensusConfig = forkSpec.configuration as QbftConsensusConfig
 
-    val beaconChain =
-      KvDatabaseFactory
-        .createRocksDbDatabase(
-          databasePath = maruConfig.persistence.dataPath,
-          metricsSystem = metricsSystem,
-          metricCategory = MaruMetricsCategory.STORAGE,
-          stateInitializer = ::initializeDb,
-        )
-
     val engineApiExecutionLayerClient =
       buildExecutionEngineClient(
         maruConfig.validator!!.engineApiClient,
@@ -166,6 +157,10 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
       JsonRpcExecutionLayerManager(
         executionLayerEngineApiClient = engineApiExecutionLayerClient,
       )
+
+    if (!beaconChain.isInitialized()) {
+      initializeDb(beaconChain.newUpdater())
+    }
 
     val localNodeIdentity = Crypto.privateKeyToValidator(maruConfig.validator!!.privateKey)
     val validatorProvider = StaticValidatorProvider(setOf(localNodeIdentity))

@@ -26,13 +26,8 @@ import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
 
 class KvDatabase(
   private val kvStoreAccessor: KvStoreAccessor,
-  stateInitializer: (BeaconChain.Updater) -> Unit,
 ) : BeaconChain {
-  init {
-    if (kvStoreAccessor.get(Schema.LatestBeaconState).getOrNull() == null) {
-      stateInitializer(newUpdater())
-    }
-  }
+  override fun isInitialized(): Boolean = kvStoreAccessor.get(Schema.LatestBeaconState).getOrNull() != null
 
   companion object {
     object Schema {

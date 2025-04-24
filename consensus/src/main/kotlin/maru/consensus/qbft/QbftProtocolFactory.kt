@@ -224,7 +224,6 @@ class QbftProtocolFactory(
       eventProcessor = eventProcessor,
       bftExecutors = bftExecutors,
       eventQueueExecutor = eventQueueExecutor,
-      beaconChain = beaconChain,
     )
   }
 }
