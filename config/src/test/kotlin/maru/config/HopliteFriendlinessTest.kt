@@ -27,12 +27,14 @@ import org.junit.jupiter.api.Test
 class HopliteFriendlinessTest {
   private val emptyFollowersConfig =
     """
+    [persistence]
+    data-path="/some/path"
+
     [sot-eth-endpoint]
     endpoint = "http://localhost:8545"
 
     [qbft-options]
     communication-margin=100m
-    data-path="/some/path"
 
     [p2p-config]
     port = 3322
@@ -58,11 +60,12 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
+          persistence = Persistence(Path("/some/path")),
           sotEthEndpoint =
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
+          qbftOptions = QbftOptions(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
           validator =
             ValidatorDtoToml(
@@ -91,11 +94,12 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
+          persistence = Persistence(Path("/some/path")),
           sotEthEndpoint =
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
+          qbftOptions = QbftOptions(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
           validator =
             ValidatorDtoToml(
@@ -114,6 +118,7 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
+          persistence = Persistence(Path("/some/path")),
           sotNode =
             ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
@@ -124,7 +129,7 @@ class HopliteFriendlinessTest {
               engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
               privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
             ),
-          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
+          qbftOptions = QbftOptions(100.milliseconds),
           followers =
             FollowersConfig(
               mapOf(
@@ -143,11 +148,12 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
+          persistence = Persistence(Path("/some/path")),
           sotNode =
             ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          qbftOptions = QbftOptions(100.milliseconds, Path("/some/path")),
+          qbftOptions = QbftOptions(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
           validator =
             Validator(
@@ -181,7 +187,6 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         QbftOptions(
           communicationMargin = 100.milliseconds,
-          dataPath = Path("/some/path"),
           messageQueueLimit = 1000,
           roundExpiry = 1.seconds,
           duplicateMessageLimit = 100,

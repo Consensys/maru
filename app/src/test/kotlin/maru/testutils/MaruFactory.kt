@@ -34,12 +34,14 @@ object MaruFactory {
     dataPath: String,
   ): String =
     """
+    [persistence]
+    data-path="$dataPath"
+
     [sot-eth-endpoint]
     endpoint = "$ethereumJsonRpcUrl"
 
     [qbft-options]
     communication-margin=200m
-    data-path="$dataPath"
 
     [p2p-config]
     port = 3322

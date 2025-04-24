@@ -153,7 +153,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
     val beaconChain =
       KvDatabaseFactory
         .createRocksDbDatabase(
-          databasePath = maruConfig.qbftOptions.dataPath,
+          databasePath = maruConfig.persistence.dataPath,
           metricsSystem = metricsSystem,
           metricCategory = MaruMetricsCategory.STORAGE,
           stateInitializer = ::initializeDb,

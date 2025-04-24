@@ -39,6 +39,7 @@ data class ApiEndpointDtoToml(
 }
 
 data class MaruConfigDtoToml(
+  private val persistence: Persistence,
   private val qbftOptions: QbftOptions,
   private val sotEthEndpoint: ApiEndpointDtoToml,
   private val p2pConfig: P2P?,
@@ -47,6 +48,7 @@ data class MaruConfigDtoToml(
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
+      persistence = persistence,
       qbftOptions = qbftOptions,
       sotNode = sotEthEndpoint.toDomain(),
       p2pConfig = p2pConfig,
