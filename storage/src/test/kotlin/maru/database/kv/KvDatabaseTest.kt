@@ -38,7 +38,6 @@ class KvDatabaseTest {
       databasePath = databasePath,
       metricsSystem = NoOpMetricsSystem(),
       metricCategory = KvDatabaseTestMetricCategory,
-      stateInitializer = { },
     )
 
   @Test

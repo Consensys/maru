@@ -22,8 +22,10 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconState
 import maru.core.Validator
+import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -40,6 +42,24 @@ class FollowerBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
 ) : NewBlockHandler<ForkChoiceUpdatedResult> {
+  companion object {
+    fun create(executionLayerEngineApiClient: ExecutionLayerEngineApiClient): NewBlockHandler<ForkChoiceUpdatedResult> {
+      val executionLayerManager =
+        JsonRpcExecutionLayerManager(
+          executionLayerEngineApiClient = executionLayerEngineApiClient,
+        )
+      return FollowerBeaconBlockImporter(
+        executionLayerManager = executionLayerManager,
+        finalizationStateProvider = {
+          FinalizationState(
+            it.executionPayload.blockHash,
+            it.executionPayload.blockHash,
+          )
+        },
+      )
+    }
+  }
+
   private val log = LogManager.getLogger(this.javaClass)
 
   override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {

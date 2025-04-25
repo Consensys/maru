@@ -20,6 +20,10 @@ import java.nio.file.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+data class Persistence(
+  val dataPath: Path,
+)
+
 data class ApiEndpointConfig(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
@@ -58,7 +62,6 @@ data class Validator(
 data class QbftOptions(
   // Since we cannot finish block production instantly at expected time, we need to set some safety margin
   val communicationMargin: Duration,
-  val dataPath: Path,
   val messageQueueLimit: Int = 1000,
   val roundExpiry: Duration = 1.seconds,
   val duplicateMessageLimit: Int = 100,
@@ -67,6 +70,7 @@ data class QbftOptions(
 )
 
 data class MaruConfig(
+  val persistence: Persistence,
   val sotNode: ApiEndpointConfig,
   val qbftOptions: QbftOptions,
   val p2pConfig: P2P?,

@@ -27,10 +27,12 @@ import java.nio.file.StandardCopyOption
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.app.Helpers.createFollowerBlockImporter
+import maru.app.Helpers
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
+import maru.consensus.ElFork
 import maru.consensus.NewBlockHandler
+import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
@@ -210,7 +212,7 @@ class CliqueToPosTest {
   }
 
   private fun buildBlockImportHandler(engineApiConfig: ApiEndpointConfig): NewBlockHandler<ForkChoiceUpdatedResult> =
-    createFollowerBlockImporter(engineApiConfig)
+    FollowerBeaconBlockImporter.create(Helpers.buildExecutionEngineClient(engineApiConfig, ElFork.Prague))
 
   private fun waitTillTimestamp(timestamp: Long) {
     await.timeout(1.minutes.toJavaDuration()).pollInterval(5.seconds.toJavaDuration()).untilAsserted {
