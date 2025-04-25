@@ -23,8 +23,10 @@ import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
-import maru.consensus.ValidatorProvider
+import maru.consensus.StaticValidatorProvider
+import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.blockimport.SealedBeaconBlockImporter
+import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.qbft.adapters.ForksScheduleAdapter
 import maru.consensus.qbft.adapters.ProposerSelectorAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
@@ -40,15 +42,19 @@ import maru.consensus.qbft.network.NoopGossiper
 import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
+import maru.consensus.state.StateTransitionImpl
 import maru.core.BeaconBlockBody
+import maru.core.BeaconState
 import maru.core.Protocol
 import maru.core.Validator
 import maru.database.BeaconChain
+import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.common.bft.BlockTimer
+import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
 import org.hyperledger.besu.consensus.common.bft.RoundTimer
 import org.hyperledger.besu.consensus.common.bft.statemachine.FutureMessageBuffer
@@ -73,11 +79,7 @@ class QbftProtocolFactory(
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: NewBlockHandler<Unit>,
-  private val sealedBeaconBlockImporter: SealedBeaconBlockImporter,
   private val executionLayerManager: JsonRpcExecutionLayerManager,
-  private val stateTransition: StateTransition,
-  private val proposerSelector: ProposerSelector,
-  private val validatorProvider: ValidatorProvider,
   private val clock: Clock,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
@@ -94,13 +96,25 @@ class QbftProtocolFactory(
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
     val securityModule = KeyPairSecurityModule(keyPair)
     val nodeKey = NodeKey(securityModule)
-
     val blockChain = QbftBlockchainAdapter(beaconChain)
 
     val localAddress = Util.publicKeyToAddress(keyPair.publicKey)
-    val besuValidatorProvider = QbftValidatorProviderAdapter(validatorProvider)
-    val qbftProposerSelector = ProposerSelectorAdapter(beaconChain, proposerSelector)
+    val qbftProposerSelector = ProposerSelectorAdapter(beaconChain, ProposerSelectorImpl)
     val validatorMulticaster = NoopValidatorMulticaster()
+
+    val localValidator = Validator(localAddress.toArray())
+    val validatorProvider = StaticValidatorProvider(setOf(localValidator))
+    val stateTransition = StateTransitionImpl(validatorProvider)
+    val proposerSelector = ProposerSelectorImpl
+    val besuValidatorProvider = QbftValidatorProviderAdapter(validatorProvider)
+    val sealedBeaconBlockImporter =
+      createSealedBeaconBlockImporter(
+        executionLayerManager = executionLayerManager,
+        beaconChain = beaconChain,
+        proposerSelector = proposerSelector,
+        localNodeIdentity = localValidator,
+        stateTransition = stateTransition,
+      )
 
     val qbftBlockCreatorFactory =
       QbftBlockCreatorFactory(
@@ -225,5 +239,33 @@ class QbftProtocolFactory(
       bftExecutors = bftExecutors,
       eventQueueExecutor = eventQueueExecutor,
     )
+  }
+
+  private fun createSealedBeaconBlockImporter(
+    executionLayerManager: ExecutionLayerManager,
+    proposerSelector: ProposerSelector,
+    localNodeIdentity: Validator,
+    beaconChain: BeaconChain,
+    stateTransition: StateTransition,
+  ): SealedBeaconBlockImporter {
+    val finalizationStateProvider = { beaconBlockBody: BeaconBlockBody ->
+      val hash = beaconBlockBody.executionPayload.blockHash
+      FinalizationState(hash, hash)
+    }
+    val shouldBuildNextBlock =
+      { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->
+        val nextProposerAddress =
+          proposerSelector.getProposerForBlock(beaconState, roundIdentifier).get().address
+        nextProposerAddress.contentEquals(localNodeIdentity.address)
+      }
+    val beaconBlockImporter =
+      BlockBuildingBeaconBlockImporter(
+        executionLayerManager = executionLayerManager,
+        finalizationStateProvider = finalizationStateProvider,
+        nextBlockTimestampProvider = nextBlockTimestampProvider,
+        shouldBuildNextBlock = shouldBuildNextBlock,
+        blockBuilderIdentity = localNodeIdentity,
+      )
+    return TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition, beaconBlockImporter)
   }
 }

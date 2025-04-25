@@ -20,6 +20,7 @@ import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.consensus.BlockMetadata
+import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestBlockMetadataCache
 import maru.consensus.NewBlockHandler
@@ -143,7 +144,7 @@ class MaruApp(
   ): Map<String, NewBlockHandler<ForkChoiceUpdatedResult>> =
     followers.followers
       .mapValues {
-        val engineApiClient = Helpers.createWeb3jClient(it.value)
+        val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
         FollowerBeaconBlockImporter.create(engineApiClient)
       }
 

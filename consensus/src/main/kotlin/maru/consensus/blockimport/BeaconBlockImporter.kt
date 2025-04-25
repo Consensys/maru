@@ -22,15 +22,13 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconState
 import maru.core.Validator
-import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
+import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface BeaconBlockImporter {
@@ -45,12 +43,10 @@ class FollowerBeaconBlockImporter(
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
 ) : NewBlockHandler<ForkChoiceUpdatedResult> {
   companion object {
-    fun create(web3JEngineApiClient: Web3JClient): NewBlockHandler<ForkChoiceUpdatedResult> {
-      val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
-      val executionLayerClient = PragueWeb3JJsonRpcExecutionLayerEngineApiClient(web3jExecutionLayerClient)
+    fun create(executionLayerEngineApiClient: ExecutionLayerEngineApiClient): NewBlockHandler<ForkChoiceUpdatedResult> {
       val executionLayerManager =
         JsonRpcExecutionLayerManager(
-          executionLayerEngineApiClient = executionLayerClient,
+          executionLayerEngineApiClient = executionLayerEngineApiClient,
         )
       return FollowerBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
