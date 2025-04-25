@@ -27,7 +27,6 @@ object KvDatabaseFactory {
     databasePath: Path,
     metricsSystem: MetricsSystem,
     metricCategory: MetricCategory,
-    stateInitializer: (BeaconChain.Updater) -> Unit,
   ): BeaconChain {
     val rocksDbInstance =
       RocksDbInstanceFactory.create(
@@ -41,6 +40,6 @@ object KvDatabaseFactory {
         ),
         emptyList(),
       )
-    return KvDatabase(rocksDbInstance, stateInitializer)
+    return KvDatabase(rocksDbInstance)
   }
 }

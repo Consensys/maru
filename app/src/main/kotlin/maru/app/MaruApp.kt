@@ -20,6 +20,7 @@ import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.consensus.BlockMetadata
+import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestBlockMetadataCache
 import maru.consensus.NewBlockHandler
@@ -29,11 +30,13 @@ import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.ProtocolStarterBlockHandler
 import maru.consensus.Web3jMetadataProvider
+import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.qbft.network.NoopGossiper
 import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
+import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -48,7 +51,7 @@ class MaruApp(
   clock: Clock = Clock.systemUTC(),
   gossiper: Gossiper = NoopGossiper,
   validatorMulticaster: ValidatorMulticaster = NoopValidatorMulticaster,
-) {
+) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   init {
@@ -90,6 +93,13 @@ class MaruApp(
     FinalizationState(it.executionPayload.blockHash, it.executionPayload.blockHash)
   }
 
+  private val beaconChain =
+    KvDatabaseFactory
+      .createRocksDbDatabase(
+        databasePath = config.persistence.dataPath,
+        metricsSystem = metricsSystem,
+        metricCategory = MaruMetricsCategory.STORAGE,
+      )
   private val protocolStarter =
     let {
       val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
@@ -116,6 +126,7 @@ class MaruApp(
                 executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
                 nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
                 newBlockHandler = qbftConsensusNewBlockHandler,
+                beaconChain = beaconChain,
                 clock = clock,
                 gossiper = gossiper,
                 validatorMulticaster = validatorMulticaster,
@@ -141,7 +152,8 @@ class MaruApp(
   ): Map<String, NewBlockHandler<ForkChoiceUpdatedResult>> =
     followers.followers
       .mapValues {
-        Helpers.createFollowerBlockImporter(it.value)
+        val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
+        FollowerBeaconBlockImporter.create(engineApiClient)
       }
 
   fun start() {
@@ -152,5 +164,9 @@ class MaruApp(
   fun stop() {
     protocolStarter.stop()
     log.info("Maru is down")
+  }
+
+  override fun close() {
+    beaconChain.close()
   }
 }

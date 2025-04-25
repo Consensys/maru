@@ -15,19 +15,15 @@
  */
 package maru.app
 
-import java.time.Duration
 import java.util.Optional
 import java.util.UUID
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
-import maru.consensus.NewBlockHandler
-import maru.consensus.blockimport.FollowerBeaconBlockImporter
-import maru.consensus.state.FinalizationState
+import maru.consensus.ElFork
+import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
-import maru.executionlayer.manager.ForkChoiceUpdatedResult
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
@@ -35,32 +31,6 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object Helpers {
-  fun createFollowerBlockImporter(apiEndpointConfig: ApiEndpointConfig): NewBlockHandler<ForkChoiceUpdatedResult> {
-    val web3JEngineApiClient: Web3JClient =
-      Web3jClientBuilder()
-        .endpoint(apiEndpointConfig.endpoint.toString())
-        .timeout(Duration.ofMinutes(1))
-        .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-        .executionClientEventsPublisher { }
-        .jwtConfigOpt(wrapJwtPath(apiEndpointConfig.jwtSecretPath))
-        .build()
-    val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
-    val executionLayerClient = PragueWeb3JJsonRpcExecutionLayerEngineApiClient(web3jExecutionLayerClient)
-    val executionLayerManager =
-      JsonRpcExecutionLayerManager(
-        executionLayerEngineApiClient = executionLayerClient,
-      )
-    return FollowerBeaconBlockImporter(
-      executionLayerManager = executionLayerManager,
-      finalizationStateProvider = {
-        FinalizationState(
-          it.executionPayload.blockHash,
-          it.executionPayload.blockHash,
-        )
-      },
-    )
-  }
-
   private fun wrapJwtPath(jwtPath: String?): Optional<JwtConfig> {
     val jwtConfigPath = Optional.ofNullable(jwtPath)
     return JwtConfig.createIfNeeded(
@@ -79,4 +49,15 @@ object Helpers {
       .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
       .executionClientEventsPublisher {}
       .build()
+
+  fun buildExecutionEngineClient(
+    endpoint: ApiEndpointConfig,
+    elFork: ElFork,
+  ): ExecutionLayerEngineApiClient {
+    val web3JEngineApiClient: Web3JClient = createWeb3jClient(endpoint)
+    val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
+    return when (elFork) {
+      ElFork.Prague -> PragueWeb3JJsonRpcExecutionLayerEngineApiClient(web3jExecutionLayerClient)
+    }
+  }
 }

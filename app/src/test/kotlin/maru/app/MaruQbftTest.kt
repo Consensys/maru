@@ -215,4 +215,34 @@ class MaruQbftTest {
       verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
     }
   }
+
+  @Test
+  fun `Maru works after recreation`() {
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+    maruNode.stop()
+    maruNode.close()
+
+    Thread.sleep(3)
+    maruNode =
+      MaruFactory.buildTestMaru(
+        ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = besuNode.engineRpcUrl().get(),
+        elFork = ElFork.Prague,
+        dataDir = tmpDir.toPath(),
+      )
+    // The difference from the previous test is that BeaconChain is instantiated with the Maru instance and it's not
+    // affected by start and stop
+    maruNode.start()
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+
+    Checks(besuNode).run {
+      verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
+      verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
+    }
+  }
 }

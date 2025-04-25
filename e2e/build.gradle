@@ -9,6 +9,7 @@ dependencies {
   implementation project(":core")
   implementation project(":app")
   implementation project(":consensus")
+  implementation project(":executionlayer")
   implementation project(":config")
   // For the syncing logic
   implementation project(":jvm-libs:mappers")
