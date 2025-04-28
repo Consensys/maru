@@ -49,7 +49,7 @@ class MaruApp(
   clock: Clock = Clock.systemUTC(),
 ) {
   companion object {
-    const val DEFAULT_RECONNECT_DELAY_MILLI_SECONDS = 20L
+    const val DEFAULT_RECONNECT_DELAY_MILLI_SECONDS = 5000L
   }
 
   private val reconnectDelayInMilliSeconds: Long =
@@ -91,7 +91,7 @@ class MaruApp(
         config.p2pConfig?.staticPeers?.forEach { peer ->
           p2PNetwork?.createPeerAddress(peer)?.let { address -> addStaticPeer(address) }
         }
-//      p2PNetwork?.subscribe("topic", TestTopicHandler())
+      p2PNetwork?.subscribe("topic", P2PNetworkBuilder.TestTopicHandler())
 
         eventProducer.start()
       }?.thenApply {
@@ -147,29 +147,6 @@ class MaruApp(
     val network = networkBuilder.build()
 
     return network
-  }
-
-  class TestTopicHandler : TopicHandler {
-    override fun prepareMessage(
-      payload: Bytes?,
-      arrivalTimestamp: Optional<tech.pegasys.teku.infrastructure.unsigned.UInt64>?,
-    ): PreparedGossipMessage {
-      TODO("Not yet implemented")
-    }
-
-    override fun handleMessage(message: PreparedGossipMessage?): SafeFuture<ValidationResult> {
-      var data: Bytes? = null
-      message.let {
-        data = message!!.originalMessage
-      }
-      if (data!!.equals(ORIGINAL_MESSAGE)) {
-        return SafeFuture.completedFuture(ValidationResult.Valid)
-      } else {
-        return SafeFuture.completedFuture(ValidationResult.Invalid)
-      }
-    }
-
-    override fun getMaxMessageSize(): Int = 43434343
   }
 
   fun getP2PNetwork(): P2PNetwork<Peer>? = p2PNetwork

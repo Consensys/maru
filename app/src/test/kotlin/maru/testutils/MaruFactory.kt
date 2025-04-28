@@ -43,6 +43,7 @@ object MaruFactory {
     networks = ${networks.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}
     staticPeers = ${staticPeersList.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}
     private-key-file = "$privateKeyFile"
+    gossip-topics = ["testing"]
 
     [validator]
     validator-key = "0xdead"

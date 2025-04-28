@@ -120,6 +120,7 @@ open class P2PNetworkBuilder {
     val gossipParams = GossipParamsBuilder().heartbeatInterval(100.millis).build()
 
     gossipTopicHandlers.add("topic", TestTopicHandler())
+
     val gossipRouterBuilder = GossipRouterBuilder()
     gossipRouterBuilder.params = gossipParams
     gossipRouterBuilder.scoreParams = gossipScoreParams
@@ -214,7 +215,7 @@ open class P2PNetworkBuilder {
     privKey: PrivKey,
     connectionHandlers: List<ConnectionHandler>,
     gossip: Gossip,
-    rpcHandler: RpcHandler<MaruRpcRequestHandler, Bytes, RpcResponseHandler<Bytes>>,
+    rpcHandler: RpcHandler<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler>,
   ): Host {
     // networkInterfaces is a list of IP addresses. At least one IP address (IPv4) is required.
     // If two IP addresses are provided, one must be IPv4 and the other must be IPv6.
@@ -260,39 +261,35 @@ open class P2PNetworkBuilder {
     }
   }
 
-  open class MaruRpcMethod : RpcMethod<MaruRpcRequestHandler, Bytes, RpcResponseHandler<Bytes>> {
+  open class MaruRpcMethod : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
     private lateinit var peerManager: PeerManager
 
     fun setPeerManager(peerManager: PeerManager) {
       this.peerManager = peerManager
     }
 
-    fun getPeerManager(): PeerManager = peerManager
-
     override fun getIds(): MutableList<String> = mutableListOf("linea")
 
     override fun createIncomingRequestHandler(p0: String?): RpcRequestHandler {
-      val maruRpcRequestHandler = MaruRpcRequestHandler(null, null, peerManager)
+      val maruRpcRequestHandler = MaruIncomingRpcRequestHandler(peerManager)
       println("createIncomingRequestHandler $p0 $maruRpcRequestHandler")
       return maruRpcRequestHandler
     }
 
     override fun createOutgoingRequestHandler(
-      p0: String?,
-      p1: Bytes?,
-      p2: RpcResponseHandler<Bytes>?,
-    ): MaruRpcRequestHandler {
-      val maruRpcRequestHandler = MaruRpcRequestHandler(p1, p2, peerManager)
-      println("createOutgoingRequestHandler $p0 $p1 $maruRpcRequestHandler")
+      protocolId: String?,
+      request: Bytes?,
+      responseHandler: MaruRpcResponseHandler?,
+    ): MaruOutgoingRpcRequestHandler {
+      val maruRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler!!, peerManager)
+      println("createOutgoingRequestHandler $protocolId $request $maruRpcRequestHandler")
       return maruRpcRequestHandler
     }
 
     override fun encodeRequest(p0: Bytes?): Bytes = p0!!
   }
 
-  open class MaruRpcRequestHandler(
-    private val request: Bytes?,
-    private val responseHandler: RpcResponseHandler<Bytes>?,
+  open class MaruIncomingRpcRequestHandler(
     private val peerManager: PeerManager,
   ) : RpcRequestHandler {
     private var data: String = ""
@@ -309,11 +306,51 @@ open class P2PNetworkBuilder {
       p1: RpcStream?,
       p2: ByteBuf?,
     ) {
-      val hexDump = ByteBufUtil.hexDump(p2!!)
-      println("processData $hexDump $this Request: $request")
-      data += hexDump
-      // if we need to respond here we can figure out which peer it is from the node id and send the response
+      val bytes = ByteBufUtil.getBytes(p2!!)
+      println("processData request: $bytes ($this)")
+      data += bytes
+      p1!!.writeBytes(Bytes.wrap(bytes).reverse())
+    }
+
+    override fun readComplete(
+      p0: NodeId?,
+      p1: RpcStream?,
+    ) {
+      println("readComplete $data")
+    }
+
+    override fun closed(
+      p0: NodeId?,
+      p1: RpcStream?,
+    ) {
+      println("closed $data")
+    }
+  }
+
+  open class MaruOutgoingRpcRequestHandler(
+    private val responseHandler: MaruRpcResponseHandler,
+    private val peerManager: PeerManager,
+  ) : RpcRequestHandler {
+    private var data: String = ""
+
+    override fun active(
+      p0: NodeId?,
+      p1: RpcStream?,
+    ) {
+      println("active $this")
+    }
+
+    override fun processData(
+      p0: NodeId?,
+      p1: RpcStream?,
+      p2: ByteBuf?,
+    ) {
+      val bytes = ByteBufUtil.getBytes(p2!!)
+      val peer = peerManager.getPeer(p0).get()
+      println("processData response: $bytes from peer $peer.id ($this)")
+      data += bytes
       p1!!.closeWriteStream()
+      responseHandler.onResponse(Bytes.wrap(bytes))
     }
 
     override fun readComplete(
@@ -332,24 +369,32 @@ open class P2PNetworkBuilder {
   }
 
   class TestTopicHandler : TopicHandler {
+    companion object {
+      val dataFuture = SafeFuture<Bytes>()
+    }
+
     override fun prepareMessage(
+      // TODO: don't know where / how this is used. Looks like it is never used anywhere
       payload: Bytes?,
       arrivalTimestamp: Optional<UInt64>?,
-    ): PreparedGossipMessage = MaruPreparedGossipMessage(payload!!, arrivalTimestamp!!)
+    ): PreparedGossipMessage = MaruPreparedGossipMessage(Bytes.fromHexString("deadbaaf"), Optional.empty())
 
     override fun handleMessage(message: PreparedGossipMessage?): SafeFuture<ValidationResult> {
       var data: Bytes?
       message.let {
         data = message!!.originalMessage
       }
-      return if (data!!.equals(ORIGINAL_MESSAGE)) {
+      // at this point we have to validate the message (will only be further distributed if valid)
+      // at this point we should also (asynchonously) do what needs to be done with the data we received
+      dataFuture.complete(data)
+      return if (data!!.equals(Bytes.fromHexString(ORIGINAL_MESSAGE))) {
         SafeFuture.completedFuture(ValidationResult.Valid)
       } else {
         SafeFuture.completedFuture(ValidationResult.Invalid)
       }
     }
 
-    override fun getMaxMessageSize(): Int = 424242
+    override fun getMaxMessageSize(): Int = 43434343 // TODO: what is a good max size here? 10MB?
   }
 
   class MaruPreparedGossipMessage(
@@ -368,5 +413,18 @@ open class P2PNetworkBuilder {
 
   companion object {
     var rpcMethod = MaruRpcMethod()
+  }
+
+  class MaruRpcResponseHandler : RpcResponseHandler<Bytes> {
+    val future = SafeFuture<Bytes>()
+
+    override fun onResponse(response: Bytes?): SafeFuture<*> {
+      future.complete(response)
+      return SafeFuture.completedFuture(response)
+    }
+
+    override fun onCompleted(error: Optional<out Throwable>?): Unit = throw error!!.get()
+
+    fun response(): SafeFuture<Bytes> = future
   }
 }
