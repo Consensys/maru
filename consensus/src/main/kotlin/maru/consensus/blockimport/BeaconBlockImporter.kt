@@ -68,8 +68,7 @@ class FollowerBeaconBlockImporter(
       .newPayload(executionPayload)
       .handleException { e ->
         log.error(
-          "Error importing execution payload for blockNumber=${executionPayload.blockNumber}." +
-            " sending FCU anyway",
+          "Error importing execution payload for blockNumber=${executionPayload.blockNumber}",
           e,
         )
       }.thenCompose {

@@ -112,15 +112,26 @@ class ProposerValidator(
   private val proposerSelector: ProposerSelector,
   private val beaconChain: BeaconChain,
 ) : BlockValidator {
-  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    proposerSelector
-      .getProposerForBlock(beaconChain.getLatestBeaconState(), block.beaconBlockHeader.toConsensusRoundIdentifier())
-      .thenApply { proposerForNewBlock ->
-        BlockValidator.require(block.beaconBlockHeader.proposer == proposerForNewBlock) {
-          "Proposer is not expected proposer proposer=${block.beaconBlockHeader.proposer} " +
-            "expectedProposer=$proposerForNewBlock"
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+    val parentState = beaconChain.getBeaconState(block.beaconBlockHeader.parentRoot)
+    return if (parentState == null) {
+      SafeFuture.completedFuture(
+        error("Beacon state not found for block parentHash=${block.beaconBlockHeader.parentRoot.encodeHex()}"),
+      )
+    } else {
+      proposerSelector
+        .getProposerForBlock(
+          parentState,
+          block.beaconBlockHeader
+            .toConsensusRoundIdentifier(),
+        ).thenApply { proposerForNewBlock ->
+          BlockValidator.require(block.beaconBlockHeader.proposer == proposerForNewBlock) {
+            "Proposer is not expected proposer proposer=${block.beaconBlockHeader.proposer} " +
+              "expectedProposer=$proposerForNewBlock"
+          }
         }
-      }
+    }
+  }
 }
 
 class ParentRootValidator(
