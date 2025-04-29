@@ -211,7 +211,7 @@ class JsonRpcExecutionLayerManagerTest {
     val payloadStatus = PayloadStatusV1(TekuExecutionPayloadStatus.VALID, Bytes32.random(), null)
     mockNewPayloadWithStatus(payloadStatus)
     mockForkChoiceUpdateWithValidStatus(null)
-    executionLayerManager.importPayload(executionPayload).get()
+    executionLayerManager.newPayload(executionPayload).get()
 
     verify(executionLayerEngineApiClient, times(1)).newPayload(eq(executionPayload))
   }
@@ -222,7 +222,7 @@ class JsonRpcExecutionLayerManagerTest {
     val payloadStatus = PayloadStatusV1(TekuExecutionPayloadStatus.INVALID, Bytes32.random(), "Invalid payload")
     mockNewPayloadWithStatus(payloadStatus)
 
-    assertThat(executionLayerManager.importPayload(executionPayload).get().validationError).isEqualTo("Invalid payload")
+    assertThat(executionLayerManager.newPayload(executionPayload).get().validationError).isEqualTo("Invalid payload")
   }
 
   @Test
@@ -232,7 +232,7 @@ class JsonRpcExecutionLayerManagerTest {
 
     val exception =
       assertThrows<ExecutionException> {
-        executionLayerManager.importPayload(executionPayload).get()
+        executionLayerManager.newPayload(executionPayload).get()
       }
 
     assertThat(exception).cause().hasMessage("engine_newPayload request failed! Cause: Unexpected error!")

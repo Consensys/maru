@@ -167,7 +167,7 @@ class BlockValidatorTest {
 
     val executionLayerEngineApiClient =
       mock<ExecutionLayerManager> {
-        on { importPayload(any()) }.thenReturn(
+        on { newPayload(any()) }.thenReturn(
           SafeFuture.completedFuture(
             DataGenerators.randomValidPayloadStatus(),
           ),
@@ -476,7 +476,7 @@ class BlockValidatorTest {
       )
     val invalidExecutionClient =
       mock<ExecutionLayerManager> {
-        on { importPayload(any()) }.thenReturn(
+        on { newPayload(any()) }.thenReturn(
           SafeFuture.completedFuture(PayloadStatus(ExecutionPayloadStatus.INVALID, null, "Invalid execution payload")),
         )
       }

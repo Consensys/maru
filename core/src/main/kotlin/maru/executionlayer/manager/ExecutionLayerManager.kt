@@ -94,5 +94,5 @@ interface ExecutionLayerManager {
     finalizedHash: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
-  fun importPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus>
+  fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus>
 }

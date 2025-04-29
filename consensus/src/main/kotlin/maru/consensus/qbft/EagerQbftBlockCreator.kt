@@ -88,7 +88,7 @@ class EagerQbftBlockCreator(
   override fun createSealedBlock(
     block: QbftBlock,
     roundNumber: Int,
-    commitSeals: MutableCollection<SECPSignature>,
+    commitSeals: Collection<SECPSignature>,
   ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
 
   private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long {

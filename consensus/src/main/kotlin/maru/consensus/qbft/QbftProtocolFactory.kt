@@ -178,10 +178,9 @@ class QbftProtocolFactory(
     val messageValidatorFactory =
       MessageValidatorFactory(
         /* proposerSelector = */ qbftProposerSelector,
-        // protocolSchedule =
-        protocolSchedule, // validatorProvider =
-        besuValidatorProvider, // blockInterface =
-        blockInterface,
+        /* protocolSchedule = */ protocolSchedule,
+        /* validatorProvider = */ besuValidatorProvider,
+        /* blockInterface = */ blockInterface,
       )
     val messageFactory = MessageFactory(nodeKey, blockCodec)
     val qbftRoundFactory =

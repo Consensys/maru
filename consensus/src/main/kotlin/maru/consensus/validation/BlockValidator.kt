@@ -235,7 +235,7 @@ class ExecutionPayloadValidator(
   private val executionLayerManager: ExecutionLayerManager,
 ) : BlockValidator {
   override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    executionLayerManager.importPayload(block.beaconBlockBody.executionPayload).thenApply { newPayloadStatus ->
+    executionLayerManager.newPayload(block.beaconBlockBody.executionPayload).thenApply { newPayloadStatus ->
       BlockValidator.require(
         newPayloadStatus.status.isValid(),
       ) {
