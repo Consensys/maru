@@ -20,8 +20,9 @@ import java.lang.Thread.sleep
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-import maru.p2p.P2PNetworkBuilder
+import maru.p2p.MaruRpcResponseHandler
 import maru.p2p.P2PNetworkBuilder.Companion.rpcMethod
+import maru.p2p.TestTopicHandler
 import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import org.apache.logging.log4j.LogManager
@@ -105,7 +106,7 @@ class P2PTest {
         privateKeyFile = key1File,
       )
     maruNode1.start()
-    val p2PNetwork1 = maruNode1.getP2PNetwork()
+    val p2PNetwork1 = maruNode1.p2pManager.p2PNetwork
 
     val maruNode2 =
       MaruFactory.buildTestMaru(
@@ -116,9 +117,9 @@ class P2PTest {
         privateKeyFile = key2File,
       )
     maruNode2.start()
-    val p2PNetwork2 = maruNode2.getP2PNetwork()
+    val p2PNetwork2 = maruNode2.p2pManager.p2PNetwork
 
-    maruNode1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
+    maruNode1.p2pManager.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
 
     sleep(200) // time needed to connect
 
@@ -140,7 +141,7 @@ class P2PTest {
         privateKeyFile = key1File,
       )
     maruNode1.start()
-    val p2PNetwork1 = maruNode1.getP2PNetwork()
+    val p2PNetwork1 = maruNode1.p2pManager.p2PNetwork
 
     val maruNode2 =
       MaruFactory.buildTestMaru(
@@ -151,16 +152,16 @@ class P2PTest {
         privateKeyFile = key2File,
       )
     maruNode2.start()
-    val p2PNetwork2 = maruNode2.getP2PNetwork()
+    val p2PNetwork2 = maruNode2.p2pManager.p2PNetwork
 
-    maruNode1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
+    maruNode1.p2pManager.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
 
     sleep(200)
 
     assertThat(p2PNetwork1!!.peerCount).isEqualTo(1)
     assertThat(p2PNetwork2!!.peerCount).isEqualTo(1)
 
-    maruNode1.removeStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
+    maruNode1.p2pManager.removeStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
 
     sleep(200)
 
@@ -182,7 +183,7 @@ class P2PTest {
         privateKeyFile = key1File,
       )
     maruNode1.start()
-    val p2PNetwork1 = maruNode1.getP2PNetwork()
+    val p2PNetwork1 = maruNode1.p2pManager.p2PNetwork
 
     val maruNode2 =
       MaruFactory.buildTestMaru(
@@ -193,7 +194,7 @@ class P2PTest {
         privateKeyFile = key2File,
       )
     maruNode2.start()
-    val p2PNetwork2 = maruNode2.getP2PNetwork()
+    val p2PNetwork2 = maruNode2.p2pManager.p2PNetwork
 
     sleep(200)
 
@@ -215,7 +216,7 @@ class P2PTest {
         privateKeyFile = key1File,
       )
     maruNode1.start()
-    val p2PNetwork1 = maruNode1.getP2PNetwork()
+    val p2PNetwork1 = maruNode1.p2pManager.p2PNetwork
 
     val maruNode2 =
       MaruFactory.buildTestMaru(
@@ -226,7 +227,7 @@ class P2PTest {
         privateKeyFile = key2File,
       )
     maruNode2.start()
-    val p2PNetwork2 = maruNode2.getP2PNetwork()
+    val p2PNetwork2 = maruNode2.p2pManager.p2PNetwork
 
     sleep(200)
 
@@ -240,7 +241,7 @@ class P2PTest {
     assertThat(p2PNetwork2.peerCount).isEqualTo(0)
 
     maruNode1.start()
-    val newP2PNetwork = maruNode1.getP2PNetwork()
+    val newP2PNetwork = maruNode1.p2pManager.p2PNetwork
 
     sleep(200)
 
@@ -262,7 +263,7 @@ class P2PTest {
         privateKeyFile = key1File,
       )
     maruNode1.start()
-    val p2PNetwork1 = maruNode1.getP2PNetwork()
+    val p2PNetwork1 = maruNode1.p2pManager.p2PNetwork
 
     val maruNode2 =
       MaruFactory.buildTestMaru(
@@ -273,7 +274,7 @@ class P2PTest {
         privateKeyFile = key2File,
       )
     maruNode2.start()
-    val p2PNetwork2 = maruNode2.getP2PNetwork()
+    val p2PNetwork2 = maruNode2.p2pManager.p2PNetwork
 
     sleep(200)
 
@@ -295,7 +296,7 @@ class P2PTest {
         privateKeyFile = key1File,
       )
     maruNode1.start()
-    val p2PNetwork1 = maruNode1.getP2PNetwork()
+    val p2PNetwork1 = maruNode1.p2pManager.p2PNetwork
 
     val maruNode2 =
       MaruFactory.buildTestMaru(
@@ -306,17 +307,19 @@ class P2PTest {
         privateKeyFile = key2File,
       )
     maruNode2.start()
-    val p2PNetwork2 = maruNode2.getP2PNetwork()
+    val p2PNetwork2 = maruNode2.p2pManager.p2PNetwork
 
     sleep(500)
 
     assertThat(p2PNetwork1!!.peerCount).isEqualTo(1)
     assertThat(p2PNetwork2!!.peerCount).isEqualTo(1)
 
-    // this throws an exception if we do not have a peer that is subscribed to the topic
+    // this throws an exception if we do not have at least one peer that is subscribed to the topic
     p2PNetwork1.gossip("topic", Bytes.fromHexString(ORIGINAL_MESSAGE))
 
-    assertThat(P2PNetworkBuilder.TestTopicHandler.dataFuture.get(4000, TimeUnit.MILLISECONDS)).isEqualTo(Bytes.fromHexString(ORIGINAL_MESSAGE))
+    assertThat(
+      TestTopicHandler.dataFuture.get(4000, TimeUnit.MILLISECONDS),
+    ).isEqualTo(Bytes.fromHexString(ORIGINAL_MESSAGE))
 
     maruNode1.stop()
     maruNode2.stop()
@@ -333,7 +336,7 @@ class P2PTest {
         privateKeyFile = key1File,
       )
     maruNode1.start()
-    val p2PNetwork1 = maruNode1.getP2PNetwork()
+    val p2PNetwork1 = maruNode1.p2pManager.p2PNetwork
 
     val maruNode2 =
       MaruFactory.buildTestMaru(
@@ -344,23 +347,29 @@ class P2PTest {
         privateKeyFile = key2File,
       )
     maruNode2.start()
-    val p2PNetwork2 = maruNode2.getP2PNetwork()
+    val p2PNetwork2 = maruNode2.p2pManager.p2PNetwork
 
     sleep(500)
 
     assertThat(p2PNetwork1!!.peerCount).isEqualTo(1)
     assertThat(p2PNetwork2!!.peerCount).isEqualTo(1)
 
-    val peer = maruNode2.getP2PNetwork()!!.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1))).get()
+    val peer =
+      maruNode2.p2pManager.p2PNetwork!!
+        .getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
+        .get()
     val request = Bytes.wrap(byteArrayOf(0, 0, 1, 2, 3, 4))
-    val maruRpcResponseHandler = P2PNetworkBuilder.MaruRpcResponseHandler()
+    val maruRpcResponseHandler = MaruRpcResponseHandler()
     val responseFuture =
       peer.sendRequest(
         rpcMethod,
         request,
         maruRpcResponseHandler,
       )
-    responseFuture.thenPeek { it.rpcStream.closeWriteStream() }
+    responseFuture.thenPeek {
+      it.rpcStream.closeWriteStream()
+    } // TODO: this basically signals that we are done sending the request
+    // if we do expect a response we can get the outgoing request handler (it.getRequiredOutgoingRequestHandler()) to check that (timeout, etc)
 
     assertThatNoException().isThrownBy { responseFuture.get(500, TimeUnit.MILLISECONDS) }
     assertThat(maruRpcResponseHandler.response().get(500, TimeUnit.MILLISECONDS)).isEqualTo(request.reverse())
@@ -368,5 +377,4 @@ class P2PTest {
     maruNode1.stop()
     maruNode2.stop()
   }
-
 }
