@@ -44,27 +44,27 @@ class P2PManager {
   private val delayedExecutor = SafeFuture.delayedExecutor(reconnectDelayInMilliSeconds, TimeUnit.MILLISECONDS)
   private val staticPeers: MutableList<NodeId> = mutableListOf()
 
-  var p2PNetwork: P2PNetwork<Peer>? = null
+  var p2pNetwork: P2PNetwork<Peer>? = null
 
   fun start(
     staticPeers: List<String>,
     privateKeyFile: String?,
     networks: List<String>?,
   ) {
-    p2PNetwork = buildP2PNetwork(privateKeyFile, networks)
+    p2pNetwork = buildP2PNetwork(privateKeyFile, networks)
 
-    p2PNetwork
+    p2pNetwork
       ?.start()
       ?.thenApply {
         staticPeers.forEach { peer ->
-          p2PNetwork?.createPeerAddress(peer)?.let { address -> addStaticPeer(address) }
+          p2pNetwork?.createPeerAddress(peer)?.let { address -> addStaticPeer(address) }
         }
-        p2PNetwork?.subscribe("topic", TestTopicHandler())
+        p2pNetwork?.subscribe("topic", TestTopicHandler())
       }?.get()
   }
 
   fun stop() {
-    p2PNetwork?.stop()
+    p2pNetwork?.stop()
   }
 
   private fun buildP2PNetwork(
@@ -82,7 +82,7 @@ class P2PManager {
   }
 
   fun addStaticPeer(peerAddress: PeerAddress) {
-    if (peerAddress.id == p2PNetwork?.nodeId) {
+    if (peerAddress.id == p2pNetwork?.nodeId) {
       return
     }
     synchronized(this) {
@@ -96,17 +96,17 @@ class P2PManager {
 
   fun removeStaticPeer(peerAddress: PeerAddress) {
     if (staticPeers.remove(peerAddress.id)) {
-      p2PNetwork!!.getPeer(peerAddress.id).ifPresent { peer -> peer.disconnectImmediately(Optional.empty(), true) }
+      p2pNetwork!!.getPeer(peerAddress.id).ifPresent { peer -> peer.disconnectImmediately(Optional.empty(), true) }
     }
   }
 
   private fun maintainPersistentConnection(peerAddress: PeerAddress): SafeFuture<Void> {
-    val existingPeer = p2PNetwork!!.getPeer(peerAddress.id)
+    val existingPeer = p2pNetwork!!.getPeer(peerAddress.id)
     if (existingPeer.isPresent) {
       log.debug("Already connected to peer {}", peerAddress)
       return SafeFuture.completedFuture(null)
     }
-    return p2PNetwork!!
+    return p2pNetwork!!
       .connect(peerAddress)
       .thenApply { peer: Peer ->
         peer.subscribeDisconnect { _: Optional<DisconnectReason?>?, _: Boolean ->
