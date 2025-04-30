@@ -168,4 +168,8 @@ class MaruApp(
     p2pManager.stop()
     protocolStarter.stop()
   }
+
+  override fun close() {
+    beaconChain.close()
+  }
 }

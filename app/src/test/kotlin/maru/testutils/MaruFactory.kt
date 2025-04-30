@@ -32,9 +32,6 @@ object MaruFactory {
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataPath: String,
-    networks: List<String>,
-    staticPeersList: List<String>,
-    privateKeyFile: String,
   ): String =
     """
     [persistence]
@@ -45,12 +42,6 @@ object MaruFactory {
 
     [qbft-options]
     communication-margin=200m
-
-    [p2p-config]
-    networks = ${networks.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}
-    staticPeers = ${staticPeersList.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}
-    private-key-file = "$privateKeyFile"
-    gossip-topics = ["testing"] // TODO: not used
 
     [validator]
     private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
@@ -66,9 +57,7 @@ object MaruFactory {
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     elFork: ElFork,
-    dataDir: Path,networks: List<String>,
-    staticPeers: List<String>,
-    privateKeyFile: String,
+    dataDir: Path,
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
@@ -76,9 +65,6 @@ object MaruFactory {
           ethereumJsonRpcUrl = ethereumJsonRpcUrl,
           engineApiRpc = engineApiRpc,
           dataPath = dataDir.toString(),
-          networks = networks,
-          staticPeersList = staticPeers,
-          privateKeyFile = privateKeyFile,
         ),
       )
     val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
