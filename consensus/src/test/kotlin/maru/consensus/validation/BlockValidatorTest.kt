@@ -85,7 +85,13 @@ class BlockValidatorTest {
   private val validNewBlockHeader = validNewBlockStateRootHeader.copy(stateRoot = validNewStateRoot)
   private val validNewBlock = BeaconBlock(validNewBlockHeader, validNewBlockBody)
 
-  private val beaconChain = InMemoryBeaconChain(currBeaconState)
+  private val beaconChain =
+    InMemoryBeaconChain(currBeaconState).also {
+      it
+        .newUpdater()
+        .putSealedBeaconBlock(SealedBeaconBlock(validCurrBlock, emptyList()))
+        .commit()
+    }
 
   private val proposerSelector =
     ProposerSelector { beaconState, consensusRoundIdentifier ->
@@ -102,10 +108,6 @@ class BlockValidatorTest {
     }
 
   private val stateTransition = StateTransitionImpl(validatorProvider)
-
-  init {
-    beaconChain.newUpdater().putSealedBeaconBlock(SealedBeaconBlock(validCurrBlock, emptyList())).commit()
-  }
 
   @Test
   fun `test valid block`() {
@@ -167,7 +169,7 @@ class BlockValidatorTest {
 
     val executionLayerEngineApiClient =
       mock<ExecutionLayerManager> {
-        on { importPayload(any()) }.thenReturn(
+        on { newPayload(any()) }.thenReturn(
           SafeFuture.completedFuture(
             DataGenerators.randomValidPayloadStatus(),
           ),
@@ -295,17 +297,25 @@ class BlockValidatorTest {
     val invalidBlockHeader = validNewBlockHeader.copy(proposer = nonValidatorNode)
     val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
     val proposerValidator = ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain)
-    val result =
-      proposerValidator
-        .validateBlock(
-          block = invalidBlock,
-        ).get()
+    val result = proposerValidator.validateBlock(invalidBlock).get()
     val expectedResult =
       error(
         "Proposer is not expected proposer " +
           "proposer=${invalidBlockHeader.proposer} " +
           "expectedProposer=${validNewBlockHeader.proposer}",
       )
+    assertThat(result).isEqualTo(expectedResult)
+  }
+
+  @Test
+  fun `test missing parent block state`() {
+    val nonExistentParentHash = ByteArray(32)
+    val invalidBlockHeader = validNewBlockHeader.copy(parentRoot = nonExistentParentHash)
+    val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
+    val proposerValidator = ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain)
+    val result = proposerValidator.validateBlock(invalidBlock).get()
+    val expectedResult =
+      error("Beacon state not found for block parentHash=${nonExistentParentHash.encodeHex()}")
     assertThat(result).isEqualTo(expectedResult)
   }
 
@@ -476,7 +486,7 @@ class BlockValidatorTest {
       )
     val invalidExecutionClient =
       mock<ExecutionLayerManager> {
-        on { importPayload(any()) }.thenReturn(
+        on { newPayload(any()) }.thenReturn(
           SafeFuture.completedFuture(PayloadStatus(ExecutionPayloadStatus.INVALID, null, "Invalid execution payload")),
         )
       }

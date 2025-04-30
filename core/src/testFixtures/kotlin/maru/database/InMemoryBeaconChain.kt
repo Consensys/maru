@@ -28,6 +28,10 @@ class InMemoryBeaconChain(
 
   private var latestBeaconState: BeaconState = initialBeaconState
 
+  init {
+    newUpdater().putBeaconState(initialBeaconState).commit()
+  }
+
   override fun isInitialized(): Boolean = true
 
   override fun getLatestBeaconState(): BeaconState = latestBeaconState
@@ -52,6 +56,7 @@ class InMemoryBeaconChain(
     private val beaconChain: InMemoryBeaconChain,
   ) : BeaconChain.Updater {
     private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
+    private val beaconStateByBlockNumber = mutableMapOf<ULong, BeaconState>()
     private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
     private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
 
@@ -59,6 +64,7 @@ class InMemoryBeaconChain(
 
     override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
       beaconStateByBlockRoot[beaconState.latestBeaconBlockHeader.hash] = beaconState
+      beaconStateByBlockNumber[beaconState.latestBeaconBlockHeader.number] = beaconState
       newBeaconState = beaconState
       return this
     }
@@ -71,6 +77,7 @@ class InMemoryBeaconChain(
 
     override fun commit() {
       beaconChain.beaconStateByBlockRoot.putAll(beaconStateByBlockRoot)
+      beaconChain.beaconStateByBlockNumber.putAll(beaconStateByBlockNumber)
       beaconChain.sealedBeaconBlockByBlockRoot.putAll(sealedBeaconBlockByBlockRoot)
       beaconChain.sealedBeaconBlockByBlockNumber.putAll(sealedBeaconBlockByBlockNumber)
       if (newBeaconState != null) {

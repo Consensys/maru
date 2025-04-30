@@ -65,11 +65,10 @@ class FollowerBeaconBlockImporter(
   override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
     val executionPayload = beaconBlock.beaconBlockBody.executionPayload
     return executionLayerManager
-      .importPayload(executionPayload)
+      .newPayload(executionPayload)
       .handleException { e ->
         log.error(
-          "Error importing execution payload for blockNumber=${executionPayload.blockNumber}." +
-            " sending FCU anyway",
+          "Error importing execution payload for blockNumber=${executionPayload.blockNumber}",
           e,
         )
       }.thenCompose {
@@ -89,7 +88,7 @@ class BlockBuildingBeaconBlockImporter(
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
-  private val blockBuilderIdentity: Validator?,
+  private val blockBuilderIdentity: Validator,
 ) : BeaconBlockImporter {
   private val log: Logger = LogManager.getLogger(this::javaClass.name)
 
@@ -113,9 +112,6 @@ class BlockBuildingBeaconBlockImporter(
         beaconBlock.beaconBlockBody.executionPayload.timestamp,
         nextBlockTimestamp,
       )
-      require(blockBuilderIdentity != null) {
-        "Block builder identity can't be null if a block can be built by this node!"
-      }
       executionLayerManager.setHeadAndStartBlockBuilding(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
         safeHash = finalizationState.safeBlockHash,

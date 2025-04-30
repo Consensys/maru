@@ -112,7 +112,7 @@ class JsonRpcExecutionLayerManager(
         }
       }
 
-  override fun importPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus> =
+  override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus> =
     executionLayerEngineApiClient.newPayload(executionPayload).thenApply { payloadStatusResponse ->
       if (payloadStatusResponse.isSuccess) {
         if (payloadStatusResponse.payload == null) {
