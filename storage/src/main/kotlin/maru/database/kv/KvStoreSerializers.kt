@@ -21,4 +21,6 @@ object KvStoreSerializers {
   val BytesSerializer = BytesSerializer()
   val BeaconStateSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconStateSerializer)
   val BeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconBlockSerializer)
+  val SealedBeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.SealedBeaconBlockSerializer)
+  val ULongSerializer = ULongSerializer()
 }

@@ -16,43 +16,57 @@
 package maru.testutils
 
 import java.io.File
+import java.nio.file.Path
 import maru.app.MaruApp
 import maru.app.MaruAppCli.Companion.loadConfig
-import maru.app.config.JsonFriendlyForksSchedule
-import maru.app.config.MaruConfigDtoToml
-import maru.app.config.Utils
+import maru.config.MaruConfigDtoToml
+import maru.config.Utils
+import maru.consensus.ElFork
+import maru.consensus.config.JsonFriendlyForksSchedule
 
 object MaruFactory {
+  private val consensusConfigDir = "/e2e/config"
+  private val pragueConsensusConfig = "$consensusConfigDir/qbft-prague.json"
+
   private fun buildMaruConfigString(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
+    dataPath: String,
     networks: List<String>,
     staticPeersList: List<String>,
     privateKeyFile: String,
   ): String =
     """
-    [execution-client]
-    ethereum-json-rpc-endpoint = "$ethereumJsonRpcUrl"
-    engine-api-json-rpc-endpoint = "$engineApiRpc"
-    min-time-between-get-payload-attempts=800m
+    [persistence]
+    data-path="$dataPath"
 
-    [dummy-consensus-options]
-    communication-time-margin=100m
+    [sot-eth-endpoint]
+    endpoint = "$ethereumJsonRpcUrl"
+
+    [qbft-options]
+    communication-margin=200m
 
     [p2p-config]
     networks = ${networks.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}
     staticPeers = ${staticPeersList.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }}
     private-key-file = "$privateKeyFile"
-    gossip-topics = ["testing"]
+    gossip-topics = ["testing"] // TODO: not used
 
     [validator]
-    validator-key = "0xdead"
+    private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+    el-client-engine-api-endpoint = "$engineApiRpc"
     """.trimIndent()
+
+  private fun pickConsensusConfig(elFork: ElFork): String =
+    when (elFork) {
+      ElFork.Prague -> pragueConsensusConfig
+    }
 
   fun buildTestMaru(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
-    networks: List<String>,
+    elFork: ElFork,
+    dataDir: Path,networks: List<String>,
     staticPeers: List<String>,
     privateKeyFile: String,
   ): MaruApp {
@@ -61,12 +75,13 @@ object MaruFactory {
         buildMaruConfigString(
           ethereumJsonRpcUrl = ethereumJsonRpcUrl,
           engineApiRpc = engineApiRpc,
+          dataPath = dataDir.toString(),
           networks = networks,
           staticPeersList = staticPeers,
           privateKeyFile = privateKeyFile,
         ),
       )
-    val consensusGenesisResource = this::class.java.getResource("/e2e/config/dummy-consensus.json")
+    val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
 
     return MaruApp(appConfig.domainFriendly(), beaconGenesisConfig.getUnsafe().domainFriendly())

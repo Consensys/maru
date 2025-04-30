@@ -18,14 +18,21 @@ package maru.consensus
 import java.util.NavigableSet
 import java.util.TreeSet
 
-interface ConsensusConfiguration {
-  val feeRecipient: ByteArray
+interface ConsensusConfig
+
+enum class ElFork {
+  Prague,
 }
 
 data class ForkSpec(
-  val blockNumber: ULong,
-  val configuration: ConsensusConfiguration,
-)
+  val timestampSeconds: Long,
+  val blockTimeSeconds: Int,
+  val configuration: ConsensusConfig,
+) {
+  init {
+    require(blockTimeSeconds > 0) { "blockTimeSeconds must be greater or equal to 1 second" }
+  }
+}
 
 class ForksSchedule(
   forks: Collection<ForkSpec>,
@@ -34,20 +41,22 @@ class ForksSchedule(
     run {
       val newForks =
         TreeSet(
-          Comparator.comparing(ForkSpec::blockNumber).reversed(),
+          Comparator.comparing(ForkSpec::timestampSeconds).reversed(),
         )
       newForks.addAll(forks)
       newForks
     }
 
-  fun getForkByNumber(blockNumber: ULong): ConsensusConfiguration {
+  fun getForkByTimestamp(timestamp: Long): ForkSpec {
     for (f in forks) {
-      if (blockNumber >= f.blockNumber) {
-        return f.configuration
+      if (timestamp >= f.timestampSeconds) {
+        return f
       }
     }
 
-    return forks.first().configuration
+    throw IllegalArgumentException(
+      "No fork found for $timestamp, first known fork is at ${forks.last.timestampSeconds}",
+    )
   }
 
   override fun equals(other: Any?): Boolean {

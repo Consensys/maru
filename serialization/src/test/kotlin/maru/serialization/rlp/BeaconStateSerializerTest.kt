@@ -17,9 +17,10 @@ package maru.serialization.rlp
 
 import kotlin.random.Random
 import kotlin.random.nextULong
-import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.HashUtil
 import maru.core.Validator
+import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -28,6 +29,8 @@ class BeaconStateSerializerTest {
   private val beaconBlockHeaderSerializer =
     BeaconBlockHeaderSerializer(
       validatorSerializer = validatorSerializer,
+      hasher = KeccakHasher,
+      headerHashFunction = HashUtil::headerHash,
     )
   private val serializer =
     BeaconStateSerializer(
@@ -37,19 +40,11 @@ class BeaconStateSerializerTest {
 
   @Test
   fun `can serialize and deserialize same value`() {
-    val beaconBLockHeader =
-      BeaconBlockHeader(
-        number = Random.nextULong(),
-        round = Random.nextULong(),
-        proposer = Validator(Random.nextBytes(128)),
-        parentRoot = Random.nextBytes(32),
-        stateRoot = Random.nextBytes(32),
-      )
+    val beaconBLockHeader = DataGenerators.randomBeaconBlockHeader(Random.nextULong())
     val testValue =
       BeaconState(
         latestBeaconBlockHeader = beaconBLockHeader,
-        latestBeaconBlockRoot = Random.nextBytes(32),
-        validators = buildSet(3) { Validator(Random.nextBytes(128)) },
+        validators = buildSet(3) { Validator(Random.nextBytes(20)) },
       )
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)

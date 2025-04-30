@@ -16,35 +16,8 @@
 package maru.executionlayer.manager
 
 import maru.core.ExecutionPayload
+import maru.extensions.encodeHex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-
-// Consider switching executionPayloadStatus to enum if it's useful
-data class PayloadStatus(
-  val executionPayloadStatus: String?,
-  val latestValidHash: ByteArray?,
-  val validationError: String?,
-  val failureCause: Throwable?,
-) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as PayloadStatus
-
-    if (executionPayloadStatus != other.executionPayloadStatus) return false
-    if (!latestValidHash.contentEquals(other.latestValidHash)) return false
-    if (validationError != other.validationError) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = executionPayloadStatus.hashCode()
-    result = 31 * result + latestValidHash.contentHashCode()
-    result = 31 * result + validationError.hashCode()
-    return result
-  }
-}
 
 data class ForkChoiceUpdatedResult(
   val payloadStatus: PayloadStatus,
@@ -74,45 +47,34 @@ data class ForkChoiceUpdatedResult(
   }
 }
 
-data class BlockMetadata(
-  val blockNumber: ULong,
-  val blockHash: ByteArray,
-  val unixTimestamp: Long, // Since use Java standard lib, Long is more practical than ULong
+data class PayloadAttributes(
+  val timestamp: Long,
+  val prevRandao: ByteArray = ByteArray(32),
+  val suggestedFeeRecipient: ByteArray,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as BlockMetadata
+    other as PayloadAttributes
 
-    if (blockNumber != other.blockNumber) return false
-    if (!blockHash.contentEquals(other.blockHash)) return false
-    if (unixTimestamp != other.unixTimestamp) return false
+    if (timestamp != other.timestamp) return false
+    if (!prevRandao.contentEquals(other.prevRandao)) return false
+    if (!suggestedFeeRecipient.contentEquals(other.suggestedFeeRecipient)) return false
 
     return true
   }
 
   override fun hashCode(): Int {
-    var result = blockNumber.hashCode()
-    result = 31 * result + blockHash.contentHashCode()
-    result = 31 * result + unixTimestamp.hashCode()
+    var result = timestamp.hashCode()
+    result = 31 * result + prevRandao.contentHashCode()
+    result = 31 * result + suggestedFeeRecipient.contentHashCode()
     return result
   }
-}
 
-@FunctionalInterface
-interface ExecutionPayloadValidator {
-  sealed interface ValidationResult {
-    data class Valid(
-      val payload: ExecutionPayload,
-    ) : ValidationResult
-
-    data class Invalid(
-      val reason: String,
-    ) : ValidationResult
-  }
-
-  fun validate(executionPayload: ExecutionPayload): ValidationResult
+  override fun toString(): String =
+    "PayloadAttributes(timestamp=$timestamp, prevRandao=${prevRandao.encodeHex()}, " +
+      "suggestedFeeRecipient=${suggestedFeeRecipient.encodeHex()})"
 }
 
 interface ExecutionLayerManager {
@@ -121,11 +83,10 @@ interface ExecutionLayerManager {
     safeHash: ByteArray,
     finalizedHash: ByteArray,
     nextBlockTimestamp: Long,
+    feeRecipient: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
-
-  fun latestBlockMetadata(): BlockMetadata
 
   fun setHead(
     headHash: ByteArray,
@@ -133,5 +94,5 @@ interface ExecutionLayerManager {
     finalizedHash: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
-  fun importBlock(executionPayload: ExecutionPayload): ByteArray
+  fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus>
 }

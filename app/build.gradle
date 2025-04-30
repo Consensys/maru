@@ -3,16 +3,21 @@ plugins {
 }
 
 dependencies {
+  implementation(project(":config"))
   implementation(project(":consensus"))
   implementation(project(":core"))
   implementation(project(":executionlayer"))
   implementation(project(":p2p"))
+  implementation(project(":storage"))
+  implementation(project(":crypto"))
+  implementation(project(":serialization"))
+  implementation(project(":jvm-libs:extensions"))
+  implementation(project(":jvm-libs:mappers"))
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:p2p"
   implementation "tech.pegasys.teku.internal:async"
   implementation "tech.pegasys.teku.internal:unsigned"
-
   implementation("tech.pegasys.teku.internal:time") {
     because "required by executionclient ^"
   }
@@ -26,60 +31,21 @@ dependencies {
   implementation("org.hyperledger.besu.internal:metrics-core")
 
   implementation "info.picocli:picocli"
-  implementation "com.sksamuel.hoplite:hoplite-toml"
-  implementation "com.sksamuel.hoplite:hoplite-json"
   implementation "com.sksamuel.hoplite:hoplite-core"
 
   implementation "io.libp2p:jvm-libp2p"
-  implementation "tech.pegasys.teku.internal:p2p"
+
+  implementation("org.hyperledger.besu.internal:metrics-core")
 
   testImplementation "org.hyperledger.besu.internal:dsl"
   testImplementation "org.hyperledger.besu.internal:api"
-  testImplementation("org.hyperledger.besu.internal:algorithms")
+
+  testImplementation(project(":jvm-libs:test-utils"))
+  testImplementation(testFixtures(project(":core")))
+  testImplementation(testFixtures(project(":config")))
+
   testImplementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
 
   testImplementation("org.hyperledger.besu.internal:merge")
-}
-
-Directory besuDistLocation = layout.buildDirectory.dir("dist/build/install").get()
-Directory besuZipLocation = layout.buildDirectory.dir("tmp/besu").get()
-File besuZipFile = besuZipLocation.file("besu.zip").asFile
-String besuVersion = "25.1.0"
-String besuArtifactId = "besu-$besuVersion"
-
-tasks.register('downloadBesu', Task) {
-  onlyIf { !besuZipFile.exists() }  // Basically manual cache management
-  outputs.file(besuZipFile)
-  doFirst {
-    URI.create("https://github.com/hyperledger/besu/releases/download/$besuVersion/${besuArtifactId}.zip").toURL()
-      .withInputStream { i ->
-        project.logger.lifecycle('Downloading Besu jar...')
-        besuZipFile.withOutputStream {
-          it << i
-        }
-      }
-  }
-}
-
-tasks.register('unzipBesu', Copy) {
-  inputs.files(besuZipFile)
-  Directory output = besuDistLocation
-  outputs.dirs(output)
-  def zipFile = besuZipFile
-
-  from zipTree(zipFile)
-  into output
-  filesMatching("**/$besuArtifactId/**/*") {
-    it.path = it.path.replace("$besuArtifactId/", "besu/")
-  }
-  doLast {
-    besuDistLocation.file(besuArtifactId).asFile.deleteDir()
-  }
-
-  dependsOn "downloadBesu"
-}
-
-test {
-  systemProperty("user.dir", besuDistLocation.asFile.toString())
-  dependsOn "unzipBesu"
+  testImplementation("org.hyperledger.besu.internal:plugins-rocksdb")
 }

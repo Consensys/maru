@@ -16,10 +16,9 @@
 package maru.database.kv
 
 import kotlin.jvm.optionals.getOrNull
-import maru.core.BeaconBlock
 import maru.core.BeaconState
-import maru.database.Database
-import maru.database.Updater
+import maru.core.SealedBeaconBlock
+import maru.database.BeaconChain
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor.KvStoreTransaction
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreColumn
@@ -27,7 +26,9 @@ import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
 
 class KvDatabase(
   private val kvStoreAccessor: KvStoreAccessor,
-) : Database {
+) : BeaconChain {
+  override fun isInitialized(): Boolean = kvStoreAccessor.get(Schema.LatestBeaconState).getOrNull() != null
+
   companion object {
     object Schema {
       val BeaconStateByBlockRoot: KvStoreColumn<ByteArray, BeaconState> =
@@ -37,11 +38,18 @@ class KvDatabase(
           KvStoreSerializers.BeaconStateSerializer,
         )
 
-      val BeaconBlockByBlockRoot: KvStoreColumn<ByteArray, BeaconBlock> =
+      val SealedBeaconBlockByBlockRoot: KvStoreColumn<ByteArray, SealedBeaconBlock> =
         KvStoreColumn.create(
           2,
           KvStoreSerializers.BytesSerializer,
-          KvStoreSerializers.BeaconBlockSerializer,
+          KvStoreSerializers.SealedBeaconBlockSerializer,
+        )
+
+      val BeaconBlockRootByBlockNumber: KvStoreColumn<ULong, ByteArray> =
+        KvStoreColumn.create(
+          3,
+          KvStoreSerializers.ULongSerializer,
+          KvStoreSerializers.BytesSerializer,
         )
 
       val LatestBeaconState: KvStoreVariable<BeaconState> =
@@ -52,15 +60,27 @@ class KvDatabase(
     }
   }
 
-  override fun getLatestBeaconState(): BeaconState? = kvStoreAccessor.get(Schema.LatestBeaconState).getOrNull()
+  override fun getLatestBeaconState(): BeaconState = kvStoreAccessor.get(Schema.LatestBeaconState).get()
 
   override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? =
     kvStoreAccessor.get(Schema.BeaconStateByBlockRoot, beaconBlockRoot).getOrNull()
 
-  override fun getBeaconBlock(beaconBlockRoot: ByteArray): BeaconBlock? =
-    kvStoreAccessor.get(Schema.BeaconBlockByBlockRoot, beaconBlockRoot).getOrNull()
+  override fun getBeaconState(beaconBlockNumber: ULong): BeaconState? =
+    kvStoreAccessor
+      .get(Schema.BeaconBlockRootByBlockNumber, beaconBlockNumber)
+      .flatMap { blockRoot -> kvStoreAccessor.get(Schema.BeaconStateByBlockRoot, blockRoot) }
+      .getOrNull()
 
-  override fun newUpdater(): Updater = KvUpdater(this.kvStoreAccessor)
+  override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
+    kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, beaconBlockRoot).getOrNull()
+
+  override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
+    kvStoreAccessor
+      .get(Schema.BeaconBlockRootByBlockNumber, beaconBlockNumber)
+      .flatMap { blockRoot -> kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, blockRoot) }
+      .getOrNull()
+
+  override fun newUpdater(): BeaconChain.Updater = KvUpdater(this.kvStoreAccessor)
 
   override fun close() {
     kvStoreAccessor.close()
@@ -68,20 +88,27 @@ class KvDatabase(
 
   class KvUpdater(
     kvStoreAccessor: KvStoreAccessor,
-  ) : Updater {
+  ) : BeaconChain.Updater {
     private val transaction: KvStoreTransaction = kvStoreAccessor.startTransaction()
 
-    override fun putBeaconState(beaconState: BeaconState): Updater {
-      transaction.put(Schema.BeaconStateByBlockRoot, beaconState.latestBeaconBlockRoot, beaconState)
+    override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
+      transaction.put(Schema.BeaconStateByBlockRoot, beaconState.latestBeaconBlockHeader.hash, beaconState)
       transaction.put(Schema.LatestBeaconState, beaconState)
       return this
     }
 
-    override fun putBeaconBlock(
-      beaconBlock: BeaconBlock,
-      beaconBlockRoot: ByteArray,
-    ): Updater {
-      transaction.put(Schema.BeaconBlockByBlockRoot, beaconBlockRoot, beaconBlock)
+    override fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): BeaconChain.Updater {
+      transaction.put(
+        Schema.SealedBeaconBlockByBlockRoot,
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash,
+        sealedBeaconBlock,
+      )
+      transaction.put(
+        Schema.BeaconBlockRootByBlockNumber,
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash,
+      )
+
       return this
     }
 

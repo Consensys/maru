@@ -29,8 +29,6 @@ dependencyManagement {
     // For java code only
     dependency 'com.google.errorprone:error_prone_core:2.29.2'
 
-//    dependency "com.google.guava:guava:33.3.1-jre"
-
     dependency 'com.squareup.okhttp3:okhttp:4.12.0'
 
     dependencySet(group: 'info.picocli', version: '4.7.6') {
@@ -92,7 +90,7 @@ dependencyManagement {
 
     dependency 'org.assertj:assertj-core:3.26.3'
 
-    dependency 'org.awaitility:awaitility:4.2.2'
+    dependency 'org.awaitility:awaitility-kotlin:4.2.2'
 
     dependencySet(group: 'org.bouncycastle', version: '1.80') {
       entry 'bcpkix-jdk18on'
@@ -145,9 +143,15 @@ dependencyManagement {
       entry 'log4j-slf4j2-impl'
     }
 
+    def besuVersion = "25.4.1"
+
     imports {
-      mavenBom "org.hyperledger.besu:bom:25.1.0"
+      mavenBom "org.hyperledger.besu:bom:$besuVersion"
     }
+
+    dependency "org.hyperledger.besu.internal:plugins-rocksdb:$besuVersion"
+
+    dependency "com.michael-bull.kotlin-result:kotlin-result:1.1.16"
 
     imports {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
