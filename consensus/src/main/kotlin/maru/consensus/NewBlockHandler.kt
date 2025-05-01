@@ -18,8 +18,16 @@ package maru.consensus
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import maru.core.BeaconBlock
+import maru.core.SealedBeaconBlock
+import maru.p2p.SealedBlockHandler
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+
+class SealedBlockHandlerAdapter<T>(
+  val adaptee: NewBlockHandler<T>,
+) : SealedBlockHandler {
+  override fun handleSealedBlock(block: SealedBeaconBlock): SafeFuture<*> = adaptee.handleNewBlock(block.beaconBlock)
+}
 
 fun interface NewBlockHandler<T> {
   fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<T>
@@ -52,6 +60,49 @@ class NewBlockHandlerMultiplexer(
               "New block handler $handlerName failed processing" +
                 " block hash=${beaconBlock.beaconBlockHeader.hash}, number=${beaconBlock.beaconBlockHeader.number} " +
                 "executionPayloadBlockNumber=${beaconBlock.beaconBlockBody.executionPayload.blockNumber}!",
+              ex,
+            )
+          }
+        }
+      }
+    val completableFuture =
+      SafeFuture
+        .allOf(*handlerFutures.toTypedArray())
+        .thenApply { }
+    return SafeFuture.of(completableFuture)
+  }
+}
+
+class SealedBlockHandlerMultiplexer(
+  handlersMap: Map<String, SealedBlockHandler>,
+) : SealedBlockHandler {
+  private val handlersMap = ConcurrentHashMap(handlersMap)
+  private val log = LogManager.getLogger(NewBlockHandlerMultiplexer::class.java)!!
+
+  fun addHandler(
+    name: String,
+    handler: SealedBlockHandler,
+  ) {
+    handlersMap[name] = handler
+  }
+
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
+    val handlerFutures: List<CompletableFuture<Void>> =
+      handlersMap.map {
+        val (handlerName, handler) = it
+        SafeFuture.runAsync {
+          try {
+            log.debug("Handling $handlerName")
+            handler.handleSealedBlock(sealedBeaconBlock)
+            log.debug("$handlerName handling completed successfully")
+          } catch (ex: Exception) {
+            log.error(
+              "New block handler $handlerName failed processing" +
+                " block hash=${sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash}, number=${
+                  sealedBeaconBlock.beaconBlock.beaconBlockHeader
+                    .number
+                } " +
+                "executionPayloadBlockNumber=${sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber}!",
               ex,
             )
           }

@@ -18,12 +18,12 @@ package maru.app
 import java.io.File
 import java.nio.file.Files
 import maru.consensus.ElFork
-import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.qbft.toAddress
 import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
+import maru.p2p.NoopP2PNetwork
 import maru.testutils.MaruFactory
-import maru.testutils.SpyingValidatorMulticaster
+import maru.testutils.SpyingP2pNetwork
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
@@ -52,7 +52,7 @@ class MaruQbftTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private lateinit var tmpDir: File
-  private lateinit var spyingValidatorMulticaster: SpyingValidatorMulticaster
+  private lateinit var spyingP2pNetwork: SpyingP2pNetwork
 
   @BeforeEach
   fun setUp() {
@@ -71,14 +71,14 @@ class MaruQbftTest {
     val engineRpcUrl = besuNode.engineRpcUrl().get()
     tmpDir = Files.createTempDirectory("maru").toFile()
     tmpDir.deleteOnExit()
-    spyingValidatorMulticaster = SpyingValidatorMulticaster(NoopValidatorMulticaster)
+    spyingP2pNetwork = SpyingP2pNetwork(NoopP2PNetwork)
     maruNode =
       MaruFactory.buildTestMaru(
         ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
         engineApiRpc = engineRpcUrl,
         elFork = elFork,
         dataDir = tmpDir.toPath(),
-        validatorMulticaster = spyingValidatorMulticaster,
+        p2pNetwork = spyingP2pNetwork,
       )
     maruNode.start()
   }
@@ -134,17 +134,17 @@ class MaruQbftTest {
   }
 
   private fun anyPrepareWithBlockNumber(blockNumber: Long): Boolean =
-    spyingValidatorMulticaster.emittedMessages.any {
+    spyingP2pNetwork.emittedMessages.any {
       it is Prepare && it.roundIdentifier.sequenceNumber == blockNumber
     }
 
   private fun anyProposalWithBlockNumber(blockNumber: Long): Boolean =
-    spyingValidatorMulticaster.emittedMessages.any {
+    spyingP2pNetwork.emittedMessages.any {
       it is Proposal && it.roundIdentifier.sequenceNumber == blockNumber
     }
 
   private fun anyCommitWithBlockNumber(blockNumber: Long): Boolean =
-    spyingValidatorMulticaster.emittedMessages.any {
+    spyingP2pNetwork.emittedMessages.any {
       it is Commit && it.roundIdentifier.sequenceNumber == blockNumber
     }
 
@@ -152,7 +152,7 @@ class MaruQbftTest {
   // events post test
   private fun validateRoundChange(maxBlockNumber: Long) {
     val roundChangeMessages =
-      spyingValidatorMulticaster.emittedMessages.filter {
+      spyingP2pNetwork.emittedMessages.filter {
         it is RoundChange
       }
     assertThat(roundChangeMessages).isNotEmpty()
@@ -170,7 +170,7 @@ class MaruQbftTest {
       Crypto
         .privateKeyToValidator(MaruFactory.VALIDATOR_PRIVATE_KEY.fromHexToByteArray())
         .toAddress()
-    spyingValidatorMulticaster.emittedMessages.forEach {
+    spyingP2pNetwork.emittedMessages.forEach {
       assertThat(it.author)
         .withFailMessage { "Unexpected signer address for message=$it author=${it.author}" }
         .isEqualTo(validatorAddress)

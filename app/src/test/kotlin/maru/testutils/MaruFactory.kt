@@ -24,10 +24,8 @@ import maru.config.MaruConfigDtoToml
 import maru.config.Utils
 import maru.consensus.ElFork
 import maru.consensus.config.JsonFriendlyForksSchedule
-import maru.consensus.qbft.network.NoopGossiper
-import maru.consensus.qbft.network.NoopValidatorMulticaster
-import org.hyperledger.besu.consensus.common.bft.Gossiper
-import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
+import maru.p2p.NoopP2PNetwork
+import maru.p2p.P2PNetwork
 
 object MaruFactory {
   private val consensusConfigDir = "/e2e/config"
@@ -67,8 +65,7 @@ object MaruFactory {
     engineApiRpc: String,
     elFork: ElFork,
     dataDir: Path,
-    gossiper: Gossiper = NoopGossiper,
-    validatorMulticaster: ValidatorMulticaster = NoopValidatorMulticaster,
+    p2pNetwork: P2PNetwork = NoopP2PNetwork,
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
@@ -84,8 +81,7 @@ object MaruFactory {
     return MaruApp(
       config = appConfig.domainFriendly(),
       beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
-      gossiper = gossiper,
-      validatorMulticaster = validatorMulticaster,
+      p2pNetwork = p2pNetwork,
     )
   }
 
@@ -94,8 +90,7 @@ object MaruFactory {
     engineApiRpc: String,
     dataDir: Path,
     switchTimestamp: Long,
-    gossiper: Gossiper = NoopGossiper,
-    validatorMulticaster: ValidatorMulticaster = NoopValidatorMulticaster,
+    p2pNetwork: P2PNetwork = NoopP2PNetwork,
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
@@ -134,8 +129,7 @@ object MaruFactory {
     return MaruApp(
       config = appConfig.domainFriendly(),
       beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
-      gossiper = gossiper,
-      validatorMulticaster = validatorMulticaster,
+      p2pNetwork = p2pNetwork,
     )
   }
 }

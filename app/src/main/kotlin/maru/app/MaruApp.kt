@@ -29,19 +29,23 @@ import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.ProtocolStarterBlockHandler
+import maru.consensus.SealedBlockHandlerAdapter
+import maru.consensus.SealedBlockHandlerMultiplexer
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
+import maru.consensus.blockimport.SealedBeaconBlockImporter
+import maru.consensus.blockimport.VerifyingSealedBeaconBlockImporter
 import maru.consensus.delegated.ElDelegatedConsensusFactory
-import maru.consensus.qbft.network.NoopGossiper
-import maru.consensus.qbft.network.NoopValidatorMulticaster
+import maru.consensus.qbft.adapters.P2PValidatorMulticaster
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import maru.p2p.NewBlockBroadcaster
+import maru.p2p.NoopP2PNetwork
+import maru.p2p.P2PNetwork
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.hyperledger.besu.consensus.common.bft.Gossiper
-import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -49,8 +53,7 @@ class MaruApp(
   config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
-  gossiper: Gossiper = NoopGossiper,
-  validatorMulticaster: ValidatorMulticaster = NoopValidatorMulticaster,
+  p2pNetwork: P2PNetwork = NoopP2PNetwork,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -107,8 +110,29 @@ class MaruApp(
         NewBlockHandlerMultiplexer(
           mapOf(metadataCacheUpdaterHandlerEntry),
         )
-      val qbftConsensusNewBlockHandler =
+
+      val validatorMulticaster =
+        P2PValidatorMulticaster(
+          p2pNetwork = p2pNetwork,
+        )
+      val blockImporters =
         NewBlockHandlerMultiplexer(createFollowerHandlers(config.followers) + metadataCacheUpdaterHandlerEntry)
+      val adaptedBlockImporters = SealedBlockHandlerAdapter(blockImporters)
+      val sealedBlockHandlers =
+        mapOf(
+          "internal new block importer" to adaptedBlockImporters,
+          "new block p2p broadcast handler" to NewBlockBroadcaster(p2pNetwork),
+        )
+      if (config.validator != null) {
+        val blockImporter =
+          SealedBeaconBlockImporter {
+            blockImporters.handleNewBlock(it.beaconBlock)
+          }
+        p2pNetwork.subscribeToBlocks(
+          VerifyingSealedBeaconBlockImporter(blockImporter)::importBlock,
+        )
+      }
+      val sealedBlockHandlerMultiplexer = SealedBlockHandlerMultiplexer(sealedBlockHandlers)
       ProtocolStarter(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
@@ -125,10 +149,9 @@ class MaruApp(
                 finalizationStateProvider = finalizationStateProviderStub,
                 executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
                 nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
-                newBlockHandler = qbftConsensusNewBlockHandler,
+                newBlockHandler = sealedBlockHandlerMultiplexer,
                 beaconChain = beaconChain,
                 clock = clock,
-                gossiper = gossiper,
                 validatorMulticaster = validatorMulticaster,
               ),
           ),
@@ -140,7 +163,7 @@ class MaruApp(
           protocolStarterBlockHandlerEntry.first,
           protocolStarterBlockHandlerEntry.second,
         )
-        qbftConsensusNewBlockHandler.addHandler(
+        blockImporters.addHandler(
           protocolStarterBlockHandlerEntry.first,
           protocolStarterBlockHandlerEntry.second,
         )

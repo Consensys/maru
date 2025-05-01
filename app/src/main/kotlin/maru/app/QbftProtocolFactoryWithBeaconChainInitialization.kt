@@ -18,7 +18,6 @@ package maru.app
 import java.time.Clock
 import maru.config.MaruConfig
 import maru.consensus.ForkSpec
-import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
 import maru.consensus.qbft.QbftConsensusConfig
@@ -36,9 +35,9 @@ import maru.crypto.Crypto
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.mappers.Mappers.toDomain
+import maru.p2p.SealedBlockHandler
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.stateRoot
-import org.hyperledger.besu.consensus.common.bft.Gossiper
 import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.web3j.protocol.Web3j
@@ -51,9 +50,8 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val executionLayerClient: Web3j,
   private val beaconChain: BeaconChain,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: NewBlockHandler<Unit>,
+  private val newBlockHandler: SealedBlockHandler,
   private val clock: Clock,
-  private val gossiper: Gossiper,
   private val validatorMulticaster: ValidatorMulticaster,
 ) : ProtocolFactory {
   init {
@@ -131,7 +129,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         newBlockHandler = newBlockHandler,
         executionLayerManager = executionLayerManager,
         clock = clock,
-        gossiper = gossiper,
         validatorMulticaster = validatorMulticaster,
       )
     return qbftProtocolFactory.create(forkSpec)

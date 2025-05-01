@@ -9,6 +9,7 @@ dependencies {
   implementation(project(":executionlayer"))
   implementation(project(":storage"))
   implementation(project(":crypto"))
+  implementation(project(":p2p"))
   implementation(project(":serialization"))
   implementation(project(":jvm-libs:extensions"))
   implementation(project(":jvm-libs:mappers"))
@@ -31,4 +32,14 @@ dependencies {
   testImplementation("org.hyperledger.besu.internal:merge")
   testImplementation("org.hyperledger.besu.internal:plugins-rocksdb")
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
+}
+
+// Besu and Teku have similar versioning and some modules are also named the same. This creates conflicts when
+// dependencies are collected
+tasks.named("distTar").configure {
+  duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+tasks.named("distZip").configure {
+  duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
