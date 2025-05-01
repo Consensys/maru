@@ -35,10 +35,10 @@ import maru.crypto.Crypto
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.mappers.Mappers.toDomain
+import maru.p2p.P2PNetwork
 import maru.p2p.SealedBlockHandler
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.stateRoot
-import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -52,7 +52,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: SealedBlockHandler,
   private val clock: Clock,
-  private val validatorMulticaster: ValidatorMulticaster,
+  private val p2pNetwork: P2PNetwork,
 ) : ProtocolFactory {
   init {
     require(maruConfig.validator != null) { "The validator is required when QBFT protocol is instantiated!" }
@@ -129,7 +129,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         newBlockHandler = newBlockHandler,
         executionLayerManager = executionLayerManager,
         clock = clock,
-        validatorMulticaster = validatorMulticaster,
+        p2PNetwork = p2pNetwork,
       )
     return qbftProtocolFactory.create(forkSpec)
   }

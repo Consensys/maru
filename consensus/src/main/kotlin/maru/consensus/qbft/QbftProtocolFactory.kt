@@ -27,6 +27,7 @@ import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.qbft.adapters.ForksScheduleAdapter
+import maru.consensus.qbft.adapters.P2PValidatorMulticaster
 import maru.consensus.qbft.adapters.ProposerSelectorAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockImporterAdapter
@@ -47,6 +48,7 @@ import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
+import maru.p2p.P2PNetwork
 import maru.p2p.SealedBlockHandler
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
@@ -55,7 +57,6 @@ import org.hyperledger.besu.consensus.common.bft.BlockTimer
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
 import org.hyperledger.besu.consensus.common.bft.RoundTimer
-import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.consensus.common.bft.statemachine.FutureMessageBuffer
 import org.hyperledger.besu.consensus.qbft.core.network.QbftGossip
 import org.hyperledger.besu.consensus.qbft.core.payload.MessageFactory
@@ -81,7 +82,7 @@ class QbftProtocolFactory(
   private val newBlockHandler: SealedBlockHandler,
   private val executionLayerManager: JsonRpcExecutionLayerManager,
   private val clock: Clock,
-  private val validatorMulticaster: ValidatorMulticaster,
+  private val p2PNetwork: P2PNetwork,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(maruConfig.validator != null) {
@@ -143,6 +144,7 @@ class QbftProtocolFactory(
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
+    val validatorMulticaster = P2PValidatorMulticaster(p2PNetwork)
     val finalState =
       QbftFinalStateAdapter(
         localAddress = localAddress,
