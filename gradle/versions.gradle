@@ -141,8 +141,6 @@ dependencyManagement {
       entry 'log4j-slf4j2-impl'
     }
 
-    // Using RC1 because the version can't match the Teku one because they have
-    // packages with matching names and it creates when jars are collected
     def besuVersion = "25.4.1"
 
     imports {
