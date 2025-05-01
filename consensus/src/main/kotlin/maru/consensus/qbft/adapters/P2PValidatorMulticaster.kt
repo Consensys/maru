@@ -16,9 +16,9 @@
 package maru.consensus.qbft.adapters
 
 import maru.p2p.P2PNetwork
+import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
-import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster as BesuValidatorMulticaster
 
 /**
  * Adapter that implements the Hyperledger Besu ValidatorMulticaster interface and delegates to a P2PNetwork.
@@ -27,7 +27,7 @@ import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster as
  */
 class P2PValidatorMulticaster(
   private val p2pNetwork: P2PNetwork,
-) : BesuValidatorMulticaster {
+) : ValidatorMulticaster {
   /**
    * Send a message to all connected validators.
    *

@@ -23,7 +23,7 @@ import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoopP2PNetwork
 import maru.testutils.MaruFactory
-import maru.testutils.SpyingP2pNetwork
+import maru.testutils.SpyingP2PNetwork
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
@@ -52,7 +52,7 @@ class MaruQbftTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private lateinit var tmpDir: File
-  private lateinit var spyingP2pNetwork: SpyingP2pNetwork
+  private lateinit var spyingP2pNetwork: SpyingP2PNetwork
 
   @BeforeEach
   fun setUp() {
@@ -71,7 +71,7 @@ class MaruQbftTest {
     val engineRpcUrl = besuNode.engineRpcUrl().get()
     tmpDir = Files.createTempDirectory("maru").toFile()
     tmpDir.deleteOnExit()
-    spyingP2pNetwork = SpyingP2pNetwork(NoopP2PNetwork)
+    spyingP2pNetwork = SpyingP2PNetwork(NoopP2PNetwork)
     maruNode =
       MaruFactory.buildTestMaru(
         ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,

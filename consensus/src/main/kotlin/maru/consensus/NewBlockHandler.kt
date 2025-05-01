@@ -73,11 +73,12 @@ class NewBlockHandlerMultiplexer(
   }
 }
 
+// TODO: Make multiplexer generic
 class SealedBlockHandlerMultiplexer(
   handlersMap: Map<String, SealedBlockHandler>,
 ) : SealedBlockHandler {
   private val handlersMap = ConcurrentHashMap(handlersMap)
-  private val log = LogManager.getLogger(NewBlockHandlerMultiplexer::class.java)!!
+  private val log = LogManager.getLogger(SealedBlockHandlerMultiplexer::class.java)!!
 
   fun addHandler(
     name: String,

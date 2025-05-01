@@ -30,8 +30,8 @@ import org.hyperledger.besu.consensus.qbft.core.messagedata.RoundChangeMessageDa
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
-class SpyingP2pNetwork(
-  val p2PNetwork: P2PNetwork,
+class SpyingP2PNetwork(
+  val p2pNetwork: P2PNetwork,
 ) : P2PNetwork {
   private val log = LogManager.getLogger(this.javaClass)
   val emittedMessages = CopyOnWriteArrayList<BftMessage<*>>()
@@ -53,11 +53,11 @@ class SpyingP2pNetwork(
     val decodedMessage = decodedMessage(message.toBesuMessageData())
     log.debug("Got new message {}", decodedMessage)
     emittedMessages.add(decodedMessage)
-    p2PNetwork.broadcastMessage(message)
+    p2pNetwork.broadcastMessage(message)
   }
 
   override fun subscribeToBlocks(subscriber: SealedBlockHandler) {
-    p2PNetwork.subscribeToBlocks(subscriber)
+    p2pNetwork.subscribeToBlocks(subscriber)
   }
 }
 
