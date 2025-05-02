@@ -16,34 +16,41 @@
 package maru.p2p
 
 import org.apache.tuweni.bytes.Bytes
-import tech.pegasys.teku.networking.p2p.libp2p.PeerManager
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 
+private const val LINEA = "linea"
+
 class MaruRpcMethod : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
-  private lateinit var peerManager: PeerManager
+  override fun getIds(): MutableList<String> = mutableListOf(LINEA)
 
-  fun setPeerManager(peerManager: PeerManager) {
-    this.peerManager = peerManager
-  }
-
-  override fun getIds(): MutableList<String> = mutableListOf("linea")
-
-  override fun createIncomingRequestHandler(p0: String?): RpcRequestHandler {
-    val maruRpcRequestHandler = MaruIncomingRpcRequestHandler(peerManager)
-    println("createIncomingRequestHandler $p0 $maruRpcRequestHandler")
+  override fun createIncomingRequestHandler(protocolId: String?): RpcRequestHandler {
+    val maruRpcRequestHandler = MaruIncomingRpcRequestHandler()
     return maruRpcRequestHandler
   }
 
   override fun createOutgoingRequestHandler(
     protocolId: String?,
     request: Bytes?,
-    responseHandler: MaruRpcResponseHandler?,
+    responseHandler: MaruRpcResponseHandler,
   ): MaruOutgoingRpcRequestHandler {
-    val maruRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler!!, peerManager)
-    println("createOutgoingRequestHandler $protocolId $request $maruRpcRequestHandler")
+    val maruRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler, request)
     return maruRpcRequestHandler
   }
 
-  override fun encodeRequest(p0: Bytes?): Bytes = p0!!
+  override fun encodeRequest(bytes: Bytes?): Bytes = bytes!!
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) {
+      return true
+    }
+    if (other == null || javaClass != other.javaClass) {
+      return false
+    }
+    val rpcMethod: MaruRpcMethod =
+      other as MaruRpcMethod
+    return LINEA == rpcMethod.ids.first()
+  }
+
+  override fun hashCode(): Int = 42
 }

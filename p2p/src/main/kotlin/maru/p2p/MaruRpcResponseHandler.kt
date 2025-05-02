@@ -28,7 +28,15 @@ class MaruRpcResponseHandler : RpcResponseHandler<Bytes> {
     return SafeFuture.completedFuture(response)
   }
 
-  override fun onCompleted(error: Optional<out Throwable>?): Unit = throw error!!.get()
+  override fun onCompleted(error: Optional<out Throwable>?) {
+    if (error == null) {
+      throw IllegalArgumentException("Error is null")
+    } else if (error.isEmpty) {
+      return // if needed do something when the response is completed successfully
+    } else {
+      throw error.get()
+    }
+  }
 
   fun response(): SafeFuture<Bytes> = future
 }

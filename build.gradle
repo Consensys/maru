@@ -24,38 +24,6 @@ allprojects {
   apply plugin: libs.plugins.spring.dependency.management.get().getPluginId()
   apply from: "${rootDir}/gradle/versions.gradle"
   apply plugin: 'java-library'
-
-  repositories {
-    maven {
-      url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
-      content { includeGroupByRegex('org\\.hyperledger\\..*') }
-    }
-    maven {
-      url 'https://dl.cloudsmith.io/public/consensys/teku/maven/'
-      content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
-    }
-    maven {
-      url 'https://artifacts.consensys.net/public/maven/maven/'
-      content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
-    }
-    maven {
-      url 'https://splunk.jfrog.io/splunk/ext-releases-local'
-      content { includeGroupByRegex('com\\.splunk\\..*') }
-    }
-
-    maven {
-      url 'https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/'
-      content { includeGroup('io.libp2p') }
-    }
-
-    maven {
-      url "https://jitpack.io"
-      content { includeGroup('com.github.multiformats')}
-    }
-
-    mavenCentral()
-  }
-
   apply plugin: libs.plugins.spotless.get().getPluginId()
 
   spotless {

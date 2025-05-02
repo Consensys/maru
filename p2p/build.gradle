@@ -29,7 +29,6 @@ dependencies {
   implementation "tech.pegasys.teku.internal:unsigned"
 
   implementation("org.hyperledger.besu:plugin-api")
-
   implementation("org.hyperledger.besu.internal:core")
   implementation("org.hyperledger.besu.internal:metrics-core")
 
@@ -39,6 +38,10 @@ dependencies {
   implementation(project(":core"))
 
   testImplementation(testFixtures(project(":core")))
+
+  // TODO: the following two can be removed once the besu build is in P2PTest is not needed anymore
+  testImplementation(project(":jvm-libs:test-utils"))
+  testImplementation(project(":consensus"))
 }
 
 test {

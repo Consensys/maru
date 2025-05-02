@@ -66,7 +66,7 @@ class HopliteFriendlinessTest {
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(),
           validator =
             ValidatorDtoToml(
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
@@ -100,7 +100,7 @@ class HopliteFriendlinessTest {
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(),
           validator =
             ValidatorDtoToml(
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
@@ -123,7 +123,7 @@ class HopliteFriendlinessTest {
             ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(),
           validator =
             Validator(
               engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
@@ -154,7 +154,7 @@ class HopliteFriendlinessTest {
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(),
           validator =
             Validator(
               engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),

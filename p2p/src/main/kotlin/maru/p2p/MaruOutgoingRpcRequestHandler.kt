@@ -18,48 +18,39 @@ package maru.p2p
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
 import org.apache.tuweni.bytes.Bytes
-import tech.pegasys.teku.networking.p2p.libp2p.PeerManager
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
 class MaruOutgoingRpcRequestHandler(
   private val responseHandler: MaruRpcResponseHandler,
-  private val peerManager: PeerManager,
+  private val request: Bytes?,
 ) : RpcRequestHandler {
-  private var data: String = ""
-
   override fun active(
-    p0: NodeId?,
-    p1: RpcStream?,
+    nodeId: NodeId?,
+    rpcStream: RpcStream?,
   ) {
-    println("active $this")
   }
 
   override fun processData(
-    p0: NodeId?,
-    p1: RpcStream?,
-    p2: ByteBuf?,
+    nodeId: NodeId?,
+    rpcStream: RpcStream,
+    byteBuf: ByteBuf,
   ) {
-    val bytes = ByteBufUtil.getBytes(p2!!)
-    val peer = peerManager.getPeer(p0).get()
-    println("processData response: $bytes from peer $peer.id ($this)")
-    data += bytes
-    p1!!.closeWriteStream()
+    val bytes = ByteBufUtil.getBytes(byteBuf)
+    rpcStream.closeWriteStream()
     responseHandler.onResponse(Bytes.wrap(bytes))
   }
 
   override fun readComplete(
-    p0: NodeId?,
-    p1: RpcStream?,
+    nodeId: NodeId?,
+    rpcStream: RpcStream,
   ) {
-    println("readComplete $data")
   }
 
   override fun closed(
-    p0: NodeId?,
-    p1: RpcStream?,
+    nodeId: NodeId?,
+    rpcStream: RpcStream,
   ) {
-    println("closed $data")
   }
 }

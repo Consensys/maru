@@ -16,25 +16,12 @@ dependencies {
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:p2p"
-  implementation "tech.pegasys.teku.internal:async"
-  implementation "tech.pegasys.teku.internal:unsigned"
-  implementation("tech.pegasys.teku.internal:time") {
-    because "required by executionclient ^"
-  }
   implementation("tech.pegasys.teku.internal:ethereum-events") {
     because "required by executionclient ^"
   }
-  implementation "tech.pegasys.teku.internal:spec"
-  implementation "tech.pegasys.teku.internal:storage"
-
-  implementation("org.hyperledger.besu.internal:core")
-  implementation("org.hyperledger.besu.internal:metrics-core")
-
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
-
   implementation "io.libp2p:jvm-libp2p"
-
   implementation("org.hyperledger.besu.internal:metrics-core")
 
   testImplementation "org.hyperledger.besu.internal:dsl"

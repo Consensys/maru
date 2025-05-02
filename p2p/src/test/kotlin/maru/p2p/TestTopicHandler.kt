@@ -25,25 +25,27 @@ import tech.pegasys.teku.networking.p2p.gossip.TopicHandler
 
 class TestTopicHandler : TopicHandler {
   companion object {
-    val dataFuture = SafeFuture<Bytes>()
-    private const val ORIGINAL_MESSAGE = "deaddeadbeefbeef"
+    private const val ORIGINAL_MESSAGE = "0xdeadbeef"
   }
 
+  val dataFuture = SafeFuture<Bytes>()
+
   override fun prepareMessage(
-    // TODO: don't know where / how this is used. Looks like it is never used anywhere
-    payload: Bytes?,
+    // This should probably add a sequence number and a from to the message, or something like that. We can check what Teku is doing there :-)
+    // e.g. we could compress the message and add a sequence number to it
+    payload: Bytes,
     arrivalTimestamp: Optional<UInt64>?,
-  ): PreparedGossipMessage = MaruPreparedGossipMessage(Bytes.fromHexString("deadbaaf"), Optional.empty())
+  ): PreparedGossipMessage = MaruPreparedGossipMessage(payload, Optional.empty())
 
   override fun handleMessage(message: PreparedGossipMessage?): SafeFuture<ValidationResult> {
-    var data: Bytes?
+    var data: Bytes
     message.let {
       data = message!!.originalMessage
     }
-    // at this point we have to validate the message (will only be further distributed if valid)
-    // at this point we should also (asynchonously) do what needs to be done with the data we received
+    // at this point we have to validate the message (message will only be further distributed if valid!)
+    // at this point we should also (asynchronously) do what needs to be done with the data we received
     dataFuture.complete(data)
-    return if (data!!.equals(Bytes.fromHexString(ORIGINAL_MESSAGE))) {
+    return if (data.equals(Bytes.fromHexString(ORIGINAL_MESSAGE))) {
       SafeFuture.completedFuture(ValidationResult.Valid)
     } else {
       SafeFuture.completedFuture(ValidationResult.Invalid)

@@ -15,7 +15,6 @@
  */
 package maru.app
 
-import P2PManager
 import java.time.Clock
 import kotlin.system.exitProcess
 import maru.config.FollowersConfig
@@ -37,24 +36,28 @@ import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import maru.p2p.P2PManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
-  val config: MaruConfig,
+  config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  val p2pManager = P2PManager()
+  val p2pManager =
+    P2PManager(
+      privateKeyFile = config.persistence.privateKeyPath,
+      ipAddress = config.p2pConfig.ipAddress,
+      port = config.p2pConfig.port,
+      staticPeers = config.p2pConfig.staticPeers,
+    )
 
   init {
-    if (config.p2pConfig == null) {
-      log.warn("P2P is disabled!")
-    }
     if (config.validator == null) {
       log.info("Validator is not defined. Maru is running in follower-only node")
       log.error("Follower-only mode is not supported yet! Exiting application.")
@@ -152,14 +155,7 @@ class MaruApp(
       }
 
   fun start() {
-    if (config.p2pConfig != null) {
-      val p2pConfig = config.p2pConfig
-      val staticPeers = p2pConfig?.staticPeers ?: emptyList()
-      val privateKeyFile = p2pConfig?.privateKeyFile
-      val networks = p2pConfig?.networks
-
-      p2pManager.start(staticPeers, privateKeyFile, networks)
-    }
+    p2pManager.start()
     protocolStarter.start()
     log.info("Maru is up")
   }
@@ -167,6 +163,7 @@ class MaruApp(
   fun stop() {
     p2pManager.stop()
     protocolStarter.stop()
+    log.info("Maru is down")
   }
 
   override fun close() {

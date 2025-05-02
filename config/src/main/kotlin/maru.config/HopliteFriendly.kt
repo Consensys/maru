@@ -42,7 +42,7 @@ data class MaruConfigDtoToml(
   private val persistence: Persistence,
   private val qbftOptions: QbftOptions,
   private val sotEthEndpoint: ApiEndpointDtoToml,
-  private val p2pConfig: P2P?,
+  private val p2pConfig: P2P,
   private val validator: ValidatorDtoToml?,
   private val followerEngineApis: Map<String, ApiEndpointDtoToml>?,
 ) {
