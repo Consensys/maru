@@ -128,7 +128,7 @@ class EagerQbftBlockCreatorTest {
    */
   private fun setup(
     sealedGenesisBeaconBlock: SealedBeaconBlock,
-    adaptedBenesisBeaconBlock: QbftBlockHeaderAdapter,
+    adaptedGenesisBeaconBlock: QbftBlockHeaderAdapter,
   ): EagerQbftBlockCreator {
     whenever(
       beaconChain.getSealedBeaconBlock(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader.hash()),
@@ -178,7 +178,7 @@ class EagerQbftBlockCreatorTest {
       clock = clock,
       genesisBlockHash = genesisBlockHash,
       mainBlockCreator = mainBlockCreator,
-      parentHeader = adaptedBenesisBeaconBlock,
+      parentHeader = adaptedGenesisBeaconBlock,
     )
     return eagerQbftBlockCreator
   }
