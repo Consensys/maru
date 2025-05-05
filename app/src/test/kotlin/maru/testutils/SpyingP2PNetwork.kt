@@ -33,6 +33,18 @@ import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageDat
 class SpyingP2PNetwork(
   val p2pNetwork: P2PNetwork,
 ) : P2PNetwork {
+  companion object {
+    private fun Message<*>.toBesuMessageData(): BesuMessageData {
+      require(this.type == MessageType.QBFT) {
+        "Unsupported message type: ${this.type}"
+      }
+      require(this.payload is BesuMessageData) {
+        "Message is QBFT, but its payload is of type: ${this.payload.javaClass}"
+      }
+      return this.payload as BesuMessageData
+    }
+  }
+
   private val log = LogManager.getLogger(this.javaClass)
   val emittedMessages = CopyOnWriteArrayList<BftMessage<*>>()
 
@@ -59,14 +71,4 @@ class SpyingP2PNetwork(
   override fun subscribeToBlocks(subscriber: SealedBlockHandler) {
     p2pNetwork.subscribeToBlocks(subscriber)
   }
-}
-
-fun Message<*>.toBesuMessageData(): BesuMessageData {
-  require(this.type == MessageType.QBFT) {
-    "Unsupported message type: ${this.type}"
-  }
-  require(this.payload is BesuMessageData) {
-    "Message is QBFT, but its payload is of type: ${this.payload.javaClass}"
-  }
-  return this.payload as BesuMessageData
 }

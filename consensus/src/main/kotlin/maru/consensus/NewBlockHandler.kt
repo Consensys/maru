@@ -21,98 +21,110 @@ import maru.core.BeaconBlock
 import maru.core.SealedBeaconBlock
 import maru.p2p.SealedBlockHandler
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class SealedBlockHandlerAdapter<T>(
-  val adaptee: NewBlockHandler<T>,
+class SealedBlockHandlerAdapter(
+  val adaptee: NewBlockHandler,
 ) : SealedBlockHandler {
   override fun handleSealedBlock(block: SealedBeaconBlock): SafeFuture<*> = adaptee.handleNewBlock(block.beaconBlock)
 }
 
-fun interface NewBlockHandler<T> {
-  fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<T>
+fun interface NewBlockHandler {
+  fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<*>
+}
+
+typealias AsyncFunction<I, O> = (I) -> SafeFuture<O>
+
+abstract class CallAndForgetFutureMultiplexer<I, O>(
+  handlersMap: Map<String, AsyncFunction<I, O>>,
+) {
+  private val handlersMap = ConcurrentHashMap(handlersMap)
+  private val log = LogManager.getLogger(this::class.java)!!
+
+  protected abstract fun Logger.logError(
+    handlerName: String,
+    input: I,
+    ex: Exception,
+  )
+
+  fun addHandler(
+    name: String,
+    handler: AsyncFunction<I, O>,
+  ) {
+    handlersMap[name] = handler
+  }
+
+  fun handle(input: I): SafeFuture<*> {
+    val handlerFutures: List<CompletableFuture<Void>> =
+      handlersMap.map {
+        val (handlerName, handler) = it
+        SafeFuture.runAsync {
+          try {
+            log.debug("Handling $handlerName")
+            handler(input)
+            log.debug("$handlerName handling completed successfully")
+          } catch (ex: Exception) {
+            log.logError(handlerName, input, ex)
+          }
+        }
+      }
+    val completableFuture =
+      SafeFuture
+        .allOf(*handlerFutures.toTypedArray())
+        .thenApply { }
+    return SafeFuture.of(completableFuture)
+  }
+}
+
+class NewSealedBlockHandlerMultiplexer(
+  handlersMap: Map<String, SealedBlockHandler>,
+) : CallAndForgetFutureMultiplexer<SealedBeaconBlock, Unit>(
+    handlersMap.mapValues { newSealedBlockHandler ->
+      {
+        newSealedBlockHandler.value.handleSealedBlock(it).thenApply { }
+      }
+    },
+  ),
+  SealedBlockHandler {
+  override fun Logger.logError(
+    handlerName: String,
+    input: SealedBeaconBlock,
+    ex: Exception,
+  ) {
+    this.error(
+      "New block handler $handlerName failed processing" +
+        "blockHash=${input.beaconBlock.beaconBlockHeader.hash}, number=${input.beaconBlock.beaconBlockHeader.number} " +
+        "executionPayloadBlockNumber=${input.beaconBlock.beaconBlockBody.executionPayload.blockNumber}!",
+      ex,
+    )
+  }
+
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> = handle(sealedBeaconBlock)
 }
 
 class NewBlockHandlerMultiplexer(
-  handlersMap: Map<String, NewBlockHandler<*>>,
-) : NewBlockHandler<Unit> {
-  private val handlersMap = ConcurrentHashMap(handlersMap)
-  private val log = LogManager.getLogger(NewBlockHandlerMultiplexer::class.java)!!
-
-  fun addHandler(
-    name: String,
-    handler: NewBlockHandler<*>,
-  ) {
-    handlersMap[name] = handler
-  }
-
-  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
-    val handlerFutures: List<CompletableFuture<Void>> =
-      handlersMap.map {
-        val (handlerName, handler) = it
-        SafeFuture.runAsync {
-          try {
-            log.debug("Handling $handlerName")
-            handler.handleNewBlock(beaconBlock)
-            log.debug("$handlerName handling completed successfully")
-          } catch (ex: Exception) {
-            log.error(
-              "New block handler $handlerName failed processing" +
-                " block hash=${beaconBlock.beaconBlockHeader.hash}, number=${beaconBlock.beaconBlockHeader.number} " +
-                "executionPayloadBlockNumber=${beaconBlock.beaconBlockBody.executionPayload.blockNumber}!",
-              ex,
-            )
-          }
-        }
+  handlersMap: Map<String, NewBlockHandler>,
+) : CallAndForgetFutureMultiplexer<BeaconBlock, Unit>(
+    handlersMap.mapValues { newBlockHandler ->
+      {
+        newBlockHandler.value.handleNewBlock(it).thenApply { }
       }
-    val completableFuture =
-      SafeFuture
-        .allOf(*handlerFutures.toTypedArray())
-        .thenApply { }
-    return SafeFuture.of(completableFuture)
-  }
-}
-
-// TODO: Make multiplexer generic
-class SealedBlockHandlerMultiplexer(
-  handlersMap: Map<String, SealedBlockHandler>,
-) : SealedBlockHandler {
-  private val handlersMap = ConcurrentHashMap(handlersMap)
-  private val log = LogManager.getLogger(SealedBlockHandlerMultiplexer::class.java)!!
-
-  fun addHandler(
-    name: String,
-    handler: SealedBlockHandler,
+    },
+  ),
+  NewBlockHandler {
+  override fun Logger.logError(
+    handlerName: String,
+    input: BeaconBlock,
+    ex: Exception,
   ) {
-    handlersMap[name] = handler
+    this.error(
+      "New block handler $handlerName failed processing" +
+        " block hash=${input.beaconBlockHeader.hash}, number=${input.beaconBlockHeader.number} " +
+        "executionPayloadBlockNumber=${input.beaconBlockBody.executionPayload.blockNumber}!",
+      ex,
+    )
   }
 
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
-    val handlerFutures: List<CompletableFuture<Void>> =
-      handlersMap.map {
-        val (handlerName, handler) = it
-        SafeFuture.runAsync {
-          try {
-            log.debug("Handling $handlerName")
-            handler.handleSealedBlock(sealedBeaconBlock)
-            log.debug("$handlerName handling completed successfully")
-          } catch (ex: Exception) {
-            log.error(
-              "New block handler $handlerName failed processing" +
-                " block hash=${sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash}, number=${
-                  sealedBeaconBlock.beaconBlock.beaconBlockHeader
-                    .number
-                } " +
-                "executionPayloadBlockNumber=${sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber}!",
-              ex,
-            )
-          }
-        }
-      }
-    val completableFuture =
-      SafeFuture
-        .allOf(*handlerFutures.toTypedArray())
-        .thenApply { }
-    return SafeFuture.of(completableFuture)
-  }
+  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<*> = handle(beaconBlock)
 }

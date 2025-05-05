@@ -25,19 +25,18 @@ import maru.consensus.ForksSchedule
 import maru.consensus.LatestBlockMetadataCache
 import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
+import maru.consensus.NewSealedBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.ProtocolStarterBlockHandler
 import maru.consensus.SealedBlockHandlerAdapter
-import maru.consensus.SealedBlockHandlerMultiplexer
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.database.kv.KvDatabaseFactory
-import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.p2p.NoopP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
@@ -116,7 +115,7 @@ class MaruApp(
           "beacon block handlers" to adaptedBeaconBlockImporter,
           "p2p broadcast sealed beacon block handler" to SealedBeaconBlockBroadcaster(p2pNetwork),
         )
-      val sealedBlockHandlerMultiplexer = SealedBlockHandlerMultiplexer(sealedBlockHandlers)
+      val sealedBlockHandlerMultiplexer = NewSealedBlockHandlerMultiplexer(sealedBlockHandlers)
       ProtocolStarter(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
@@ -145,18 +144,16 @@ class MaruApp(
         val protocolStarterBlockHandlerEntry = "protocol starter" to ProtocolStarterBlockHandler(it)
         delegatedConsensusNewBlockHandler.addHandler(
           protocolStarterBlockHandlerEntry.first,
-          protocolStarterBlockHandlerEntry.second,
+          protocolStarterBlockHandlerEntry.second::handleNewBlock,
         )
         qbftConsensusBeaconBlockHandler.addHandler(
           protocolStarterBlockHandlerEntry.first,
-          protocolStarterBlockHandlerEntry.second,
+          protocolStarterBlockHandlerEntry.second::handleNewBlock,
         )
       }
     }
 
-  private fun createFollowerHandlers(
-    followers: FollowersConfig,
-  ): Map<String, NewBlockHandler<ForkChoiceUpdatedResult>> =
+  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler> =
     followers.followers
       .mapValues {
         val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
