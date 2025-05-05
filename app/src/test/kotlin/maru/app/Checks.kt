@@ -19,29 +19,25 @@ import java.math.BigInteger
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.web3j.protocol.core.DefaultBlockParameter
+import org.web3j.protocol.core.methods.response.EthBlock
 
-class Checks(
-  val besuNode: BesuNode,
-) {
-  fun verifyBlockHeaders(
-    fromBlockNumber: Int,
-    blocksProduced: Int,
-  ) {
-    val blocks =
-      (fromBlockNumber until fromBlockNumber + blocksProduced)
-        .map {
-          besuNode
-            .nodeRequests()
-            .eth()
-            .ethGetBlockByNumber(
-              DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
-              false,
-            ).sendAsync()
-        }.map { it.get().block }
+object Checks {
+  fun BesuNode.getMinedBlocks(blocksMined: Int): List<EthBlock.Block> =
+    (1 until blocksMined)
+      .map {
+        this
+          .nodeRequests()
+          .eth()
+          .ethGetBlockByNumber(
+            DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
+            false,
+          ).sendAsync()
+      }.map { it.get().block }
 
+  fun List<EthBlock.Block>.verifyBlockTime() {
     val blockTimeSeconds = 1L
-    val timestampsSeconds = blocks.map { it.timestamp.toLong() }
-    (2.until(blocks.size)).forEach {
+    val timestampsSeconds = this.map { it.timestamp.toLong() }
+    (2.until(this.size)).forEach {
       assertThat(timestampsSeconds[it - 1]).isLessThan(timestampsSeconds[it])
       val actualBlockTime = timestampsSeconds[it] - timestampsSeconds[it - 1]
       assertThat(actualBlockTime)

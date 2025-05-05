@@ -18,6 +18,8 @@ package maru.app
 import java.io.File
 import java.math.BigInteger
 import java.nio.file.Files
+import maru.app.Checks.getMinedBlocks
+import maru.app.Checks.verifyBlockTime
 import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
@@ -35,6 +37,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
+import org.web3j.protocol.core.methods.response.EthBlock
 
 class MaruConsensusSwitchTest {
   private lateinit var cluster: Cluster
@@ -145,36 +148,18 @@ class MaruConsensusSwitchTest {
 
     assertThat(blockProducedByPrague.extraData.length).isEqualTo(24)
 
-    val switchBlock = findPragueBlock(1, totalBlocksToProduce)!!
+    val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
 
+    val switchBlock = blocks.findPragueBlock(switchTimestamp)!!
+
+    val (blocksPreSwitch, blocksPostSwitch) = blocks.partition { it.number.toLong() < switchBlock }
     // Verify block time is consistent before and after the switch
-    Checks(besuNode).run {
-      verifyBlockHeaders(fromBlockNumber = 1, blocksProduced = switchBlock)
-      verifyBlockHeaders(fromBlockNumber = switchBlock, blocksProduced = totalBlocksToProduce - switchBlock)
-    }
+    blocksPreSwitch.verifyBlockTime()
+    blocksPostSwitch.verifyBlockTime()
   }
 
-  private fun findPragueBlock(
-    fromBlockNumber: Int,
-    blocksProduced: Int,
-  ): Int? {
-    val blocks =
-      (fromBlockNumber until fromBlockNumber + blocksProduced)
-        .map {
-          besuNode
-            .nodeRequests()
-            .eth()
-            .ethGetBlockByNumber(
-              DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
-              false,
-            ).sendAsync()
-        }.map { it.get().block }
-
-    val blockTimeSeconds = 1L
-    val timestampsSeconds = blocks.map { it.timestamp.toLong() }
-    return (2.until(blocks.size)).find {
-      val actualBlockTime = timestampsSeconds[it] - timestampsSeconds[it - 1]
-      actualBlockTime != blockTimeSeconds
+  private fun List<EthBlock.Block>.findPragueBlock(expectedSwitchTimestamp: Long): Int? =
+    this.indexOfFirst {
+      it.timestamp.toLong() >= expectedSwitchTimestamp
     }
-  }
 }

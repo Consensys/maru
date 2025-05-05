@@ -17,6 +17,8 @@ package maru.app
 
 import java.io.File
 import java.nio.file.Files
+import maru.app.Checks.getMinedBlocks
+import maru.app.Checks.verifyBlockTime
 import maru.consensus.ElFork
 import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.qbft.toAddress
@@ -109,7 +111,8 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    Checks(besuNode).verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
+    val blocks = besuNode.getMinedBlocks(blocksToProduce)
+    blocks.verifyBlockTime()
 
     // Need to wait because otherwise not all of the messages might be emitted at the time of a block being mined
     await.untilAsserted {
@@ -191,10 +194,11 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    Checks(besuNode).run {
-      verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-      verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
-    }
+    val blocks = besuNode.getMinedBlocks(blocksToProduce)
+    val (blocksPreSwitch, blocksPostSwitch) = blocks.partition { it.number.toLong() < 6 }
+
+    blocksPreSwitch.verifyBlockTime()
+    blocksPostSwitch.verifyBlockTime()
   }
 
   @Test
@@ -210,10 +214,10 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    Checks(besuNode).run {
-      verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-      verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
-    }
+    val blocks = besuNode.getMinedBlocks(blocksToProduce)
+    val (blocksPreStop, blocksPostStop) = blocks.partition { it.number.toLong() < 6 }
+    blocksPreStop.verifyBlockTime()
+    blocksPostStop.verifyBlockTime()
   }
 
   @Test
@@ -240,9 +244,9 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    Checks(besuNode).run {
-      verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-      verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
-    }
+    val blocks = besuNode.getMinedBlocks(blocksToProduce)
+    val (blocksPreStop, blocksPostStop) = blocks.partition { it.number.toLong() < 6 }
+    blocksPreStop.verifyBlockTime()
+    blocksPostStop.verifyBlockTime()
   }
 }
