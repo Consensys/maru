@@ -17,6 +17,9 @@ package maru.testutils.besu
 
 import java.util.Optional
 import maru.consensus.ElFork
+import org.hyperledger.besu.ethereum.core.AddressHelpers
+import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration
+import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration.MutableInitValues
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorageFactory
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory
@@ -35,19 +38,35 @@ object BesuFactory {
       ElFork.Prague -> PRAGUE_GENESIS
     }
 
-  fun buildTestBesu(elFork: ElFork = ElFork.Prague): BesuNode =
-    BesuNodeFactory().createMinerNode(
-      "miner",
-    ) { builder: BesuNodeConfigurationBuilder ->
-      val genesisFilePath = pickGenesis(elFork)
-      val genesisFile = GenesisConfigurationFactory.readGenesisFile(genesisFilePath)
-      val persistentStorageFactory: KeyValueStorageFactory =
-        RocksDBKeyValueStorageFactory(
-          RocksDBCLIOptions.create()::toDomainObject,
-          KeyValueSegmentIdentifier.entries,
-          RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS,
-        )
-      builder
+  fun buildTestBesu(elFork: ElFork = ElFork.Prague): BesuNode {
+    val genesisFilePath = pickGenesis(elFork)
+    val genesisFile = GenesisConfigurationFactory.readGenesisFile(genesisFilePath)
+    val persistentStorageFactory: KeyValueStorageFactory =
+      RocksDBKeyValueStorageFactory(
+        RocksDBCLIOptions.create()::toDomainObject,
+        KeyValueSegmentIdentifier.entries,
+        RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS,
+      )
+    val miningConfiguration =
+      ImmutableMiningConfiguration
+        .builder()
+        .mutableInitValues(
+          MutableInitValues
+            .builder()
+            .coinbase(AddressHelpers.ofValue(1))
+            .isMiningEnabled(true)
+            .build(),
+        ).unstable(
+          ImmutableMiningConfiguration.Unstable
+            .builder()
+            .posBlockCreationRepetitionMinDuration(100L)
+            .build(),
+        ).build()
+    val nodeConfiguration =
+      BesuNodeConfigurationBuilder()
+        .name("miner")
+        .jsonRpcEnabled()
+        .webSocketEnabled()
         .storageImplementation(persistentStorageFactory)
         .genesisConfigProvider {
           Optional.of(
@@ -58,5 +77,8 @@ object BesuFactory {
         .jsonRpcTxPool()
         .engineRpcEnabled(true)
         .jsonRpcDebug()
-    }
+        .miningConfiguration(miningConfiguration)
+        .build()
+    return BesuNodeFactory().create(nodeConfiguration)
+  }
 }
