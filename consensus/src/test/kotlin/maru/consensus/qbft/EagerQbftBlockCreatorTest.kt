@@ -323,13 +323,14 @@ class EagerQbftBlockCreatorTest {
     parentHeader: QbftBlockHeader,
   ) {
     val rejectedBlockTimestamp = (clock.millis() / 1000) + 1
-    executionLayerManager.setHeadAndStartBlockBuilding(
-      headHash = genesisBlockHash,
-      safeHash = genesisBlockHash,
-      finalizedHash = genesisBlockHash,
-      nextBlockTimestamp = rejectedBlockTimestamp,
-      feeRecipient = validator.address,
-    )
+    executionLayerManager
+      .setHeadAndStartBlockBuilding(
+        headHash = genesisBlockHash,
+        safeHash = genesisBlockHash,
+        finalizedHash = genesisBlockHash,
+        nextBlockTimestamp = rejectedBlockTimestamp,
+        feeRecipient = validator.address,
+      ).get()
     val transaction = BesuTransactionsHelper().createTransfers(1u)
     besuInstance.execute(transaction)
     Thread.sleep(1000)

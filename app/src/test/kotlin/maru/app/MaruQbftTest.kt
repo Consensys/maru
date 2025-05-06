@@ -16,9 +16,9 @@
 package maru.app
 
 import java.io.File
-import java.nio.file.Files
 import maru.app.Checks.getMinedBlocks
 import maru.app.Checks.verifyBlockTime
+import maru.app.Checks.verifyBlockTimeWithAGapOn
 import maru.consensus.ElFork
 import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.qbft.toAddress
@@ -46,6 +46,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class MaruQbftTest {
   private lateinit var cluster: Cluster
@@ -53,6 +54,8 @@ class MaruQbftTest {
   private lateinit var maruNode: MaruApp
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
+
+  @TempDir
   private lateinit var tmpDir: File
   private lateinit var spyingValidatorMulticaster: SpyingValidatorMulticaster
 
@@ -71,8 +74,6 @@ class MaruQbftTest {
     cluster.start(besuNode)
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
     val engineRpcUrl = besuNode.engineRpcUrl().get()
-    tmpDir = Files.createTempDirectory("maru").toFile()
-    tmpDir.deleteOnExit()
     spyingValidatorMulticaster = SpyingValidatorMulticaster(NoopValidatorMulticaster)
     maruNode =
       MaruFactory.buildTestMaru(
@@ -89,7 +90,6 @@ class MaruQbftTest {
   fun tearDown() {
     cluster.close()
     maruNode.stop()
-    tmpDir.deleteRecursively()
   }
 
   private fun sendTransactionAndAssertExecution(
@@ -194,11 +194,8 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    val blocks = besuNode.getMinedBlocks(blocksToProduce)
-    val (blocksPreSwitch, blocksPostSwitch) = blocks.partition { it.number.toLong() < 6 }
-
-    blocksPreSwitch.verifyBlockTime()
-    blocksPostSwitch.verifyBlockTime()
+    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
+    blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 
   @Test
@@ -214,10 +211,8 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    val blocks = besuNode.getMinedBlocks(blocksToProduce)
-    val (blocksPreStop, blocksPostStop) = blocks.partition { it.number.toLong() < 6 }
-    blocksPreStop.verifyBlockTime()
-    blocksPostStop.verifyBlockTime()
+    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
+    blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 
   @Test
@@ -244,9 +239,8 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    val blocks = besuNode.getMinedBlocks(blocksToProduce)
-    val (blocksPreStop, blocksPostStop) = blocks.partition { it.number.toLong() < 6 }
-    blocksPreStop.verifyBlockTime()
-    blocksPostStop.verifyBlockTime()
+    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
+
+    blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 }

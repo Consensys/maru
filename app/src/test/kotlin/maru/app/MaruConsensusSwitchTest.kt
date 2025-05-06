@@ -17,9 +17,8 @@ package maru.app
 
 import java.io.File
 import java.math.BigInteger
-import java.nio.file.Files
 import maru.app.Checks.getMinedBlocks
-import maru.app.Checks.verifyBlockTime
+import maru.app.Checks.verifyBlockTimeWithAGapOn
 import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
@@ -36,15 +35,22 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 
 class MaruConsensusSwitchTest {
+  companion object {
+    private const val VANILLA_EXTRA_DATA_LENGTH = 32
+  }
+
   private lateinit var cluster: Cluster
   private lateinit var besuNode: BesuNode
   private lateinit var maruNode: MaruApp
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
+
+  @TempDir
   private lateinit var tmpDir: File
   private val net = NetConditions(NetTransactions())
 
@@ -58,15 +64,12 @@ class MaruConsensusSwitchTest {
         net,
         ThreadBesuNodeRunner(),
       )
-    tmpDir = Files.createTempDirectory("maru").toFile()
-    tmpDir.deleteOnExit()
   }
 
   @AfterEach
   fun tearDown() {
     cluster.close()
     maruNode.stop()
-    tmpDir.deleteRecursively()
   }
 
   private fun sendTransactionAndAssertExecution(
@@ -116,8 +119,6 @@ class MaruConsensusSwitchTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("pre-switch account"), Amount.ether(100))
     }
 
-    log.info("Waiting for the switch to happen")
-
     currentTimestamp = System.currentTimeMillis() / 1000
     log.info("Current timestamp: $currentTimestamp, switch timestamp: $switchTimestamp")
     assertThat(currentTimestamp).isGreaterThan(switchTimestamp)
@@ -133,7 +134,7 @@ class MaruConsensusSwitchTest {
         .get()
         .block
 
-    assertThat(blockProducedByClique.extraData.length).isGreaterThan(32)
+    assertThat(blockProducedByClique.extraData.length).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
 
     val blockProducedByPrague =
       besuNode
@@ -152,14 +153,12 @@ class MaruConsensusSwitchTest {
 
     val switchBlock = blocks.findPragueBlock(switchTimestamp)!!
 
-    val (blocksPreSwitch, blocksPostSwitch) = blocks.partition { it.number.toLong() < switchBlock }
-    // Verify block time is consistent before and after the switch
-    blocksPreSwitch.verifyBlockTime()
-    blocksPostSwitch.verifyBlockTime()
+    blocks.verifyBlockTimeWithAGapOn(switchBlock)
   }
 
   private fun List<EthBlock.Block>.findPragueBlock(expectedSwitchTimestamp: Long): Int? =
-    this.indexOfFirst {
-      it.timestamp.toLong() >= expectedSwitchTimestamp
-    }
+    this
+      .indexOfFirst {
+        it.timestamp.toLong() >= expectedSwitchTimestamp
+      }.takeIf { it != -1 }
 }
