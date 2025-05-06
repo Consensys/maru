@@ -50,15 +50,19 @@ class QbftBlockCreatorFactory(
         beaconChain = beaconChain,
         round = round,
       )
-    return EagerQbftBlockCreator(
-      manager = manager,
-      delegate = delayedQbftBlockCreator,
-      finalizationStateProvider = finalizationStateProvider,
-      blockBuilderIdentity = blockBuilderIdentity,
-      beaconChain = beaconChain,
-      nextBlockTimestampProvider = nextBlockTimestampProvider,
-      config = eagerQbftBlockCreatorConfig,
-      clock = clock,
-    )
+    return if (round == 0) {
+      delayedQbftBlockCreator
+    } else {
+      EagerQbftBlockCreator(
+        manager = manager,
+        delegate = delayedQbftBlockCreator,
+        finalizationStateProvider = finalizationStateProvider,
+        blockBuilderIdentity = blockBuilderIdentity,
+        beaconChain = beaconChain,
+        nextBlockTimestampProvider = nextBlockTimestampProvider,
+        config = eagerQbftBlockCreatorConfig,
+        clock = clock,
+      )
+    }
   }
 }
