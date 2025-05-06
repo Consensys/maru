@@ -263,10 +263,11 @@ class MaruQbftTest {
       assertThat(timestampsSeconds[it - 1]).isLessThan(timestampsSeconds[it])
       val actualBlockTime = timestampsSeconds[it] - timestampsSeconds[it - 1]
       assertThat(actualBlockTime)
-        .withFailMessage("Timestamps: $timestampsSeconds")
-        .isGreaterThanOrEqualTo(blockTimeSeconds)
+        .withFailMessage(
+          "Invalid timestamp actual=$actualBlockTime expected=$blockTimeSeconds timestamps=$timestampsSeconds",
+        ).isGreaterThanOrEqualTo(blockTimeSeconds)
       assertThat(actualBlockTime)
-        .withFailMessage("Timestamps: $timestampsSeconds")
+        .withFailMessage("Invalid blocktime actual=$actualBlockTime expected=$blockTimeSeconds blocknumber=$it")
         .isLessThanOrEqualTo(blockTimeSeconds)
     }
   }
