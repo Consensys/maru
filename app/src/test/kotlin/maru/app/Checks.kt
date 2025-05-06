@@ -16,6 +16,7 @@
 package maru.app
 
 import java.math.BigInteger
+import maru.testutils.besu.BesuFactory
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -23,7 +24,7 @@ import org.web3j.protocol.core.methods.response.EthBlock
 
 object Checks {
   fun BesuNode.getMinedBlocks(blocksMined: Int): List<EthBlock.Block> =
-    (1 until blocksMined)
+    (1..blocksMined)
       .map {
         this
           .nodeRequests()
@@ -34,18 +35,25 @@ object Checks {
           ).sendAsync()
       }.map { it.get().block }
 
+  // Checks that all block times in the list are exactly BesuFactory.MIN_BLOCK_TIME (1 second)
   fun List<EthBlock.Block>.verifyBlockTime() {
-    val blockTimeSeconds = 1L
     val timestampsSeconds = this.map { it.timestamp.toLong() }
-    (2.until(this.size)).forEach {
-      assertThat(timestampsSeconds[it - 1]).isLessThan(timestampsSeconds[it])
-      val actualBlockTime = timestampsSeconds[it] - timestampsSeconds[it - 1]
+    timestampsSeconds.reduceIndexed { index, prevTimestamp, timestamp ->
+      assertThat(prevTimestamp).isLessThan(timestamp)
+      val actualBlockTime = timestamp - prevTimestamp
       assertThat(actualBlockTime)
         .withFailMessage("Timestamps: $timestampsSeconds")
-        .isGreaterThanOrEqualTo(blockTimeSeconds)
-      assertThat(actualBlockTime)
-        .withFailMessage("Timestamps: $timestampsSeconds")
-        .isLessThanOrEqualTo(blockTimeSeconds)
+        .isEqualTo(BesuFactory.MIN_BLOCK_TIME)
+      timestamp
     }
+  }
+
+  // Checks that all block times in the list are exactly BesuFactory.MIN_BLOCK_TIME (1 second)
+  fun List<EthBlock.Block>.verifyBlockTimeWithAGapOn(gappedBlockNumber: Int) {
+    val blocksPreGap = this.subList(1, gappedBlockNumber)
+    val blocksPostGap = this.subList(gappedBlockNumber, this.size - 1)
+    // Verify block time is consistent before and after the switch
+    blocksPreGap.verifyBlockTime()
+    blocksPostGap.verifyBlockTime()
   }
 }

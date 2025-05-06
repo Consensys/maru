@@ -150,6 +150,7 @@ class CliqueToPosTest {
     maru.stop()
   }
 
+  // TODO: Explore parallelization of this test
   @Order(2)
   @ParameterizedTest
   @MethodSource("followerNodes")
