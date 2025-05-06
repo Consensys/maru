@@ -67,4 +67,6 @@ tasks.register('acceptanceTest', Test) { test ->
     // set showStandardStreams if you need to see test logs
     showStandardStreams true
   }
+
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
 }
