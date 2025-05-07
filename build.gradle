@@ -158,8 +158,7 @@ allprojects {
     systemProperties["junit.jupiter.execution.parallel.enabled"] = true
     systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
     systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
-    // To make room for the tests that are running Maru and Besu at the same time
-    maxParallelForks = (Runtime.runtime.availableProcessors() / 2).toInteger()
+    maxParallelForks = Runtime.runtime.availableProcessors()
   }
 }
 
