@@ -47,7 +47,7 @@ object MaruFactory {
     endpoint = "$ethereumJsonRpcUrl"
 
     [qbft-options]
-    communication-margin=200m
+    communication-margin=250m
 
     [p2p-config]
     port = 3322
