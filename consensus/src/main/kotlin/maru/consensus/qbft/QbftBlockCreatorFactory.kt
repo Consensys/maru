@@ -50,7 +50,7 @@ class QbftBlockCreatorFactory(
         beaconChain = beaconChain,
         round = round,
       )
-    return if (round == 0) {
+    return if (round == 0 && manager.hasStartedBlockBuilding()) {
       delayedQbftBlockCreator
     } else {
       EagerQbftBlockCreator(

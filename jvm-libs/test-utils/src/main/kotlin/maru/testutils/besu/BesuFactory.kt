@@ -59,7 +59,7 @@ object BesuFactory {
         ).unstable(
           ImmutableMiningConfiguration.Unstable
             .builder()
-            .posBlockCreationRepetitionMinDuration(100L)
+            .posBlockCreationRepetitionMinDuration(100)
             .build(),
         ).build()
     val nodeConfiguration =

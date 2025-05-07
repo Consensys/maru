@@ -88,6 +88,8 @@ interface ExecutionLayerManager {
 
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
 
+  fun hasStartedBlockBuilding(): Boolean
+
   fun setHead(
     headHash: ByteArray,
     safeHash: ByteArray,
@@ -95,4 +97,6 @@ interface ExecutionLayerManager {
   ): SafeFuture<ForkChoiceUpdatedResult>
 
   fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus>
+
+  fun getElapsedBlockBuildingTime(): Long?
 }

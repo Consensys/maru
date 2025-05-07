@@ -32,6 +32,7 @@ class QbftEventMultiplexer(
 
   fun handleEvent(event: BftEvent) {
     try {
+      log.debug("Handling event: {}", event)
       when (event.type) {
         BftEvents.Type.ROUND_EXPIRY -> eventHandler.handleRoundExpiry(event as RoundExpiry)
         BftEvents.Type.NEW_CHAIN_HEAD -> eventHandler.handleNewBlockEvent(event as QbftNewChainHead)
