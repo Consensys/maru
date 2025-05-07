@@ -17,10 +17,9 @@ plugins {
   id 'maru.kotlin-library-conventions'
 }
 
-group = 'maru'
-version = 'unspecified'
-
 dependencies {
+  implementation(project(":config"))
+
   implementation "io.libp2p:jvm-libp2p"
   implementation "tech.pegasys.teku.internal:p2p"
 
@@ -33,15 +32,10 @@ dependencies {
   implementation("org.hyperledger.besu.internal:metrics-core")
 
   implementation "io.libp2p:jvm-libp2p"
-  implementation "tech.pegasys.teku.internal:p2p"
 
   implementation(project(":core"))
 
   testImplementation(testFixtures(project(":core")))
-
-  // TODO: the following two can be removed once the besu build is in P2PTest is not needed anymore
-  testImplementation(project(":jvm-libs:test-utils"))
-  testImplementation(project(":consensus"))
 }
 
 test {

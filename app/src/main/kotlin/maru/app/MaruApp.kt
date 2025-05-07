@@ -52,9 +52,7 @@ class MaruApp(
   val p2pManager =
     P2PManager(
       privateKeyFile = config.persistence.privateKeyPath,
-      ipAddress = config.p2pConfig.ipAddress,
-      port = config.p2pConfig.port,
-      staticPeers = config.p2pConfig.staticPeers,
+      p2pConfig = config.p2pConfig,
     )
 
   init {

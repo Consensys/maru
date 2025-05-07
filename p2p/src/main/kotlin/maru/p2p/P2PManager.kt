@@ -19,6 +19,7 @@ import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.nio.file.Path
 import java.util.Optional
 import java.util.concurrent.TimeUnit
+import maru.config.P2P
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -33,27 +34,23 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class P2PManager(
   val privateKeyFile: Path,
-  val ipAddress: String,
-  val port: String,
-  val staticPeers: List<String>,
+  val p2pConfig: P2P,
 ) {
   companion object {
     private const val DEFAULT_RECONNECT_DELAY_MILLI_SECONDS = 5000L // TODO: Do we want to make this configurable?
   }
 
+  val p2pNetwork: P2PNetwork<Peer> = buildP2PNetwork()
+
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val delayedExecutor = SafeFuture.delayedExecutor(DEFAULT_RECONNECT_DELAY_MILLI_SECONDS, TimeUnit.MILLISECONDS)
   private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()
 
-  lateinit var p2pNetwork: P2PNetwork<Peer>
-
   fun start() {
-    p2pNetwork = buildP2PNetwork()
-
     p2pNetwork
       .start()
       ?.thenApply {
-        staticPeers.forEach { peer ->
+        p2pConfig.staticPeers.forEach { peer ->
           p2pNetwork.createPeerAddress(peer)?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
       }?.get()
@@ -71,8 +68,8 @@ class P2PManager(
 
     return P2PNetworkFactory.build(
       privateKey = privateKey,
-      ipAddress = ipAddress,
-      port = port,
+      ipAddress = p2pConfig.ipAddress,
+      port = p2pConfig.port,
     )
   }
 
@@ -95,27 +92,25 @@ class P2PManager(
     }
   }
 
-  private fun maintainPersistentConnection(peerAddress: MultiaddrPeerAddress): SafeFuture<Void> {
+  private fun maintainPersistentConnection(peerAddress: MultiaddrPeerAddress): SafeFuture<Unit> {
     val existingPeer = p2pNetwork.getPeer(peerAddress.id)
     if (existingPeer.isPresent) {
       log.debug("Already connected to peer {}", peerAddress)
-      return SafeFuture.completedFuture(null)
+      return SafeFuture.completedFuture(Unit) // Return SafeFuture<Unit>
     }
     return p2pNetwork
       .connect(peerAddress)
       .thenApply { peer: Peer ->
         peer.subscribeDisconnect { _: Optional<DisconnectReason?>?, _: Boolean ->
-          run {
-            if (staticPeerMap.contains(peerAddress.id)) {
-              SafeFuture.runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
-            }
+          if (staticPeerMap.contains(peerAddress.id)) {
+            SafeFuture.runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
           }
         }
-      }.thenRun({ log.info("Created persistent connection to {}", peerAddress) })
-      .exceptionallyCompose {
+        log.info("Created persistent connection to {}", peerAddress)
+      }.exceptionallyCompose {
         if (it is PeerAlreadyConnectedException) {
           log.info("Already connected to peer $peerAddress. Error: ${it.message}")
-          SafeFuture.completedFuture(null)
+          SafeFuture.completedFuture(Unit) // Return SafeFuture<Unit> on exception
         } else {
           log.trace(
             "Failed to connect to peer {}, retrying after {} ms. Error: {}",
@@ -123,7 +118,9 @@ class P2PManager(
             DEFAULT_RECONNECT_DELAY_MILLI_SECONDS,
             it.message,
           )
-          SafeFuture.runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
+          SafeFuture
+            .runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
+            .thenApply { Unit }
         }
       }
   }

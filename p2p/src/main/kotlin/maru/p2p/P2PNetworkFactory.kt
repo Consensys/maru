@@ -19,12 +19,10 @@ import io.libp2p.core.ConnectionHandler
 import io.libp2p.core.Host
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.PrivKey
-import io.libp2p.core.dsl.Builder.Defaults.Standard
-import io.libp2p.core.dsl.BuilderJ
-import io.libp2p.core.dsl.hostJ
+import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
+import io.libp2p.core.mux.StreamMuxerProtocol
 import io.libp2p.etc.types.millis
-import io.libp2p.protocol.PingProtocol
 import io.libp2p.pubsub.PubsubApiImpl
 import io.libp2p.pubsub.gossip.Gossip
 import io.libp2p.pubsub.gossip.GossipPeerScoreParams
@@ -70,8 +68,7 @@ object P2PNetworkFactory {
     ipv4Address: Multiaddr,
   ): P2PNetwork<Peer> {
     val rpcMethod = MaruRpcMethod()
-    val gossipTopicHandlers = GossipTopicHandlers()
-//    gossipTopicHandlers.add("topic", TestTopicHandler()) // TODO: I don't think this is needed
+    val gossipTopicHandlers = GossipTopicHandlers() // TODO: add handlers for topics as needed
 
     val gossipParams = GossipParamsBuilder().heartbeatInterval(100.millis).build()
     val gossipRouterBuilder =
@@ -99,17 +96,21 @@ object P2PNetworkFactory {
       PeerManager(
         metricsSystem,
         ReputationManager.NOOP,
-        mutableListOf<PeerHandler>(MaruPeerHandler()),
-        mutableListOf(rpcHandler),
+        listOf<PeerHandler>(MaruPeerHandler()),
+        listOf(rpcHandler),
         { _ -> 50.0 }, // TODO: I guess we need a scoring function here
       )
 
-    val host = createHost(privateKey, listOf(gossip, peerManager), gossip, rpcHandler, ipv4Address)
+    val host =
+      createHost(
+        privateKey = privateKey,
+        connectionHandlers = listOf(gossip, peerManager),
+        gossip = gossip,
+        rpcHandler = rpcHandler,
+        ipv4Address = ipv4Address,
+      )
 
-    val advertisedAddresses =
-      mutableListOf<Multiaddr>().apply {
-        add(ipv4Address)
-      }
+    val advertisedAddresses = listOf(ipv4Address)
 
     return LibP2PNetwork(
       privateKey,
@@ -118,7 +119,7 @@ object P2PNetworkFactory {
       peerManager,
       advertisedAddresses,
       gossipNetwork,
-      mutableListOf(1),
+      listOf(1),
     )
   }
 
@@ -140,26 +141,36 @@ object P2PNetworkFactory {
   }
 
   private fun createHost(
-    privKey: PrivKey,
+    privateKey: PrivKey,
     connectionHandlers: List<ConnectionHandler>,
     gossip: Gossip,
     rpcHandler: RpcHandler<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler>,
     ipv4Address: Multiaddr,
-  ): Host {
-    val listenAddrs =
-      mutableListOf<String>().apply {
-        add(ipv4Address.toString())
+  ): Host =
+    host {
+      protocols {
+        +gossip
+        +rpcHandler
       }
-
-    return hostJ(Standard) { b: BuilderJ ->
-      b.identity.factory = { privKey }
-      b.transports.add { upgrader -> TcpTransport(upgrader) }
-      listenAddrs.forEach { b.network.listen(it) }
-      b.secureChannels.add { localKey, muxerProtocols -> SecIoSecureChannel(localKey, muxerProtocols) }
-      connectionHandlers.forEach { b.connectionHandlers.add(it) }
-      b.protocols.add(gossip)
-      b.protocols.add(io.libp2p.protocol.PingBinding(PingProtocol(32))) // TODO: remove this
-      b.protocols.add(rpcHandler)
+      network {
+        listen(ipv4Address.toString())
+      }
+      transports {
+        add(::TcpTransport)
+      }
+      identity {
+        factory = { privateKey }
+      }
+      secureChannels {
+        add { localKey, muxerProtocols -> SecIoSecureChannel(localKey, muxerProtocols) }
+      }
+      connectionHandlers {
+        connectionHandlers.forEach { handler ->
+          add(handler)
+        }
+      }
+      muxers {
+        add(StreamMuxerProtocol.Mplex)
+      }
     }
-  }
 }
