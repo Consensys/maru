@@ -15,16 +15,29 @@
  */
 package maru.p2p
 
+import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 object NoopP2PNetwork : P2PNetwork {
-  override fun start(): SafeFuture<Unit> = SafeFuture.completedFuture(Unit)
+  private val log = LogManager.getLogger(this.javaClass)
 
-  override fun stop(): SafeFuture<Unit> = SafeFuture.completedFuture(Unit)
+  override fun start(): SafeFuture<Unit> =
+    SafeFuture
+      .fromRunnable {
+        log.debug("NoopP2PNetwork started")
+      }.thenApply { }
+
+  override fun stop(): SafeFuture<Unit> =
+    SafeFuture
+      .fromRunnable {
+        log.debug("NoopP2PNetwork stopped")
+      }.thenApply { }
 
   override fun broadcastMessage(message: Message<*>) {
+    log.debug("Doing nothing for message={}", message)
   }
 
   override fun subscribeToBlocks(subscriber: SealedBlockHandler) {
+    log.debug("Subscription called for subscriber={}", subscriber)
   }
 }
