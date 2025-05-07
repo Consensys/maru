@@ -93,7 +93,7 @@ class MaruConsensusSwitchTest {
     val switchTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique
     log.info("Setting Prague switch timestamp to $switchTimestamp, current timestamp: $currentTimestamp")
 
-    // Initialize Besu with  the same switch timestamp
+    // Initialize Besu with the same switch timestamp
     besuNode =
       BesuFactory.buildSwitchableBesu(
         switchTimestamp = switchTimestamp,
