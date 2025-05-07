@@ -158,7 +158,7 @@ allprojects {
     systemProperties["junit.jupiter.execution.parallel.enabled"] = true
     systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
     systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
-    maxParallelForks = Runtime.runtime.availableProcessors()
+    maxParallelForks = Runtime.runtime.availableProcessors() - 2
   }
 }
 
