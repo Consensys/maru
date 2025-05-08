@@ -47,5 +47,10 @@ interface P2PNetwork {
 
   fun broadcastMessage(message: Message<*>)
 
-  fun subscribeToBlocks(subscriber: SealedBlockHandler)
+  /**
+   * @return subscription id
+   */
+  fun subscribeToBlocks(subscriber: SealedBlockHandler): Int
+
+  fun unsubscribe(subscriptionId: Int)
 }

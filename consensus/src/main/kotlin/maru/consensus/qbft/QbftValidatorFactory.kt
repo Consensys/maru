@@ -41,6 +41,7 @@ import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
 import maru.consensus.state.StateTransitionImpl
+import maru.consensus.validation.BeaconBlockValidatorFactory
 import maru.core.BeaconBlockBody
 import maru.core.BeaconState
 import maru.core.Protocol
@@ -73,7 +74,7 @@ import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.util.Subscribers
 
-class QbftProtocolFactory(
+class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
   private val maruConfig: MaruConfig,
   private val metricsSystem: MetricsSystem,
@@ -169,13 +170,12 @@ class QbftProtocolFactory(
 
     val blockCodec = QbftBlockCodecAdapter
     val blockInterface = QbftBlockInterfaceAdapter()
+    val beaconBlockValidatorFactory =
+      BeaconBlockValidatorFactory(beaconChain, proposerSelector, stateTransition, executionLayerManager)
     val protocolSchedule =
       QbftProtocolScheduleAdapter(
         blockImporter = blockImporter,
-        beaconChain = beaconChain,
-        proposerSelector = proposerSelector,
-        stateTransition = stateTransition,
-        executionLayerManager = executionLayerManager,
+        beaconBlockValidatorFactory = beaconBlockValidatorFactory,
       )
     val messageValidatorFactory =
       MessageValidatorFactory(
@@ -234,7 +234,7 @@ class QbftProtocolFactory(
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor()
 
-    return QbftConsensus(
+    return QbftConsensusValidator(
       qbftController = qbftController,
       eventProcessor = eventProcessor,
       bftExecutors = bftExecutors,

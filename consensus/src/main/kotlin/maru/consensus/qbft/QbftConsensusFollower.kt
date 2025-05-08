@@ -15,27 +15,23 @@
  */
 package maru.consensus.qbft
 
-import java.util.concurrent.Executor
+import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.Protocol
-import org.hyperledger.besu.consensus.common.bft.BftExecutors
-import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
+import maru.p2p.P2PNetwork
 
-class QbftConsensus(
-  private val qbftController: QbftController,
-  private val eventProcessor: QbftEventProcessor,
-  private val bftExecutors: BftExecutors,
-  private val eventQueueExecutor: Executor,
+class QbftConsensusFollower(
+  val p2pNetwork: P2PNetwork,
+  val blockImporter: SealedBeaconBlockImporter,
 ) : Protocol {
+  private var subscriptionId: Int = -1
+
   override fun start() {
-    eventProcessor.start()
-    bftExecutors.start()
-    qbftController.start()
-    eventQueueExecutor.execute(eventProcessor)
+    subscriptionId = p2pNetwork.subscribeToBlocks(blockImporter::importBlock)
   }
 
   override fun stop() {
-    eventProcessor.stop()
-    bftExecutors.stop()
-    qbftController.stop()
+    if (subscriptionId != -1) {
+      p2pNetwork.unsubscribe(subscriptionId)
+    }
   }
 }

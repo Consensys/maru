@@ -68,7 +68,9 @@ class SpyingP2PNetwork(
     p2pNetwork.broadcastMessage(message)
   }
 
-  override fun subscribeToBlocks(subscriber: SealedBlockHandler) {
-    p2pNetwork.subscribeToBlocks(subscriber)
+  override fun subscribeToBlocks(subscriber: SealedBlockHandler): Int = p2pNetwork.subscribeToBlocks(subscriber)
+
+  override fun unsubscribe(subscriptionId: Int) {
+    p2pNetwork.unsubscribe(subscriptionId)
   }
 }
