@@ -16,7 +16,6 @@
 package maru.p2p
 
 import io.libp2p.core.crypto.unmarshalPrivateKey
-import java.nio.file.Path
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
@@ -25,16 +24,16 @@ import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
+import tech.pegasys.teku.networking.p2p.mock.MockP2PNetwork
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
-import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class P2PManager(
-  val privateKeyFile: Path,
-  val p2pConfig: P2P,
+  private val privateKeyBytes: ByteArray,
+  private val p2pConfig: P2P?,
 ) {
   companion object {
     private const val DEFAULT_RECONNECT_DELAY_MILLI_SECONDS = 5000L // TODO: Do we want to make this configurable?
@@ -50,7 +49,7 @@ class P2PManager(
     p2pNetwork
       .start()
       ?.thenApply {
-        p2pConfig.staticPeers.forEach { peer ->
+        p2pConfig!!.staticPeers.forEach { peer ->
           p2pNetwork.createPeerAddress(peer)?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
       }?.get()
@@ -61,10 +60,10 @@ class P2PManager(
   }
 
   private fun buildP2PNetwork(): P2PNetwork<Peer> {
-    val filePrivateKeySource = GeneratingFilePrivateKeySource(privateKeyFile.toString())
-    // TODO: reading/generating this key should be done early on, as it is needed for the validator as well
-    val privKeyBytes = filePrivateKeySource.privateKeyBytes
-    val privateKey = unmarshalPrivateKey(privKeyBytes.toArrayUnsafe())
+    if (p2pConfig == null) {
+      return MockP2PNetwork()
+    }
+    val privateKey = unmarshalPrivateKey(privateKeyBytes)
 
     return P2PNetworkFactory.build(
       privateKey = privateKey,

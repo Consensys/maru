@@ -28,16 +28,34 @@ data class Persistence(
 data class ApiEndpointConfig(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
-)
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as ApiEndpointConfig
+
+    if (endpoint != other.endpoint) return false
+    if (jwtSecretPath != other.jwtSecretPath) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = endpoint.hashCode()
+    result = 31 * result + (jwtSecretPath?.hashCode() ?: 0)
+    return result
+  }
+}
 
 data class FollowersConfig(
   val followers: Map<String, ApiEndpointConfig>,
 )
 
 data class P2P(
-  val ipAddress: String = "0.0.0.0",
-  val port: String = "9000",
-  val staticPeers: List<String> = emptyList(),
+  val ipAddress: String,
+  val port: String,
+  val staticPeers: List<String>,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -61,25 +79,18 @@ data class P2P(
 }
 
 data class Validator(
-  val privateKey: ByteArray,
   val engineApiClient: ApiEndpointConfig,
 ) {
-  init {
-    require(privateKey.size == 32) {
-      "validator key must be 32 bytes long"
-    }
-  }
-
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
     other as Validator
 
-    return privateKey.contentEquals(other.privateKey)
+    return engineApiClient == other.engineApiClient
   }
 
-  override fun hashCode(): Int = privateKey.contentHashCode()
+  override fun hashCode(): Int = engineApiClient.hashCode()
 }
 
 data class QbftOptions(
@@ -96,7 +107,7 @@ data class MaruConfig(
   val persistence: Persistence,
   val sotNode: ApiEndpointConfig,
   val qbftOptions: QbftOptions,
-  val p2pConfig: P2P,
+  val p2pConfig: P2P?,
   val validator: Validator?,
   val followers: FollowersConfig,
 )

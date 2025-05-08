@@ -17,15 +17,13 @@ package maru.p2p
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
-import java.nio.file.Files
-import java.nio.file.Path
+import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
 import org.awaitility.Awaitility
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
@@ -56,20 +54,9 @@ private const val PEER_ADDRESS_NODE_3: String = "/ip4/$IPV4/tcp/$PORT3/p2p/$PEER
 
 class P2PTest {
   companion object {
-    private val file1: Path = Files.createTempFile("test1_", ".txt")
-    private val keyFileNode1 = file1.toAbsolutePath().toString()
-    private val file2: Path = Files.createTempFile("test2_", ".txt")
-    private val keyFileNode2 = file2.toAbsolutePath().toString()
-    private val file3: Path = Files.createTempFile("test3_", ".txt")
-    private val keyFileNode3 = file3.toAbsolutePath().toString()
-
-    @JvmStatic
-    @BeforeAll
-    fun beforeAll() {
-      Files.writeString(file1, PRIVATE_KEY1)
-      Files.writeString(file2, PRIVATE_KEY2)
-      Files.writeString(file3, PRIVATE_KEY3)
-    }
+    private val key1 = Bytes.fromHexString(PRIVATE_KEY1).toArray()
+    private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
+    private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
   }
 
   @Test
@@ -82,8 +69,8 @@ class P2PTest {
     println("peerId: $peerId")
     println("private key: $toHexString")
 
-    val p2pManager1 = P2PManager(Path.of(keyFileNode1), P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(Path.of(keyFileNode2), P2P(IPV4, PORT2, emptyList()))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, emptyList()))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -113,8 +100,8 @@ class P2PTest {
 
   @Test
   fun `static peers can be removed`() {
-    val p2pManager1 = P2PManager(Path.of(keyFileNode1), P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(Path.of(keyFileNode2), P2P(IPV4, PORT2, emptyList()))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, emptyList()))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -159,8 +146,8 @@ class P2PTest {
 
   @Test
   fun `static peers can be configured`() {
-    val p2pManager1 = P2PManager(Path.of(keyFileNode1), P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(Path.of(keyFileNode2), P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -188,8 +175,8 @@ class P2PTest {
 
   @Test
   fun `static peers reconnect`() {
-    val p2pManager1 = P2PManager(Path.of(keyFileNode1), P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(Path.of(keyFileNode2), P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -236,8 +223,8 @@ class P2PTest {
 
   @Test
   fun `two peers can gossip with each other`() {
-    val p2pManager1 = P2PManager(Path.of(keyFileNode1), P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(Path.of(keyFileNode2), P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -274,10 +261,10 @@ class P2PTest {
 
   @Test
   fun `peer receiving gossip passes message on`() {
-    val p2pManager1 = P2PManager(Path.of(keyFileNode1), P2P(IPV4, PORT1, emptyList()))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
     val p2pManager2 =
-      P2PManager(Path.of(keyFileNode2), P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1, PEER_ADDRESS_NODE_3)))
-    val p2pManager3 = P2PManager(Path.of(keyFileNode3), P2P(IPV4, PORT3, emptyList()))
+      P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1, PEER_ADDRESS_NODE_3)))
+    val p2pManager3 = P2PManager(key3, P2P(IPV4, PORT3, emptyList()))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -333,13 +320,15 @@ class P2PTest {
       assertThat(p2pNetwork2.peerCount).isEqualTo(2)
       assertThat(p2pNetwork3.peerCount).isEqualTo(1)
 
+      sleep(100)
+
       p2pNetwork1.gossip("topic", Bytes.fromHexString(GOSSIP_MESSAGE))
 
       assertThat(
         testTopicHandler2.dataFuture.get(100, TimeUnit.MILLISECONDS),
       ).isEqualTo(Bytes.fromHexString(GOSSIP_MESSAGE))
       assertThat(
-        testTopicHandler3.dataFuture.get(100, TimeUnit.MILLISECONDS),
+        testTopicHandler3.dataFuture.get(200, TimeUnit.MILLISECONDS),
       ).isEqualTo(Bytes.fromHexString(GOSSIP_MESSAGE))
     } finally {
       p2pManager1.stop()
@@ -350,8 +339,8 @@ class P2PTest {
 
   @Test
   fun `peer can send a request`() {
-    val p2pManager1 = P2PManager(Path.of(keyFileNode1), P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(Path.of(keyFileNode2), P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork

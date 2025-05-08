@@ -45,6 +45,7 @@ import org.hyperledger.besu.consensus.common.bft.Gossiper
 import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruApp(
   config: MaruConfig,
@@ -55,20 +56,39 @@ class MaruApp(
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  val p2pManager =
-    P2PManager(
-      privateKeyFile = config.persistence.privateKeyPath,
-      p2pConfig = config.p2pConfig,
-    )
+  private lateinit var privateKeyBytes: ByteArray
 
   init {
+    if (!config.persistence.privateKeyPath
+        .toFile()
+        .exists()
+    ) {
+      log.info(
+        "Private key file ${config.persistence.privateKeyPath} does not exist. A new private key will be generated and stored in that location.",
+      )
+    } else {
+      log.info(
+        "Private key file ${config.persistence.privateKeyPath} already exists. Maru will use the existing private key.",
+      )
+      privateKeyBytes =
+        GeneratingFilePrivateKeySource(config.persistence.privateKeyPath.toString()).privateKeyBytes.toArray()
+    }
     if (config.validator == null) {
       log.info("Validator is not defined. Maru is running in follower-only node")
       log.error("Follower-only mode is not supported yet! Exiting application.")
       exitProcess(1)
     }
+    if (config.p2pConfig == null) {
+      log.info("P2PManager is not defined.")
+    }
     log.info(config.toString())
   }
+
+  val p2pManager =
+    P2PManager(
+      privateKeyBytes = privateKeyBytes,
+      p2pConfig = config.p2pConfig,
+    )
 
   private val ethereumJsonRpcClient =
     Helpers.createWeb3jClient(
@@ -125,6 +145,7 @@ class MaruApp(
             qbftConsensusFactory =
               QbftProtocolFactoryWithBeaconChainInitialization(
                 maruConfig = config,
+                privateKeyBytes = privateKeyBytes,
                 metricsSystem = metricsSystem,
                 finalizationStateProvider = finalizationStateProviderStub,
                 executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
