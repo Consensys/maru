@@ -111,7 +111,7 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    val blocks = besuNode.getMinedBlocks(2, blocksToProduce)
+    val blocks = besuNode.getMinedBlocks(blocksToProduce)
     blocks.verifyBlockTime()
 
     // Need to wait because otherwise not all of the messages might be emitted at the time of a block being mined
@@ -194,7 +194,7 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    val blocks = besuNode.getMinedBlocks(2, blocksToProduce * 2)
+    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
     blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 
@@ -211,7 +211,7 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    val blocks = besuNode.getMinedBlocks(2, blocksToProduce * 2)
+    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
     blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 
@@ -239,7 +239,7 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    val blocks = besuNode.getMinedBlocks(2, blocksToProduce * 2)
+    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
 
     blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
