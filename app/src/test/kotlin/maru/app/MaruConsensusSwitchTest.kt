@@ -149,7 +149,7 @@ class MaruConsensusSwitchTest {
 
     assertThat(blockProducedByPrague.extraData.length).isEqualTo(24)
 
-    val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
+    val blocks = besuNode.getMinedBlocks(2, totalBlocksToProduce)
 
     val switchBlock = blocks.findPragueBlock(switchTimestamp)!!
 

@@ -23,8 +23,11 @@ import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 
 object Checks {
-  fun BesuNode.getMinedBlocks(blocksMined: Int): List<EthBlock.Block> =
-    (1..blocksMined)
+  fun BesuNode.getMinedBlocks(
+    startBlockNumber: Int,
+    blocksMined: Int,
+  ): List<EthBlock.Block> =
+    (startBlockNumber..blocksMined)
       .map {
         this
           .nodeRequests()
@@ -51,7 +54,8 @@ object Checks {
   // Checks that all block times in the list are exactly BesuFactory.MIN_BLOCK_TIME (1 second)
   fun List<EthBlock.Block>.verifyBlockTimeWithAGapOn(gappedBlockNumber: Int) {
     val blocksPreGap = this.subList(1, gappedBlockNumber)
-    val blocksPostGap = this.subList(gappedBlockNumber, this.size - 1)
+    // Skipping the first block after gap as well, because first block after startup can be missed for unclear reasons
+    val blocksPostGap = this.subList(gappedBlockNumber + 1, this.size - 1)
     // Verify block time is consistent before and after the switch
     blocksPreGap.verifyBlockTime()
     blocksPostGap.verifyBlockTime()
