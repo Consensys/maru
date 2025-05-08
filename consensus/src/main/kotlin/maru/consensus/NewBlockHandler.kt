@@ -40,7 +40,7 @@ abstract class CallAndForgetFutureMultiplexer<I, O>(
   handlersMap: Map<String, AsyncFunction<I, O>>,
 ) {
   private val handlersMap = ConcurrentHashMap(handlersMap)
-  private val log = LogManager.getLogger(this::class.java)!!
+  private val log = LogManager.getLogger(this::javaClass)
 
   protected abstract fun Logger.logError(
     handlerName: String,
@@ -75,32 +75,6 @@ abstract class CallAndForgetFutureMultiplexer<I, O>(
         .thenApply { }
     return SafeFuture.of(completableFuture)
   }
-}
-
-class NewSealedBlockHandlerMultiplexer(
-  handlersMap: Map<String, SealedBlockHandler>,
-) : CallAndForgetFutureMultiplexer<SealedBeaconBlock, Unit>(
-    handlersMap.mapValues { newSealedBlockHandler ->
-      {
-        newSealedBlockHandler.value.handleSealedBlock(it).thenApply { }
-      }
-    },
-  ),
-  SealedBlockHandler {
-  override fun Logger.logError(
-    handlerName: String,
-    input: SealedBeaconBlock,
-    ex: Exception,
-  ) {
-    this.error(
-      "New block handler $handlerName failed processing" +
-        "blockHash=${input.beaconBlock.beaconBlockHeader.hash}, number=${input.beaconBlock.beaconBlockHeader.number} " +
-        "executionPayloadBlockNumber=${input.beaconBlock.beaconBlockBody.executionPayload.blockNumber}!",
-      ex,
-    )
-  }
-
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> = handle(sealedBeaconBlock)
 }
 
 class NewBlockHandlerMultiplexer(

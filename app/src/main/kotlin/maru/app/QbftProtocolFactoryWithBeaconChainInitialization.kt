@@ -21,7 +21,7 @@ import maru.consensus.ForkSpec
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
 import maru.consensus.qbft.QbftConsensusConfig
-import maru.consensus.qbft.QbftProtocolFactory
+import maru.consensus.qbft.QbftValidatorFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
@@ -119,8 +119,8 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
       initializeDb(beaconChain.newUpdater())
     }
 
-    val qbftProtocolFactory =
-      QbftProtocolFactory(
+    val qbftValidatorFactory =
+      QbftValidatorFactory(
         beaconChain = beaconChain,
         maruConfig = maruConfig,
         metricsSystem = metricsSystem,
@@ -131,6 +131,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         clock = clock,
         p2PNetwork = p2pNetwork,
       )
-    return qbftProtocolFactory.create(forkSpec)
+    return qbftValidatorFactory.create(forkSpec)
   }
 }

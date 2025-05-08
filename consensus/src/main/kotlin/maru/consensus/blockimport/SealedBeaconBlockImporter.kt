@@ -15,16 +15,50 @@
  */
 package maru.consensus.blockimport
 
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
+import maru.consensus.CallAndForgetFutureMultiplexer
+import maru.consensus.ValidatorProvider
 import maru.consensus.state.StateTransition
+import maru.consensus.validation.BeaconBlockValidatorFactory
+import maru.consensus.validation.SealVerifier
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
-import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import maru.p2p.SealedBlockHandler
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
+// This is basically Chain of Responsibility design pattern, except it doesn't allow multiple childs. Multiplexer class
+// was created to address that
 fun interface SealedBeaconBlockImporter {
   fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*>
+}
+
+class NewSealedBlockHandlerMultiplexer(
+  handlersMap: Map<String, SealedBlockHandler>,
+) : CallAndForgetFutureMultiplexer<SealedBeaconBlock, Unit>(
+    handlersMap.mapValues { newSealedBlockHandler ->
+      {
+        newSealedBlockHandler.value.handleSealedBlock(it).thenApply { }
+      }
+    },
+  ),
+  SealedBlockHandler {
+  override fun Logger.logError(
+    handlerName: String,
+    input: SealedBeaconBlock,
+    ex: Exception,
+  ) {
+    this.error(
+      "New block handler $handlerName failed processing" +
+        "blockHash=${input.beaconBlock.beaconBlockHeader.hash}, number=${input.beaconBlock.beaconBlockHeader.number} " +
+        "executionPayloadBlockNumber=${input.beaconBlock.beaconBlockBody.executionPayload.blockNumber}!",
+      ex,
+    )
+  }
+
+  override fun handleSealedBlock(block: SealedBeaconBlock): SafeFuture<*> = handle(block)
 }
 
 /**
@@ -40,7 +74,7 @@ class TransactionalSealedBeaconBlockImporter(
 ) : SealedBeaconBlockImporter {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
-  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
+  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
     val updater = beaconChain.newUpdater()
     try {
       return stateTransition
@@ -61,7 +95,7 @@ class TransactionalSealedBeaconBlockImporter(
         }
     } catch (e: Exception) {
       log.error("Block import state transition failed!: ${e.message}", e)
-      return SafeFuture.failedFuture(e)
+      return SafeFuture.failedFuture<Unit>(e)
     }
   }
 }
@@ -69,10 +103,48 @@ class TransactionalSealedBeaconBlockImporter(
 /**
  * Verifies the seal and delegates to another beaconBlockImporter
  */
-class VerifyingSealedBeaconBlockImporter(
+class ValidatingSealedBeaconBlockImporter(
+  private val sealVerifier: SealVerifier,
   private val beaconBlockImporter: SealedBeaconBlockImporter,
+  private val validatorProvider: ValidatorProvider,
+  private val beaconBlockValidatorFactory: BeaconBlockValidatorFactory,
 ) : SealedBeaconBlockImporter {
-  // TODO: implement seal verification
-  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> =
-    beaconBlockImporter.importBlock(sealedBeaconBlock)
+  private val log = LogManager.getLogger(this.javaClass)
+
+  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
+    val beaconBlock = sealedBeaconBlock.beaconBlock
+    val beaconBlockHeader = beaconBlock.beaconBlockHeader
+    log.debug("Received beacon block blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
+    val sealIssuers =
+      sealedBeaconBlock.commitSeals
+        .map {
+          val sealedValidator = sealVerifier.extractValidator(it, beaconBlockHeader)
+          when (sealedValidator) {
+            is Err -> {
+              val error = IllegalArgumentException("Seal verification failed!")
+              log.error("seal=$it is invalid!", error)
+              return SafeFuture.failedFuture<Unit>(error)
+            }
+
+            is Ok -> sealedValidator.value
+          }
+        }.toSet()
+    return validatorProvider
+      .getValidatorsForBlock(
+        beaconBlockHeader.number,
+      ).thenCompose { validatorSet ->
+        if (validatorSet.containsAll(sealIssuers)) {
+          log.debug("Validating blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
+          beaconBlockValidatorFactory
+            .createValidatorForBlock(beaconBlockHeader)
+            .validateBlock(beaconBlock)
+            .thenCompose {
+              log.debug("Block is validated blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
+              beaconBlockImporter.importBlock(sealedBeaconBlock)
+            }
+        } else {
+          throw IllegalArgumentException("Seal verification failed!")
+        }
+      }
+  }
 }

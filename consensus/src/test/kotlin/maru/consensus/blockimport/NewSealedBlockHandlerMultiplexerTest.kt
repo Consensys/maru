@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.blockimport
 
 import maru.core.ext.DataGenerators
 import maru.p2p.SealedBlockHandler
