@@ -41,10 +41,9 @@ object Checks {
     timestampsSeconds.reduceIndexed { index, prevTimestamp, timestamp ->
       assertThat(prevTimestamp).isLessThan(timestamp)
       val actualBlockTime = timestamp - prevTimestamp
-      // TODO: stricten this check to be exactly 1 second. It doesn't work reliably for now
-      assertThat(actualBlockTime in BesuFactory.MIN_BLOCK_TIME..BesuFactory.MIN_BLOCK_TIME + 1)
+      assertThat(actualBlockTime)
         .withFailMessage("Timestamps: $timestampsSeconds")
-        .isTrue
+        .isEqualTo(BesuFactory.MIN_BLOCK_TIME)
       timestamp
     }
   }
