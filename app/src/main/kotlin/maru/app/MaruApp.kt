@@ -56,7 +56,10 @@ class MaruApp(
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  private lateinit var privateKeyBytes: ByteArray
+  private var privateKeyBytes: ByteArray =
+    GeneratingFilePrivateKeySource(
+      config.persistence.privateKeyPath.toString(),
+    ).privateKeyBytes.toArray()
 
   init {
     if (!config.persistence.privateKeyPath
@@ -70,8 +73,6 @@ class MaruApp(
       log.info(
         "Private key file ${config.persistence.privateKeyPath} already exists. Maru will use the existing private key.",
       )
-      privateKeyBytes =
-        GeneratingFilePrivateKeySource(config.persistence.privateKeyPath.toString()).privateKeyBytes.toArray()
     }
     if (config.validator == null) {
       log.info("Validator is not defined. Maru is running in follower-only node")
@@ -145,7 +146,11 @@ class MaruApp(
             qbftConsensusFactory =
               QbftProtocolFactoryWithBeaconChainInitialization(
                 maruConfig = config,
-                privateKeyBytes = privateKeyBytes,
+                privateKeyBytes =
+                  privateKeyBytes
+                    .slice(
+                      privateKeyBytes.size - 32..privateKeyBytes.size - 1,
+                    ).toByteArray(),
                 metricsSystem = metricsSystem,
                 finalizationStateProvider = finalizationStateProviderStub,
                 executionLayerClient = ethereumJsonRpcClient.eth1Web3j,

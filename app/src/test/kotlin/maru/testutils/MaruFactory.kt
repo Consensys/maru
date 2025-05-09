@@ -16,6 +16,7 @@
 package maru.testutils
 
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
 import maru.app.MaruApp
 import maru.app.MaruAppCli.Companion.loadConfig
@@ -31,6 +32,8 @@ import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 object MaruFactory {
   private val consensusConfigDir = "/e2e/config"
   private val pragueConsensusConfig = "$consensusConfigDir/qbft-prague.json"
+  const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX =
+    "0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
   const val VALIDATOR_PRIVATE_KEY = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
 
   private fun buildMaruConfigString(
@@ -41,12 +44,18 @@ object MaruFactory {
     """
     [persistence]
     data-path="$dataPath"
+    private-key-path="$dataPath/private-key"
 
     [sot-eth-endpoint]
     endpoint = "$ethereumJsonRpcUrl"
 
     [qbft-options]
     communication-margin=200m
+
+    [p2p-config]
+    port = 3322
+    ip-address = "127.0.0.1"
+    static-peers = []
 
     [validator]
     private-key = "$VALIDATOR_PRIVATE_KEY"
@@ -76,7 +85,12 @@ object MaruFactory {
       )
     val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
-
+    val privateKeyFile =
+      appConfig
+        .domainFriendly()
+        .persistence.dataPath
+        .resolve("private-key")
+    Files.writeString(privateKeyFile, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
     return MaruApp(
       config = appConfig.domainFriendly(),
       beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),

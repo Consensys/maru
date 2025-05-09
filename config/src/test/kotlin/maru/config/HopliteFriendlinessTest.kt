@@ -36,7 +36,7 @@ class HopliteFriendlinessTest {
 
     [p2p-config]
     port = 3322
-    ip-address = "localhost"
+    ip-address = "127.0.0.1"
     static-peers = []
 
     [validator]
@@ -65,7 +65,7 @@ class HopliteFriendlinessTest {
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
-          p2pConfig = P2P(ipAddress = "localhost", port = "3322", staticPeers = emptyList()),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             ValidatorDtoToml(
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
@@ -98,7 +98,7 @@ class HopliteFriendlinessTest {
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
-          p2pConfig = P2P(ipAddress = "localhost", port = "3322", staticPeers = emptyList()),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             ValidatorDtoToml(
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
@@ -120,10 +120,10 @@ class HopliteFriendlinessTest {
             ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          p2pConfig = P2P(ipAddress = "localhost", port = "3322", staticPeers = emptyList()),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             Validator(
-              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
+              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL(), "/secret/path"),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
           followers =
@@ -150,10 +150,10 @@ class HopliteFriendlinessTest {
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
-          p2pConfig = P2P(ipAddress = "localhost", port = "3322", staticPeers = emptyList()),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             Validator(
-              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
+              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL(), "/secret/path"),
             ),
           followers =
             FollowersConfig(
