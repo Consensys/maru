@@ -37,7 +37,7 @@ import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.database.kv.KvDatabaseFactory
-import maru.p2p.NoopP2PNetwork
+import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import org.apache.logging.log4j.LogManager
@@ -49,7 +49,7 @@ class MaruApp(
   config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
-  p2pNetwork: P2PNetwork = NoopP2PNetwork,
+  p2pNetwork: P2PNetwork = NoOpP2PNetwork,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::class.java)
 

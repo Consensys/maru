@@ -23,7 +23,7 @@ import maru.consensus.ElFork
 import maru.consensus.qbft.toAddress
 import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
-import maru.p2p.NoopP2PNetwork
+import maru.p2p.NoOpP2PNetwork
 import maru.testutils.MaruFactory
 import maru.testutils.SpyingP2PNetwork
 import maru.testutils.besu.BesuFactory
@@ -74,7 +74,7 @@ class MaruQbftTest {
     cluster.start(besuNode)
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
     val engineRpcUrl = besuNode.engineRpcUrl().get()
-    spyingP2pNetwork = SpyingP2PNetwork(NoopP2PNetwork)
+    spyingP2pNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
     maruNode =
       MaruFactory.buildTestMaru(
         ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,

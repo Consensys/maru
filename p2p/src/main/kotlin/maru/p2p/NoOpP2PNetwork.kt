@@ -18,7 +18,7 @@ package maru.p2p
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-object NoopP2PNetwork : P2PNetwork {
+object NoOpP2PNetwork : P2PNetwork {
   private val log = LogManager.getLogger(this.javaClass)
 
   override fun start(): SafeFuture<Unit> =
