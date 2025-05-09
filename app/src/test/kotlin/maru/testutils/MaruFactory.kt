@@ -98,4 +98,54 @@ object MaruFactory {
       validatorMulticaster = validatorMulticaster,
     )
   }
+
+  fun buildTestMaruWithConsensusSwitch(
+    ethereumJsonRpcUrl: String,
+    engineApiRpc: String,
+    dataDir: Path,
+    switchTimestamp: Long,
+    gossiper: Gossiper = NoopGossiper,
+    validatorMulticaster: ValidatorMulticaster = NoopValidatorMulticaster,
+  ): MaruApp {
+    val appConfig =
+      Utils.parseTomlConfig<MaruConfigDtoToml>(
+        buildMaruConfigString(
+          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+          engineApiRpc = engineApiRpc,
+          dataPath = dataDir.toString(),
+        ),
+      )
+
+    // Build the genesis file string directly
+    val genesisContent =
+      """
+      {
+        "config": {
+          "0": {
+            "type": "delegated",
+            "blockTimeSeconds": 1
+          },
+          "$switchTimestamp": {
+            "type": "qbft",
+            "blockTimeSeconds": 1,
+            "feeRecipient": "0x0000000000000000000000000000000000000000",
+            "elFork": "Prague"
+          }
+        }
+      }
+      """.trimIndent()
+
+    val tempFile = Files.createTempFile("clique-to-qbft", ".json").toFile()
+    tempFile.deleteOnExit()
+    tempFile.writeText(genesisContent)
+
+    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(tempFile))
+
+    return MaruApp(
+      config = appConfig.domainFriendly(),
+      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
+      gossiper = gossiper,
+      validatorMulticaster = validatorMulticaster,
+    )
+  }
 }
