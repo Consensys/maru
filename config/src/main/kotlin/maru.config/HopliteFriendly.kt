@@ -15,18 +15,14 @@
  */
 package maru.config
 
-import com.sksamuel.hoplite.Masked
 import java.net.URL
-import maru.extensions.fromHexToByteArray
 
 data class ValidatorDtoToml(
-  val privateKey: Masked,
   val elClientEngineApiEndpoint: URL,
   val jwtSecretPath: String? = null,
 ) {
   fun domainFriendly(): Validator =
     Validator(
-      privateKey = privateKey.value.fromHexToByteArray(),
       engineApiClient = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
     )
 }
@@ -42,7 +38,7 @@ data class MaruConfigDtoToml(
   private val persistence: Persistence,
   private val qbftOptions: QbftOptions,
   private val sotEthEndpoint: ApiEndpointDtoToml,
-  private val p2pConfig: P2P?,
+  private val p2pConfig: P2P,
   private val validator: ValidatorDtoToml?,
   private val followerEngineApis: Map<String, ApiEndpointDtoToml>?,
 ) {
