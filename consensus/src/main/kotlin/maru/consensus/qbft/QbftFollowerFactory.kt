@@ -23,6 +23,7 @@ import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
 import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.BeaconBlockValidatorFactory
+import maru.consensus.validation.QuorumOfSealsVerifier
 import maru.consensus.validation.SCEP256SealVerifier
 import maru.core.Protocol
 import maru.core.Validator
@@ -45,8 +46,7 @@ class QbftFollowerFactory(
       TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition) { _, beaconBlock ->
         newBlockHandler.handleNewBlock(beaconBlock)
       }
-    val sealVerifier = SCEP256SealVerifier(SECP256R1())
-
+    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier(SECP256R1()))
     val beaconBlockValidatorFactory =
       BeaconBlockValidatorFactory(
         beaconChain = beaconChain,
@@ -56,9 +56,8 @@ class QbftFollowerFactory(
       )
     val blockImporter =
       ValidatingSealedBeaconBlockImporter(
-        sealVerifier = sealVerifier,
         beaconBlockImporter = transactionalSealedBeaconBlockImporter,
-        validatorProvider = validatorProvider,
+        sealsVerifier = sealsVerifier,
         beaconBlockValidatorFactory = beaconBlockValidatorFactory,
       )
     return QbftConsensusFollower(p2PNetwork, blockImporter)

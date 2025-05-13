@@ -53,7 +53,7 @@ class MaruApp(
   clock: Clock = Clock.systemUTC(),
   val p2pNetwork: P2PNetwork = NoopP2PNetwork,
 ) : AutoCloseable {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this::javaClass)
 
   init {
     if (config.p2pConfig == null) {

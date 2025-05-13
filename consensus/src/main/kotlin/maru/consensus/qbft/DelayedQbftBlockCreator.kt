@@ -59,9 +59,7 @@ class DelayedQbftBlockCreator(
       commitSeals: Collection<SECPSignature>,
     ): QbftBlock {
       val seals =
-        commitSeals.map {
-          Seal(it.encodedBytes().toArrayUnsafe())
-        }
+        commitSeals.map { Seal(it.encodedBytes().toArrayUnsafe()) }.toSet()
       val beaconBlock = qbftBlock.toBeaconBlock()
       val beaconBlockHeader = beaconBlock.beaconBlockHeader
       val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toUInt())

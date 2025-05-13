@@ -15,13 +15,10 @@
  */
 package maru.consensus.blockimport
 
-import com.github.michaelbull.result.Err
-import com.github.michaelbull.result.Ok
 import maru.consensus.CallAndForgetFutureMultiplexer
-import maru.consensus.ValidatorProvider
 import maru.consensus.state.StateTransition
 import maru.consensus.validation.BeaconBlockValidatorFactory
-import maru.consensus.validation.SealVerifier
+import maru.consensus.validation.SealsVerifier
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.p2p.SealedBlockHandler
@@ -104,9 +101,8 @@ class TransactionalSealedBeaconBlockImporter(
  * Verifies the seal and delegates to another beaconBlockImporter
  */
 class ValidatingSealedBeaconBlockImporter(
-  private val sealVerifier: SealVerifier,
+  private val sealsVerifier: SealsVerifier,
   private val beaconBlockImporter: SealedBeaconBlockImporter,
-  private val validatorProvider: ValidatorProvider,
   private val beaconBlockValidatorFactory: BeaconBlockValidatorFactory,
 ) : SealedBeaconBlockImporter {
   private val log = LogManager.getLogger(this.javaClass)
@@ -115,36 +111,15 @@ class ValidatingSealedBeaconBlockImporter(
     val beaconBlock = sealedBeaconBlock.beaconBlock
     val beaconBlockHeader = beaconBlock.beaconBlockHeader
     log.debug("Received beacon block blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
-    val sealIssuers =
-      sealedBeaconBlock.commitSeals
-        .map {
-          val sealedValidator = sealVerifier.extractValidator(it, beaconBlockHeader)
-          when (sealedValidator) {
-            is Err -> {
-              val error = IllegalArgumentException("Seal verification failed!")
-              log.error("seal=$it is invalid!", error)
-              return SafeFuture.failedFuture<Unit>(error)
-            }
-
-            is Ok -> sealedValidator.value
-          }
-        }.toSet()
-    return validatorProvider
-      .getValidatorsForBlock(
-        beaconBlockHeader.number,
-      ).thenCompose { validatorSet ->
-        if (validatorSet.containsAll(sealIssuers)) {
-          log.debug("Validating blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
-          beaconBlockValidatorFactory
-            .createValidatorForBlock(beaconBlockHeader)
-            .validateBlock(beaconBlock)
-            .thenCompose {
-              log.debug("Block is validated blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
-              beaconBlockImporter.importBlock(sealedBeaconBlock)
-            }
-        } else {
-          throw IllegalArgumentException("Seal verification failed!")
-        }
+    return sealsVerifier
+      .verifySeals(sealedBeaconBlock.commitSeals, beaconBlockHeader)
+      .thenCompose {
+        beaconBlockValidatorFactory
+          .createValidatorForBlock(beaconBlockHeader)
+          .validateBlock(beaconBlock)
+      }.thenCompose {
+        log.debug("Block is validated blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
+        beaconBlockImporter.importBlock(sealedBeaconBlock)
       }
   }
 }

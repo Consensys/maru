@@ -66,7 +66,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         .block
         .toDomain()
 
-    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptyList(), executionPayload = genesisExecutionPayload)
+    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = genesisExecutionPayload)
 
     val beaconBlockHeader =
       BeaconBlockHeader(
@@ -92,7 +92,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
     val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
     val genesisStateRoot = BeaconState(genesisBlockHeader, initialValidators)
     updater.putBeaconState(genesisStateRoot)
-    updater.putSealedBeaconBlock(SealedBeaconBlock(genesisBlock, emptyList()))
+    updater.putSealedBeaconBlock(SealedBeaconBlock(genesisBlock, emptySet()))
     updater.commit()
   }
 

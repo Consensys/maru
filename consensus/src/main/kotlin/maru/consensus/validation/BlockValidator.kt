@@ -18,7 +18,7 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
-import maru.consensus.ValidatorProvider
+import com.github.michaelbull.result.mapError
 import maru.consensus.qbft.ProposerSelector
 import maru.consensus.qbft.toConsensusRoundIdentifier
 import maru.consensus.state.StateTransition
@@ -27,13 +27,11 @@ import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.HashUtil
-import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.extensions.encodeHex
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
-import org.hyperledger.besu.consensus.common.bft.BftHelpers
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface BlockValidator {
@@ -189,9 +187,8 @@ class BodyRootValidator : BlockValidator {
 }
 
 class PrevCommitSealValidator(
-  private val sealVerifier: SealVerifier,
   private val beaconChain: BeaconChain,
-  private val validatorProvider: ValidatorProvider,
+  private val sealsVerifier: SealsVerifier,
   private val config: Config,
 ) : BlockValidator {
   data class Config(
@@ -206,39 +203,15 @@ class PrevCommitSealValidator(
         error("Previous block not found, previousBlockNumber=$prevBlockNumber"),
       )
 
-    return validatorProvider
-      .getValidatorsForBlock(prevBlock.beaconBlockHeader.number)
-      .thenApply { validatorsForPrevBlock -> verifySeals(block, prevBlock, validatorsForPrevBlock) }
-  }
-
-  private fun verifySeals(
-    newBlock: BeaconBlock,
-    prevBlock: BeaconBlock,
-    validatorsForPrevBlock: Set<Validator>,
-  ): Result<Unit, BlockValidationError> {
-    val committers = mutableSetOf<Validator>()
-    for (seal in newBlock.beaconBlockBody.prevCommitSeals) {
-      when (val sealVerificationResult = sealVerifier.extractValidator(seal, prevBlock.beaconBlockHeader)) {
-        is Ok -> {
-          val sealValidator = sealVerificationResult.value
-          if (sealValidator !in validatorsForPrevBlock) {
-            return error(
-              "Seal validator is not in the parent block's validator set seal=$seal sealValidator=$sealValidator " +
-                "validatorsForParentBlock=$validatorsForPrevBlock",
-            )
-          }
-          committers.add(sealVerificationResult.value)
+    return sealsVerifier
+      .verifySeals(block.beaconBlockBody.prevCommitSeals, prevBlock.beaconBlockHeader)
+      .thenApply {
+        it.mapError { errorMessage ->
+          BlockValidationError("Previous block seal verification failed. Reason: $errorMessage")
         }
-
-        is Err ->
-          return error("Previous block seal verification failed. Reason: ${sealVerificationResult.error.message}")
+      }.exceptionally { ex ->
+        error(ex.message!!)
       }
-    }
-    val quorumCount = BftHelpers.calculateRequiredValidatorQuorum(validatorsForPrevBlock.size)
-    return BlockValidator.require(committers.size >= quorumCount) {
-      "Quorum threshold not met. committers=${committers.size} validators=${validatorsForPrevBlock.size} " +
-        "quorumCount=$quorumCount"
-    }
   }
 }
 
