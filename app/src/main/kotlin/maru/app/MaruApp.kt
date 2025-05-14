@@ -38,7 +38,7 @@ import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.core.Protocol
 import maru.database.kv.KvDatabaseFactory
-import maru.p2p.NoopP2PNetwork
+import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import org.apache.logging.log4j.LogManager
@@ -50,7 +50,7 @@ class MaruApp(
   config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
-  val p2pNetwork: P2PNetwork = NoopP2PNetwork,
+  val p2pNetwork: P2PNetwork = NoOpP2PNetwork,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -58,8 +58,8 @@ class MaruApp(
     if (config.p2pConfig == null) {
       log.warn("P2P is disabled!")
     }
-    if (config.validator == null) {
-      log.info("Validator is not defined. Maru is running in follower-only node")
+    if (config.qbftOptions == null) {
+      log.info("Qbft Validator options are not defined. Maru is running in follower-only node")
       log.error("Follower-only mode is not supported yet! Exiting application.")
       exitProcess(1)
     }

@@ -24,7 +24,7 @@ import maru.config.MaruConfigDtoToml
 import maru.config.Utils
 import maru.consensus.ElFork
 import maru.consensus.config.JsonFriendlyForksSchedule
-import maru.p2p.NoopP2PNetwork
+import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 
 object MaruFactory {
@@ -63,7 +63,7 @@ object MaruFactory {
     engineApiRpc: String,
     elFork: ElFork,
     dataDir: Path,
-    p2pNetwork: P2PNetwork = NoopP2PNetwork,
+    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
@@ -88,7 +88,7 @@ object MaruFactory {
     engineApiRpc: String,
     dataDir: Path,
     switchTimestamp: Long,
-    p2pNetwork: P2PNetwork = NoopP2PNetwork,
+    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
