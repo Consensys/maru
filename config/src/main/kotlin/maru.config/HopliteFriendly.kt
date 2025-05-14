@@ -19,9 +19,20 @@ import com.sksamuel.hoplite.Masked
 import java.net.URL
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import maru.core.Validator
 import maru.extensions.fromHexToByteArray
 
-data class QbftOptionsTomlFriendly(
+data class QbftOptionsDtoTomlFriendly(
+  val validatorDuties: ValidatorDutiesDtoTomlFriendly?,
+  val validatorSet: Set<String>,
+) {
+  fun toDomain(): QbftOptions {
+    val validatorSet = validatorSet.map { Validator(it.fromHexToByteArray()) }.toSet()
+    return QbftOptions(validatorDuties = validatorDuties?.toDomain(), validatorSet = validatorSet)
+  }
+}
+
+data class ValidatorDutiesDtoTomlFriendly(
   val privateKey: Masked,
   // Since we cannot finish block production instantly at expected time, we need to set some safety margin
   val communicationMargin: Duration,
@@ -31,8 +42,8 @@ data class QbftOptionsTomlFriendly(
   val futureMessageMaxDistance: Long = 10L,
   val futureMessagesLimit: Long = 1000L,
 ) {
-  fun toDomain(): QbftOptions =
-    QbftOptions(
+  fun toDomain(): ValidatorDuties =
+    ValidatorDuties(
       privateKey = privateKey.value.fromHexToByteArray(),
       communicationMargin = communicationMargin,
       messageQueueLimit = messageQueueLimit,
@@ -47,10 +58,10 @@ data class PayloadValidatorDtoToml(
   val engineApiEndpoint: ApiEndpointDtoToml,
   val ethApiEndpoint: ApiEndpointDtoToml,
 ) {
-  fun domainFriendly(): Validator =
-    Validator(
+  fun domainFriendly(): ValidatorElNode =
+    ValidatorElNode(
       ethApiEndpoint = ethApiEndpoint.toDomain(),
-      engineApiEndpint = engineApiEndpoint.toDomain(),
+      engineApiEndpoint = engineApiEndpoint.toDomain(),
     )
 }
 
@@ -63,7 +74,7 @@ data class ApiEndpointDtoToml(
 
 data class MaruConfigDtoToml(
   private val persistence: Persistence,
-  private val qbftOptions: QbftOptionsTomlFriendly?,
+  private val qbftOptions: QbftOptionsDtoTomlFriendly,
   private val p2pConfig: P2P?,
   private val payloadValidator: PayloadValidatorDtoToml,
   private val followerEngineApis: Map<String, ApiEndpointDtoToml>?,
@@ -71,9 +82,9 @@ data class MaruConfigDtoToml(
   fun domainFriendly(): MaruConfig =
     MaruConfig(
       persistence = persistence,
-      qbftOptions = qbftOptions?.toDomain(),
+      qbftOptions = qbftOptions.toDomain(),
       p2pConfig = p2pConfig,
-      validator = payloadValidator.domainFriendly(),
+      validatorElNode = payloadValidator.domainFriendly(),
       followers = FollowersConfig(followers = followerEngineApis?.mapValues { it.value.toDomain() } ?: emptyMap()),
     )
 }

@@ -19,6 +19,7 @@ import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import maru.core.Validator
 
 data class Persistence(
   val dataPath: Path,
@@ -37,12 +38,12 @@ data class P2P(
   val port: UInt = 9000u,
 )
 
-data class Validator(
+data class ValidatorElNode(
   val ethApiEndpoint: ApiEndpointConfig,
-  val engineApiEndpint: ApiEndpointConfig,
+  val engineApiEndpoint: ApiEndpointConfig,
 )
 
-data class QbftOptions(
+data class ValidatorDuties(
   val privateKey: ByteArray,
   // Since we cannot finish block production instantly at expected time, we need to set some safety margin
   val communicationMargin: Duration,
@@ -62,7 +63,7 @@ data class QbftOptions(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as QbftOptions
+    other as ValidatorDuties
 
     if (messageQueueLimit != other.messageQueueLimit) return false
     if (duplicateMessageLimit != other.duplicateMessageLimit) return false
@@ -87,10 +88,15 @@ data class QbftOptions(
   }
 }
 
+data class QbftOptions(
+  val validatorDuties: ValidatorDuties?,
+  val validatorSet: Set<Validator>,
+)
+
 data class MaruConfig(
   val persistence: Persistence,
-  val qbftOptions: QbftOptions?,
+  val qbftOptions: QbftOptions,
   val p2pConfig: P2P?,
-  val validator: Validator,
+  val validatorElNode: ValidatorElNode,
   val followers: FollowersConfig,
 )

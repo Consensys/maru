@@ -23,76 +23,26 @@ import maru.consensus.ProtocolFactory
 import maru.consensus.qbft.QbftConsensusConfig
 import maru.consensus.qbft.QbftValidatorFactory
 import maru.consensus.state.FinalizationState
-import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
-import maru.core.BeaconBlockHeader
-import maru.core.BeaconState
-import maru.core.HashUtil
 import maru.core.Protocol
-import maru.core.SealedBeaconBlock
-import maru.core.Validator
-import maru.crypto.Crypto
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
-import maru.mappers.Mappers.toDomain
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBlockHandler
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.stateRoot
 import org.hyperledger.besu.plugin.services.MetricsSystem
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.DefaultBlockParameter
 
 class QbftProtocolFactoryWithBeaconChainInitialization(
   private val qbftOptions: QbftOptions,
-  private val validatorConfig: maru.config.Validator,
+  private val validatorElNodeConfig: maru.config.ValidatorElNode,
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
-  private val executionLayerClient: Web3j,
   private val beaconChain: BeaconChain,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
   private val newBlockHandler: SealedBlockHandler,
   private val clock: Clock,
   private val p2pNetwork: P2PNetwork,
+  private val beaconChainInitialization: BeaconChainInitialization,
 ) : ProtocolFactory {
-  private fun initializeDb(updater: BeaconChain.Updater) {
-    val genesisExecutionPayload =
-      executionLayerClient
-        .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), true)
-        .send()
-        .block
-        .toDomain()
-
-    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = genesisExecutionPayload)
-
-    val beaconBlockHeader =
-      BeaconBlockHeader(
-        number = 0u,
-        round = 0u,
-        timestamp = genesisExecutionPayload.timestamp,
-        proposer = Validator(genesisExecutionPayload.feeRecipient),
-        parentRoot = ByteArray(32),
-        stateRoot = ByteArray(32),
-        bodyRoot = ByteArray(32),
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      )
-
-    val initialValidators = setOf(Crypto.privateKeyToValidator(qbftOptions.privateKey))
-    val tmpGenesisStateRoot =
-      BeaconState(
-        latestBeaconBlockHeader = beaconBlockHeader,
-        validators = initialValidators,
-      )
-    val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
-
-    val genesisBlockHeader = beaconBlockHeader.copy(stateRoot = stateRootHash)
-    val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
-    val genesisStateRoot = BeaconState(genesisBlockHeader, initialValidators)
-    updater.putBeaconState(genesisStateRoot)
-    updater.putSealedBeaconBlock(SealedBeaconBlock(genesisBlock, emptySet()))
-    updater.commit()
-  }
-
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
       "Unexpected fork specification! ${
@@ -104,7 +54,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
 
     val engineApiExecutionLayerClient =
       Helpers.buildExecutionEngineClient(
-        validatorConfig.engineApiEndpint,
+        validatorElNodeConfig.engineApiEndpoint,
         qbftConsensusConfig.elFork,
       )
     val executionLayerManager =
@@ -112,9 +62,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         executionLayerEngineApiClient = engineApiExecutionLayerClient,
       )
 
-    if (!beaconChain.isInitialized()) {
-      initializeDb(beaconChain.newUpdater())
-    }
+    beaconChainInitialization.ensureDbIsInitialized()
 
     val qbftValidatorFactory =
       QbftValidatorFactory(

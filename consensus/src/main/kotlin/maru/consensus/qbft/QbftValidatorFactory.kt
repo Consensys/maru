@@ -86,11 +86,15 @@ class QbftValidatorFactory(
   private val p2PNetwork: P2PNetwork,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
-    require(forkSpec.blockTimeSeconds * 1000 > qbftOptions.communicationMargin.inWholeMilliseconds) {
+    val validatorDuties = qbftOptions.validatorDuties!!
+    require(
+      forkSpec.blockTimeSeconds * 1000 >
+        validatorDuties.communicationMargin.inWholeMilliseconds,
+    ) {
       "communicationMargin can't be more than blockTimeSeconds"
     }
 
-    val validatorKey = qbftOptions.privateKey
+    val validatorKey = validatorDuties.privateKey
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(validatorKey))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
@@ -101,11 +105,11 @@ class QbftValidatorFactory(
     val localAddress = Util.publicKeyToAddress(keyPair.publicKey)
     val qbftProposerSelector = ProposerSelectorAdapter(beaconChain, ProposerSelectorImpl)
 
-    val localValidator = Validator(localAddress.toArray())
-    val validatorProvider = StaticValidatorProvider(setOf(localValidator))
+    val validatorProvider = StaticValidatorProvider(qbftOptions.validatorSet)
     val stateTransition = StateTransitionImpl(validatorProvider)
     val proposerSelector = ProposerSelectorImpl
     val besuValidatorProvider = QbftValidatorProviderAdapter(validatorProvider)
+    val localValidator = Validator(localAddress.toArray())
     val sealedBeaconBlockImporter =
       createSealedBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
@@ -125,20 +129,20 @@ class QbftValidatorFactory(
         blockBuilderIdentity = Validator(localAddress.toArray()),
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
-            qbftOptions.communicationMargin,
+            validatorDuties.communicationMargin,
           ),
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         clock = clock,
       )
 
-    val besuForksSchedule = ForksScheduleAdapter(forkSpec, qbftOptions)
+    val besuForksSchedule = ForksScheduleAdapter(forkSpec, validatorDuties)
 
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
-    val bftEventQueue = BftEventQueue(qbftOptions.messageQueueLimit)
+    val bftEventQueue = BftEventQueue(validatorDuties.messageQueueLimit)
     val roundTimer =
       RoundTimer(
         /* queue = */ bftEventQueue,
-        /* baseExpiryPeriod = */ qbftOptions.roundExpiry.toJavaDuration(),
+        /* baseExpiryPeriod = */ validatorDuties.roundExpiry.toJavaDuration(),
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
@@ -202,7 +206,7 @@ class QbftValidatorFactory(
         /* validatorProvider = */ besuValidatorProvider,
         /* validatorModeTransitionLogger = */ transitionLogger,
       )
-    val duplicateMessageTracker = MessageTracker(qbftOptions.duplicateMessageLimit)
+    val duplicateMessageTracker = MessageTracker(validatorDuties.duplicateMessageLimit)
     val chainHeaderNumber =
       beaconChain
         .getLatestBeaconState()
@@ -211,8 +215,8 @@ class QbftValidatorFactory(
         .toLong()
     val futureMessageBuffer =
       FutureMessageBuffer(
-        /* futureMessagesMaxDistance = */ qbftOptions.futureMessageMaxDistance,
-        /* futureMessagesLimit = */ qbftOptions.futureMessagesLimit,
+        /* futureMessagesMaxDistance = */ validatorDuties.futureMessageMaxDistance,
+        /* futureMessagesLimit = */ validatorDuties.futureMessagesLimit,
         /* chainHeight = */ chainHeaderNumber,
       )
     val gossiper = QbftGossip(validatorMulticaster, blockCodec)
@@ -264,6 +268,10 @@ class QbftValidatorFactory(
         shouldBuildNextBlock = shouldBuildNextBlock,
         blockBuilderIdentity = localNodeIdentity,
       )
-    return TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition, beaconBlockImporter)
+    return TransactionalSealedBeaconBlockImporter(
+      beaconChain = beaconChain,
+      stateTransition = stateTransition,
+      beaconBlockImporter = beaconBlockImporter,
+    )
   }
 }

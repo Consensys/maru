@@ -16,7 +16,6 @@
 package maru.app
 
 import java.time.Clock
-import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.consensus.BlockMetadata
@@ -58,17 +57,15 @@ class MaruApp(
     if (config.p2pConfig == null) {
       log.warn("P2P is disabled!")
     }
-    if (config.qbftOptions == null) {
-      log.info("Qbft Validator options are not defined. Maru is running in follower-only node")
-      log.error("Follower-only mode is not supported yet! Exiting application.")
-      exitProcess(1)
+    if (config.qbftOptions.validatorDuties == null) {
+      log.info("Qbft Validator duties configuration is not defined. Maru is running in follower-only node")
     }
     log.info(config.toString())
   }
 
   private val ethereumJsonRpcClient =
     Helpers.createWeb3jClient(
-      config.validator.ethApiEndpoint,
+      config.validatorElNode.ethApiEndpoint,
     )
 
   private val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
@@ -143,26 +140,34 @@ class MaruApp(
         "p2p broadcast sealed beacon block handler" to SealedBeaconBlockBroadcaster(p2pNetwork),
       )
     val sealedBlockHandlerMultiplexer = NewSealedBlockHandlerMultiplexer(sealedBlockHandlers)
+    val beaconChainInitialization =
+      BeaconChainInitialization(
+        executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
+        beaconChain = beaconChain,
+        validatorSet = config.qbftOptions.validatorSet,
+      )
     val qbftFactory =
-      if (config.qbftOptions != null) {
+      if (config.qbftOptions.validatorDuties != null) {
         QbftProtocolFactoryWithBeaconChainInitialization(
-          qbftOptions = config.qbftOptions!!,
-          validatorConfig = config.validator,
+          qbftOptions = config.qbftOptions,
+          validatorElNodeConfig = config.validatorElNode,
           metricsSystem = metricsSystem,
           finalizationStateProvider = finalizationStateProviderStub,
-          executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
           nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
           newBlockHandler = sealedBlockHandlerMultiplexer,
           beaconChain = beaconChain,
           clock = clock,
           p2pNetwork = p2pNetwork,
+          beaconChainInitialization = beaconChainInitialization,
         )
       } else {
         QbftFollowerFactory(
           p2PNetwork = p2pNetwork,
           beaconChain = beaconChain,
           newBlockHandler = qbftConsensusBeaconBlockHandler,
-          validatorConfig = config.validator,
+          validatorElNodeConfig = config.validatorElNode,
+          beaconChainInitialization = beaconChainInitialization,
+          validatorSet = config.qbftOptions.validatorSet,
         )
       }
     return ProtocolStarter(

@@ -39,12 +39,13 @@ class QbftFollowerFactory(
   val p2PNetwork: P2PNetwork,
   val beaconChain: BeaconChain,
   val newBlockHandler: NewBlockHandler,
-  val validatorConfig: maru.config.Validator,
+  val validatorElNodeConfig: maru.config.ValidatorElNode,
+  val beaconChainInitialization: BeaconChainInitialization,
+  val validatorSet: Set<Validator>,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)
-    val validator = Validator(qbftConsensusConfig.feeRecipient)
-    val validatorProvider = StaticValidatorProvider(validators = setOf(validator))
+    val validatorProvider = StaticValidatorProvider(validators = validatorSet)
     val stateTransition = StateTransitionImpl(validatorProvider)
     val transactionalSealedBeaconBlockImporter =
       TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition) { _, beaconBlock ->
@@ -53,7 +54,7 @@ class QbftFollowerFactory(
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier(SECP256R1()))
     val engineApiExecutionLayerClient =
       Helpers.buildExecutionEngineClient(
-        validatorConfig.engineApiEndpint,
+        validatorElNodeConfig.engineApiEndpoint,
         qbftConsensusConfig.elFork,
       )
     val executionLayerManager =
@@ -73,6 +74,9 @@ class QbftFollowerFactory(
         sealsVerifier = sealsVerifier,
         beaconBlockValidatorFactory = beaconBlockValidatorFactory,
       )
+
+    beaconChainInitialization.ensureDbIsInitialized()
+
     return QbftConsensusFollower(p2PNetwork, blockImporter)
   }
 }

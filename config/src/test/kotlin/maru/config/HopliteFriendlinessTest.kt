@@ -20,6 +20,7 @@ import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import maru.core.Validator
 import maru.extensions.fromHexToByteArray
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -31,13 +32,16 @@ class HopliteFriendlinessTest {
     data-path="/some/path"
 
     [qbft-options]
+    validator-set = ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"]
+
+    [qbft-options.validator-duties]
     private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
     communication-margin=100m
 
     [p2p-config]
     port = 3322
 
-    [payloadValidator]
+    [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
     eth-api-endpoint = { endpoint = "http://localhost:8545" }
     """.trimIndent()
@@ -59,10 +63,13 @@ class HopliteFriendlinessTest {
         MaruConfigDtoToml(
           persistence = Persistence(Path("/some/path")),
           qbftOptions =
-            QbftOptionsTomlFriendly(
-              privateKey =
-                Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
-              100.milliseconds,
+            QbftOptionsDtoTomlFriendly(
+              ValidatorDutiesDtoTomlFriendly(
+                privateKey =
+                  Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
+                100.milliseconds,
+              ),
+              validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
             ),
           p2pConfig = P2P(port = 3322u),
           payloadValidator =
@@ -100,10 +107,14 @@ class HopliteFriendlinessTest {
         MaruConfigDtoToml(
           persistence = Persistence(Path("/some/path")),
           qbftOptions =
-            QbftOptionsTomlFriendly(
-              privateKey =
-                Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
-              communicationMargin = 100.milliseconds,
+            QbftOptionsDtoTomlFriendly(
+              validatorDuties =
+                ValidatorDutiesDtoTomlFriendly(
+                  privateKey =
+                    Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
+                  communicationMargin = 100.milliseconds,
+                ),
+              validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
             ),
           p2pConfig = P2P(port = 3322u),
           payloadValidator =
@@ -131,9 +142,9 @@ class HopliteFriendlinessTest {
         MaruConfig(
           persistence = Persistence(Path("/some/path")),
           p2pConfig = P2P(port = 3322u),
-          validator =
-            Validator(
-              engineApiEndpint =
+          validatorElNode =
+            ValidatorElNode(
+              engineApiEndpoint =
                 ApiEndpointConfig(
                   URI.create("http://localhost:8555").toURL(),
                   jwtSecretPath = "/secret/path",
@@ -145,8 +156,20 @@ class HopliteFriendlinessTest {
             ),
           qbftOptions =
             QbftOptions(
-              privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
-              communicationMargin = 100.milliseconds,
+              validatorDuties =
+                ValidatorDuties(
+                  privateKey =
+                    "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+                      .fromHexToByteArray(),
+                  communicationMargin = 100.milliseconds,
+                ),
+              validatorSet =
+                setOf(
+                  Validator(
+                    "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"
+                      .fromHexToByteArray(),
+                  ),
+                ),
             ),
           followers =
             FollowersConfig(
@@ -169,13 +192,25 @@ class HopliteFriendlinessTest {
           persistence = Persistence(Path("/some/path")),
           qbftOptions =
             QbftOptions(
-              privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
-              communicationMargin = 100.milliseconds,
+              validatorDuties =
+                ValidatorDuties(
+                  privateKey =
+                    "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+                      .fromHexToByteArray(),
+                  communicationMargin = 100.milliseconds,
+                ),
+              validatorSet =
+                setOf(
+                  Validator(
+                    "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"
+                      .fromHexToByteArray(),
+                  ),
+                ),
             ),
           p2pConfig = P2P(port = 3322u),
-          validator =
-            Validator(
-              engineApiEndpint =
+          validatorElNode =
+            ValidatorElNode(
+              engineApiEndpoint =
                 ApiEndpointConfig(
                   URI.create("http://localhost:8555").toURL(),
                   jwtSecretPath = "/secret/path",
@@ -193,7 +228,7 @@ class HopliteFriendlinessTest {
       )
   }
 
-  private val qbftOptions =
+  private val validatorDuties =
     """
     private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
     communication-margin=100m
@@ -206,12 +241,12 @@ class HopliteFriendlinessTest {
     """.trimIndent()
 
   @Test
-  fun qbftOptionsAreParseable() {
+  fun validatorDutiesAreParseable() {
     val config =
-      Utils.parseTomlConfig<QbftOptionsTomlFriendly>(qbftOptions)
+      Utils.parseTomlConfig<ValidatorDutiesDtoTomlFriendly>(validatorDuties)
     assertThat(config)
       .isEqualTo(
-        QbftOptionsTomlFriendly(
+        ValidatorDutiesDtoTomlFriendly(
           privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
           communicationMargin = 100.milliseconds,
           messageQueueLimit = 1000,

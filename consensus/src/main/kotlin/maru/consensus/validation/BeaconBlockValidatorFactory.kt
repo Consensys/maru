@@ -33,19 +33,24 @@ class BeaconBlockValidatorFactory(
   private val proposerValidator = ProposerValidator(proposerSelector, beaconChain)
 
   fun createValidatorForBlock(beaconBlockHeader: BeaconBlockHeader): BlockValidator {
-    val parentHeader = beaconChain.getSealedBeaconBlock(beaconBlockHeader.number - 1UL)!!.beaconBlock.beaconBlockHeader
-    return CompositeBlockValidator(
-      blockValidators =
-        listOf(
-          stateRootValidator,
-          BlockNumberValidator(parentHeader),
-          TimestampValidator(parentHeader),
-          proposerValidator,
-          ParentRootValidator(parentHeader),
-          bodyRootValidator,
-          executionPayloadValidator,
-          EmptyBlockValidator,
-        ),
-    )
+    val parentBlock = beaconChain.getSealedBeaconBlock(beaconBlockHeader.number - 1UL)
+    if (parentBlock == null) {
+      throw IllegalArgumentException("Expected block for header number=${beaconBlockHeader.number} isn't found!")
+    } else {
+      val parentHeader = parentBlock.beaconBlock.beaconBlockHeader
+      return CompositeBlockValidator(
+        blockValidators =
+          listOf(
+            stateRootValidator,
+            BlockNumberValidator(parentHeader),
+            TimestampValidator(parentHeader),
+            proposerValidator,
+            ParentRootValidator(parentHeader),
+            bodyRootValidator,
+            executionPayloadValidator,
+            EmptyBlockValidator,
+          ),
+      )
+    }
   }
 }

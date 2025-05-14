@@ -2,6 +2,9 @@
 data-path="/tmp/maru-db"
 
 [qbft-options]
+validator-set = ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"]
+
+[qbft-options.validator-duties]
 private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
 communication-margin=100m
 
