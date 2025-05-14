@@ -18,6 +18,7 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.getError
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.ProposerSelector
 import maru.consensus.qbft.toConsensusRoundIdentifier
@@ -382,7 +383,7 @@ class BlockValidatorTest {
   }
 
   @Test
-  fun `test not enough commit seals`() {
+  fun `seal verification error is propagated`() {
     assertThat(BftHelpers.calculateRequiredValidatorQuorum(3)).isEqualTo(2)
 
     val blockBodyWithEnoughSeals =
@@ -393,64 +394,39 @@ class BlockValidatorTest {
             validNewBlockBody.prevCommitSeals.elementAt(1),
           ),
       )
-
-    val blockBodyWithLessSeals =
-      validNewBlockBody.copy(
-        prevCommitSeals = setOf(validNewBlockBody.prevCommitSeals.elementAt(0)),
-      )
-
-    val sealVerifier =
-      object : SealVerifier {
-        override fun extractValidator(
-          seal: Seal,
+    val expectedError = "Seal verification error!"
+    val sealsVerifier =
+      object : SealsVerifier {
+        override fun verifySeals(
+          seals: Set<Seal>,
           beaconBlockHeader: BeaconBlockHeader,
-        ): Result<Validator, SealVerifier.SealValidationError> =
-          when (seal) {
-            validNewBlockBody.prevCommitSeals.elementAt(0) -> Ok(validators[0])
-            validNewBlockBody.prevCommitSeals.elementAt(1) -> Ok(validators[1])
-            else -> Err(SealVerifier.SealValidationError("Invalid seal"))
-          }
+        ): SafeFuture<Result<Unit, String>> = SafeFuture.completedFuture(Err(expectedError))
       }
-    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, sealVerifier)
     val prevCommitSealValidator =
       PrevCommitSealValidator(
         beaconChain = beaconChain,
         sealsVerifier = sealsVerifier,
         config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
       )
-    val validResult =
+    val invalidResult =
       prevCommitSealValidator
         .validateBlock(
           block = validNewBlock.copy(beaconBlockBody = blockBodyWithEnoughSeals),
         ).get()
-    assertThat(validResult).isEqualTo(BlockValidator.ok())
-
-    val inValidResult =
-      prevCommitSealValidator
-        .validateBlock(
-          block = validNewBlock.copy(beaconBlockBody = blockBodyWithLessSeals),
-        ).get()
-    val expectedResult =
-      error(
-        "Previous block seal verification failed. Reason: Quorum threshold not met. " +
-          "sealers=1 " +
-          "validators=3 " +
-          "quorumCount=2",
-      )
-    assertThat(inValidResult).isEqualTo(expectedResult)
+    assertThat(invalidResult).isInstanceOf(Err::class.java)
+    assertThat(invalidResult.getError()!!.message).contains(expectedError)
   }
 
   @Test
-  fun `test commit seals not from validator`() {
-    val sealVerifier =
-      object : SealVerifier {
-        override fun extractValidator(
-          seal: Seal,
+  fun `seals verification failed future is propagated`() {
+    val expectedMessage = "Test exception!"
+    val sealsVerifier =
+      object : SealsVerifier {
+        override fun verifySeals(
+          seals: Set<Seal>,
           beaconBlockHeader: BeaconBlockHeader,
-        ): Result<Validator, SealVerifier.SealValidationError> = Ok(nonValidatorNode)
+        ): SafeFuture<Result<Unit, String>> = SafeFuture.failedFuture(Exception(expectedMessage))
       }
-
-    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, sealVerifier)
     val prevCommitSealValidator =
       PrevCommitSealValidator(
         beaconChain = beaconChain,
@@ -463,12 +439,8 @@ class BlockValidatorTest {
         .validateBlock(
           block = validNewBlock,
         ).get()
-    val expectedResult =
-      error(
-        "Previous block seal verification failed. Reason: validator=$nonValidatorNode isn't in the " +
-          "expectedValidatorSet=$validators",
-      )
-    assertThat(result).isEqualTo(expectedResult)
+    assertThat(result).isInstanceOf(Err::class.java)
+    assertThat(result.getError()!!.message).contains(expectedMessage)
   }
 
   @Test
