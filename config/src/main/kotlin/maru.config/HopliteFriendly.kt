@@ -17,17 +17,40 @@ package maru.config
 
 import com.sksamuel.hoplite.Masked
 import java.net.URL
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import maru.extensions.fromHexToByteArray
 
-data class ValidatorDtoToml(
+data class QbftOptionsTomlFriendly(
   val privateKey: Masked,
-  val elClientEngineApiEndpoint: URL,
-  val jwtSecretPath: String? = null,
+  // Since we cannot finish block production instantly at expected time, we need to set some safety margin
+  val communicationMargin: Duration,
+  val messageQueueLimit: Int = 1000,
+  val roundExpiry: Duration = 1.seconds,
+  val duplicateMessageLimit: Int = 100,
+  val futureMessageMaxDistance: Long = 10L,
+  val futureMessagesLimit: Long = 1000L,
+) {
+  fun toDomain(): QbftOptions =
+    QbftOptions(
+      privateKey = privateKey.value.fromHexToByteArray(),
+      communicationMargin = communicationMargin,
+      messageQueueLimit = messageQueueLimit,
+      roundExpiry = roundExpiry,
+      duplicateMessageLimit = duplicateMessageLimit,
+      futureMessageMaxDistance = futureMessageMaxDistance,
+      futureMessagesLimit = futureMessagesLimit,
+    )
+}
+
+data class PayloadValidatorDtoToml(
+  val engineApiEndpoint: ApiEndpointDtoToml,
+  val ethApiEndpoint: ApiEndpointDtoToml,
 ) {
   fun domainFriendly(): Validator =
     Validator(
-      privateKey = privateKey.value.fromHexToByteArray(),
-      engineApiClient = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
+      ethApiEndpoint = ethApiEndpoint.toDomain(),
+      engineApiEndpint = engineApiEndpoint.toDomain(),
     )
 }
 
@@ -40,19 +63,17 @@ data class ApiEndpointDtoToml(
 
 data class MaruConfigDtoToml(
   private val persistence: Persistence,
-  private val qbftOptions: QbftOptions,
-  private val sotEthEndpoint: ApiEndpointDtoToml,
+  private val qbftOptions: QbftOptionsTomlFriendly?,
   private val p2pConfig: P2P?,
-  private val validator: ValidatorDtoToml?,
+  private val payloadValidator: PayloadValidatorDtoToml,
   private val followerEngineApis: Map<String, ApiEndpointDtoToml>?,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
       persistence = persistence,
-      qbftOptions = qbftOptions,
-      sotNode = sotEthEndpoint.toDomain(),
+      qbftOptions = qbftOptions?.toDomain(),
       p2pConfig = p2pConfig,
-      validator = validator?.domainFriendly(),
+      validator = payloadValidator.domainFriendly(),
       followers = FollowersConfig(followers = followerEngineApis?.mapValues { it.value.toDomain() } ?: emptyMap()),
     )
 }

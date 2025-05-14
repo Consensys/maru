@@ -41,18 +41,16 @@ object MaruFactory {
     [persistence]
     data-path="$dataPath"
 
-    [sot-eth-endpoint]
-    endpoint = "$ethereumJsonRpcUrl"
-
     [qbft-options]
+    private-key = "$VALIDATOR_PRIVATE_KEY"
     communication-margin=200m
 
     [p2p-config]
     port = 3322
 
-    [validator]
-    private-key = "$VALIDATOR_PRIVATE_KEY"
-    el-client-engine-api-endpoint = "$engineApiRpc"
+    [payloadValidator]
+    engine-api-endpoint = { endpoint = "$engineApiRpc" }
+    eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
     """.trimIndent()
 
   private fun pickConsensusConfig(elFork: ElFork): String =

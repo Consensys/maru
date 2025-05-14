@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft
+package maru.app
 
 import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
@@ -21,6 +21,9 @@ import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
+import maru.consensus.qbft.ProposerSelectorImpl
+import maru.consensus.qbft.QbftConsensusConfig
+import maru.consensus.qbft.QbftConsensusFollower
 import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.BeaconBlockValidatorFactory
 import maru.consensus.validation.QuorumOfSealsVerifier
@@ -28,7 +31,7 @@ import maru.consensus.validation.SCEP256SealVerifier
 import maru.core.Protocol
 import maru.core.Validator
 import maru.database.BeaconChain
-import maru.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
 import org.hyperledger.besu.crypto.SECP256R1
 
@@ -36,10 +39,11 @@ class QbftFollowerFactory(
   val p2PNetwork: P2PNetwork,
   val beaconChain: BeaconChain,
   val newBlockHandler: NewBlockHandler,
-  val executionLayerManager: ExecutionLayerManager,
+  val validatorConfig: maru.config.Validator,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
-    val validator = Validator((forkSpec.configuration as QbftConsensusConfig).feeRecipient)
+    val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)
+    val validator = Validator(qbftConsensusConfig.feeRecipient)
     val validatorProvider = StaticValidatorProvider(validators = setOf(validator))
     val stateTransition = StateTransitionImpl(validatorProvider)
     val transactionalSealedBeaconBlockImporter =
@@ -47,6 +51,15 @@ class QbftFollowerFactory(
         newBlockHandler.handleNewBlock(beaconBlock)
       }
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier(SECP256R1()))
+    val engineApiExecutionLayerClient =
+      Helpers.buildExecutionEngineClient(
+        validatorConfig.engineApiEndpint,
+        qbftConsensusConfig.elFork,
+      )
+    val executionLayerManager =
+      JsonRpcExecutionLayerManager(
+        executionLayerEngineApiClient = engineApiExecutionLayerClient,
+      )
     val beaconBlockValidatorFactory =
       BeaconBlockValidatorFactory(
         beaconChain = beaconChain,

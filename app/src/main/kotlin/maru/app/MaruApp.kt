@@ -34,7 +34,6 @@ import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.NewSealedBlockHandlerMultiplexer
 import maru.consensus.delegated.ElDelegatedConsensusFactory
-import maru.consensus.qbft.QbftFollowerFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.core.Protocol
@@ -69,7 +68,7 @@ class MaruApp(
 
   private val ethereumJsonRpcClient =
     Helpers.createWeb3jClient(
-      config.sotNode,
+      config.validator.ethApiEndpoint,
     )
 
   private val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
@@ -145,9 +144,10 @@ class MaruApp(
       )
     val sealedBlockHandlerMultiplexer = NewSealedBlockHandlerMultiplexer(sealedBlockHandlers)
     val qbftFactory =
-      if (config.validator != null) {
+      if (config.qbftOptions != null) {
         QbftProtocolFactoryWithBeaconChainInitialization(
-          maruConfig = config,
+          qbftOptions = config.qbftOptions!!,
+          validatorConfig = config.validator,
           metricsSystem = metricsSystem,
           finalizationStateProvider = finalizationStateProviderStub,
           executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
@@ -162,7 +162,7 @@ class MaruApp(
           p2PNetwork = p2pNetwork,
           beaconChain = beaconChain,
           newBlockHandler = qbftConsensusBeaconBlockHandler,
-          executionLayerManager = TODO("Refactor config so validator EL node is mandatory"),
+          validatorConfig = config.validator,
         )
       }
     return ProtocolStarter(

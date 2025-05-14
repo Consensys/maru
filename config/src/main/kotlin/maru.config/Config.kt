@@ -38,8 +38,19 @@ data class P2P(
 )
 
 data class Validator(
+  val ethApiEndpoint: ApiEndpointConfig,
+  val engineApiEndpint: ApiEndpointConfig,
+)
+
+data class QbftOptions(
   val privateKey: ByteArray,
-  val engineApiClient: ApiEndpointConfig,
+  // Since we cannot finish block production instantly at expected time, we need to set some safety margin
+  val communicationMargin: Duration,
+  val messageQueueLimit: Int = 1000,
+  val roundExpiry: Duration = 1.seconds,
+  val duplicateMessageLimit: Int = 100,
+  val futureMessageMaxDistance: Long = 10L,
+  val futureMessagesLimit: Long = 1000L,
 ) {
   init {
     require(privateKey.size == 32) {
@@ -51,29 +62,35 @@ data class Validator(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as Validator
+    other as QbftOptions
 
-    return privateKey.contentEquals(other.privateKey)
+    if (messageQueueLimit != other.messageQueueLimit) return false
+    if (duplicateMessageLimit != other.duplicateMessageLimit) return false
+    if (futureMessageMaxDistance != other.futureMessageMaxDistance) return false
+    if (futureMessagesLimit != other.futureMessagesLimit) return false
+    if (!privateKey.contentEquals(other.privateKey)) return false
+    if (communicationMargin != other.communicationMargin) return false
+    if (roundExpiry != other.roundExpiry) return false
+
+    return true
   }
 
-  override fun hashCode(): Int = privateKey.contentHashCode()
+  override fun hashCode(): Int {
+    var result = messageQueueLimit
+    result = 31 * result + duplicateMessageLimit
+    result = 31 * result + futureMessageMaxDistance.hashCode()
+    result = 31 * result + futureMessagesLimit.hashCode()
+    result = 31 * result + privateKey.contentHashCode()
+    result = 31 * result + communicationMargin.hashCode()
+    result = 31 * result + roundExpiry.hashCode()
+    return result
+  }
 }
-
-data class QbftOptions(
-  // Since we cannot finish block production instantly at expected time, we need to set some safety margin
-  val communicationMargin: Duration,
-  val messageQueueLimit: Int = 1000,
-  val roundExpiry: Duration = 1.seconds,
-  val duplicateMessageLimit: Int = 100,
-  val futureMessageMaxDistance: Long = 10L,
-  val futureMessagesLimit: Long = 1000L,
-)
 
 data class MaruConfig(
   val persistence: Persistence,
-  val sotNode: ApiEndpointConfig,
-  val qbftOptions: QbftOptions,
+  val qbftOptions: QbftOptions?,
   val p2pConfig: P2P?,
-  val validator: Validator?,
+  val validator: Validator,
   val followers: FollowersConfig,
 )

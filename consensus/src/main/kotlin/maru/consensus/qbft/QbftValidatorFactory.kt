@@ -18,7 +18,7 @@ package maru.consensus.qbft
 import java.time.Clock
 import java.util.concurrent.Executors
 import kotlin.time.toJavaDuration
-import maru.config.MaruConfig
+import maru.config.QbftOptions
 import maru.consensus.ForkSpec
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
@@ -76,7 +76,7 @@ import org.hyperledger.besu.util.Subscribers
 
 class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
-  private val maruConfig: MaruConfig,
+  private val qbftOptions: QbftOptions,
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
@@ -86,14 +86,11 @@ class QbftValidatorFactory(
   private val p2PNetwork: P2PNetwork,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
-    require(maruConfig.validator != null) {
-      "Validator configuration is not specified!"
-    }
-    require(forkSpec.blockTimeSeconds * 1000 > maruConfig.qbftOptions.communicationMargin.inWholeMilliseconds) {
+    require(forkSpec.blockTimeSeconds * 1000 > qbftOptions.communicationMargin.inWholeMilliseconds) {
       "communicationMargin can't be more than blockTimeSeconds"
     }
 
-    val validatorKey = maruConfig.validator!!.privateKey
+    val validatorKey = qbftOptions.privateKey
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(validatorKey))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
@@ -128,20 +125,20 @@ class QbftValidatorFactory(
         blockBuilderIdentity = Validator(localAddress.toArray()),
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
-            maruConfig.qbftOptions.communicationMargin,
+            qbftOptions.communicationMargin,
           ),
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         clock = clock,
       )
 
-    val besuForksSchedule = ForksScheduleAdapter(forkSpec, maruConfig.qbftOptions)
+    val besuForksSchedule = ForksScheduleAdapter(forkSpec, qbftOptions)
 
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
-    val bftEventQueue = BftEventQueue(maruConfig.qbftOptions.messageQueueLimit)
+    val bftEventQueue = BftEventQueue(qbftOptions.messageQueueLimit)
     val roundTimer =
       RoundTimer(
         /* queue = */ bftEventQueue,
-        /* baseExpiryPeriod = */ maruConfig.qbftOptions.roundExpiry.toJavaDuration(),
+        /* baseExpiryPeriod = */ qbftOptions.roundExpiry.toJavaDuration(),
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
@@ -205,7 +202,7 @@ class QbftValidatorFactory(
         /* validatorProvider = */ besuValidatorProvider,
         /* validatorModeTransitionLogger = */ transitionLogger,
       )
-    val duplicateMessageTracker = MessageTracker(maruConfig.qbftOptions.duplicateMessageLimit)
+    val duplicateMessageTracker = MessageTracker(qbftOptions.duplicateMessageLimit)
     val chainHeaderNumber =
       beaconChain
         .getLatestBeaconState()
@@ -214,8 +211,8 @@ class QbftValidatorFactory(
         .toLong()
     val futureMessageBuffer =
       FutureMessageBuffer(
-        /* futureMessagesMaxDistance = */ maruConfig.qbftOptions.futureMessageMaxDistance,
-        /* futureMessagesLimit = */ maruConfig.qbftOptions.futureMessagesLimit,
+        /* futureMessagesMaxDistance = */ qbftOptions.futureMessageMaxDistance,
+        /* futureMessagesLimit = */ qbftOptions.futureMessagesLimit,
         /* chainHeight = */ chainHeaderNumber,
       )
     val gossiper = QbftGossip(validatorMulticaster, blockCodec)

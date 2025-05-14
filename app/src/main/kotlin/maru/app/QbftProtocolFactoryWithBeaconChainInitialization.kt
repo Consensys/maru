@@ -16,7 +16,7 @@
 package maru.app
 
 import java.time.Clock
-import maru.config.MaruConfig
+import maru.config.QbftOptions
 import maru.consensus.ForkSpec
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
@@ -44,7 +44,8 @@ import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 
 class QbftProtocolFactoryWithBeaconChainInitialization(
-  private val maruConfig: MaruConfig,
+  private val qbftOptions: QbftOptions,
+  private val validatorConfig: maru.config.Validator,
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val executionLayerClient: Web3j,
@@ -54,10 +55,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val clock: Clock,
   private val p2pNetwork: P2PNetwork,
 ) : ProtocolFactory {
-  init {
-    require(maruConfig.validator != null) { "The validator is required when QBFT protocol is instantiated!" }
-  }
-
   private fun initializeDb(updater: BeaconChain.Updater) {
     val genesisExecutionPayload =
       executionLayerClient
@@ -80,7 +77,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
 
-    val initialValidators = setOf(Crypto.privateKeyToValidator(maruConfig.validator!!.privateKey))
+    val initialValidators = setOf(Crypto.privateKeyToValidator(qbftOptions.privateKey))
     val tmpGenesisStateRoot =
       BeaconState(
         latestBeaconBlockHeader = beaconBlockHeader,
@@ -107,7 +104,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
 
     val engineApiExecutionLayerClient =
       Helpers.buildExecutionEngineClient(
-        maruConfig.validator!!.engineApiClient,
+        validatorConfig.engineApiEndpint,
         qbftConsensusConfig.elFork,
       )
     val executionLayerManager =
@@ -122,7 +119,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
     val qbftValidatorFactory =
       QbftValidatorFactory(
         beaconChain = beaconChain,
-        maruConfig = maruConfig,
+        qbftOptions = qbftOptions,
         metricsSystem = metricsSystem,
         finalizationStateProvider = finalizationStateProvider,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
