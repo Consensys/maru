@@ -110,7 +110,7 @@ class MaruFollowerTest {
         ).send()
         .block
     val followerGenesis =
-      validatorStack.besuNode
+      followerStack.besuNode
         .nodeRequests()
         .eth()
         .ethGetBlockByNumber(

@@ -77,7 +77,7 @@ object MaruFactory {
     eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
 
     [follower-engine-apis]
-    follower1 = { endpoint = "$ethereumJsonRpcUrl" }
+    follower1 = { endpoint = "$engineApiRpc" }
     """.trimIndent()
 
   private fun pickConsensusConfig(elFork: ElFork): String =
