@@ -33,7 +33,6 @@ import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
-import org.hyperledger.besu.crypto.SECP256R1
 
 class QbftFollowerFactory(
   val p2PNetwork: P2PNetwork,
@@ -51,7 +50,7 @@ class QbftFollowerFactory(
       TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition) { _, beaconBlock ->
         newBlockHandler.handleNewBlock(beaconBlock)
       }
-    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier(SECP256R1()))
+    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())
     val engineApiExecutionLayerClient =
       Helpers.buildExecutionEngineClient(
         validatorElNodeConfig.engineApiEndpoint,

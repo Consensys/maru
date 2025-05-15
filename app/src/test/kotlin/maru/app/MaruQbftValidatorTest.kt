@@ -40,7 +40,6 @@ import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Commit
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Prepare
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Proposal
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.RoundChange
-import org.hyperledger.besu.crypto.SECP256R1
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
@@ -135,7 +134,7 @@ class MaruQbftValidatorTest {
 
   private fun allBlockAreSignedByTheExpectedSigner() {
     val validatorProvider = StaticValidatorProvider(setOf(Validator(VALIDATOR_ADDRESS.fromHexToByteArray())))
-    val sealVerifier = SCEP256SealVerifier(SECP256R1())
+    val sealVerifier = SCEP256SealVerifier()
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider = validatorProvider, sealVerifier)
     spyingP2pNetwork.emittedBlockMessages.forEach { sealedBeaconBlock ->
       val verificationResult =
