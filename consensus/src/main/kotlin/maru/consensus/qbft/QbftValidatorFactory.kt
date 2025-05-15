@@ -41,7 +41,7 @@ import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
 import maru.consensus.state.StateTransitionImpl
-import maru.consensus.validation.BeaconBlockValidatorFactory
+import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
 import maru.core.BeaconBlockBody
 import maru.core.BeaconState
 import maru.core.Protocol
@@ -172,7 +172,7 @@ class QbftValidatorFactory(
     val blockCodec = QbftBlockCodecAdapter
     val blockInterface = QbftBlockInterfaceAdapter()
     val beaconBlockValidatorFactory =
-      BeaconBlockValidatorFactory(beaconChain, proposerSelector, stateTransition, executionLayerManager)
+      BeaconBlockValidatorFactoryImpl(beaconChain, proposerSelector, stateTransition, executionLayerManager)
     val protocolSchedule =
       QbftProtocolScheduleAdapter(
         blockImporter = blockImporter,

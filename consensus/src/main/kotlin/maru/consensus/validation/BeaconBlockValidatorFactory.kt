@@ -21,18 +21,22 @@ import maru.core.BeaconBlockHeader
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 
-class BeaconBlockValidatorFactory(
+fun interface BeaconBlockValidatorFactory {
+  fun createValidatorForBlock(beaconBlockHeader: BeaconBlockHeader): BlockValidator
+}
+
+class BeaconBlockValidatorFactoryImpl(
   val beaconChain: BeaconChain,
   proposerSelector: ProposerSelector,
   stateTransition: StateTransition,
   executionLayerManager: ExecutionLayerManager,
-) {
+) : BeaconBlockValidatorFactory {
   private val stateRootValidator = StateRootValidator(stateTransition)
   private val bodyRootValidator = BodyRootValidator()
   private val executionPayloadValidator = ExecutionPayloadValidator(executionLayerManager)
   private val proposerValidator = ProposerValidator(proposerSelector, beaconChain)
 
-  fun createValidatorForBlock(beaconBlockHeader: BeaconBlockHeader): BlockValidator {
+  override fun createValidatorForBlock(beaconBlockHeader: BeaconBlockHeader): BlockValidator {
     val parentBlock = beaconChain.getSealedBeaconBlock(beaconBlockHeader.number - 1UL)
     if (parentBlock == null) {
       throw IllegalArgumentException("Expected block for header number=${beaconBlockHeader.number} isn't found!")

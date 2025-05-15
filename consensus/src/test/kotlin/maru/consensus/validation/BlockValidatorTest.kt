@@ -122,7 +122,7 @@ class BlockValidatorTest {
       }
 
     val blockValidator =
-      BeaconBlockValidatorFactory(
+      BeaconBlockValidatorFactoryImpl(
         beaconChain = beaconChain,
         proposerSelector = proposerSelector,
         stateTransition = stateTransition,

@@ -24,7 +24,7 @@ import maru.core.Seal
 import org.hyperledger.besu.consensus.common.bft.BftHelpers
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-interface SealsVerifier {
+fun interface SealsVerifier {
   fun verifySeals(
     seals: Set<Seal>,
     beaconBlockHeader: BeaconBlockHeader,

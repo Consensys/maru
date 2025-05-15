@@ -25,7 +25,7 @@ import maru.consensus.qbft.ProposerSelectorImpl
 import maru.consensus.qbft.QbftConsensusConfig
 import maru.consensus.qbft.QbftConsensusFollower
 import maru.consensus.state.StateTransitionImpl
-import maru.consensus.validation.BeaconBlockValidatorFactory
+import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
 import maru.consensus.validation.QuorumOfSealsVerifier
 import maru.consensus.validation.SCEP256SealVerifier
 import maru.core.Protocol
@@ -61,7 +61,7 @@ class QbftFollowerFactory(
         executionLayerEngineApiClient = engineApiExecutionLayerClient,
       )
     val beaconBlockValidatorFactory =
-      BeaconBlockValidatorFactory(
+      BeaconBlockValidatorFactoryImpl(
         beaconChain = beaconChain,
         proposerSelector = ProposerSelectorImpl,
         stateTransition = stateTransition,

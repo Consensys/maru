@@ -17,6 +17,7 @@ package maru.consensus.blockimport
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.flatMap
 import com.github.michaelbull.result.mapError
 import maru.consensus.CallAndForgetFutureMultiplexer
@@ -31,8 +32,8 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-// This is basically Chain of Responsibility design pattern, except it doesn't allow multiple childs. Multiplexer class
-// was created to address that
+// This is basically Chain of Responsibility design pattern, except it doesn't allow multiple children
+// Multiplexer class was created to address that
 fun interface SealedBeaconBlockImporter {
   fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*>
 }
@@ -115,7 +116,7 @@ class ValidatingSealedBeaconBlockImporter(
 ) : SealedBeaconBlockImporter {
   private val log = LogManager.getLogger(this.javaClass)
 
-  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
+  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<Result<*, String>> {
     try {
       val beaconBlock = sealedBeaconBlock.beaconBlock
       val beaconBlockHeader = beaconBlock.beaconBlockHeader
@@ -133,7 +134,7 @@ class ValidatingSealedBeaconBlockImporter(
           when (combinedValidationResult) {
             is Ok -> {
               log.debug("Block is validated blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
-              beaconBlockImporter.importBlock(sealedBeaconBlock).thenApply { }
+              beaconBlockImporter.importBlock(sealedBeaconBlock).thenApply { Ok(it) }
             }
 
             is Err -> {
@@ -142,10 +143,10 @@ class ValidatingSealedBeaconBlockImporter(
                   "hash=${sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex()}! " +
                   "error=${combinedValidationResult.error}",
               )
-              SafeFuture.completedFuture(Unit)
+              SafeFuture.completedFuture(combinedValidationResult)
             }
           }
-        }.handleException {
+        }.whenException {
           log.error("Exception during sealed block import!", it)
         }
     } catch (ex: Throwable) {
