@@ -160,7 +160,7 @@ class DelayedQbftBlockCreatorTest {
   fun `can create sealed block`() {
     val block = QbftBlockAdapter(DataGenerators.randomBeaconBlock(10U))
     val beaconBlock = block.toBeaconBlock()
-    val seals = listOf(SECPSignature.create(BigInteger.ONE, BigInteger.TWO, 0x00, BigInteger.valueOf(4)))
+    val seals = setOf(SECPSignature.create(BigInteger.ONE, BigInteger.TWO, 0x00, BigInteger.valueOf(4)))
     val round = 0
 
     val blockCreator =
@@ -198,7 +198,7 @@ class DelayedQbftBlockCreatorTest {
     ).isEqualTo(
       beaconBlock.beaconBlockBody.prevCommitSeals,
     )
-    val beaconSeals = seals.map { Seal(it.encodedBytes().toArrayUnsafe()) }
+    val beaconSeals = seals.map { Seal(it.encodedBytes().toArrayUnsafe()) }.toSet()
     assertThat(createdSealedBeaconBlock.commitSeals).isEqualTo(beaconSeals)
     assertThat(sealedBlockBody.executionPayload).isEqualTo(beaconBlock.beaconBlockBody.executionPayload)
   }

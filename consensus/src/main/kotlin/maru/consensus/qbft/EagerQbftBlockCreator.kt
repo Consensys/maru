@@ -89,7 +89,7 @@ class EagerQbftBlockCreator(
     block: QbftBlock,
     roundNumber: Int,
     commitSeals: Collection<SECPSignature>,
-  ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
+  ): QbftBlock = delegate.createSealedBlock(block, roundNumber, commitSeals)
 
   private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long {
     val targetSleepTime =

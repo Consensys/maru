@@ -18,6 +18,7 @@ dependencies {
   implementation "com.sksamuel.hoplite:hoplite-core"
 
   implementation("org.hyperledger.besu.internal:metrics-core")
+  implementation("org.hyperledger.besu.internal:algorithms")
 
   testImplementation(project(":jvm-libs:test-utils"))
   testImplementation(testFixtures(project(":core")))

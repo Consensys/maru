@@ -293,7 +293,7 @@ class CliqueToPosTest {
           bodyRoot = BeaconBlockHeader.EMPTY_HASH,
           headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
-        BeaconBlockBody(emptyList(), latestExecutionPayload),
+        BeaconBlockBody(emptySet(), latestExecutionPayload),
       )
     buildBlockImportHandler(engineApiConfig).handleNewBlock(stubBeaconBlock).get()
   }

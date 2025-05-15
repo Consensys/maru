@@ -201,7 +201,7 @@ class EagerQbftBlockCreatorTest {
             .randomBeaconBlockBody()
             .copy(executionPayload = genesisExecutionPayload),
       )
-    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptyList())
+    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
 
     val eagerQbftBlockCreator = setup(sealedGenesisBeaconBlock, parentHeader)
@@ -267,7 +267,7 @@ class EagerQbftBlockCreatorTest {
             .randomBeaconBlockBody()
             .copy(executionPayload = genesisExecutionPayload),
       )
-    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptyList())
+    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
 
     val eagerQbftBlockCreator = setup(sealedGenesisBeaconBlock, parentHeader)

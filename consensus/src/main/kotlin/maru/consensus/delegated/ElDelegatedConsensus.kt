@@ -104,7 +104,7 @@ class ElDelegatedConsensus(
   }
 
   private fun wrapIntoDummyBeaconBlock(executionPayload: ExecutionPayload): BeaconBlock {
-    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptyList(), executionPayload = executionPayload)
+    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = executionPayload)
 
     val beaconBlockHeader =
       BeaconBlockHeader(
