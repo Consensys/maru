@@ -22,7 +22,7 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.mux.StreamMuxerProtocol
-import io.libp2p.etc.types.millis
+import io.libp2p.etc.types.seconds
 import io.libp2p.pubsub.PubsubApiImpl
 import io.libp2p.pubsub.gossip.Gossip
 import io.libp2p.pubsub.gossip.GossipPeerScoreParams
@@ -70,7 +70,7 @@ object P2PNetworkFactory {
     val rpcMethod = MaruRpcMethod()
     val gossipTopicHandlers = GossipTopicHandlers() // TODO: add handlers for topics as needed
 
-    val gossipParams = GossipParamsBuilder().heartbeatInterval(100.millis).build()
+    val gossipParams = GossipParamsBuilder().heartbeatInterval(1.seconds).build()
     val gossipRouterBuilder =
       GossipRouterBuilder().apply {
         params = gossipParams

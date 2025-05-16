@@ -1,6 +1,5 @@
 [persistence]
 data-path="/tmp/maru-db"
-priave-key-path="/tmp/maru-db/maru-key"
 
 [sot-eth-endpoint]
 endpoint = "http://localhost:8545"
@@ -11,10 +10,8 @@ communication-margin=100m
 [p2p-config]
 port = 3322
 ip-address = "127.0.0.1"
-static-nodes = []
 
 [validator]
-jwt-secret-path = "/secret/path"
 el-client-engine-api-endpoint = "http://localhost:8550"
 
 [follower-engine-apis]

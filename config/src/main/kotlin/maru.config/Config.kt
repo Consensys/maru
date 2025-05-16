@@ -28,25 +28,7 @@ data class Persistence(
 data class ApiEndpointConfig(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
-) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as ApiEndpointConfig
-
-    if (endpoint != other.endpoint) return false
-    if (jwtSecretPath != other.jwtSecretPath) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = endpoint.hashCode()
-    result = 31 * result + (jwtSecretPath?.hashCode() ?: 0)
-    return result
-  }
-}
+)
 
 data class FollowersConfig(
   val followers: Map<String, ApiEndpointConfig>,
@@ -55,7 +37,7 @@ data class FollowersConfig(
 data class P2P(
   val ipAddress: String,
   val port: String,
-  val staticPeers: List<String>,
+  val staticPeers: List<String> = emptyList(),
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

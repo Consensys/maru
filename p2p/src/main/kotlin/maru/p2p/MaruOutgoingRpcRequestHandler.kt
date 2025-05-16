@@ -24,16 +24,15 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
 class MaruOutgoingRpcRequestHandler(
   private val responseHandler: MaruRpcResponseHandler,
-  private val request: Bytes?,
 ) : RpcRequestHandler {
   override fun active(
-    nodeId: NodeId?,
+    nodeId: NodeId,
     rpcStream: RpcStream?,
   ) {
   }
 
   override fun processData(
-    nodeId: NodeId?,
+    nodeId: NodeId,
     rpcStream: RpcStream,
     byteBuf: ByteBuf,
   ) {
@@ -43,13 +42,13 @@ class MaruOutgoingRpcRequestHandler(
   }
 
   override fun readComplete(
-    nodeId: NodeId?,
+    nodeId: NodeId,
     rpcStream: RpcStream,
   ) {
   }
 
   override fun closed(
-    nodeId: NodeId?,
+    nodeId: NodeId,
     rpcStream: RpcStream,
   ) {
   }

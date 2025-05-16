@@ -61,6 +61,8 @@ class MaruApp(
       config.persistence.privateKeyPath.toString(),
     ).privateKeyBytes.toArray()
 
+  private var p2pManager: P2PManager? = null
+
   init {
     if (!config.persistence.privateKeyPath
         .toFile()
@@ -83,13 +85,15 @@ class MaruApp(
       log.info("P2PManager is not defined.")
     }
     log.info(config.toString())
-  }
 
-  val p2pManager =
-    P2PManager(
-      privateKeyBytes = privateKeyBytes,
-      p2pConfig = config.p2pConfig,
-    )
+    config.p2pConfig?.let {
+      p2pManager =
+        P2PManager(
+          privateKeyBytes = privateKeyBytes,
+          p2pConfig = config.p2pConfig!!,
+        )
+    }
+  }
 
   private val ethereumJsonRpcClient =
     Helpers.createWeb3jClient(
@@ -146,11 +150,7 @@ class MaruApp(
             qbftConsensusFactory =
               QbftProtocolFactoryWithBeaconChainInitialization(
                 maruConfig = config,
-                privateKeyBytes =
-                  privateKeyBytes
-                    .slice(
-                      privateKeyBytes.size - 32..privateKeyBytes.size - 1,
-                    ).toByteArray(),
+                privateKeyBytes = privateKeyBytesWithoutPrefix(),
                 metricsSystem = metricsSystem,
                 finalizationStateProvider = finalizationStateProviderStub,
                 executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
@@ -177,6 +177,12 @@ class MaruApp(
       }
     }
 
+  private fun privateKeyBytesWithoutPrefix() =
+    privateKeyBytes
+      .slice(
+        privateKeyBytes.size - 32..privateKeyBytes.size - 1,
+      ).toByteArray()
+
   private fun createFollowerHandlers(
     followers: FollowersConfig,
   ): Map<String, NewBlockHandler<ForkChoiceUpdatedResult>> =
@@ -187,13 +193,13 @@ class MaruApp(
       }
 
   fun start() {
-    p2pManager.start()
+    p2pManager?.start()
     protocolStarter.start()
     log.info("Maru is up")
   }
 
   fun stop() {
-    p2pManager.stop()
+    p2pManager?.stop()
     protocolStarter.stop()
     log.info("Maru is down")
   }

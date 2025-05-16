@@ -34,7 +34,7 @@ class MaruRpcMethod : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcRes
     request: Bytes?,
     responseHandler: MaruRpcResponseHandler,
   ): MaruOutgoingRpcRequestHandler {
-    val maruRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler, request)
+    val maruRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler)
     return maruRpcRequestHandler
   }
 

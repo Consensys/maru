@@ -37,7 +37,3 @@ dependencies {
 
   testImplementation(testFixtures(project(":core")))
 }
-
-test {
-  useJUnitPlatform()
-}

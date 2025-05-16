@@ -19,11 +19,11 @@ import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class MaruPeerHandler : PeerHandler {
-  override fun onConnect(peer: Peer?) {
+  override fun onConnect(peer: Peer) {
     // TODO("Not yet implemented1")
   }
 
-  override fun onDisconnect(peer: Peer?) {
+  override fun onDisconnect(peer: Peer) {
     // TODO("Not yet implemented2")
   }
 }
