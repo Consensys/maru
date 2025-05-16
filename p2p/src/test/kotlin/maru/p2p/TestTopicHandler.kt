@@ -45,7 +45,7 @@ class TestTopicHandler : TopicHandler {
     // at this point we have to validate the message (message will only be further distributed if valid!)
     // at this point we should also (asynchronously) do what needs to be done with the data we received
     dataFuture.complete(data)
-    return if (data.equals(Bytes.fromHexString(ORIGINAL_MESSAGE))) {
+    return if (data == Bytes.fromHexString(ORIGINAL_MESSAGE)) {
       SafeFuture.completedFuture(ValidationResult.Valid)
     } else {
       SafeFuture.completedFuture(ValidationResult.Invalid)

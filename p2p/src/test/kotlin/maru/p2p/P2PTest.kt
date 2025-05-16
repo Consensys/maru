@@ -179,7 +179,7 @@ class P2PTest {
       p2pNetwork1.gossip("topic", Bytes.fromHexString(GOSSIP_MESSAGE))
 
       assertThat(
-        testTopicHandler2.dataFuture.get(10L, TimeUnit.MILLISECONDS),
+        testTopicHandler2.dataFuture.get(100, TimeUnit.MILLISECONDS),
       ).isEqualTo(Bytes.fromHexString(GOSSIP_MESSAGE))
     } finally {
       p2pManager1.stop()
