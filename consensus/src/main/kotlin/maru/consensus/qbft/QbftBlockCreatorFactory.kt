@@ -23,6 +23,8 @@ import maru.core.BeaconBlockBody
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator as BesuQbftBlockCreator
@@ -41,6 +43,8 @@ class QbftBlockCreatorFactory(
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val clock: Clock,
 ) : QbftBlockCreatorFactory {
+  private val log: Logger = LogManager.getLogger(this.javaClass)
+
   override fun create(round: Int): BesuQbftBlockCreator {
     val delayedQbftBlockCreator =
       DelayedQbftBlockCreator(
@@ -50,9 +54,12 @@ class QbftBlockCreatorFactory(
         beaconChain = beaconChain,
         round = round,
       )
+    val number = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1u
     return if (round == 0 && manager.hasStartedBlockBuilding()) {
+      log.debug("Using delayed block creator round={} height={}", round, number)
       delayedQbftBlockCreator
     } else {
+      log.debug("Using eager block creator round={} height={}", round, number)
       EagerQbftBlockCreator(
         manager = manager,
         delegate = delayedQbftBlockCreator,
