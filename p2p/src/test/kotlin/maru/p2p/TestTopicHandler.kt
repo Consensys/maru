@@ -34,13 +34,13 @@ class TestTopicHandler : TopicHandler {
     // This should probably add a sequence number and a from to the message, or something like that. We can check what Teku is doing there :-)
     // e.g. we could compress the message and add a sequence number to it
     payload: Bytes,
-    arrivalTimestamp: Optional<UInt64>?,
+    arrivalTimestamp: Optional<UInt64>,
   ): PreparedGossipMessage = MaruPreparedGossipMessage(payload, Optional.empty())
 
-  override fun handleMessage(message: PreparedGossipMessage?): SafeFuture<ValidationResult> {
+  override fun handleMessage(message: PreparedGossipMessage): SafeFuture<ValidationResult> {
     var data: Bytes
     message.let {
-      data = message!!.originalMessage
+      data = message.originalMessage
     }
     // at this point we have to validate the message (message will only be further distributed if valid!)
     // at this point we should also (asynchronously) do what needs to be done with the data we received

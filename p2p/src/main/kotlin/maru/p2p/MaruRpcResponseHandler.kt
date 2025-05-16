@@ -23,15 +23,13 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
 class MaruRpcResponseHandler : RpcResponseHandler<Bytes> {
   val future = SafeFuture<Bytes>()
 
-  override fun onResponse(response: Bytes?): SafeFuture<*> {
+  override fun onResponse(response: Bytes): SafeFuture<*> {
     future.complete(response)
     return SafeFuture.completedFuture(response)
   }
 
-  override fun onCompleted(error: Optional<out Throwable>?) {
-    if (error == null) {
-      throw IllegalArgumentException("Error is null")
-    } else if (error.isEmpty) {
+  override fun onCompleted(error: Optional<out Throwable>) {
+    if (error.isEmpty) {
       return // if needed do something when the response is completed successfully
     } else {
       throw error.get()

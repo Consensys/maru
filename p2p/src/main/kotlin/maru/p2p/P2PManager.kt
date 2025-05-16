@@ -95,7 +95,7 @@ class P2PManager(
         if (t != null) {
           if (t is PeerAlreadyConnectedException) {
             log.info("Already connected to peer $peerAddress. Error: ${t.message}")
-            reconnectWhenDisconnected(peer, peerAddress)
+            reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
             log.trace(
               "Failed to connect to peer {}, retrying after {} ms. Error: {}",
@@ -108,15 +108,15 @@ class P2PManager(
           }
         } else {
           log.info("Created persistent connection to {}", peerAddress)
-          reconnectWhenDisconnected(peer, peerAddress)
+          reconnectWhenDisconnected(peer!!, peerAddress)
         }
       }.thenApply {}
 
   private fun reconnectWhenDisconnected(
-    peer: Peer?,
+    peer: Peer,
     peerAddress: MultiaddrPeerAddress,
   ) {
-    peer!!.subscribeDisconnect { _: Optional<DisconnectReason?>?, _: Boolean ->
+    peer.subscribeDisconnect { _: Optional<DisconnectReason>, _: Boolean ->
       if (staticPeerMap.containsKey(peerAddress.id)) {
         SafeFuture.runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
       }

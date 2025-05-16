@@ -27,7 +27,7 @@ class MaruOutgoingRpcRequestHandler(
 ) : RpcRequestHandler {
   override fun active(
     nodeId: NodeId,
-    rpcStream: RpcStream?,
+    rpcStream: RpcStream,
   ) {
   }
 

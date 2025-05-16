@@ -24,21 +24,21 @@ private const val LINEA = "linea"
 class MaruRpcMethod : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
   override fun getIds(): MutableList<String> = mutableListOf(LINEA)
 
-  override fun createIncomingRequestHandler(protocolId: String?): RpcRequestHandler {
+  override fun createIncomingRequestHandler(protocolId: String): RpcRequestHandler {
     val maruRpcRequestHandler = MaruIncomingRpcRequestHandler()
     return maruRpcRequestHandler
   }
 
   override fun createOutgoingRequestHandler(
-    protocolId: String?,
-    request: Bytes?,
+    protocolId: String,
+    request: Bytes,
     responseHandler: MaruRpcResponseHandler,
   ): MaruOutgoingRpcRequestHandler {
     val maruRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler)
     return maruRpcRequestHandler
   }
 
-  override fun encodeRequest(bytes: Bytes?): Bytes = bytes!!
+  override fun encodeRequest(bytes: Bytes): Bytes = bytes
 
   override fun equals(other: Any?): Boolean {
     if (this === other) {
