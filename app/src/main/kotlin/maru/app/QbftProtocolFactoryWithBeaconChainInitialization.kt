@@ -45,6 +45,7 @@ import org.web3j.protocol.core.DefaultBlockParameter
 
 class QbftProtocolFactoryWithBeaconChainInitialization(
   private val maruConfig: MaruConfig,
+  private val privateKeyBytes: ByteArray,
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val executionLayerClient: Web3j,
@@ -80,7 +81,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
 
-    val initialValidators = setOf(Crypto.privateKeyToValidator(maruConfig.validator!!.privateKey))
+    val initialValidators = setOf(Crypto.privateKeyToValidator(privateKeyBytes))
     val tmpGenesisStateRoot =
       BeaconState(
         latestBeaconBlockHeader = beaconBlockHeader,
@@ -122,6 +123,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
     val qbftProtocolFactory =
       QbftProtocolFactory(
         beaconChain = beaconChain,
+        privateKeyBytes = privateKeyBytes,
         maruConfig = maruConfig,
         metricsSystem = metricsSystem,
         finalizationStateProvider = finalizationStateProvider,

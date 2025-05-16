@@ -44,6 +44,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruApp(
   config: MaruConfig,
@@ -53,16 +54,43 @@ class MaruApp(
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
+  private var privateKeyBytes: ByteArray =
+    GeneratingFilePrivateKeySource(
+      config.persistence.privateKeyPath.toString(),
+    ).privateKeyBytes.toArray()
+
+//  private var p2pManager: P2PManager? = null
+
   init {
-    if (config.p2pConfig == null) {
-      log.warn("P2P is disabled!")
+    if (!config.persistence.privateKeyPath
+        .toFile()
+        .exists()
+    ) {
+      log.info(
+        "Private key file ${config.persistence.privateKeyPath} does not exist. A new private key will be generated and stored in that location.",
+      )
+    } else {
+      log.info(
+        "Private key file ${config.persistence.privateKeyPath} already exists. Maru will use the existing private key.",
+      )
     }
     if (config.validator == null) {
       log.info("Validator is not defined. Maru is running in follower-only node")
       log.error("Follower-only mode is not supported yet! Exiting application.")
       exitProcess(1)
     }
+    if (config.p2pConfig == null) {
+      log.info("P2PManager is not defined.")
+    }
     log.info(config.toString())
+
+//    config.p2pConfig?.let {
+//      p2pManager =
+//        P2PManager(
+//          privateKeyBytes = privateKeyBytes,
+//          p2pConfig = config.p2pConfig!!,
+//        )
+//    }
   }
 
   private val ethereumJsonRpcClient =
@@ -128,6 +156,7 @@ class MaruApp(
             qbftConsensusFactory =
               QbftProtocolFactoryWithBeaconChainInitialization(
                 maruConfig = config,
+                privateKeyBytes = privateKeyBytesWithoutPrefix(),
                 metricsSystem = metricsSystem,
                 finalizationStateProvider = finalizationStateProviderStub,
                 executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
@@ -153,6 +182,12 @@ class MaruApp(
       }
     }
 
+  private fun privateKeyBytesWithoutPrefix() =
+    privateKeyBytes
+      .slice(
+        privateKeyBytes.size - 32..privateKeyBytes.size - 1,
+      ).toByteArray()
+
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler> =
     followers.followers
       .mapValues {
@@ -161,11 +196,13 @@ class MaruApp(
       }
 
   fun start() {
+//    p2pManager?.start()
     protocolStarter.start()
     log.info("Maru is up")
   }
 
   fun stop() {
+//    p2pManager?.stop()
     protocolStarter.stop()
     log.info("Maru is down")
   }

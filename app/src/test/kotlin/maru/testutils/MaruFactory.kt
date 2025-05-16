@@ -30,7 +30,8 @@ import maru.p2p.P2PNetwork
 object MaruFactory {
   private val consensusConfigDir = "/e2e/config"
   private val pragueConsensusConfig = "$consensusConfigDir/qbft-prague.json"
-  const val VALIDATOR_PRIVATE_KEY = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+  const val VALIDATOR_PRIVATE_KEY = "1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+  const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX = "0x08021220" + VALIDATOR_PRIVATE_KEY
 
   private fun buildMaruConfigString(
     ethereumJsonRpcUrl: String,
@@ -40,6 +41,7 @@ object MaruFactory {
     """
     [persistence]
     data-path="$dataPath"
+    private-key-path="$dataPath/private-key"
 
     [sot-eth-endpoint]
     endpoint = "$ethereumJsonRpcUrl"
@@ -49,9 +51,10 @@ object MaruFactory {
 
     [p2p-config]
     port = 3322
+    ip-address = "127.0.0.1"
+    static-peers = []
 
     [validator]
-    private-key = "$VALIDATOR_PRIVATE_KEY"
     el-client-engine-api-endpoint = "$engineApiRpc"
     """.trimIndent()
 
@@ -78,6 +81,7 @@ object MaruFactory {
     val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
 
+    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
     return MaruApp(
       config = appConfig.domainFriendly(),
       beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
