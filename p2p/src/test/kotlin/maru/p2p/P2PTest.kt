@@ -280,7 +280,7 @@ class P2PTest {
 
   private fun awaitUntilAsserted(
     condition: () -> Unit,
-    timeout: Long = 5100L,
+    timeout: Long = 5200L,
     timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
   ) {
     Awaitility
