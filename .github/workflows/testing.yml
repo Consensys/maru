@@ -50,6 +50,11 @@ jobs:
 #        timeout-minutes: 15
 #        run: |
 #          ./gradlew app:integrationTestAllNeeded
+      - name: Upload test logs
+        uses: actions/upload-artifact@v3
+        with:
+            name: test-logs
+            path: build/test-results/**/*.log
       - name: Run Jacoco
         run: |
           ./gradlew jacocoAggregatedReport

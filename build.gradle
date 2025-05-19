@@ -201,6 +201,18 @@ subprojects {
   tasks.withType(Test) {
     // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
     maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?: (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
+
+    testLogging {
+      events "PASSED", "FAILED", "SKIPPED"
+    }
+
+    afterTest { descriptor, result ->
+      def logFile = file("${buildDir}/test-results/${descriptor.className}-${descriptor.name}.log")
+      logFile.parentFile.mkdirs()
+      logFile.text = "Test: ${descriptor.className}.${descriptor.name}\n"
+      logFile.append("Result: ${result.resultType}\n")
+      logFile.append("Duration: ${result.endTime - result.startTime} ms\n")
+    }
   }
 
   tasks.withType(JavaCompile) {
