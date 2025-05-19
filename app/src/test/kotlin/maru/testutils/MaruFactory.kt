@@ -30,7 +30,8 @@ import maru.p2p.P2PNetwork
 object MaruFactory {
   private val consensusConfigDir = "/e2e/config"
   private val pragueConsensusConfig = "$consensusConfigDir/qbft-prague.json"
-  const val VALIDATOR_PRIVATE_KEY = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+  const val VALIDATOR_PRIVATE_KEY = "1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+  const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX = "0x08021220$VALIDATOR_PRIVATE_KEY"
   const val VALIDATOR_ADDRESS = "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"
 
   private fun buildMaruValidatorConfigString(
@@ -46,11 +47,12 @@ object MaruFactory {
     validator-set = ["$VALIDATOR_ADDRESS"]
 
     [qbft-options.validator-duties]
-    private-key = "$VALIDATOR_PRIVATE_KEY"
     communication-margin=200m
 
     [p2p-config]
     port = 3322
+    ip-address = "127.0.0.1"
+    static-peers = []
 
     [payloadValidator]
     engine-api-endpoint = { endpoint = "$engineApiRpc" }
@@ -68,6 +70,8 @@ object MaruFactory {
 
     [p2p-config]
     port = 3322
+    ip-address = "127.0.0.1"
+    static-peers = []
 
     [qbft-options]
     validator-set = ["$VALIDATOR_ADDRESS"]
@@ -100,6 +104,8 @@ object MaruFactory {
           dataPath = dataDir.toString(),
         ),
       )
+    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
+
     val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
 
@@ -150,6 +156,7 @@ object MaruFactory {
           dataPath = dataDir.toString(),
         ),
       )
+    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
 
     // Build the genesis file string directly
     val genesisContent =
@@ -163,7 +170,7 @@ object MaruFactory {
           "$switchTimestamp": {
             "type": "qbft",
             "blockTimeSeconds": 1,
-            "feeRecipient": "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0",
+            "feeRecipient": "$VALIDATOR_ADDRESS",
             "elFork": "Prague"
           }
         }

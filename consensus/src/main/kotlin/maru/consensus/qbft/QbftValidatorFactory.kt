@@ -76,6 +76,7 @@ import org.hyperledger.besu.util.Subscribers
 
 class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
+  private val privateKeyBytes: ByteArray,
   private val qbftOptions: QbftOptions,
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
@@ -94,9 +95,8 @@ class QbftValidatorFactory(
       "communicationMargin can't be more than blockTimeSeconds"
     }
 
-    val validatorKey = validatorDuties.privateKey
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
-    val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(validatorKey))
+    val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(privateKeyBytes))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
     val securityModule = KeyPairSecurityModule(keyPair)
     val nodeKey = NodeKey(securityModule)

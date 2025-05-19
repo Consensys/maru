@@ -15,7 +15,6 @@
  */
 package maru.config
 
-import com.sksamuel.hoplite.Masked
 import java.net.URL
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -33,7 +32,6 @@ data class QbftOptionsDtoTomlFriendly(
 }
 
 data class ValidatorDutiesDtoTomlFriendly(
-  val privateKey: Masked,
   // Since we cannot finish block production instantly at expected time, we need to set some safety margin
   val communicationMargin: Duration,
   val messageQueueLimit: Int = 1000,
@@ -44,7 +42,6 @@ data class ValidatorDutiesDtoTomlFriendly(
 ) {
   fun toDomain(): ValidatorDuties =
     ValidatorDuties(
-      privateKey = privateKey.value.fromHexToByteArray(),
       communicationMargin = communicationMargin,
       messageQueueLimit = messageQueueLimit,
       roundExpiry = roundExpiry,

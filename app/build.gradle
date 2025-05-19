@@ -7,6 +7,7 @@ dependencies {
   implementation(project(":consensus"))
   implementation(project(":core"))
   implementation(project(":executionlayer"))
+  implementation(project(":p2p"))
   implementation(project(":storage"))
   implementation(project(":crypto"))
   implementation(project(":p2p"))
@@ -19,6 +20,7 @@ dependencies {
 
   implementation("org.hyperledger.besu.internal:metrics-core")
   implementation("org.hyperledger.besu.internal:algorithms")
+  implementation("tech.pegasys.teku.internal:p2p")
 
   testImplementation(project(":jvm-libs:test-utils"))
   testImplementation(testFixtures(project(":core")))

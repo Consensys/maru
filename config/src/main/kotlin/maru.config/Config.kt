@@ -23,6 +23,7 @@ import maru.core.Validator
 
 data class Persistence(
   val dataPath: Path,
+  val privateKeyPath: Path = dataPath.resolve("private-key"),
 )
 
 data class ApiEndpointConfig(
@@ -35,8 +36,30 @@ data class FollowersConfig(
 )
 
 data class P2P(
-  val port: UInt = 9000u,
-)
+  val ipAddress: String,
+  val port: String,
+  val staticPeers: List<String> = emptyList(),
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as P2P
+
+    if (ipAddress != other.ipAddress) return false
+    if (port != other.port) return false
+    if (staticPeers != other.staticPeers) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = ipAddress.hashCode()
+    result = 31 * result + port.hashCode()
+    result = 31 * result + staticPeers.hashCode()
+    return result
+  }
+}
 
 data class ValidatorElNode(
   val ethApiEndpoint: ApiEndpointConfig,
@@ -44,7 +67,6 @@ data class ValidatorElNode(
 )
 
 data class ValidatorDuties(
-  val privateKey: ByteArray,
   // Since we cannot finish block production instantly at expected time, we need to set some safety margin
   val communicationMargin: Duration,
   val messageQueueLimit: Int = 1000,
@@ -52,41 +74,7 @@ data class ValidatorDuties(
   val duplicateMessageLimit: Int = 100,
   val futureMessageMaxDistance: Long = 10L,
   val futureMessagesLimit: Long = 1000L,
-) {
-  init {
-    require(privateKey.size == 32) {
-      "validator key must be 32 bytes long"
-    }
-  }
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as ValidatorDuties
-
-    if (messageQueueLimit != other.messageQueueLimit) return false
-    if (duplicateMessageLimit != other.duplicateMessageLimit) return false
-    if (futureMessageMaxDistance != other.futureMessageMaxDistance) return false
-    if (futureMessagesLimit != other.futureMessagesLimit) return false
-    if (!privateKey.contentEquals(other.privateKey)) return false
-    if (communicationMargin != other.communicationMargin) return false
-    if (roundExpiry != other.roundExpiry) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = messageQueueLimit
-    result = 31 * result + duplicateMessageLimit
-    result = 31 * result + futureMessageMaxDistance.hashCode()
-    result = 31 * result + futureMessagesLimit.hashCode()
-    result = 31 * result + privateKey.contentHashCode()
-    result = 31 * result + communicationMargin.hashCode()
-    result = 31 * result + roundExpiry.hashCode()
-    return result
-  }
-}
+)
 
 data class QbftOptions(
   val validatorDuties: ValidatorDuties?,

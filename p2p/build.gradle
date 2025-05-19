@@ -18,5 +18,22 @@ plugins {
 }
 
 dependencies {
+  implementation(project(":config"))
+
+  implementation "io.libp2p:jvm-libp2p"
+  implementation "tech.pegasys.teku.internal:p2p"
+
+  implementation "tech.pegasys.teku.internal:spec"
+  implementation "tech.pegasys.teku.internal:storage"
+  implementation "tech.pegasys.teku.internal:unsigned"
+
+  implementation("org.hyperledger.besu:plugin-api")
+  implementation("org.hyperledger.besu.internal:core")
+  implementation("org.hyperledger.besu.internal:metrics-core")
+
+  implementation "io.libp2p:jvm-libp2p"
+
   implementation(project(":core"))
+
+  testImplementation(testFixtures(project(":core")))
 }

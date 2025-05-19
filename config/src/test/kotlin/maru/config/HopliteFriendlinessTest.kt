@@ -15,7 +15,6 @@
  */
 package maru.config
 
-import com.sksamuel.hoplite.Secret
 import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
@@ -30,6 +29,7 @@ class HopliteFriendlinessTest {
     """
     [persistence]
     data-path="/some/path"
+    private-key-path = "/private-key/path"
 
     [qbft-options]
     validator-set = ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"]
@@ -40,6 +40,8 @@ class HopliteFriendlinessTest {
 
     [p2p-config]
     port = 3322
+    ip-address = "127.0.0.1"
+    static-peers = []
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
@@ -61,17 +63,15 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          persistence = Persistence(Path("/some/path")),
+          persistence = Persistence(dataPath = Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
             QbftOptionsDtoTomlFriendly(
               ValidatorDutiesDtoTomlFriendly(
-                privateKey =
-                  Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
                 100.milliseconds,
               ),
               validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
             ),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           payloadValidator =
             PayloadValidatorDtoToml(
               ethApiEndpoint =
@@ -105,18 +105,16 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          persistence = Persistence(Path("/some/path")),
+          persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
             QbftOptionsDtoTomlFriendly(
               validatorDuties =
                 ValidatorDutiesDtoTomlFriendly(
-                  privateKey =
-                    Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
                   communicationMargin = 100.milliseconds,
                 ),
               validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
             ),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           payloadValidator =
             PayloadValidatorDtoToml(
               ethApiEndpoint =
@@ -140,8 +138,8 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
-          persistence = Persistence(Path("/some/path")),
-          p2pConfig = P2P(port = 3322u),
+          persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validatorElNode =
             ValidatorElNode(
               engineApiEndpoint =
@@ -158,9 +156,6 @@ class HopliteFriendlinessTest {
             QbftOptions(
               validatorDuties =
                 ValidatorDuties(
-                  privateKey =
-                    "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
-                      .fromHexToByteArray(),
                   communicationMargin = 100.milliseconds,
                 ),
               validatorSet =
@@ -189,14 +184,11 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
-          persistence = Persistence(Path("/some/path")),
+          persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
             QbftOptions(
               validatorDuties =
                 ValidatorDuties(
-                  privateKey =
-                    "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
-                      .fromHexToByteArray(),
                   communicationMargin = 100.milliseconds,
                 ),
               validatorSet =
@@ -207,7 +199,7 @@ class HopliteFriendlinessTest {
                   ),
                 ),
             ),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validatorElNode =
             ValidatorElNode(
               engineApiEndpoint =
@@ -247,7 +239,6 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         ValidatorDutiesDtoTomlFriendly(
-          privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
           communicationMargin = 100.milliseconds,
           messageQueueLimit = 1000,
           roundExpiry = 1.seconds,
