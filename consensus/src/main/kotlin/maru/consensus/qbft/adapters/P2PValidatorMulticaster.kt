@@ -48,6 +48,6 @@ class P2PValidatorMulticaster(
     message: MessageData,
     denyList: Collection<Address>,
   ) {
-    p2pNetwork.broadcastMessage(message.toDomain())
+    send(message)
   }
 }
