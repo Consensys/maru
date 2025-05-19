@@ -128,6 +128,7 @@ class QbftProtocolFactory(
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
             maruConfig.qbftOptions.communicationMargin,
+            maruConfig.qbftOptions.roundMaxBlockBuildTime,
           ),
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         clock = clock,
