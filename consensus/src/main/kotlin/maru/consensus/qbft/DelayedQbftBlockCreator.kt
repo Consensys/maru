@@ -81,12 +81,6 @@ class DelayedQbftBlockCreator(
     val parentBeaconBlockHeader = parentHeader.toBeaconBlockHeader()
     val executionPayload =
       try {
-        // ensure we have enough time to build the block
-        manager.getElapsedBlockBuildingTime()?.let {
-          if (it < 500L) {
-            Thread.sleep(500L - it)
-          }
-        }
         manager.finishBlockBuilding().get()
       } catch (e: Exception) {
         throw IllegalStateException("Execution payload unavailable, unable to create block", e)

@@ -16,7 +16,6 @@
 package maru.consensus.qbft
 
 import java.time.Clock
-import kotlin.math.max
 import kotlin.time.Duration
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
@@ -91,10 +90,5 @@ class EagerQbftBlockCreator(
     commitSeals: Collection<SECPSignature>,
   ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
 
-  private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long {
-    val targetSleepTime =
-      (nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(headerTimeStampSeconds)) * 1000 -
-        clock.millis() - config.communicationMargin.inWholeMilliseconds
-    return max(targetSleepTime, 0) // To avoid negative sleep time
-  }
+  private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long = 500
 }

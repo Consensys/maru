@@ -99,7 +99,9 @@ object TestEnvironment {
     }
 
   fun sendArbitraryTransaction(): EthSendTransaction {
-    val gasPrice = sequencerL2Client.ethGasPrice().send().gasPrice
+    // gas price must be greater than the cost so that block value is greater than that of an empty block
+    // otherwise Besu will choose the initial empty block when rebuilding it
+    val gasPrice = sequencerL2Client.ethGasPrice().send().gasPrice + BigInteger.ONE
     val gasLimit = BigInteger.valueOf(21000)
     val to = transactionManager.fromAddress
     return transactionManager.sendTransaction(gasPrice, gasLimit, to, "", BigInteger.ZERO)
