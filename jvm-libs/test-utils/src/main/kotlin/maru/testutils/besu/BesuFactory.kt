@@ -16,10 +16,7 @@
 package maru.testutils.besu
 
 import java.util.Optional
-import maru.consensus.ElFork
-import org.hyperledger.besu.ethereum.core.AddressHelpers
-import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration
-import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration.MutableInitValues
+import org.hyperledger.besu.crypto.KeyPairUtil
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorageFactory
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory
@@ -32,41 +29,18 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
+  const val MIN_BLOCK_TIME = 1L
 
-  private fun pickGenesis(elFork: ElFork): String =
-    when (elFork) {
-      ElFork.Prague -> PRAGUE_GENESIS
-    }
-
-  fun buildTestBesu(elFork: ElFork = ElFork.Prague): BesuNode {
-    val genesisFilePath = pickGenesis(elFork)
-    val genesisFile = GenesisConfigurationFactory.readGenesisFile(genesisFilePath)
-    val persistentStorageFactory: KeyValueStorageFactory =
-      RocksDBKeyValueStorageFactory(
-        RocksDBCLIOptions.create()::toDomainObject,
-        KeyValueSegmentIdentifier.entries,
-        RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS,
-      )
-    val miningConfiguration =
-      ImmutableMiningConfiguration
-        .builder()
-        .mutableInitValues(
-          MutableInitValues
-            .builder()
-            .coinbase(AddressHelpers.ofValue(1))
-            .isMiningEnabled(true)
-            .build(),
-        ).unstable(
-          ImmutableMiningConfiguration.Unstable
-            .builder()
-            .posBlockCreationRepetitionMinDuration(100)
-            .build(),
-        ).build()
-    val nodeConfiguration =
-      BesuNodeConfigurationBuilder()
-        .name("miner")
-        .jsonRpcEnabled()
-        .webSocketEnabled()
+  fun buildTestBesu(genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS)): BesuNode =
+    BesuNodeFactory().createMinerNode("miner") { builder: BesuNodeConfigurationBuilder ->
+      val persistentStorageFactory: KeyValueStorageFactory =
+        RocksDBKeyValueStorageFactory(
+          RocksDBCLIOptions.create()::toDomainObject,
+          KeyValueSegmentIdentifier.entries,
+          RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS,
+        )
+      val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
+      builder
         .storageImplementation(persistentStorageFactory)
         .genesisConfigProvider {
           Optional.of(
@@ -74,11 +48,28 @@ object BesuFactory {
           )
         }.devMode(false)
         .bootnodeEligible(false)
-        .jsonRpcTxPool()
         .engineRpcEnabled(true)
-        .jsonRpcDebug()
-        .miningConfiguration(miningConfiguration)
-        .build()
-    return BesuNodeFactory().create(nodeConfiguration)
+        .keyPair(defaultSigner)
+    }
+
+  fun buildSwitchableBesu(
+    switchTimestamp: Long = 0,
+    expectedBlocksInClique: Int = 0,
+  ): BesuNode {
+    val genesisContent =
+      BesuFactory::class.java
+        .getResourceAsStream(PRAGUE_GENESIS)
+        ?.bufferedReader()
+        ?.use { it.readText() }
+        ?: throw IllegalStateException("Could not read genesis file: $PRAGUE_GENESIS")
+
+    val ttd = expectedBlocksInClique * 2
+    val genesisFile =
+      genesisContent
+        .replace("\"shanghaiTime\": 0", "\"shanghaiTime\": $switchTimestamp")
+        .replace("\"cancunTime\": 0", "\"cancunTime\": $switchTimestamp")
+        .replace("\"pragueTime\": 0", "\"pragueTime\": $switchTimestamp")
+        .replace("\"terminalTotalDifficulty\": 0", "\"terminalTotalDifficulty\": $ttd")
+    return buildTestBesu(genesisFile)
   }
 }

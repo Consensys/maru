@@ -38,10 +38,10 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.Validator
-import maru.e2e.TestEnvironment.waitForInclusion
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
+import maru.testutils.Web3jTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -71,6 +71,7 @@ class CliqueToPosTest {
     private var pragueSwitchTimestamp: Long = 0
     private val genesisDir = File("../docker/initialization")
     private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
+    private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
 
     private fun parsePragueSwitchTimestamp(): Long {
       val objectMapper = ObjectMapper()
@@ -140,7 +141,7 @@ class CliqueToPosTest {
 
     log.info("Sequencer has switched to PoS")
     repeat(4) {
-      TestEnvironment.sendArbitraryTransaction().waitForInclusion()
+      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
 
     val postMergeBlock = getBlockByNumber(6)!!
@@ -151,6 +152,7 @@ class CliqueToPosTest {
     maru.stop()
   }
 
+  // TODO: Explore parallelization of this test
   @Order(2)
   @ParameterizedTest
   @MethodSource("followerNodes")
@@ -303,7 +305,7 @@ class CliqueToPosTest {
     if (sequencerBlock.blockNumber >= BigInteger.valueOf(5)) {
       return
     }
-    repeat(5) { TestEnvironment.sendArbitraryTransaction().waitForInclusion() }
+    repeat(5) { transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() } }
   }
 
   private fun assertNodeBlockHeight(

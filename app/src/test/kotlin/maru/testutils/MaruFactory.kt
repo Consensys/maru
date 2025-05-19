@@ -16,6 +16,7 @@
 package maru.testutils
 
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
 import maru.app.MaruApp
 import maru.app.MaruAppCli.Companion.loadConfig
@@ -31,7 +32,8 @@ import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 object MaruFactory {
   private val consensusConfigDir = "/e2e/config"
   private val pragueConsensusConfig = "$consensusConfigDir/qbft-prague.json"
-  const val VALIDATOR_PRIVATE_KEY = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+  const val VALIDATOR_PRIVATE_KEY = "1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+  const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX = "0x08021220" + VALIDATOR_PRIVATE_KEY
 
   private fun buildMaruConfigString(
     ethereumJsonRpcUrl: String,
@@ -41,6 +43,7 @@ object MaruFactory {
     """
     [persistence]
     data-path="$dataPath"
+    private-key-path="$dataPath/private-key"
 
     [sot-eth-endpoint]
     endpoint = "$ethereumJsonRpcUrl"
@@ -50,9 +53,10 @@ object MaruFactory {
 
     [p2p-config]
     port = 3322
+    ip-address = "127.0.0.1"
+    static-peers = []
 
     [validator]
-    private-key = "$VALIDATOR_PRIVATE_KEY"
     el-client-engine-api-endpoint = "$engineApiRpc"
     """.trimIndent()
 
@@ -79,6 +83,57 @@ object MaruFactory {
       )
     val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
+
+    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
+    return MaruApp(
+      config = appConfig.domainFriendly(),
+      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
+      gossiper = gossiper,
+      validatorMulticaster = validatorMulticaster,
+    )
+  }
+
+  fun buildTestMaruWithConsensusSwitch(
+    ethereumJsonRpcUrl: String,
+    engineApiRpc: String,
+    dataDir: Path,
+    switchTimestamp: Long,
+    gossiper: Gossiper = NoopGossiper,
+    validatorMulticaster: ValidatorMulticaster = NoopValidatorMulticaster,
+  ): MaruApp {
+    val appConfig =
+      Utils.parseTomlConfig<MaruConfigDtoToml>(
+        buildMaruConfigString(
+          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+          engineApiRpc = engineApiRpc,
+          dataPath = dataDir.toString(),
+        ),
+      )
+
+    // Build the genesis file string directly
+    val genesisContent =
+      """
+      {
+        "config": {
+          "0": {
+            "type": "delegated",
+            "blockTimeSeconds": 1
+          },
+          "$switchTimestamp": {
+            "type": "qbft",
+            "blockTimeSeconds": 1,
+            "feeRecipient": "0x0000000000000000000000000000000000000000",
+            "elFork": "Prague"
+          }
+        }
+      }
+      """.trimIndent()
+
+    val tempFile = Files.createTempFile("clique-to-qbft", ".json").toFile()
+    tempFile.deleteOnExit()
+    tempFile.writeText(genesisContent)
+
+    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(tempFile))
 
     return MaruApp(
       config = appConfig.domainFriendly(),
