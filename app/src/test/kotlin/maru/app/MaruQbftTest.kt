@@ -220,7 +220,6 @@ class MaruQbftTest {
   }
 
   @Test
-  @Disabled
   fun `Maru works after recreation`() {
     val blocksToProduce = 5
     repeat(blocksToProduce) {
