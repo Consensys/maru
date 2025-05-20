@@ -154,7 +154,7 @@ class EagerQbftBlockCreatorTest {
         round = 1,
         config =
           DelayedQbftBlockCreator.Config(
-            minBlockBuildingTime = 100.milliseconds,
+            minBlockBuildingTime = 0.milliseconds,
           ),
       )
     val nextBlockTimestampProvider = NextBlockTimestampProviderImpl(clock, forksSchedule)
@@ -173,7 +173,7 @@ class EagerQbftBlockCreatorTest {
         config =
           EagerQbftBlockCreator.Config(
             communicationMargin = 100.milliseconds,
-            maxBlockBuildTime = 500.milliseconds,
+            minBlockBuildTime = 500.milliseconds,
           ),
         beaconChain = beaconChain,
         nextBlockTimestampProvider = nextBlockTimestampProvider,

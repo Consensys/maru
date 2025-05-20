@@ -51,7 +51,7 @@ class EagerQbftBlockCreator(
 
   data class Config(
     val communicationMargin: Duration,
-    val maxBlockBuildTime: Duration,
+    val minBlockBuildTime: Duration,
   )
 
   override fun createBlock(
@@ -102,7 +102,7 @@ class EagerQbftBlockCreator(
     } else {
       // To avoid taking to too long to build a block and not giving the delayed block creator
       // enough time to build the next block
-      min(targetSleepTime, config.maxBlockBuildTime.inWholeMilliseconds)
+      min(targetSleepTime, config.minBlockBuildTime.inWholeMilliseconds)
     }
   }
 }

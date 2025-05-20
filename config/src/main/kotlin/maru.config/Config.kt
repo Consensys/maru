@@ -79,7 +79,7 @@ data class Validator(
 data class QbftOptions(
   // Since we cannot finish block production instantly at expected time, we need to set some safety margin
   val communicationMargin: Duration,
-  val roundMaxBlockBuildTime: Duration = 500.milliseconds,
+  val minBlockBuildTime: Duration = 500.milliseconds,
   val messageQueueLimit: Int = 1000,
   val roundExpiry: Duration = 1.seconds,
   val duplicateMessageLimit: Int = 100,

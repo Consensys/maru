@@ -97,7 +97,7 @@ class DelayedQbftBlockCreator(
           if (it < minBlockTimeMs) {
             val sleepTime = minBlockTimeMs - it
             log.debug("Waiting for {} milliseconds to ensure enough time for block building", sleepTime)
-//            Thread.sleep(sleepTime)
+            Thread.sleep(sleepTime)
           }
         }
         manager.finishBlockBuilding().get()

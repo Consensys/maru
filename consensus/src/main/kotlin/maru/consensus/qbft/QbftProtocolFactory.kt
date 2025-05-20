@@ -17,7 +17,6 @@ package maru.consensus.qbft
 
 import java.time.Clock
 import java.util.concurrent.Executors
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toJavaDuration
 import maru.config.MaruConfig
 import maru.consensus.ForkSpec
@@ -129,9 +128,9 @@ class QbftProtocolFactory(
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
             maruConfig.qbftOptions.communicationMargin,
-            maruConfig.qbftOptions.roundMaxBlockBuildTime,
+            maruConfig.qbftOptions.minBlockBuildTime,
           ),
-        delayedQbftBlockCreatorConfig = DelayedQbftBlockCreator.Config(500.milliseconds),
+        delayedQbftBlockCreatorConfig = DelayedQbftBlockCreator.Config(maruConfig.qbftOptions.minBlockBuildTime),
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         clock = clock,
       )
