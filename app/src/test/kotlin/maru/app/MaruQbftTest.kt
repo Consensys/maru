@@ -96,21 +96,20 @@ class MaruQbftTest {
   private fun sendTransactionAndAssertExecution(
     recipient: Account,
     amount: Amount,
-    i: Int,
   ) {
     val transfer = transactionsHelper.createTransfer(recipient, amount)
     val txHash = besuNode.execute(transfer)
     assertThat(txHash).isNotNull()
-    log.info("Sending transaction {} {}, transaction data ", i, txHash)
+    log.info("Sending transaction {}, transaction data ", txHash)
     transactionsHelper.ethConditions.expectSuccessfulTransactionReceipt(txHash.toString()).verify(besuNode)
-    log.info("Transaction was mined {} {}", i, txHash)
+    log.info("Transaction {} was mined", txHash)
   }
 
   @Test
   fun `Maru is producing blocks with expected block time and emits messages`() {
     val blocksToProduce = 10
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100), it)
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
     val blocks = besuNode.getMinedBlocks(blocksToProduce)
@@ -186,14 +185,14 @@ class MaruQbftTest {
   fun `Maru works if Besu stops mid flight`() {
     val blocksToProduce = 5
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100), it)
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
     cluster.stop()
     Thread.sleep(3000)
     cluster.start(besuNode)
 
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100), it)
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
     val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
@@ -206,13 +205,13 @@ class MaruQbftTest {
     // TODO: This test cannot work as the LibP2PNetwork is not able to restart
     val blocksToProduce = 5
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100), it)
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
     maruNode.stop()
     Thread.sleep(3000)
     maruNode.start()
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100), it)
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
     val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
@@ -223,7 +222,7 @@ class MaruQbftTest {
   fun `Maru works after recreation`() {
     val blocksToProduce = 5
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100), it)
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
     maruNode.stop()
     maruNode.close()
@@ -240,7 +239,7 @@ class MaruQbftTest {
     // affected by start and stop
     maruNode.start()
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100), it)
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
     val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
