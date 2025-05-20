@@ -16,6 +16,7 @@
 package maru.consensus.qbft
 
 import java.math.BigInteger
+import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
@@ -73,6 +74,10 @@ class DelayedQbftBlockCreatorTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         round = 0,
+        config =
+          DelayedQbftBlockCreator.Config(
+            minBlockBuildingTime = 100.milliseconds,
+          ),
       )
     val createdBlock = blockCreator.createBlock(1000L, parentHeader)
     val createBeaconBlock = createdBlock.toBeaconBlock()
@@ -129,6 +134,10 @@ class DelayedQbftBlockCreatorTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         round = 0,
+        config =
+          DelayedQbftBlockCreator.Config(
+            minBlockBuildingTime = 100.milliseconds,
+          ),
       )
     assertThatThrownBy {
       blockCreator.createBlock(1000L, parentHeader)
@@ -148,7 +157,17 @@ class DelayedQbftBlockCreatorTest {
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 0))).thenReturn(Address.ZERO)
 
     val blockCreator =
-      DelayedQbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 0)
+      DelayedQbftBlockCreator(
+        executionLayerManager,
+        proposerSelector,
+        validatorProvider,
+        beaconChain,
+        0,
+        config =
+          DelayedQbftBlockCreator.Config(
+            minBlockBuildingTime = 100.milliseconds,
+          ),
+      )
     assertThatThrownBy {
       blockCreator.createBlock(1000L, parentHeader)
     }.isInstanceOf(
@@ -170,6 +189,10 @@ class DelayedQbftBlockCreatorTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         round = 0,
+        config =
+          DelayedQbftBlockCreator.Config(
+            minBlockBuildingTime = 100.milliseconds,
+          ),
       )
     val createSealedBlock = blockCreator.createSealedBlock(block, round, seals)
     val createdSealedBeaconBlock = createSealedBlock.toSealedBeaconBlock()

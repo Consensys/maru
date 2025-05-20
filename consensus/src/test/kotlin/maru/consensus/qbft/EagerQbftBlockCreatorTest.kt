@@ -152,6 +152,10 @@ class EagerQbftBlockCreatorTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         round = 1,
+        config =
+          DelayedQbftBlockCreator.Config(
+            minBlockBuildingTime = 100.milliseconds,
+          ),
       )
     val nextBlockTimestampProvider = NextBlockTimestampProviderImpl(clock, forksSchedule)
     val genesisBlockHash = sealedGenesisBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash

@@ -97,4 +97,6 @@ interface ExecutionLayerManager {
   ): SafeFuture<ForkChoiceUpdatedResult>
 
   fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus>
+
+  fun getElapsedBlockBuildingTime(): Long?
 }

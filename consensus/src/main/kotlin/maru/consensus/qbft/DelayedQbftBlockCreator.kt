@@ -15,6 +15,7 @@
  */
 package maru.consensus.qbft
 
+import kotlin.time.Duration
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftSealedBlockAdapter
@@ -33,6 +34,8 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
@@ -51,7 +54,14 @@ class DelayedQbftBlockCreator(
   private val validatorProvider: ValidatorProvider,
   private val beaconChain: BeaconChain,
   private val round: Int,
+  private val config: Config,
 ) : QbftBlockCreator {
+  private val log: Logger = LogManager.getLogger(this.javaClass)
+
+  data class Config(
+    val minBlockBuildingTime: Duration,
+  )
+
   companion object {
     fun createSealedBlock(
       qbftBlock: QbftBlock,
@@ -81,6 +91,15 @@ class DelayedQbftBlockCreator(
     val parentBeaconBlockHeader = parentHeader.toBeaconBlockHeader()
     val executionPayload =
       try {
+        // ensure we have enough time to build the block
+        manager.getElapsedBlockBuildingTime()?.let {
+          val minBlockTimeMs = config.minBlockBuildingTime.inWholeMilliseconds
+          if (it < minBlockTimeMs) {
+            val sleepTime = minBlockTimeMs - it
+            log.debug("Waiting for {} milliseconds to ensure enough time for block building", sleepTime)
+//            Thread.sleep(sleepTime)
+          }
+        }
         manager.finishBlockBuilding().get()
       } catch (e: Exception) {
         throw IllegalStateException("Execution payload unavailable, unable to create block", e)
