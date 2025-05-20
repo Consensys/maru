@@ -69,30 +69,11 @@ jobs:
       has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
     secrets: inherit
 
-  compute-commit-hash:
-    runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-small]
-    outputs:
-      commithash: ${{ steps.compute-commit-hash.outputs.commithash }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Compute commit hash
-        id: compute-commit-hash
-        shell: bash
-        run: |
-          # For PR, GITHUB_SHA is NOT the last commit pushed onto the PR branch - https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "commithash=$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" >> $GITHUB_OUTPUT
-          else
-            echo "commithash=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
-          fi
-
   build-and-publish:
-    needs: [ compute-commit-hash, testing, run-e2e-tests ]
+    needs: [ testing, run-e2e-tests ]
     if: ${{ always() && !cancelled() && (needs.testing.result == 'skipped' || needs.testing.result == 'success') && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
-      commit_tag: needs.compute-commit-hash.outputs.commithash
       develop_tag: 'develop'
       image_name: 'consensys/maru'
       push_image: true

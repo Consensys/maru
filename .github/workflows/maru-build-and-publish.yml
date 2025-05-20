@@ -1,11 +1,12 @@
-name: maru-build-and-publish
+name: Build and Publish Maru Image
 
 on:
   workflow_call:
     inputs:
       commit_tag:
-        required: true
+        required: false
         type: string
+        default: ''
       develop_tag:
         required: true
         type: string
@@ -24,9 +25,10 @@ on:
   workflow_dispatch:
     inputs:
       commit_tag:
-        description: 'Image tag'
-        required: true
+        description: 'Image tag, if not given, HEAD commit hash will be used'
+        required: false
         type: string
+        default: ''
       develop_tag:
         description: 'Image tag will be "develop" if target branch is main'
         required: true
@@ -45,6 +47,11 @@ on:
         type: boolean
         default: true
 
+permissions:
+  actions: read
+  id-token: write
+  contents: write
+
 concurrency:
   group: maru-build-and-publish-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -52,7 +59,7 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
-    name: Maru build
+    name: Maru build and publish
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}
@@ -62,6 +69,18 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
+      - name: Set commit tag if not given
+        if: ${{ inputs.commit_tag == '' }}
+        run: |
+          # For PR, GITHUB_SHA is NOT the last commit pushed onto the PR branch - https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "COMMIT_TAG=$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" >> $GITHUB_ENV
+          else
+            echo "COMMIT_TAG=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_ENV
+          fi
+          echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}" >> $GITHUB_ENV
+          echo "COMMIT_TAG: ${{ env.COMMIT_TAG }}"
+          echo "TAGS: ${{ env.TAGS }}"
       - name: Set develop tag if main branch
         if: ${{ github.ref == 'refs/heads/main' }}
         run: |
