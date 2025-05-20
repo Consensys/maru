@@ -104,12 +104,14 @@ class CliqueToPosTest {
     @JvmStatic
     fun afterAll() {
       File("docker_logs").mkdirs()
-      val logsInputStream = qbftCluster.dockerExecutable().execute("ps").inputStream
-      Files.copy(
-        logsInputStream,
-        Path.of("docker_logs/containers.txt"),
-        StandardCopyOption.REPLACE_EXISTING,
-      )
+      qbftCluster.dockerExecutable().execute("ps").inputStream.also {
+        Files.copy(
+          it,
+          Path.of("docker_logs/containers.txt"),
+          StandardCopyOption.REPLACE_EXISTING,
+        )
+      }
+
       TestEnvironment.allClients.forEach {
         val containerShortName = it.key
         val logsInputStream =
