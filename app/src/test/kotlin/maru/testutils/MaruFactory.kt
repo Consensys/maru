@@ -94,8 +94,7 @@ object MaruFactory {
     )
   }
 
-  fun
-    buildTestMaruWithConsensusSwitch(
+  fun buildTestMaruWithConsensusSwitch(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
