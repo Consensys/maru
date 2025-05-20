@@ -213,11 +213,7 @@ class CliqueToPosTest {
         if (nodeName.contains("follower-geth")) {
           val latestBlockFromGeth =
             getBlockByNumber(
-              blockNumber = 9,
               retreiveTransactions = true,
-              ethClient = nodeEthereumClient,
-            )!!
-          // For some reason it doesn't set latest block correctly, but the block is available
           assertThat(latestBlockFromGeth).isNotNull
         } else {
           assertNodeBlockHeight(nodeEthereumClient)
