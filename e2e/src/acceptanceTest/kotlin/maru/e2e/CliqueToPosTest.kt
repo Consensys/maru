@@ -198,7 +198,7 @@ class CliqueToPosTest {
       .ignoreExceptions()
       .alias(nodeName)
       .untilAsserted {
-        if (nodeName.contains("erigon")) {
+        if (nodeName.contains("erigon") || nodeName.contains("nethermind")) {
           // For some reason Erigon and Nethermind need a restart after PoS transition
           restartNodeKeepingState(nodeName, nodeEthereumClient)
         }
