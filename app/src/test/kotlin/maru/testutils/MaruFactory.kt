@@ -50,7 +50,7 @@ object MaruFactory {
 
     [qbft-options]
     communication-margin=10m
-    round-max-block-build-time=50m
+    min-block-build-time==50m
 
     [p2p-config]
     port = 3322
@@ -94,7 +94,8 @@ object MaruFactory {
     )
   }
 
-  fun buildTestMaruWithConsensusSwitch(
+  fun
+    buildTestMaruWithConsensusSwitch(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
