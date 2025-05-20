@@ -46,7 +46,7 @@ on:
         default: true
 
 concurrency:
-  group: coordinator-build-and-publish-${{ github.workflow }}-${{ github.ref }}
+  group: maru-build-and-publish-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -91,7 +91,6 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v3
       - name: Docker meta
-        id: coordinator
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_NAME }}
