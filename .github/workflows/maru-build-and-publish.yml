@@ -1,4 +1,4 @@
-name: Build and Publish Maru Image
+name: maru-build-and-publish
 
 on:
   workflow_call:
