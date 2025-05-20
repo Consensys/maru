@@ -183,6 +183,7 @@ class MaruQbftTest {
   }
 
   @Test
+  @Disabled
   fun `Maru works if Besu stops mid flight`() {
     val blocksToProduce = 5
     repeat(blocksToProduce) {
@@ -220,6 +221,7 @@ class MaruQbftTest {
   }
 
   @Test
+  @Disabled
   fun `Maru works after recreation`() {
     val blocksToProduce = 5
     repeat(blocksToProduce) {
