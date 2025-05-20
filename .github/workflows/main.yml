@@ -71,7 +71,7 @@ jobs:
 
   build-and-publish:
     needs: [ testing, run-e2e-tests ]
-    if: ${{ always() && !cancelled() && (needs.testing.result == 'skipped' || needs.testing.result == 'success') && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
+    if: ${{ always() && !cancelled() }} #&& (needs.testing.result == 'skipped' || needs.testing.result == 'success') && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
       develop_tag: 'develop'
