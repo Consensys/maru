@@ -74,6 +74,8 @@ jobs:
     outputs:
       commithash: ${{ steps.compute-commit-hash.outputs.commithash }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Compute commit hash
         id: compute-commit-hash
         shell: bash
@@ -87,7 +89,7 @@ jobs:
 
   build-and-publish:
     needs: [ compute-commit-hash, testing, run-e2e-tests ]
-    if: ${{ always() && !cancelled() && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
+    if: ${{ always() && !cancelled() && (needs.testing.result == 'skipped' || needs.testing.result == 'success') && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
       commit_tag: needs.compute-commit-hash.outputs.commithash
