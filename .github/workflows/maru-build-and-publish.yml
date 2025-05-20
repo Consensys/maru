@@ -76,12 +76,13 @@ jobs:
         run: |
           # For PR, GITHUB_SHA is NOT the last commit pushed onto the PR branch - https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "COMMIT_TAG=$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" >> $GITHUB_ENV
+            COMMIT_TAG=$(git rev-parse --short ${{ github.event.pull_request.head.sha }})
           else
-            echo "COMMIT_TAG=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_ENV
+            COMMIT_TAG=$(git rev-parse --short $GITHUB_SHA)
           fi
-          echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}" >> $GITHUB_ENV
-          echo "COMMIT_TAG: ${{ env.COMMIT_TAG }}"
+          echo "COMMIT_TAG=$COMMIT_TAG" >> $GITHUB_ENV
+          echo "TAGS=${{ env.IMAGE_NAME }}:$COMMIT_TAG" >> $GITHUB_ENV
+          echo "COMMIT_TAG: ${{ env.COMMIT_TAG }} $COMMIT_TAG"
           echo "TAGS: ${{ env.TAGS }}"
       - name: Set develop tag if main branch
         if: ${{ github.ref == 'refs/heads/main' }}
