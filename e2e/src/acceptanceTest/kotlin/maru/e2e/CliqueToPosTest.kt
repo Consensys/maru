@@ -188,18 +188,6 @@ class CliqueToPosTest {
           .timeout(30.seconds.toJavaDuration())
       }
 
-    if (nodeName.contains("besu")) {
-      // Required to change validation rules from Clique to PostMerge
-      // TODO: investigate this issue more. It was working happen with Dummy Consensus
-      syncTarget(engineApiConfig, 9)
-      awaitCondition
-        .ignoreExceptions()
-        .alias(nodeName)
-        .untilAsserted {
-          assertNodeBlockHeight(nodeEthereumClient, 9L)
-        }
-    }
-
     awaitCondition
       .ignoreExceptions()
       .alias(nodeName)
