@@ -104,6 +104,12 @@ class CliqueToPosTest {
     @JvmStatic
     fun afterAll() {
       File("docker_logs").mkdirs()
+      val logsInputStream = qbftCluster.dockerExecutable().execute("ps").inputStream
+      Files.copy(
+        logsInputStream,
+        Path.of("docker_logs/containers.txt"),
+        StandardCopyOption.REPLACE_EXISTING,
+      )
       TestEnvironment.allClients.forEach {
         val containerShortName = it.key
         val logsInputStream =
@@ -192,8 +198,8 @@ class CliqueToPosTest {
       .ignoreExceptions()
       .alias(nodeName)
       .untilAsserted {
-        if (nodeName.contains("erigon") || nodeName.contains("nethermind")) {
-          // For some reason Erigon needs a restart after PoS transition
+        if (nodeName.contains("erigon")) {
+          // For some reason Erigon and Nethermind need a restart after PoS transition
           restartNodeKeepingState(nodeName, nodeEthereumClient)
         }
         // TODO: Sync should be done entirely by Maru in the future
