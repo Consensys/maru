@@ -131,7 +131,7 @@ class CliqueToPosTest {
     }
 
     private fun containerShortNameToFullId(containerShortName: String) =
-      "${qbftCluster.projectName().asString()}-$containerShortName-1"
+      "${qbftCluster.projectName().asString()}-$containerShortName"
 
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
 
