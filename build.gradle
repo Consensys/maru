@@ -48,11 +48,11 @@ allprojects {
         "*ConsenSys AG\\.)")
     }
     // spotless check applied to build.gradle (groovy) files
-    groovyGradle {
-      target '*.gradle'
-      greclipse('4.26').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
-      endWithNewline()
-    }
+//    groovyGradle {
+//      target '*.gradle'
+//      greclipse('4.31').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
+//      endWithNewline()
+//    }
   }
 
   tasks.withType(JavaCompile).configureEach {

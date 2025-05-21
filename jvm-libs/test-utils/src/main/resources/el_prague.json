@@ -54,6 +54,11 @@
     "0xa4664C40AACeBD82A2Db79f0ea36C06Bc6A19Adb": {
       "balance": "1000000000000000000000000000"
     },
+    "0x0000F90827F1C53a10cb7A02335B175320002935": {
+      "balance": "0",
+      "nonce": "1",
+      "code": "0x3373fffffffffffffffffffffffffffffffffffffffe14604657602036036042575f35600143038111604257611fff81430311604257611fff9006545f5260205ff35b5f5ffd5b5f35611fff60014303065500"
+    },
     "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f": {
       "comment": "This is the account used to sign the transactions that create a validator exit, and consolidation request",
       "balance": "1000000000000000000000000000"
