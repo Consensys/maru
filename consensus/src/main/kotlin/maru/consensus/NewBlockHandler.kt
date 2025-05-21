@@ -27,7 +27,8 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class SealedBlockHandlerAdapter(
   val adaptee: NewBlockHandler,
 ) : SealedBlockHandler {
-  override fun handleSealedBlock(block: SealedBeaconBlock): SafeFuture<*> = adaptee.handleNewBlock(block.beaconBlock)
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> =
+    adaptee.handleNewBlock(sealedBeaconBlock.beaconBlock)
 }
 
 fun interface NewBlockHandler {
@@ -38,9 +39,9 @@ typealias AsyncFunction<I, O> = (I) -> SafeFuture<O>
 
 abstract class CallAndForgetFutureMultiplexer<I, O>(
   handlersMap: Map<String, AsyncFunction<I, O>>,
+  protected val log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*, *>::javaClass)!!,
 ) {
   private val handlersMap = ConcurrentHashMap(handlersMap)
-  private val log = LogManager.getLogger(this::javaClass)
 
   protected abstract fun Logger.logError(
     handlerName: String,
@@ -79,14 +80,23 @@ abstract class CallAndForgetFutureMultiplexer<I, O>(
 
 class NewBlockHandlerMultiplexer(
   handlersMap: Map<String, NewBlockHandler>,
+  log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*, *>::javaClass)!!,
 ) : CallAndForgetFutureMultiplexer<BeaconBlock, Unit>(
-    handlersMap.mapValues { newBlockHandler ->
-      {
-        newBlockHandler.value.handleNewBlock(it).thenApply { }
-      }
-    },
+    handlersMap = blockHandlersToGenericHandlers(handlersMap),
+    log = log,
   ),
   NewBlockHandler {
+  companion object {
+    fun blockHandlersToGenericHandlers(
+      handlersMap: Map<String, NewBlockHandler>,
+    ): Map<String, AsyncFunction<BeaconBlock, Unit>> =
+      handlersMap.mapValues { newSealedBlockHandler ->
+        {
+          newSealedBlockHandler.value.handleNewBlock(it).thenApply { }
+        }
+      }
+  }
+
   override fun Logger.logError(
     handlerName: String,
     input: BeaconBlock,

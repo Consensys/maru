@@ -15,11 +15,14 @@
  */
 package maru.consensus.blockimport
 
+import kotlin.text.contains
 import maru.core.ext.DataGenerators
 import maru.p2p.SealedBlockHandler
+import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.mock
@@ -58,11 +61,19 @@ class NewSealedBlockHandlerMultiplexerTest {
       mock<SealedBlockHandler> {
         on { handleSealedBlock(any()) } doThrow RuntimeException("fail")
       }
-    val multiplexer = NewSealedBlockHandlerMultiplexer(mapOf("h" to handler))
+    val logger: Logger = mock()
+    val multiplexer = NewSealedBlockHandlerMultiplexer(mapOf(pair = "h" to handler), logger)
 
     val future = multiplexer.handleSealedBlock(sealedBlock)
     future.join()
     // No exception should propagate, error is logged
     assertThat(future.isDone).isTrue()
+    verify(logger).error(
+      argThat<String> {
+        contains("New sealed block handler h failed processing") &&
+          contains("number=${sealedBlock.beaconBlock.beaconBlockHeader.number}")
+      },
+      any<Throwable>(),
+    )
   }
 }

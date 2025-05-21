@@ -20,6 +20,7 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.flatMap
 import com.github.michaelbull.result.mapError
+import maru.consensus.AsyncFunction
 import maru.consensus.CallAndForgetFutureMultiplexer
 import maru.consensus.state.StateTransition
 import maru.consensus.validation.BeaconBlockValidatorFactory
@@ -40,31 +41,37 @@ fun interface SealedBeaconBlockImporter {
 
 class NewSealedBlockHandlerMultiplexer(
   handlersMap: Map<String, SealedBlockHandler>,
+  log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*, *>::javaClass)!!,
 ) : CallAndForgetFutureMultiplexer<SealedBeaconBlock, Unit>(
-    handlersMap.mapValues { newSealedBlockHandler ->
-      {
-        newSealedBlockHandler.value.handleSealedBlock(it).thenApply { }
-      }
-    },
+    handlersMap = sealedBlockHandlersToGenericHandlers(handlersMap),
+    log = log,
   ),
   SealedBlockHandler {
+  companion object {
+    fun sealedBlockHandlersToGenericHandlers(
+      handlersMap: Map<String, SealedBlockHandler>,
+    ): Map<String, AsyncFunction<SealedBeaconBlock, Unit>> =
+      handlersMap.mapValues { newSealedBlockHandler ->
+        {
+          newSealedBlockHandler.value.handleSealedBlock(it).thenApply { }
+        }
+      }
+  }
+
   override fun Logger.logError(
     handlerName: String,
     input: SealedBeaconBlock,
     ex: Exception,
   ) {
     this.error(
-      "New block handler $handlerName failed processing" +
-        "blockHash=${input.beaconBlock.beaconBlockHeader.hash.encodeHex()}, number=${
-          input.beaconBlock.beaconBlockHeader
-            .number
-        } " +
+      "New sealed block handler $handlerName failed processing" +
+        "blockHash=${input.beaconBlock.beaconBlockHeader.hash}, number=${input.beaconBlock.beaconBlockHeader.number} " +
         "executionPayloadBlockNumber=${input.beaconBlock.beaconBlockBody.executionPayload.blockNumber}!",
       ex,
     )
   }
 
-  override fun handleSealedBlock(block: SealedBeaconBlock): SafeFuture<*> = handle(block)
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> = handle(sealedBeaconBlock)
 }
 
 /**

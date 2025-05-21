@@ -19,7 +19,7 @@ import maru.core.SealedBeaconBlock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface SealedBlockHandler {
-  fun handleSealedBlock(block: SealedBeaconBlock): SafeFuture<*>
+  fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*>
 }
 
 /**
