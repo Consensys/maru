@@ -24,7 +24,7 @@ jobs:
           list-files: "json"
           filters: |
             consensus-client:
-              - *
+              - '**'
 
       - name: Filter out commit changes
         uses: dorny/paths-filter@v3
