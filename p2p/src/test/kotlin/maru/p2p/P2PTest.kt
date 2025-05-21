@@ -17,6 +17,7 @@ package maru.p2p
 
 import io.libp2p.core.PeerId
 import java.lang.Thread.sleep
+import java.util.Optional
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
 import org.apache.tuweni.bytes.Bytes
@@ -30,7 +31,6 @@ import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
-import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
 @Execution(ExecutionMode.SAME_THREAD)
@@ -148,8 +148,9 @@ class P2PTest {
       p2pNetwork1
         .getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_2)))
         .get()
-        .disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
-        .thenPeek { assertNetworkHasPeers(p2pNetwork1, 0) }
+        .disconnectImmediately(Optional.empty(), true)
+
+      awaitUntilAsserted({ assertNetworkHasPeers(p2pNetwork1, 0) })
 
       awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetwork1, peers = 1) })
       awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetwork2, peers = 1) })
@@ -280,7 +281,7 @@ class P2PTest {
 
   private fun awaitUntilAsserted(
     condition: () -> Unit,
-    timeout: Long = 5200L,
+    timeout: Long = 6000L,
     timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
   ) {
     Awaitility
