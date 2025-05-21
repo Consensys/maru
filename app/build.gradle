@@ -46,3 +46,18 @@ tasks.named("distTar").configure {
 tasks.named("distZip").configure {
   duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
+
+application {
+  mainClass = 'maru.app.CliEntrypoint'
+}
+
+jar {
+  archiveBaseName = 'maru'
+  manifest {
+    attributes(
+      'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+      'Main-Class': 'maru.app.CliEntrypoint',
+      'Multi-Release': 'true'
+      )
+  }
+}
