@@ -10,7 +10,6 @@ dependencies {
   implementation(project(":p2p"))
   implementation(project(":storage"))
   implementation(project(":crypto"))
-  implementation(project(":p2p"))
   implementation(project(":serialization"))
   implementation(project(":jvm-libs:extensions"))
   implementation(project(":jvm-libs:mappers"))
