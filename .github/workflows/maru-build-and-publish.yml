@@ -122,7 +122,6 @@ jobs:
           build-contexts: |
             libs=./app/build/install/app/lib/
             maru=./app/build/libs/
-          # file: ./app/Dockerfile
           platforms: linux/amd64
           load: true
           push: false
