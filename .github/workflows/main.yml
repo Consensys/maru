@@ -41,6 +41,9 @@ jobs:
     needs: [ filter-commit-changes ]
     if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/testing.yml
+    with:
+#      commit-tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+      consensus-client-changed: ${{ needs.filter-commit-changes.outputs.consensus-client }}
     secrets: inherit
 
   run-e2e-tests:
