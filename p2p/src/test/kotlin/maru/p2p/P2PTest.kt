@@ -17,7 +17,6 @@ package maru.p2p
 
 import io.libp2p.core.PeerId
 import java.lang.Thread.sleep
-import java.util.Optional
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
 import org.apache.tuweni.bytes.Bytes
