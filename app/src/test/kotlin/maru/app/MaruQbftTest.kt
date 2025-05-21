@@ -46,9 +46,11 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
+@Tag("no-parallel")
 class MaruQbftTest {
   private lateinit var cluster: Cluster
   private lateinit var besuNode: BesuNode
