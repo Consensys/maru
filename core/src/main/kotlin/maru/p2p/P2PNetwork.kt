@@ -18,8 +18,43 @@ package maru.p2p
 import maru.core.SealedBeaconBlock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-fun interface SealedBlockHandler {
-  fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*>
+// Mimicking ValidationResultCode for P2P communication
+enum class ValidationResultCode {
+  ACCEPT,
+  REJECT,
+  IGNORE,
+  KEEP_FOR_THE_FUTURE,
+}
+
+sealed interface ValidationResult {
+  val code: ValidationResultCode
+
+  companion object {
+    object Successful : ValidationResult {
+      override val code: ValidationResultCode
+        get() = ValidationResultCode.ACCEPT
+    }
+
+    data class Failed(
+      val error: String,
+      val cause: Throwable? = null,
+    ) : ValidationResult {
+      override val code: ValidationResultCode
+        get() = ValidationResultCode.REJECT
+    }
+
+    data class KindaFine(
+      val error: String,
+      val cause: Throwable,
+    ) : ValidationResult {
+      override val code: ValidationResultCode
+        get() = ValidationResultCode.IGNORE
+    }
+  }
+}
+
+fun interface SealedBlockHandler<T> {
+  fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<T>
 }
 
 /**
@@ -50,7 +85,7 @@ interface P2PNetwork {
   /**
    * @return subscription id
    */
-  fun subscribeToBlocks(subscriber: SealedBlockHandler): Int
+  fun subscribeToBlocks(subscriber: SealedBlockHandler<ValidationResult>): Int
 
   fun unsubscribe(subscriptionId: Int)
 }

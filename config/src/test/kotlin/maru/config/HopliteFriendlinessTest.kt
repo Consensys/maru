@@ -42,6 +42,7 @@ class HopliteFriendlinessTest {
     port = 3322
     ip-address = "127.0.0.1"
     static-peers = []
+    reconnect-delay = 500m
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
@@ -71,7 +72,13 @@ class HopliteFriendlinessTest {
               ),
               validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
             ),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig =
+            P2P(
+              ipAddress = "127.0.0.1",
+              port = "3322",
+              staticPeers = emptyList(),
+              reconnectDelay = 500.milliseconds,
+            ),
           payloadValidator =
             PayloadValidatorDtoToml(
               ethApiEndpoint =
@@ -114,7 +121,13 @@ class HopliteFriendlinessTest {
                 ),
               validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
             ),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig =
+            P2P(
+              ipAddress = "127.0.0.1",
+              port = "3322",
+              staticPeers = emptyList(),
+              reconnectDelay = 500.milliseconds,
+            ),
           payloadValidator =
             PayloadValidatorDtoToml(
               ethApiEndpoint =
@@ -139,7 +152,13 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfig(
           persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig =
+            P2P(
+              ipAddress = "127.0.0.1",
+              port = "3322",
+              staticPeers = emptyList(),
+              reconnectDelay = 500.milliseconds,
+            ),
           validatorElNode =
             ValidatorElNode(
               engineApiEndpoint =
@@ -199,7 +218,13 @@ class HopliteFriendlinessTest {
                   ),
                 ),
             ),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig =
+            P2P(
+              ipAddress = "127.0.0.1",
+              port = "3322",
+              staticPeers = emptyList(),
+              reconnectDelay = 500.milliseconds,
+            ),
           validatorElNode =
             ValidatorElNode(
               engineApiEndpoint =

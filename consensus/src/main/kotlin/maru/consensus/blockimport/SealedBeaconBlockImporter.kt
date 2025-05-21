@@ -29,31 +29,34 @@ import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.extensions.encodeHex
 import maru.p2p.SealedBlockHandler
+import maru.p2p.ValidationResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 // This is basically Chain of Responsibility design pattern, except it doesn't allow multiple children
 // Multiplexer class was created to address that
-fun interface SealedBeaconBlockImporter {
-  fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*>
+fun interface SealedBeaconBlockImporter<T> {
+  fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<T>
 }
 
-class NewSealedBlockHandlerMultiplexer(
-  handlersMap: Map<String, SealedBlockHandler>,
+class NewSealedBlockHandlerMultiplexer<T>(
+  handlersMap: Map<String, SealedBlockHandler<T>>,
   log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*, *>::javaClass)!!,
-) : CallAndForgetFutureMultiplexer<SealedBeaconBlock, Unit>(
+  aggregator: (List<T>) -> T,
+) : CallAndForgetFutureMultiplexer<SealedBeaconBlock, T>(
     handlersMap = sealedBlockHandlersToGenericHandlers(handlersMap),
     log = log,
+    aggregator = aggregator,
   ),
-  SealedBlockHandler {
+  SealedBlockHandler<T> {
   companion object {
-    fun sealedBlockHandlersToGenericHandlers(
-      handlersMap: Map<String, SealedBlockHandler>,
-    ): Map<String, AsyncFunction<SealedBeaconBlock, Unit>> =
+    fun <T> sealedBlockHandlersToGenericHandlers(
+      handlersMap: Map<String, SealedBlockHandler<T>>,
+    ): Map<String, AsyncFunction<SealedBeaconBlock, T>> =
       handlersMap.mapValues { newSealedBlockHandler ->
         {
-          newSealedBlockHandler.value.handleSealedBlock(it).thenApply { }
+          newSealedBlockHandler.value.handleSealedBlock(it)
         }
       }
   }
@@ -71,7 +74,7 @@ class NewSealedBlockHandlerMultiplexer(
     )
   }
 
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> = handle(sealedBeaconBlock)
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<T> = handle(sealedBeaconBlock)
 }
 
 /**
@@ -84,10 +87,10 @@ class TransactionalSealedBeaconBlockImporter(
   private val beaconChain: BeaconChain,
   private val stateTransition: StateTransition,
   private val beaconBlockImporter: BeaconBlockImporter,
-) : SealedBeaconBlockImporter {
+) : SealedBeaconBlockImporter<ValidationResult> {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
-  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
+  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     val updater = beaconChain.newUpdater()
     try {
       return stateTransition
@@ -100,15 +103,16 @@ class TransactionalSealedBeaconBlockImporter(
             .importBlock(resultingState, sealedBeaconBlock.beaconBlock)
         }.thenApply {
           updater.commit()
-          it
-        }.whenException {
+          ValidationResult.Companion.Successful as ValidationResult
+        }.exceptionally { ex ->
           updater.rollback()
+          ValidationResult.Companion.Failed(ex.message!!, ex.cause)
         }.whenComplete { _, _ ->
           updater.close()
         }
     } catch (e: Exception) {
       log.error("Block import state transition failed!: ${e.message}", e)
-      return SafeFuture.failedFuture<Unit>(e)
+      return SafeFuture.failedFuture(e)
     }
   }
 }
@@ -118,12 +122,20 @@ class TransactionalSealedBeaconBlockImporter(
  */
 class ValidatingSealedBeaconBlockImporter(
   private val sealsVerifier: SealsVerifier,
-  private val beaconBlockImporter: SealedBeaconBlockImporter,
+  private val beaconBlockImporter: SealedBeaconBlockImporter<ValidationResult>,
   private val beaconBlockValidatorFactory: BeaconBlockValidatorFactory,
-) : SealedBeaconBlockImporter {
+) : SealedBeaconBlockImporter<ValidationResult> {
+  companion object {
+    fun Result<Unit, String>.toDomain(): ValidationResult =
+      when (this) {
+        is Ok -> ValidationResult.Companion.Successful
+        is Err -> ValidationResult.Companion.Failed(this.error, null)
+      }
+  }
+
   private val log = LogManager.getLogger(this.javaClass)
 
-  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<Result<*, String>> {
+  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     try {
       val beaconBlock = sealedBeaconBlock.beaconBlock
       val beaconBlockHeader = beaconBlock.beaconBlockHeader
@@ -141,7 +153,7 @@ class ValidatingSealedBeaconBlockImporter(
           when (combinedValidationResult) {
             is Ok -> {
               log.debug("Block is validated blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
-              beaconBlockImporter.importBlock(sealedBeaconBlock).thenApply { Ok(it) }
+              beaconBlockImporter.importBlock(sealedBeaconBlock).thenApply { it }
             }
 
             is Err -> {
@@ -150,7 +162,7 @@ class ValidatingSealedBeaconBlockImporter(
                   "hash=${sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex()}! " +
                   "error=${combinedValidationResult.error}",
               )
-              SafeFuture.completedFuture(combinedValidationResult)
+              SafeFuture.completedFuture(combinedValidationResult.toDomain())
             }
           }
         }.whenException {

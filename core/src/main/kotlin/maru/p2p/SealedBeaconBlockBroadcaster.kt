@@ -20,10 +20,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class SealedBeaconBlockBroadcaster(
   val p2PNetwork: P2PNetwork,
-) : SealedBlockHandler {
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
+) : SealedBlockHandler<Unit> {
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<Unit> {
     // TODO: New block message might need an intermediary wrapper in the future
-    val message = Message(MessageType.BLOCK, sealedBeaconBlock)
+    val message = Message(MessageType.BLOCK, payload = sealedBeaconBlock)
     p2PNetwork.broadcastMessage(message)
     return SafeFuture.completedFuture(Unit)
   }

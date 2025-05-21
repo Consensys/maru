@@ -127,7 +127,7 @@ class MaruApp(
       )
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
-  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler> =
+  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
     followers.followers
       .mapValues {
         val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
@@ -175,7 +175,11 @@ class MaruApp(
         "beacon block handlers" to adaptedBeaconBlockImporter,
         "p2p broadcast sealed beacon block handler" to SealedBeaconBlockBroadcaster(p2pNetwork),
       )
-    val sealedBlockHandlerMultiplexer = NewSealedBlockHandlerMultiplexer(sealedBlockHandlers)
+    val sealedBlockHandlerMultiplexer =
+      NewSealedBlockHandlerMultiplexer(
+        handlersMap = sealedBlockHandlers,
+        aggregator = { },
+      )
     val beaconChainInitialization =
       BeaconChainInitialization(
         executionLayerClient = ethereumJsonRpcClient.eth1Web3j,

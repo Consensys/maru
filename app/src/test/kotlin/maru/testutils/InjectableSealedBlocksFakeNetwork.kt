@@ -19,11 +19,12 @@ import maru.core.SealedBeaconBlock
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBlockHandler
+import maru.p2p.ValidationResult
 
 class InjectableSealedBlocksFakeNetwork : P2PNetwork by NoOpP2PNetwork {
-  var handler: SealedBlockHandler? = null
+  var handler: SealedBlockHandler<ValidationResult>? = null
 
-  override fun subscribeToBlocks(subscriber: SealedBlockHandler): Int {
+  override fun subscribeToBlocks(subscriber: SealedBlockHandler<ValidationResult>): Int {
     handler = subscriber
     return 0
   }

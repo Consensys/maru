@@ -22,6 +22,7 @@ import maru.p2p.Message
 import maru.p2p.MessageType
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBlockHandler
+import maru.p2p.ValidationResult
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.messagewrappers.BftMessage
 import org.hyperledger.besu.consensus.qbft.core.messagedata.CommitMessageData
@@ -71,11 +72,13 @@ class SpyingP2PNetwork(
         emittedQbftMessages.add(decodedMessage)
         p2pNetwork.broadcastMessage(message)
       }
+
       MessageType.BLOCK -> emittedBlockMessages.add(message.payload as SealedBeaconBlock)
     }
   }
 
-  override fun subscribeToBlocks(subscriber: SealedBlockHandler): Int = p2pNetwork.subscribeToBlocks(subscriber)
+  override fun subscribeToBlocks(subscriber: SealedBlockHandler<ValidationResult>): Int =
+    p2pNetwork.subscribeToBlocks(subscriber)
 
   override fun unsubscribe(subscriptionId: Int) {
     p2pNetwork.unsubscribe(subscriptionId)

@@ -15,7 +15,6 @@
  */
 package maru.consensus
 
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import maru.core.BeaconBlock
 import maru.core.SealedBeaconBlock
@@ -24,15 +23,15 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class SealedBlockHandlerAdapter(
-  val adaptee: NewBlockHandler,
-) : SealedBlockHandler {
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> =
+class SealedBlockHandlerAdapter<T>(
+  val adaptee: NewBlockHandler<T>,
+) : SealedBlockHandler<T> {
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<T> =
     adaptee.handleNewBlock(sealedBeaconBlock.beaconBlock)
 }
 
-fun interface NewBlockHandler {
-  fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<*>
+fun interface NewBlockHandler<T> {
+  fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<T>
 }
 
 typealias AsyncFunction<I, O> = (I) -> SafeFuture<O>
@@ -40,6 +39,7 @@ typealias AsyncFunction<I, O> = (I) -> SafeFuture<O>
 abstract class CallAndForgetFutureMultiplexer<I, O>(
   handlersMap: Map<String, AsyncFunction<I, O>>,
   protected val log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*, *>::javaClass)!!,
+  private val aggregator: (List<O>) -> O,
 ) {
   private val handlersMap = ConcurrentHashMap(handlersMap)
 
@@ -56,43 +56,45 @@ abstract class CallAndForgetFutureMultiplexer<I, O>(
     handlersMap[name] = handler
   }
 
-  fun handle(input: I): SafeFuture<*> {
-    val handlerFutures: List<CompletableFuture<Void>> =
+  fun handle(input: I): SafeFuture<O> {
+    val handlerFutures: List<SafeFuture<O>> =
       handlersMap.map {
         val (handlerName, handler) = it
-        SafeFuture.runAsync {
+        SafeFuture.of {
           try {
             log.debug("Handling $handlerName")
-            handler(input)
-            log.debug("$handlerName handling completed successfully")
+            handler(input).also {
+              log.debug("$handlerName handling completed successfully")
+            }
           } catch (ex: Exception) {
             log.logError(handlerName, input, ex)
+            throw ex
           }
         }
       }
-    val completableFuture =
-      SafeFuture
-        .allOf(*handlerFutures.toTypedArray())
-        .thenApply { }
-    return SafeFuture.of(completableFuture)
+
+    return SafeFuture
+      .collectAll(handlerFutures.stream())
+      .thenApply { aggregator(it) }
   }
 }
 
-class NewBlockHandlerMultiplexer(
-  handlersMap: Map<String, NewBlockHandler>,
+class NewBlockHandlerMultiplexer<T>(
+  handlersMap: Map<String, NewBlockHandler<T>>,
   log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*, *>::javaClass)!!,
-) : CallAndForgetFutureMultiplexer<BeaconBlock, Unit>(
+) : CallAndForgetFutureMultiplexer<BeaconBlock, T>(
     handlersMap = blockHandlersToGenericHandlers(handlersMap),
     log = log,
+    aggregator = { it.first() }, // TODO: Fix
   ),
-  NewBlockHandler {
+  NewBlockHandler<T> {
   companion object {
-    fun blockHandlersToGenericHandlers(
-      handlersMap: Map<String, NewBlockHandler>,
-    ): Map<String, AsyncFunction<BeaconBlock, Unit>> =
+    fun <T> blockHandlersToGenericHandlers(
+      handlersMap: Map<String, NewBlockHandler<T>>,
+    ): Map<String, AsyncFunction<BeaconBlock, T>> =
       handlersMap.mapValues { newSealedBlockHandler ->
         {
-          newSealedBlockHandler.value.handleNewBlock(it).thenApply { }
+          newSealedBlockHandler.value.handleNewBlock(it)
         }
       }
   }
@@ -110,5 +112,5 @@ class NewBlockHandlerMultiplexer(
     )
   }
 
-  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<*> = handle(beaconBlock)
+  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<T> = handle(beaconBlock)
 }
