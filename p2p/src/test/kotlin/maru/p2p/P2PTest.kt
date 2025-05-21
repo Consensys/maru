@@ -31,6 +31,7 @@ import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
+import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
 @Execution(ExecutionMode.SAME_THREAD)
@@ -148,9 +149,8 @@ class P2PTest {
       p2pNetwork1
         .getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_2)))
         .get()
-        .disconnectImmediately(Optional.empty(), true)
-
-      awaitUntilAsserted({ assertNetworkHasPeers(p2pNetwork1, 0) })
+        .disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
+        .get()
 
       awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetwork1, peers = 1) })
       awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetwork2, peers = 1) })
