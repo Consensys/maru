@@ -82,7 +82,7 @@ class QbftValidatorFactory(
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: SealedBlockHandler<Unit>,
+  private val newBlockHandler: SealedBlockHandler<*>,
   private val executionLayerManager: JsonRpcExecutionLayerManager,
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,

@@ -33,6 +33,7 @@ class JsonFriendlyForksScheduleTest {
   private val genesisConfig =
     """
     {
+      "chainId": 1337,
       "config": {
         "2": {
           "type": "delegated",
@@ -68,6 +69,7 @@ class JsonFriendlyForksScheduleTest {
       )
     assertThat(config).isEqualTo(
       JsonFriendlyForksSchedule(
+        1337,
         mapOf(
           "2" to expectedDelegatedConsensusMap,
           "4" to expectedQbftMap,
@@ -84,6 +86,7 @@ class JsonFriendlyForksScheduleTest {
       ).domainFriendly()
     assertThat(config).isEqualTo(
       ForksSchedule(
+        1337u,
         setOf(
           ForkSpec(
             timestampSeconds = 2,

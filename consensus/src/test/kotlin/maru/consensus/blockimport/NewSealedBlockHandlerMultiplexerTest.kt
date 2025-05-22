@@ -43,9 +43,8 @@ class NewSealedBlockHandlerMultiplexerTest {
         on { handleSealedBlock(any()) } doReturn SafeFuture.completedFuture(Unit)
       }
     val multiplexer =
-      NewSealedBlockHandlerMultiplexer(
+      NewSealedBlockHandlerMultiplexer<Unit>(
         handlersMap = mapOf("h1" to handler1, "h2" to handler2),
-        aggregator = {},
       )
 
     val future = multiplexer.handleSealedBlock(sealedBlock)
@@ -65,10 +64,9 @@ class NewSealedBlockHandlerMultiplexerTest {
       }
     val logger: Logger = mock()
     val multiplexer =
-      NewSealedBlockHandlerMultiplexer(
+      NewSealedBlockHandlerMultiplexer<Unit>(
         handlersMap = mapOf(pair = "h" to handler),
         log = logger,
-        aggregator = {},
       )
 
     assertThrows<Throwable> {

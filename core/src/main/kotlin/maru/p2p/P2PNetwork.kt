@@ -16,6 +16,8 @@
 package maru.p2p
 
 import maru.core.SealedBeaconBlock
+import maru.executionlayer.manager.ExecutionPayloadStatus
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 // Mimicking ValidationResultCode for P2P communication
@@ -44,11 +46,19 @@ sealed interface ValidationResult {
     }
 
     data class KindaFine(
-      val error: String,
-      val cause: Throwable,
+      val comment: String,
     ) : ValidationResult {
       override val code: ValidationResultCode
         get() = ValidationResultCode.IGNORE
+    }
+
+    fun fromForkChoiceUpdatedResult(forkChoiceUpdatedResult: ForkChoiceUpdatedResult): ValidationResult {
+      val payloadStatus = forkChoiceUpdatedResult.payloadStatus
+      return when (payloadStatus.status) {
+        ExecutionPayloadStatus.VALID -> Successful
+        ExecutionPayloadStatus.INVALID -> Failed(payloadStatus.validationError!!)
+        else -> KindaFine("Payload status is ${payloadStatus.status}")
+      }
     }
   }
 }

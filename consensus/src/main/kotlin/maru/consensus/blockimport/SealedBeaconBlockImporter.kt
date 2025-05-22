@@ -41,22 +41,20 @@ fun interface SealedBeaconBlockImporter<T> {
 }
 
 class NewSealedBlockHandlerMultiplexer<T>(
-  handlersMap: Map<String, SealedBlockHandler<T>>,
-  log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*, *>::javaClass)!!,
-  aggregator: (List<T>) -> T,
-) : CallAndForgetFutureMultiplexer<SealedBeaconBlock, T>(
+  handlersMap: Map<String, SealedBlockHandler<*>>,
+  log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*>::javaClass)!!,
+) : CallAndForgetFutureMultiplexer<SealedBeaconBlock>(
     handlersMap = sealedBlockHandlersToGenericHandlers(handlersMap),
     log = log,
-    aggregator = aggregator,
   ),
-  SealedBlockHandler<T> {
+  SealedBlockHandler<Unit> {
   companion object {
-    fun <T> sealedBlockHandlersToGenericHandlers(
-      handlersMap: Map<String, SealedBlockHandler<T>>,
-    ): Map<String, AsyncFunction<SealedBeaconBlock, T>> =
+    fun sealedBlockHandlersToGenericHandlers(
+      handlersMap: Map<String, SealedBlockHandler<*>>,
+    ): Map<String, AsyncFunction<SealedBeaconBlock, Unit>> =
       handlersMap.mapValues { newSealedBlockHandler ->
         {
-          newSealedBlockHandler.value.handleSealedBlock(it)
+          newSealedBlockHandler.value.handleSealedBlock(it).thenApply { }
         }
       }
   }
@@ -74,7 +72,7 @@ class NewSealedBlockHandlerMultiplexer<T>(
     )
   }
 
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<T> = handle(sealedBeaconBlock)
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<Unit> = handle(sealedBeaconBlock)
 }
 
 /**

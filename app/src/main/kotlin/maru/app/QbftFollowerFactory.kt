@@ -37,7 +37,7 @@ import maru.p2p.P2PNetwork
 class QbftFollowerFactory(
   val p2PNetwork: P2PNetwork,
   val beaconChain: BeaconChain,
-  val newBlockHandler: NewBlockHandler<Unit>,
+  val newBlockHandler: NewBlockHandler<*>,
   val validatorElNodeConfig: maru.config.ValidatorElNode,
   val beaconChainInitialization: BeaconChainInitialization,
   val validatorSet: Set<Validator>,

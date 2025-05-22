@@ -129,7 +129,7 @@ class P2PNetworkImpl(
 
   override fun broadcastMessage(message: Message<*>) {
     when (message.type) {
-      MessageType.QBFT -> TODO("QBFT gossiping is not supported yet")
+      MessageType.QBFT -> Unit // TODO: Add QBFT messages support later
       MessageType.BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serializer.serialize(message.payload as SealedBeaconBlock))

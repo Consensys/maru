@@ -83,8 +83,10 @@ class EagerQbftBlockCreatorTest {
   private val validator = Validator(Random.nextBytes(20))
   private lateinit var executionLayerManager: ExecutionLayerManager
   private val validatorSet = DataGenerators.randomValidators() + validator
+  private val chainId = 1337u
   private val forksSchedule =
     ForksSchedule(
+      chainId,
       setOf(
         ForkSpec(
           timestampSeconds = 0,

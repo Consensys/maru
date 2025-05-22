@@ -24,8 +24,15 @@ import maru.consensus.qbft.QbftConsensusConfig
 import maru.extensions.fromHexToByteArray
 
 data class JsonFriendlyForksSchedule(
+  val chainId: Int,
   val config: Map<String, Map<String, String>>,
 ) {
+  init {
+    require(chainId >= 0) {
+      "Chain id has to be a non-negative integer!"
+    }
+  }
+
   fun domainFriendly(): ForksSchedule {
     val forkSpecs: List<ForkSpec> =
       config.map { (k, v) ->
@@ -37,7 +44,7 @@ data class JsonFriendlyForksSchedule(
           mapObjectToConfiguration(type, v),
         )
       }
-    return ForksSchedule(forkSpecs)
+    return ForksSchedule(chainId.toUInt(), forkSpecs)
   }
 
   private fun mapObjectToConfiguration(
