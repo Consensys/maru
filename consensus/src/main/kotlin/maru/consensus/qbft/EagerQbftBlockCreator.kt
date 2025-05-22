@@ -15,10 +15,7 @@
  */
 package maru.consensus.qbft
 
-import java.time.Clock
-import kotlin.math.min
 import kotlin.time.Duration
-import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
@@ -43,9 +40,7 @@ class EagerQbftBlockCreator(
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
   private val beaconChain: BeaconChain,
-  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val config: Config,
-  private val clock: Clock,
 ) : QbftBlockCreator {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
@@ -79,7 +74,7 @@ class EagerQbftBlockCreator(
       "Building new block, FCU result={}",
       blockBuildingTriggerResult,
     )
-    val sleepTime = computeSleepDurationMilliseconds(headerTimeStampSeconds)
+    val sleepTime = config.minBlockBuildTime.inWholeMilliseconds
     log.debug("Block building has started, sleeping for {} milliseconds", sleepTime)
     Thread.sleep(sleepTime)
     log.debug("Block building has finished, time to collect block building results")
@@ -91,18 +86,4 @@ class EagerQbftBlockCreator(
     roundNumber: Int,
     commitSeals: Collection<SECPSignature>,
   ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
-
-  private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long {
-    val targetSleepTime =
-      (nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(headerTimeStampSeconds)) * 1000 -
-        clock.millis() - config.communicationMargin.inWholeMilliseconds
-    return if (targetSleepTime <= 0) {
-      // To avoid negative sleep time
-      0
-    } else {
-      // To avoid taking to too long to build a block and not giving the delayed block creator
-      // enough time to build the next block
-      min(targetSleepTime, config.minBlockBuildTime.inWholeMilliseconds)
-    }
-  }
 }

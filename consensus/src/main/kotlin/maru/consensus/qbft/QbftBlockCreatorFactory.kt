@@ -15,9 +15,6 @@
  */
 package maru.consensus.qbft
 
-import java.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
-import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
@@ -41,9 +38,6 @@ class QbftBlockCreatorFactory(
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
-  private val delayedQbftBlockCreatorConfig: DelayedQbftBlockCreator.Config,
-  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val clock: Clock,
 ) : QbftBlockCreatorFactory {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
@@ -55,14 +49,6 @@ class QbftBlockCreatorFactory(
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         round = round,
-        config =
-          if (round == 0) {
-            delayedQbftBlockCreatorConfig
-          } else {
-            delayedQbftBlockCreatorConfig.copy(
-              minBlockBuildingTime = 0.milliseconds,
-            )
-          },
       )
     val number = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1u
     return if (round == 0 && manager.hasStartedBlockBuilding()) {
@@ -76,9 +62,7 @@ class QbftBlockCreatorFactory(
         finalizationStateProvider = finalizationStateProvider,
         blockBuilderIdentity = blockBuilderIdentity,
         beaconChain = beaconChain,
-        nextBlockTimestampProvider = nextBlockTimestampProvider,
         config = eagerQbftBlockCreatorConfig,
-        clock = clock,
       )
     }
   }

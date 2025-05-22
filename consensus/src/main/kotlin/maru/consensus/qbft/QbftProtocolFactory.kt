@@ -130,9 +130,6 @@ class QbftProtocolFactory(
             maruConfig.qbftOptions.communicationMargin,
             maruConfig.qbftOptions.minBlockBuildTime,
           ),
-        delayedQbftBlockCreatorConfig = DelayedQbftBlockCreator.Config(maruConfig.qbftOptions.minBlockBuildTime),
-        nextBlockTimestampProvider = nextBlockTimestampProvider,
-        clock = clock,
       )
 
     val besuForksSchedule = ForksScheduleAdapter(forkSpec, maruConfig.qbftOptions)

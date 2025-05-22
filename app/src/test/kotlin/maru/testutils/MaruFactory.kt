@@ -50,7 +50,6 @@ object MaruFactory {
 
     [qbft-options]
     communication-margin=10m
-    min-block-build-time==50m
 
     [p2p-config]
     port = 3322
