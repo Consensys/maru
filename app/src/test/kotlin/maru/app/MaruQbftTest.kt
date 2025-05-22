@@ -50,7 +50,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
-@Tag("no-parallel")
+@Tag("nonParallel")
 class MaruQbftTest {
   private lateinit var cluster: Cluster
   private lateinit var besuNode: BesuNode

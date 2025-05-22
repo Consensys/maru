@@ -199,14 +199,31 @@ subprojects {
   }
 
   tasks.withType(Test) {
-    // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
-    maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?: (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
+    if (!name.endsWith('NonParallel')) {
+      useJUnitPlatform{
+        excludeTags 'nonParallel'
+      }
+
+      // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
+      maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?: (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
+    }
+  }
+
+  task testNonParallel(type: Test) {
+    useJUnitPlatform{
+      includeTags 'nonParallel'
+    }
+
+    description = "Runs the unit tests without parallel execution"
+    maxParallelForks = 1
   }
 
   tasks.withType(JavaCompile) {
     options.fork = true
     options.incremental = true
   }
+
+  test.dependsOn tasks.testNonParallel
 
   configurations {
     testSupportImplementation.extendsFrom implementation
