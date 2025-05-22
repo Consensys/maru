@@ -145,11 +145,7 @@ allprojects {
         systemProperty name, System.getProperty(name)
       }
     }
-    useJUnitPlatform{
-      excludeTags 'nonParallel'
-    }
-    // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
-    maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?: (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
+    useJUnitPlatform {}
     testLogging {
       exceptionFormat TestExceptionFormat.FULL
       events 'passed', 'skipped', 'failed'
@@ -202,27 +198,15 @@ subprojects {
     }
   }
 
-  task testNonParallel(type: Test) {
-    useJUnitPlatform{
-      includeTags 'nonParallel'
-    }
-
-    description = "Runs the unit tests without parallel execution"
-    maxParallelForks = 1
-
-    testLogging {
-      exceptionFormat TestExceptionFormat.FULL
-      events 'passed', 'skipped', 'failed'
-      showStandardStreams = true
-    }
+  tasks.withType(Test) {
+    // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
+    maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?: (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
   }
 
   tasks.withType(JavaCompile) {
     options.fork = true
     options.incremental = true
   }
-
-  test.dependsOn tasks.testNonParallel
 
   configurations {
     testSupportImplementation.extendsFrom implementation
