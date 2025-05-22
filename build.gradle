@@ -216,6 +216,12 @@ subprojects {
 
     description = "Runs the unit tests without parallel execution"
     maxParallelForks = 1
+
+    testLogging {
+      exceptionFormat TestExceptionFormat.FULL
+      events 'passed', 'skipped', 'failed'
+      showStandardStreams = true
+    }
   }
 
   tasks.withType(JavaCompile) {
