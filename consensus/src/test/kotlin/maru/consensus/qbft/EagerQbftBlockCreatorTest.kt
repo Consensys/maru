@@ -21,9 +21,6 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
-import maru.consensus.ConsensusConfig
-import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
@@ -82,16 +79,6 @@ class EagerQbftBlockCreatorTest {
   private val validator = Validator(Random.nextBytes(20))
   private lateinit var executionLayerManager: ExecutionLayerManager
   private val validatorSet = DataGenerators.randomValidators() + validator
-  private val forksSchedule =
-    ForksSchedule(
-      setOf(
-        ForkSpec(
-          timestampSeconds = 0,
-          blockTimeSeconds = 1,
-          configuration = object : ConsensusConfig {},
-        ),
-      ),
-    )
 
   @BeforeEach
   fun beforeEach() {
