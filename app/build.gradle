@@ -35,3 +35,28 @@ dependencies {
   testImplementation("org.hyperledger.besu.internal:plugins-rocksdb")
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
 }
+
+// Besu and Teku have similar versioning and some modules are also named the same. This creates conflicts when
+// dependencies are collected
+tasks.named("distTar").configure {
+  duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+tasks.named("distZip").configure {
+  duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+application {
+  mainClass = 'maru.app.CliEntrypoint'
+}
+
+jar {
+  archiveBaseName = 'maru'
+  manifest {
+    attributes(
+      'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+      'Main-Class': 'maru.app.CliEntrypoint',
+      'Multi-Release': 'true'
+      )
+  }
+}
