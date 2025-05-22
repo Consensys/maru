@@ -32,7 +32,6 @@ class JsonRpcExecutionLayerManager(
   private val log = LogManager.getLogger(this.javaClass)
 
   private var payloadId: ByteArray? = null
-  private var blockBuildingStartTime: Long? = null
 
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
@@ -54,7 +53,6 @@ class JsonRpcExecutionLayerManager(
     return forkChoiceUpdate(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
       log.debug("Setting payload Id, nextBlockTimestamp={}", nextBlockTimestamp)
       payloadId = it.payloadId
-      blockBuildingStartTime = System.currentTimeMillis()
     }
   }
 
@@ -76,13 +74,6 @@ class JsonRpcExecutionLayerManager(
   }
 
   override fun hasStartedBlockBuilding(): Boolean = payloadId != null
-
-  override fun getElapsedBlockBuildingTime(): Long? =
-    if (blockBuildingStartTime != null) {
-      System.currentTimeMillis() - blockBuildingStartTime!!
-    } else {
-      null
-    }
 
   override fun setHead(
     headHash: ByteArray,
