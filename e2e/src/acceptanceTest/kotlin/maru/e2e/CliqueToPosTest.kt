@@ -78,6 +78,8 @@ class CliqueToPosTest {
     private val genesisDir = File("../docker/initialization")
     private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
     private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
+    private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
+
 
     private fun parsePragueSwitchTimestamp(): Long {
       val objectMapper = ObjectMapper()
@@ -97,10 +99,12 @@ class CliqueToPosTest {
       nethermindGenesis.delete()
     }
 
+    private fun containerShortNameToFullId(containerShortName: String) = containerShortName
+
     @BeforeAll
     @JvmStatic
     fun beforeAll() {
-      println("JONES: Initializing with useMaruContainer: $useMaruContainer")
+      log.info("Using Maru as docker container: $useMaruContainer")
       deleteGenesisFiles()
       dataDir.deleteRecursively()
       dataDir.mkdirs()
@@ -148,9 +152,7 @@ class CliqueToPosTest {
       qbftCluster.after()
     }
 
-    private fun containerShortNameToFullId(containerShortName: String) = containerShortName
-
-    private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
+   
 
     @JvmStatic
     fun followerNodes(): List<Arguments> =
