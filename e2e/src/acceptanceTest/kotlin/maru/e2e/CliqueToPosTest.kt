@@ -17,6 +17,7 @@ package maru.e2e
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.palantir.docker.compose.DockerComposeRule
+import com.palantir.docker.compose.configuration.DockerComposeFiles
 import com.palantir.docker.compose.configuration.ProjectName
 import com.palantir.docker.compose.connection.waiting.HealthChecks
 import java.io.File
@@ -58,10 +59,17 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class CliqueToPosTest {
   companion object {
+    private val useMaruContainer: Boolean = System.getProperty("useMaruContainer").toBoolean()
+    private val dockerComposeFilePaths =
+      mutableListOf<String>(Path.of("./../docker/compose.yaml").toString()).also {
+        if (useMaruContainer) {
+          it.add(Path.of("./../docker/compose.dev.yaml").toString())
+        }
+      }
     private val qbftCluster =
       DockerComposeRule
         .Builder()
-        .file(Path.of("./../docker/compose.yaml").toString())
+        .files(DockerComposeFiles.from(*dockerComposeFilePaths.toTypedArray()))
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
@@ -79,9 +87,11 @@ class CliqueToPosTest {
     }
 
     private fun deleteGenesisFiles() {
+      val maruGenesis = File(genesisDir, "genesis-maru.json")
       val besuGenesis = File(genesisDir, "genesis-besu.json")
       val gethGenesis = File(genesisDir, "genesis-geth.json")
       val nethermindGenesis = File(genesisDir, "genesis-nethermind.json")
+      maruGenesis.delete()
       besuGenesis.delete()
       gethGenesis.delete()
       nethermindGenesis.delete()
@@ -90,13 +100,15 @@ class CliqueToPosTest {
     @BeforeAll
     @JvmStatic
     fun beforeAll() {
+      println("JONES: Initializing with useMaruContainer: $useMaruContainer")
       deleteGenesisFiles()
       dataDir.deleteRecursively()
-      qbftCluster.before()
-
-      pragueSwitchTimestamp = parsePragueSwitchTimestamp()
       dataDir.mkdirs()
-      maru = MaruFactory.buildTestMaru(pragueSwitchTimestamp)
+      qbftCluster.before()
+      pragueSwitchTimestamp = parsePragueSwitchTimestamp()
+      if (!useMaruContainer) {
+        maru = MaruFactory.buildTestMaru(pragueSwitchTimestamp)
+      }
     }
 
     @AfterAll
@@ -111,8 +123,15 @@ class CliqueToPosTest {
         )
       }
 
-      TestEnvironment.allClients.forEach {
-        val containerShortName = it.key
+      val containerShortNames =
+        TestEnvironment.allClients
+          .map {
+            it.key
+          }.toMutableList()
+          .also {
+            it.add("maru")
+          }
+      containerShortNames.forEach { containerShortName ->
         qbftCluster
           .dockerExecutable()
           .execute("logs", containerShortNameToFullId(containerShortName))
@@ -129,8 +148,7 @@ class CliqueToPosTest {
       qbftCluster.after()
     }
 
-    private fun containerShortNameToFullId(containerShortName: String) =
-      "${qbftCluster.projectName().asString()}-$containerShortName"
+    private fun containerShortNameToFullId(containerShortName: String) = containerShortName
 
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
 
@@ -144,7 +162,9 @@ class CliqueToPosTest {
   @Order(1)
   @Test
   fun networkCanBeSwitched() {
-    maru.start()
+    if (!useMaruContainer) {
+      maru.start()
+    }
     sendCliqueTransactions()
     everyoneArePeered()
     waitTillTimestamp(pragueSwitchTimestamp)
@@ -159,7 +179,9 @@ class CliqueToPosTest {
     assertNodeBlockHeight(TestEnvironment.sequencerL2Client)
 
     waitForAllBlockHeightsToMatch()
-    maru.stop()
+    if (!useMaruContainer) {
+      maru.stop()
+    }
   }
 
   // TODO: Explore parallelization of this test
@@ -186,6 +208,18 @@ class CliqueToPosTest {
           .pollInterval(1.seconds.toJavaDuration())
           .timeout(30.seconds.toJavaDuration())
       }
+
+    if (nodeName.contains("besu")) {
+      // Required to change validation rules from Clique to PostMerge
+      // TODO: investigate this issue more. It was working happen with Dummy Consensus
+      syncTarget(engineApiConfig, 5)
+      awaitCondition
+        .ignoreExceptions()
+        .alias(nodeName)
+        .untilAsserted {
+          assertNodeBlockHeight(nodeEthereumClient, 5L)
+        }
+    }
 
     awaitCondition
       .ignoreExceptions()
