@@ -36,6 +36,7 @@ import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
+import maru.core.EMPTY_HASH
 import maru.core.Validator
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
@@ -288,9 +289,9 @@ class CliqueToPosTest {
           round = 0u,
           timestamp = latestExecutionPayload.timestamp,
           proposer = Validator(latestExecutionPayload.feeRecipient),
-          parentRoot = BeaconBlockHeader.EMPTY_HASH,
-          stateRoot = BeaconBlockHeader.EMPTY_HASH,
-          bodyRoot = BeaconBlockHeader.EMPTY_HASH,
+          parentRoot = EMPTY_HASH,
+          stateRoot = EMPTY_HASH,
+          bodyRoot = EMPTY_HASH,
           headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
         BeaconBlockBody(emptySet(), latestExecutionPayload),

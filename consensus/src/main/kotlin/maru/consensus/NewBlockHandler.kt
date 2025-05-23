@@ -19,14 +19,14 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import maru.core.BeaconBlock
 import maru.core.SealedBeaconBlock
-import maru.p2p.SealedBlockHandler
+import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class SealedBlockHandlerAdapter(
+class SealedBeaconBlockHandlerAdapter(
   val adaptee: NewBlockHandler,
-) : SealedBlockHandler {
+) : SealedBeaconBlockHandler {
   override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> =
     adaptee.handleNewBlock(sealedBeaconBlock.beaconBlock)
 }

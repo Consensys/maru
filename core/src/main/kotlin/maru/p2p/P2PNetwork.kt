@@ -18,7 +18,7 @@ package maru.p2p
 import maru.core.SealedBeaconBlock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-fun interface SealedBlockHandler {
+fun interface SealedBeaconBlockHandler {
   fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*>
 }
 
@@ -50,7 +50,7 @@ interface P2PNetwork {
   /**
    * @return subscription id
    */
-  fun subscribeToBlocks(subscriber: SealedBlockHandler): Int
+  fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler): Int
 
   fun unsubscribe(subscriptionId: Int)
 }

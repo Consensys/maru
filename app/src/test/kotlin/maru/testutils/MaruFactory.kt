@@ -44,9 +44,6 @@ object MaruFactory {
     data-path="$dataPath"
 
     [qbft-options]
-    validator-set = ["$VALIDATOR_ADDRESS"]
-
-    [qbft-options.validator-duties]
     communication-margin=200m
 
     [p2p-config]
@@ -72,9 +69,6 @@ object MaruFactory {
     port = 3322
     ip-address = "127.0.0.1"
     static-peers = []
-
-    [qbft-options]
-    validator-set = ["$VALIDATOR_ADDRESS"]
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "$engineApiRpc" }
@@ -169,6 +163,7 @@ object MaruFactory {
           },
           "$switchTimestamp": {
             "type": "qbft",
+            "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
             "blockTimeSeconds": 1,
             "feeRecipient": "$VALIDATOR_ADDRESS",
             "elFork": "Prague"

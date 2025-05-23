@@ -26,6 +26,7 @@ import maru.consensus.validation.BlockValidator.BlockValidationError
 import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
+import maru.core.EMPTY_HASH
 import maru.core.HashUtil
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -161,7 +162,7 @@ class StateRootValidator(
       .thenApply { postState ->
         val stateRootHeader =
           postState.latestBeaconBlockHeader.copy(
-            stateRoot = BeaconBlockHeader.EMPTY_HASH,
+            stateRoot = EMPTY_HASH,
           )
         val expectedStateRoot = HashUtil.stateRoot(postState.copy(latestBeaconBlockHeader = stateRootHeader))
         BlockValidator.require(block.beaconBlockHeader.stateRoot.contentEquals(expectedStateRoot)) {

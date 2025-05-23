@@ -29,7 +29,7 @@ import maru.core.Protocol
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
-import maru.p2p.SealedBlockHandler
+import maru.p2p.SealedBeaconBlockHandler
 import org.hyperledger.besu.plugin.services.MetricsSystem
 
 class QbftProtocolFactoryWithBeaconChainInitialization(
@@ -40,15 +40,11 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val beaconChain: BeaconChain,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: SealedBlockHandler,
+  private val newBlockHandler: SealedBeaconBlockHandler,
   private val clock: Clock,
   private val p2pNetwork: P2PNetwork,
   private val beaconChainInitialization: BeaconChainInitialization,
 ) : ProtocolFactory {
-  init {
-    require(qbftOptions.validatorDuties != null) { "The validator is required when QBFT protocol is instantiated!" }
-  }
-
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
       "Unexpected fork specification! ${
@@ -68,7 +64,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
         executionLayerEngineApiClient = engineApiExecutionLayerClient,
       )
 
-    beaconChainInitialization.ensureDbIsInitialized()
+    beaconChainInitialization.ensureDbIsInitialized(validatorSet = qbftConsensusConfig.validatorSet)
 
     val qbftValidatorFactory =
       QbftValidatorFactory(

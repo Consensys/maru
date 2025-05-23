@@ -28,7 +28,7 @@ import maru.consensus.validation.SealsVerifier
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.extensions.encodeHex
-import maru.p2p.SealedBlockHandler
+import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -39,17 +39,17 @@ fun interface SealedBeaconBlockImporter {
   fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*>
 }
 
-class NewSealedBlockHandlerMultiplexer(
-  handlersMap: Map<String, SealedBlockHandler>,
+class NewSealedBeaconBeaconBlockHandlerMultiplexer(
+  handlersMap: Map<String, SealedBeaconBlockHandler>,
   log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*, *>::javaClass)!!,
 ) : CallAndForgetFutureMultiplexer<SealedBeaconBlock, Unit>(
     handlersMap = sealedBlockHandlersToGenericHandlers(handlersMap),
     log = log,
   ),
-  SealedBlockHandler {
+  SealedBeaconBlockHandler {
   companion object {
     fun sealedBlockHandlersToGenericHandlers(
-      handlersMap: Map<String, SealedBlockHandler>,
+      handlersMap: Map<String, SealedBeaconBlockHandler>,
     ): Map<String, AsyncFunction<SealedBeaconBlock, Unit>> =
       handlersMap.mapValues { newSealedBlockHandler ->
         {
