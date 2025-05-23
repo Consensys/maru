@@ -213,7 +213,7 @@ class CliqueToPosTest {
       }
   }
 
-  private fun buildBlockImportHandler(engineApiConfig: ApiEndpointConfig): NewBlockHandler =
+  private fun buildBlockImportHandler(engineApiConfig: ApiEndpointConfig): NewBlockHandler<*> =
     FollowerBeaconBlockImporter.create(Helpers.buildExecutionEngineClient(engineApiConfig, ElFork.Prague))
 
   private fun waitTillTimestamp(timestamp: Long) {

@@ -34,6 +34,9 @@ import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import java.util.Optional
 import kotlin.random.Random
+import maru.core.SealedBeaconBlock
+import maru.p2p.topics.SealedBlocksTopicHandler
+import maru.serialization.Serializer
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import pubsub.pb.Rpc
@@ -52,23 +55,24 @@ import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 
-object P2PNetworkFactory {
+object Libp2pNetworkFactory {
   fun build(
     privateKey: PrivKey,
     port: String,
     ipAddress: String,
+    sealedBlocksSubscriptionManager: SubscriptionManager<SealedBeaconBlock>,
+    serializer: Serializer<SealedBeaconBlock>,
+    topicIdGenerator: TopicIdGenerator,
   ): P2PNetwork<Peer> {
-    val addr = Multiaddr("/ip4/$ipAddress/tcp/$port")
-
-    return setupP2PNetwork(privateKey, addr)
-  }
-
-  private fun setupP2PNetwork(
-    privateKey: PrivKey,
-    ipv4Address: Multiaddr,
-  ): P2PNetwork<Peer> {
+    val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val rpcMethod = MaruRpcMethod()
-    val gossipTopicHandlers = GossipTopicHandlers() // TODO: add handlers for topics as needed
+    val gossipTopicHandlers = GossipTopicHandlers()
+
+    val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BLOCK, Version.V1)
+    gossipTopicHandlers.add(
+      sealedBlocksTopicId,
+      SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer),
+    )
 
     val gossipParams = GossipParamsBuilder().heartbeatInterval(1.seconds).build()
     val gossipRouterBuilder =
@@ -113,13 +117,13 @@ object P2PNetworkFactory {
     val advertisedAddresses = listOf(ipv4Address)
 
     return LibP2PNetwork(
-      privateKey,
-      libP2PNodeId,
-      host,
-      peerManager,
-      advertisedAddresses,
-      gossipNetwork,
-      listOf(1),
+      /* privKey = */ privateKey,
+      /* nodeId = */ libP2PNodeId,
+      /* host = */ host,
+      /* peerManager = */ peerManager,
+      /* advertisedAddresses = */ advertisedAddresses,
+      /* gossipNetwork = */ gossipNetwork,
+      /* listenPorts = */ listOf(1),
     )
   }
 

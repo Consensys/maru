@@ -16,10 +16,55 @@
 package maru.p2p
 
 import maru.core.SealedBeaconBlock
+import maru.executionlayer.manager.ExecutionPayloadStatus
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-fun interface SealedBeaconBlockHandler {
-  fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*>
+// Mimicking ValidationResultCode for P2P communication
+enum class ValidationResultCode {
+  ACCEPT,
+  REJECT,
+  IGNORE,
+  KEEP_FOR_THE_FUTURE,
+}
+
+sealed interface ValidationResult {
+  val code: ValidationResultCode
+
+  companion object {
+    object Successful : ValidationResult {
+      override val code: ValidationResultCode
+        get() = ValidationResultCode.ACCEPT
+    }
+
+    data class Failed(
+      val error: String,
+      val cause: Throwable? = null,
+    ) : ValidationResult {
+      override val code: ValidationResultCode
+        get() = ValidationResultCode.REJECT
+    }
+
+    data class KindaFine(
+      val comment: String,
+    ) : ValidationResult {
+      override val code: ValidationResultCode
+        get() = ValidationResultCode.IGNORE
+    }
+
+    fun fromForkChoiceUpdatedResult(forkChoiceUpdatedResult: ForkChoiceUpdatedResult): ValidationResult {
+      val payloadStatus = forkChoiceUpdatedResult.payloadStatus
+      return when (payloadStatus.status) {
+        ExecutionPayloadStatus.VALID -> Successful
+        ExecutionPayloadStatus.INVALID -> Failed(payloadStatus.validationError!!)
+        else -> KindaFine("Payload status is ${payloadStatus.status}")
+      }
+    }
+  }
+}
+
+fun interface SealedBeaconBlockHandler<T> {
+  fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<T>
 }
 
 /**
@@ -50,7 +95,7 @@ interface P2PNetwork {
   /**
    * @return subscription id
    */
-  fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler): Int
+  fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int
 
   fun unsubscribe(subscriptionId: Int)
 }

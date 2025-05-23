@@ -17,6 +17,10 @@ package maru.p2p
 
 import maru.core.SealedBeaconBlock
 
+enum class Version : Comparable<Version> {
+  V1,
+}
+
 enum class MessageType(
   val code: Byte,
 ) {
@@ -26,6 +30,7 @@ enum class MessageType(
 
 data class Message<T : Any>(
   val type: MessageType,
+  val version: Version = Version.V1,
   val payload: T,
 ) {
   init {
@@ -34,4 +39,20 @@ data class Message<T : Any>(
       MessageType.BLOCK -> require(payload is SealedBeaconBlock)
     }
   }
+}
+
+interface TopicIdGenerator {
+  fun topicId(
+    messageType: MessageType,
+    version: Version,
+  ): String
+}
+
+class LineaTopicIdGenerator(
+  private val chainId: UInt,
+) : TopicIdGenerator {
+  override fun topicId(
+    messageType: MessageType,
+    version: Version,
+  ): String = "/linea/$chainId/$messageType/$version"
 }
