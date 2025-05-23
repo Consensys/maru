@@ -4,6 +4,8 @@ data-path="/tmp/maru-db"
 [sot-eth-endpoint]
 endpoint = "http://localhost:8545"
 
+[qbft-options]
+
 [p2p-config]
 port = 3322
 ip-address = "127.0.0.1"
