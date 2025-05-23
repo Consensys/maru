@@ -153,7 +153,6 @@ class EagerQbftBlockCreatorTest {
         blockBuilderIdentity = validator,
         config =
           EagerQbftBlockCreator.Config(
-            communicationMargin = 100.milliseconds,
             minBlockBuildTime = 500.milliseconds,
           ),
         beaconChain = beaconChain,

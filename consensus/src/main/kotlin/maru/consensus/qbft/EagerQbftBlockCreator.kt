@@ -45,7 +45,6 @@ class EagerQbftBlockCreator(
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   data class Config(
-    val communicationMargin: Duration,
     val minBlockBuildTime: Duration,
   )
 
