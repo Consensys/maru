@@ -31,8 +31,8 @@ import maru.consensus.qbft.adapters.toBeaconBlock
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlock
-import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.EMPTY_HASH
 import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
@@ -201,7 +201,7 @@ class EagerQbftBlockCreatorTest {
             .randomBeaconBlockBody()
             .copy(executionPayload = genesisExecutionPayload),
       )
-    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptyList())
+    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
 
     val eagerQbftBlockCreator = setup(sealedGenesisBeaconBlock, parentHeader)
@@ -223,7 +223,7 @@ class EagerQbftBlockCreatorTest {
     val stateRoot =
       HashUtil.stateRoot(
         BeaconState(
-          acceptedBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_HASH),
+          acceptedBeaconBlock.beaconBlockHeader.copy(stateRoot = EMPTY_HASH),
           validatorSet,
         ),
       )
@@ -267,7 +267,7 @@ class EagerQbftBlockCreatorTest {
             .randomBeaconBlockBody()
             .copy(executionPayload = genesisExecutionPayload),
       )
-    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptyList())
+    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
 
     val eagerQbftBlockCreator = setup(sealedGenesisBeaconBlock, parentHeader)
@@ -290,7 +290,7 @@ class EagerQbftBlockCreatorTest {
     val stateRoot =
       HashUtil.stateRoot(
         BeaconState(
-          createdBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_HASH),
+          createdBeaconBlock.beaconBlockHeader.copy(stateRoot = EMPTY_HASH),
           validatorSet,
         ),
       )
