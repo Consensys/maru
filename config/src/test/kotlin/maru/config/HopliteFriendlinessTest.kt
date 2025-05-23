@@ -164,7 +164,7 @@ class HopliteFriendlinessTest {
 
   private val qbftOptions =
     """
-    min-block-build-time=1000m
+    min-block-build-time=200m
     data-path="/some/path"
     message-queue-limit = 1000
     round-expiry = 1000
@@ -180,7 +180,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         QbftOptions(
-          minBlockBuildTime = 1000.milliseconds,
+          minBlockBuildTime = 200.milliseconds,
           messageQueueLimit = 1000,
           roundExpiry = 1.seconds,
           duplicateMessageLimit = 100,
