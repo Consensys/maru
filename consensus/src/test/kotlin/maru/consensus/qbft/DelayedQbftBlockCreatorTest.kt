@@ -22,8 +22,8 @@ import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
-import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.EMPTY_HASH
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.Validator
@@ -88,7 +88,7 @@ class DelayedQbftBlockCreatorTest {
     val stateRoot =
       HashUtil.stateRoot(
         BeaconState(
-          createBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_HASH),
+          createBeaconBlock.beaconBlockHeader.copy(stateRoot = EMPTY_HASH),
           validatorSet,
         ),
       )

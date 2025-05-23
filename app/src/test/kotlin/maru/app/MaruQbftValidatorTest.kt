@@ -114,7 +114,7 @@ class MaruQbftValidatorTest {
         .isTrue
     }
     allMessagesAreSignedByTheExpectedSigner()
-    allBlockAreSignedByTheExpectedSigner()
+    allBlocksAreSignedByTheExpectedSigner()
   }
 
   private fun anyPrepareWithBlockNumber(blockNumber: Long): Boolean =
@@ -132,7 +132,7 @@ class MaruQbftValidatorTest {
       it is Commit && it.roundIdentifier.sequenceNumber == blockNumber
     }
 
-  private fun allBlockAreSignedByTheExpectedSigner() {
+  private fun allBlocksAreSignedByTheExpectedSigner() {
     val validatorProvider = StaticValidatorProvider(setOf(Validator(VALIDATOR_ADDRESS.fromHexToByteArray())))
     val sealVerifier = SCEP256SealVerifier()
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider = validatorProvider, sealVerifier)

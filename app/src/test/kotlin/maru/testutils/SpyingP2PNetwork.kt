@@ -21,7 +21,7 @@ import maru.core.SealedBeaconBlock
 import maru.p2p.Message
 import maru.p2p.MessageType
 import maru.p2p.P2PNetwork
-import maru.p2p.SealedBlockHandler
+import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.messagewrappers.BftMessage
@@ -77,7 +77,7 @@ class SpyingP2PNetwork(
     }
   }
 
-  override fun subscribeToBlocks(subscriber: SealedBlockHandler<ValidationResult>): Int =
+  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int =
     p2pNetwork.subscribeToBlocks(subscriber)
 
   override fun unsubscribe(subscriptionId: Int) {

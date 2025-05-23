@@ -50,7 +50,7 @@ import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
-import maru.p2p.SealedBlockHandler
+import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
@@ -82,19 +82,20 @@ class QbftValidatorFactory(
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: SealedBlockHandler<*>,
+  private val newBlockHandler: SealedBeaconBlockHandler<*>,
   private val executionLayerManager: JsonRpcExecutionLayerManager,
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
-    val validatorDuties = qbftOptions.validatorDuties!!
+    qbftOptions
     require(
       forkSpec.blockTimeSeconds * 1000 >
-        validatorDuties.communicationMargin.inWholeMilliseconds,
+        qbftOptions.communicationMargin.inWholeMilliseconds,
     ) {
       "communicationMargin can't be more than blockTimeSeconds"
     }
+    val protocolConfig = forkSpec.configuration as QbftConsensusConfig
 
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(privateKeyBytes))
@@ -106,7 +107,7 @@ class QbftValidatorFactory(
     val localAddress = Util.publicKeyToAddress(keyPair.publicKey)
     val qbftProposerSelector = ProposerSelectorAdapter(beaconChain, ProposerSelectorImpl)
 
-    val validatorProvider = StaticValidatorProvider(qbftOptions.validatorSet)
+    val validatorProvider = StaticValidatorProvider(protocolConfig.validatorSet)
     val stateTransition = StateTransitionImpl(validatorProvider)
     val proposerSelector = ProposerSelectorImpl
     val besuValidatorProvider = QbftValidatorProviderAdapter(validatorProvider)
@@ -130,20 +131,20 @@ class QbftValidatorFactory(
         blockBuilderIdentity = Validator(localAddress.toArray()),
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
-            validatorDuties.communicationMargin,
+            qbftOptions.communicationMargin,
           ),
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         clock = clock,
       )
 
-    val besuForksSchedule = ForksScheduleAdapter(forkSpec, validatorDuties)
+    val besuForksSchedule = ForksScheduleAdapter(forkSpec, qbftOptions)
 
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
-    val bftEventQueue = BftEventQueue(validatorDuties.messageQueueLimit)
+    val bftEventQueue = BftEventQueue(qbftOptions.messageQueueLimit)
     val roundTimer =
       RoundTimer(
         /* queue = */ bftEventQueue,
-        /* baseExpiryPeriod = */ validatorDuties.roundExpiry.toJavaDuration(),
+        /* baseExpiryPeriod = */ qbftOptions.roundExpiry.toJavaDuration(),
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
@@ -207,7 +208,7 @@ class QbftValidatorFactory(
         /* validatorProvider = */ besuValidatorProvider,
         /* validatorModeTransitionLogger = */ transitionLogger,
       )
-    val duplicateMessageTracker = MessageTracker(validatorDuties.duplicateMessageLimit)
+    val duplicateMessageTracker = MessageTracker(qbftOptions.duplicateMessageLimit)
     val chainHeaderNumber =
       beaconChain
         .getLatestBeaconState()
@@ -216,8 +217,8 @@ class QbftValidatorFactory(
         .toLong()
     val futureMessageBuffer =
       FutureMessageBuffer(
-        /* futureMessagesMaxDistance = */ validatorDuties.futureMessageMaxDistance,
-        /* futureMessagesLimit = */ validatorDuties.futureMessagesLimit,
+        /* futureMessagesMaxDistance = */ qbftOptions.futureMessageMaxDistance,
+        /* futureMessagesLimit = */ qbftOptions.futureMessagesLimit,
         /* chainHeight = */ chainHeaderNumber,
       )
     val gossiper = QbftGossip(validatorMulticaster, blockCodec)

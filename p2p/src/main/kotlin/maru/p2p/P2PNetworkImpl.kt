@@ -138,7 +138,7 @@ class P2PNetworkImpl(
     }
   }
 
-  override fun subscribeToBlocks(subscriber: SealedBlockHandler<ValidationResult>): Int =
+  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int =
     subscriptionManager.subscribeToBlocks(subscriber::handleSealedBlock)
 
   override fun unsubscribe(subscriptionId: Int) = subscriptionManager.unsubscribe(subscriptionId)

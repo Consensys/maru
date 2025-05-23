@@ -19,6 +19,7 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.EMPTY_HASH
 import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
@@ -32,9 +33,8 @@ import org.web3j.protocol.core.DefaultBlockParameter
 class BeaconChainInitialization(
   private val executionLayerClient: Web3j,
   private val beaconChain: BeaconChain,
-  private val validatorSet: Set<Validator>,
 ) {
-  private fun initializeDb() {
+  private fun initializeDb(validatorSet: Set<Validator>) {
     val genesisExecutionPayload =
       executionLayerClient
         .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), true)
@@ -50,9 +50,9 @@ class BeaconChainInitialization(
         round = 0u,
         timestamp = genesisExecutionPayload.timestamp,
         proposer = Validator(genesisExecutionPayload.feeRecipient),
-        parentRoot = ByteArray(32),
-        stateRoot = ByteArray(32),
-        bodyRoot = ByteArray(32),
+        parentRoot = EMPTY_HASH,
+        stateRoot = EMPTY_HASH,
+        bodyRoot = EMPTY_HASH,
         headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
 
@@ -73,9 +73,9 @@ class BeaconChainInitialization(
     }
   }
 
-  fun ensureDbIsInitialized() {
+  fun ensureDbIsInitialized(validatorSet: Set<Validator>) {
     if (!beaconChain.isInitialized()) {
-      initializeDb()
+      initializeDb(validatorSet)
     }
   }
 }

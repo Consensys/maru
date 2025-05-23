@@ -28,10 +28,10 @@ import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.ProtocolStarterBlockHandler
-import maru.consensus.SealedBlockHandlerAdapter
+import maru.consensus.SealedBeaconBlockHandlerAdapter
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
-import maru.consensus.blockimport.NewSealedBlockHandlerMultiplexer
+import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
@@ -76,8 +76,8 @@ class MaruApp(
         "Private key file ${config.persistence.privateKeyPath} already exists. Maru will use the existing private key.",
       )
     }
-    if (config.qbftOptions.validatorDuties == null) {
-      log.info("Qbft Validator duties configuration is not defined. Maru is running in follower-only node")
+    if (config.qbftOptions == null) {
+      log.info("Qbft options are not defined. Maru is running in follower-only node")
     }
     if (config.p2pConfig == null) {
       log.info("P2PManager is not defined.")
@@ -172,17 +172,16 @@ class MaruApp(
     val followerBlockHandlers = followerHandlersMap + metadataCacheUpdaterHandlerEntry
     val blockImportHandlers =
       NewBlockHandlerMultiplexer(followerBlockHandlers)
-    val adaptedBeaconBlockImporter = SealedBlockHandlerAdapter(blockImportHandlers)
+    val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
 
     val beaconChainInitialization =
       BeaconChainInitialization(
         executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
         beaconChain = beaconChain,
-        validatorSet = config.qbftOptions.validatorSet,
       )
 
     val qbftFactory =
-      if (config.qbftOptions.validatorDuties != null) {
+      if (config.qbftOptions != null) {
         val sealedBlockHandlers =
           mutableMapOf(
             "beacon block handlers" to adaptedBeaconBlockImporter,
@@ -190,11 +189,11 @@ class MaruApp(
               SealedBeaconBlockBroadcaster(p2pNetwork),
           )
         val sealedBlockHandlerMultiplexer =
-          NewSealedBlockHandlerMultiplexer<Unit>(
+          NewSealedBeaconBlockHandlerMultiplexer<Unit>(
             handlersMap = sealedBlockHandlers,
           )
         QbftProtocolFactoryWithBeaconChainInitialization(
-          qbftOptions = config.qbftOptions,
+          qbftOptions = config.qbftOptions!!,
           privateKeyBytes = privateKeyBytesWithoutPrefix(),
           validatorElNodeConfig = config.validatorElNode,
           metricsSystem = metricsSystem,
@@ -213,7 +212,6 @@ class MaruApp(
           newBlockHandler = blockImportHandlers,
           validatorElNodeConfig = config.validatorElNode,
           beaconChainInitialization = beaconChainInitialization,
-          validatorSet = config.qbftOptions.validatorSet,
         )
       }
     val delegatedConsensusNewBlockHandler =

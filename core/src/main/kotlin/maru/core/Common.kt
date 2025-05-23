@@ -13,18 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.p2p
+package maru.core
 
-import maru.core.SealedBeaconBlock
-import tech.pegasys.teku.infrastructure.async.SafeFuture
-
-class SealedBeaconBlockBroadcaster(
-  val p2PNetwork: P2PNetwork,
-) : SealedBeaconBlockHandler<Unit> {
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<Unit> {
-    // TODO: New block message might need an intermediary wrapper in the future
-    val message = Message(MessageType.BLOCK, payload = sealedBeaconBlock)
-    p2PNetwork.broadcastMessage(message)
-    return SafeFuture.completedFuture(Unit)
-  }
-}
+val EMPTY_HASH = ByteArray(32)

@@ -63,7 +63,7 @@ sealed interface ValidationResult {
   }
 }
 
-fun interface SealedBlockHandler<T> {
+fun interface SealedBeaconBlockHandler<T> {
   fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<T>
 }
 
@@ -95,7 +95,7 @@ interface P2PNetwork {
   /**
    * @return subscription id
    */
-  fun subscribeToBlocks(subscriber: SealedBlockHandler<ValidationResult>): Int
+  fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int
 
   fun unsubscribe(subscriptionId: Int)
 }

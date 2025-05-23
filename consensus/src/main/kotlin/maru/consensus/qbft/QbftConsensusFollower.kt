@@ -24,15 +24,15 @@ class QbftConsensusFollower(
   val p2pNetwork: P2PNetwork,
   val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
 ) : Protocol {
-  private var subscriptionId: Int = -1
+  private var subscriptionId: Int? = null
 
   override fun start() {
     subscriptionId = p2pNetwork.subscribeToBlocks(blockImporter::importBlock)
   }
 
   override fun stop() {
-    if (subscriptionId != -1) {
-      p2pNetwork.unsubscribe(subscriptionId)
+    if (subscriptionId != null) {
+      p2pNetwork.unsubscribe(subscriptionId!!)
     }
   }
 }

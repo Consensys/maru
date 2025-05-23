@@ -16,6 +16,9 @@
 package maru.app
 
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import maru.app.Checks.getMinedBlocks
 import maru.consensus.ElFork
 import maru.core.SealedBeaconBlock
@@ -29,6 +32,7 @@ import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
@@ -131,10 +135,13 @@ class MaruFollowerTest {
       }
     }
 
-    Thread.sleep(1000)
-
-    val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
-    val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)
-    assertThat(blocksImportedByFollower).isEqualTo(blocksProducedByQbftValidator)
+    await
+      .pollDelay(100.milliseconds.toJavaDuration())
+      .timeout(1.seconds.toJavaDuration())
+      .untilAsserted {
+        val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
+        val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)
+        assertThat(blocksImportedByFollower).isEqualTo(blocksProducedByQbftValidator)
+      }
   }
 }

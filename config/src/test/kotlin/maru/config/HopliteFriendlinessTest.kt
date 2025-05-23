@@ -19,8 +19,6 @@ import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import maru.core.Validator
-import maru.extensions.fromHexToByteArray
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -32,9 +30,6 @@ class HopliteFriendlinessTest {
     private-key-path = "/private-key/path"
 
     [qbft-options]
-    validator-set = ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"]
-
-    [qbft-options.validator-duties]
     private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
     communication-margin=100m
 
@@ -66,11 +61,8 @@ class HopliteFriendlinessTest {
         MaruConfigDtoToml(
           persistence = Persistence(dataPath = Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
-            QbftOptionsDtoTomlFriendly(
-              ValidatorDutiesDtoTomlFriendly(
-                100.milliseconds,
-              ),
-              validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
+            QbftOptions(
+              100.milliseconds,
             ),
           p2pConfig =
             P2P(
@@ -80,13 +72,13 @@ class HopliteFriendlinessTest {
               reconnectDelay = 500.milliseconds,
             ),
           payloadValidator =
-            PayloadValidatorDtoToml(
+            PayloadValidatorDto(
               ethApiEndpoint =
-                ApiEndpointDtoToml(
+                ApiEndpointDto(
                   endpoint = URI.create("http://localhost:8545").toURL(),
                 ),
               engineApiEndpoint =
-                ApiEndpointDtoToml(
+                ApiEndpointDto(
                   endpoint = URI.create("http://localhost:8555").toURL(),
                   jwtSecretPath = "/secret/path",
                 ),
@@ -94,12 +86,12 @@ class HopliteFriendlinessTest {
           followerEngineApis =
             mapOf(
               "follower1" to
-                ApiEndpointDtoToml(
+                ApiEndpointDto(
                   URI.create("http://localhost:1234").toURL(),
                   jwtSecretPath =
                     "/secret/path",
                 ),
-              "follower2" to ApiEndpointDtoToml(URI.create("http://localhost:4321").toURL()),
+              "follower2" to ApiEndpointDto(URI.create("http://localhost:4321").toURL()),
             ),
         ),
       )
@@ -114,12 +106,8 @@ class HopliteFriendlinessTest {
         MaruConfigDtoToml(
           persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
-            QbftOptionsDtoTomlFriendly(
-              validatorDuties =
-                ValidatorDutiesDtoTomlFriendly(
-                  communicationMargin = 100.milliseconds,
-                ),
-              validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
+            QbftOptions(
+              communicationMargin = 100.milliseconds,
             ),
           p2pConfig =
             P2P(
@@ -129,13 +117,13 @@ class HopliteFriendlinessTest {
               reconnectDelay = 500.milliseconds,
             ),
           payloadValidator =
-            PayloadValidatorDtoToml(
+            PayloadValidatorDto(
               ethApiEndpoint =
-                ApiEndpointDtoToml(
+                ApiEndpointDto(
                   endpoint = URI.create("http://localhost:8545").toURL(),
                 ),
               engineApiEndpoint =
-                ApiEndpointDtoToml(
+                ApiEndpointDto(
                   endpoint = URI.create("http://localhost:8555").toURL(),
                   jwtSecretPath = "/secret/path",
                 ),
@@ -173,17 +161,7 @@ class HopliteFriendlinessTest {
             ),
           qbftOptions =
             QbftOptions(
-              validatorDuties =
-                ValidatorDuties(
-                  communicationMargin = 100.milliseconds,
-                ),
-              validatorSet =
-                setOf(
-                  Validator(
-                    "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"
-                      .fromHexToByteArray(),
-                  ),
-                ),
+              communicationMargin = 100.milliseconds,
             ),
           followers =
             FollowersConfig(
@@ -206,17 +184,7 @@ class HopliteFriendlinessTest {
           persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
             QbftOptions(
-              validatorDuties =
-                ValidatorDuties(
-                  communicationMargin = 100.milliseconds,
-                ),
-              validatorSet =
-                setOf(
-                  Validator(
-                    "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"
-                      .fromHexToByteArray(),
-                  ),
-                ),
+              communicationMargin = 100.milliseconds,
             ),
           p2pConfig =
             P2P(
@@ -245,7 +213,7 @@ class HopliteFriendlinessTest {
       )
   }
 
-  private val validatorDuties =
+  private val qbftOptions =
     """
     private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
     communication-margin=100m
@@ -260,10 +228,10 @@ class HopliteFriendlinessTest {
   @Test
   fun validatorDutiesAreParseable() {
     val config =
-      Utils.parseTomlConfig<ValidatorDutiesDtoTomlFriendly>(validatorDuties)
+      Utils.parseTomlConfig<QbftOptions>(qbftOptions)
     assertThat(config)
       .isEqualTo(
-        ValidatorDutiesDtoTomlFriendly(
+        QbftOptions(
           communicationMargin = 100.milliseconds,
           messageQueueLimit = 1000,
           roundExpiry = 1.seconds,

@@ -17,7 +17,7 @@ package maru.consensus.blockimport
 
 import kotlin.text.contains
 import maru.core.ext.DataGenerators
-import maru.p2p.SealedBlockHandler
+import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -30,20 +30,20 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class NewSealedBlockHandlerMultiplexerTest {
+class NewSealedBeaconBlockHandlerMultiplexerTest {
   @Test
   fun `should invoke all handlers for SealedBeaconBlock`() {
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(1u)
     val handler1 =
-      mock<SealedBlockHandler<Unit>> {
+      mock<SealedBeaconBlockHandler<Unit>> {
         on { handleSealedBlock(any()) } doReturn SafeFuture.completedFuture(Unit)
       }
     val handler2 =
-      mock<SealedBlockHandler<Unit>> {
+      mock<SealedBeaconBlockHandler<Unit>> {
         on { handleSealedBlock(any()) } doReturn SafeFuture.completedFuture(Unit)
       }
     val multiplexer =
-      NewSealedBlockHandlerMultiplexer<Unit>(
+      NewSealedBeaconBlockHandlerMultiplexer<Unit>(
         handlersMap = mapOf("h1" to handler1, "h2" to handler2),
       )
 
@@ -59,12 +59,12 @@ class NewSealedBlockHandlerMultiplexerTest {
   fun `should log and throw error if sealed handler throws`() {
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(1u)
     val handler =
-      mock<SealedBlockHandler<Unit>> {
+      mock<SealedBeaconBlockHandler<Unit>> {
         on { handleSealedBlock(any()) } doThrow RuntimeException("fail")
       }
     val logger: Logger = mock()
     val multiplexer =
-      NewSealedBlockHandlerMultiplexer<Unit>(
+      NewSealedBeaconBlockHandlerMultiplexer<Unit>(
         handlersMap = mapOf(pair = "h" to handler),
         log = logger,
       )

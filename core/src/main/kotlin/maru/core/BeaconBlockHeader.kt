@@ -42,10 +42,6 @@ data class BeaconBlockHeader(
 
   fun hash(): ByteArray = hash
 
-  companion object {
-    val EMPTY_HASH = ByteArray(32)
-  }
-
   override fun toString(): String =
     """
     BeaconBlockHeader(

@@ -2,9 +2,6 @@
 data-path="/tmp/maru-db"
 
 [qbft-options]
-validator-set = ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"]
-
-[qbft-options.validator-duties]
 communication-margin=100m
 
 [p2p-config]

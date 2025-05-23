@@ -27,6 +27,7 @@ import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.EMPTY_HASH
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
@@ -74,7 +75,7 @@ class BlockValidatorTest {
       parentRoot = validCurrBlockHeader.hash,
       timestamp = validCurrBlockHeader.timestamp + 1u,
       bodyRoot = HashUtil.bodyRoot(validNewBlockBody),
-      stateRoot = BeaconBlockHeader.EMPTY_HASH,
+      stateRoot = EMPTY_HASH,
     )
   private val validNewStateRoot =
     HashUtil.stateRoot(
@@ -335,7 +336,7 @@ class BlockValidatorTest {
 
   @Test
   fun `test missing parent block state`() {
-    val nonExistentParentHash = ByteArray(32)
+    val nonExistentParentHash = EMPTY_HASH
     val invalidBlockHeader = validNewBlockHeader.copy(parentRoot = nonExistentParentHash)
     val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
     val proposerValidator = ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain)
