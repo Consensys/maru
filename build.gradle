@@ -145,6 +145,7 @@ allprojects {
         systemProperty name, System.getProperty(name)
       }
     }
+    systemProperty 'acctests.runBesuAsProcess', 'true'
     useJUnitPlatform {}
     testLogging {
       exceptionFormat TestExceptionFormat.FULL
