@@ -37,13 +37,10 @@ class QbftBlockCreatorFactoryTest {
   private val eagerQbftBlockCreatorConfig = Mockito.mock(EagerQbftBlockCreator.Config::class.java)
 
   @Test
-  fun `uses eager block creator when round zero and started building`() {
+  fun `uses eager block creator for first block`() {
     whenever(beaconChain.getLatestBeaconState()).thenReturn(
       DataGenerators.randomBeaconState(0u),
     )
-    whenever(
-      executionLayerManager.hasStartedBlockBuilding(),
-    ).thenReturn(false)
 
     val qbftBlockCreatorFactory =
       QbftBlockCreatorFactory(
@@ -61,13 +58,10 @@ class QbftBlockCreatorFactoryTest {
   }
 
   @Test
-  fun `uses eager block creator when round greater than zero`() {
+  fun `uses eager block creator for round greater than zero`() {
     whenever(beaconChain.getLatestBeaconState()).thenReturn(
       DataGenerators.randomBeaconState(0u),
     )
-    whenever(
-      executionLayerManager.hasStartedBlockBuilding(),
-    ).thenReturn(false)
 
     val qbftBlockCreatorFactory =
       QbftBlockCreatorFactory(
@@ -85,13 +79,10 @@ class QbftBlockCreatorFactoryTest {
   }
 
   @Test
-  fun `uses delayed block creator when round 0 and started building`() {
+  fun `uses delayed block creator for round 0 after first block`() {
     whenever(beaconChain.getLatestBeaconState()).thenReturn(
       DataGenerators.randomBeaconState(0u),
     )
-    whenever(
-      executionLayerManager.hasStartedBlockBuilding(),
-    ).thenReturn(true)
 
     val qbftBlockCreatorFactory =
       QbftBlockCreatorFactory(
@@ -103,6 +94,9 @@ class QbftBlockCreatorFactoryTest {
         blockBuilderIdentity = blockBuilderIdentity,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )
+
+    // trigger first use of block creator
+    qbftBlockCreatorFactory.create(0)
 
     val blockCreator = qbftBlockCreatorFactory.create(0)
     assertThat(blockCreator).isInstanceOf(DelayedQbftBlockCreator::class.java)

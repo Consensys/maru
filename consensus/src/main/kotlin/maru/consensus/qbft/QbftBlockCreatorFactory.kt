@@ -40,6 +40,7 @@ class QbftBlockCreatorFactory(
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
 ) : QbftBlockCreatorFactory {
   private val log: Logger = LogManager.getLogger(this.javaClass)
+  private var hasCreatedFirstBlockCreator = false
 
   override fun create(round: Int): BesuQbftBlockCreator {
     val delayedQbftBlockCreator =
@@ -50,12 +51,22 @@ class QbftBlockCreatorFactory(
         beaconChain = beaconChain,
         round = round,
       )
-    val number = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1u
-    return if (round == 0 && manager.hasStartedBlockBuilding()) {
-      log.debug("Using delayed block creator round={} height={}", round, number)
+    val blockNumber = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1u
+    val blockCreator = createBlockCreator(round, blockNumber, delayedQbftBlockCreator)
+    hasCreatedFirstBlockCreator = true
+    return blockCreator
+  }
+
+  private fun createBlockCreator(
+    round: Int,
+    blockNumber: ULong,
+    delayedQbftBlockCreator: DelayedQbftBlockCreator,
+  ): BesuQbftBlockCreator =
+    if (round == 0 && hasCreatedFirstBlockCreator) {
+      log.debug("Using delayed block creator number={}, round={}", blockNumber, round)
       delayedQbftBlockCreator
     } else {
-      log.debug("Using eager block creator round={} height={}", round, number)
+      log.debug("Using eager block creator number={}, round={} ", blockNumber, round)
       EagerQbftBlockCreator(
         manager = manager,
         delegate = delayedQbftBlockCreator,
@@ -65,5 +76,4 @@ class QbftBlockCreatorFactory(
         config = eagerQbftBlockCreatorConfig,
       )
     }
-  }
 }

@@ -88,8 +88,6 @@ interface ExecutionLayerManager {
 
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
 
-  fun hasStartedBlockBuilding(): Boolean
-
   fun setHead(
     headHash: ByteArray,
     safeHash: ByteArray,

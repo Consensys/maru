@@ -73,8 +73,6 @@ class JsonRpcExecutionLayerManager(
     }
   }
 
-  override fun hasStartedBlockBuilding(): Boolean = payloadId != null
-
   override fun setHead(
     headHash: ByteArray,
     safeHash: ByteArray,
