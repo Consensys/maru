@@ -1,5 +1,6 @@
 [persistence]
 data-path="/tmp/maru-db"
+private-key-path="/tmp/maru-db/private-key"
 
 [sot-eth-endpoint]
 endpoint = "http://sequencer:8545"
