@@ -80,7 +80,6 @@ class CliqueToPosTest {
     private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
 
-
     private fun parsePragueSwitchTimestamp(): Long {
       val objectMapper = ObjectMapper()
       val genesisTree = objectMapper.readTree(File(genesisDir, "genesis-besu.json"))
@@ -151,8 +150,6 @@ class CliqueToPosTest {
 
       qbftCluster.after()
     }
-
-   
 
     @JvmStatic
     fun followerNodes(): List<Arguments> =
