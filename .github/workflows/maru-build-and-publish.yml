@@ -17,6 +17,9 @@ on:
         required: false
         type: boolean
         default: false
+    outputs:
+      commit_tag:
+        value: ${{ jobs.build-and-publish.outputs.commit_tag }}
     secrets:
       DOCKERHUB_USERNAME:
         required: false
