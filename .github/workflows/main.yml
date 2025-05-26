@@ -84,6 +84,12 @@ jobs:
       - name: Run Docker with maru container
         run: |
           MARU=${{ needs.build-for-testing.outputs.commit_tag }} make run-local-image-partial
+      - name: List docker containers/images
+        continue-on-error: true
+        run: |
+          docker ps -la && docker images
+          docker container ls -a
+          cat ./initialization/genesis-maru.json
       - name: Check Maru Docker logs
         run: |
           SEARCH_STRING="Maru is up"
