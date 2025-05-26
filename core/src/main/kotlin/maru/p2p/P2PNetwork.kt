@@ -90,7 +90,7 @@ interface P2PNetwork {
    */
   fun stop(): SafeFuture<Unit>
 
-  fun broadcastMessage(message: Message<*>)
+  fun broadcastMessage(message: Message<*>): SafeFuture<*>
 
   /**
    * @return subscription id
@@ -98,4 +98,9 @@ interface P2PNetwork {
   fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int
 
   fun unsubscribe(subscriptionId: Int)
+
+  /**
+   * Only for the tests
+   */
+  val port: UInt
 }

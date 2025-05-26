@@ -17,6 +17,7 @@ package maru.p2p.topics
 
 import java.util.Optional
 import maru.core.SealedBeaconBlock
+import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
 import maru.p2p.ValidationResult
 import maru.serialization.Serializer
@@ -43,16 +44,12 @@ class SealedBlocksTopicHandler(
   override fun prepareMessage(
     payload: Bytes,
     arrivalTimestamp: Optional<UInt64>,
-  ): PreparedGossipMessage {
-    TODO("Not yet implemented")
-  }
+  ): PreparedGossipMessage = MaruPreparedGossipMessage(payload, arrivalTimestamp)
 
   override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> {
     val deserializaedMessage = sealedBeaconBlockSerializer.deserialize(message.originalMessage.toArray())
     return subscriptionManager.handleEvent(deserializaedMessage).thenApply { it.toLibP2P() }
   }
 
-  override fun getMaxMessageSize(): Int {
-    TODO("Not yet implemented")
-  }
+  override fun getMaxMessageSize(): Int = 10485760
 }

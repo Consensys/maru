@@ -251,4 +251,8 @@ class MaruApp(
 
     return protocolStarter
   }
+
+  internal fun p2pNetworkPort() {
+    p2pNetwork.port
+  }
 }

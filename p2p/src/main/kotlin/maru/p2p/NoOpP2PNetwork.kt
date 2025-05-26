@@ -33,8 +33,9 @@ object NoOpP2PNetwork : P2PNetwork {
         log.debug("NoopP2PNetwork stopped")
       }.thenApply { }
 
-  override fun broadcastMessage(message: Message<*>) {
+  override fun broadcastMessage(message: Message<*>): SafeFuture<Unit> {
     log.debug("Doing nothing for message={}", message)
+    return SafeFuture.completedFuture(Unit)
   }
 
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
@@ -45,4 +46,6 @@ object NoOpP2PNetwork : P2PNetwork {
   override fun unsubscribe(subscriptionId: Int) {
     log.debug("Unsubscription called for subscriptionId={}", subscriptionId)
   }
+
+  override val port: UInt = 0u
 }

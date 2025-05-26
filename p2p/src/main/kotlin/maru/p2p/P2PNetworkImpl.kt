@@ -15,11 +15,13 @@
  */
 package maru.p2p
 
+import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
+import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.serialization.Serializer
@@ -27,12 +29,14 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork as TekuP2PNetwork
 
 class SubscriptionManager<E> {
@@ -66,16 +70,24 @@ class SubscriptionManager<E> {
           SafeFuture.failedFuture(th)
         }
       }
-    return SafeFuture.collectAll(handlerFutures.stream()).thenApply {
-      it.reduce { acc: ValidationResult, next: ValidationResult ->
-        when {
-          acc is ValidationResult.Companion.Failed -> acc
-          next is ValidationResult.Companion.Failed -> next
-          acc is ValidationResult.Companion.KindaFine -> acc
-          next is ValidationResult.Companion.KindaFine -> next
-          else -> acc
+    return if (subscriptions.isNotEmpty()) {
+      SafeFuture.collectAll(handlerFutures.stream()).thenApply {
+        it.reduce { acc: ValidationResult, next: ValidationResult ->
+          when {
+            acc is ValidationResult.Companion.Failed -> acc
+            next is ValidationResult.Companion.Failed -> next
+            acc is ValidationResult.Companion.KindaFine -> acc
+            next is ValidationResult.Companion.KindaFine -> next
+            else -> acc
+          }
         }
       }
+    } else {
+      SafeFuture.completedFuture(
+        ValidationResult.Companion.KindaFine(
+          "No subscription to imply message validity",
+        ),
+      )
     }
   }
 }
@@ -88,6 +100,8 @@ class P2PNetworkImpl(
 ) : P2PNetwork {
   private val topicIdGenerator = LineaTopicIdGenerator(chainId)
 
+  private val subscriptionManager = SubscriptionManager<SealedBeaconBlock>()
+
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
     p2pConfig: P2P,
@@ -99,15 +113,13 @@ class P2PNetworkImpl(
       privateKey = privateKey,
       ipAddress = p2pConfig.ipAddress,
       port = p2pConfig.port,
-      sealedBlocksSubscriptionManager = SubscriptionManager(),
+      sealedBlocksSubscriptionManager = subscriptionManager,
       serializer = serializer,
       topicIdGenerator = topicIdGenerator,
     )
   }
 
-  private val subscriptionManager = SubscriptionManager<SealedBeaconBlock>()
-
-  val p2pNetwork: TekuP2PNetwork<Peer> = buildP2PNetwork(privateKeyBytes, p2pConfig, serializer)
+  private val p2pNetwork: TekuP2PNetwork<Peer> = buildP2PNetwork(privateKeyBytes, p2pConfig, serializer)
 
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val delayedExecutor =
@@ -127,21 +139,22 @@ class P2PNetworkImpl(
 
   override fun stop(): SafeFuture<Unit> = p2pNetwork.stop().thenApply { }
 
-  override fun broadcastMessage(message: Message<*>) {
+  override fun broadcastMessage(message: Message<*>): SafeFuture<*> =
     when (message.type) {
-      MessageType.QBFT -> Unit // TODO: Add QBFT messages support later
+      MessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       MessageType.BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serializer.serialize(message.payload as SealedBeaconBlock))
         p2pNetwork.gossip(topicIdGenerator.topicId(message.type, message.version), serializedSealedBeaconBlock)
       }
     }
-  }
 
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int =
     subscriptionManager.subscribeToBlocks(subscriber::handleSealedBlock)
 
   override fun unsubscribe(subscriptionId: Int) = subscriptionManager.unsubscribe(subscriptionId)
+
+  override val port: UInt = p2pNetwork.listenPorts.first().toUInt()
 
   fun addStaticPeer(peerAddress: MultiaddrPeerAddress) {
     if (peerAddress.id == p2pNetwork.nodeId) { // Don't connect to self
@@ -195,6 +208,55 @@ class P2PNetworkImpl(
       if (staticPeerMap.containsKey(peerAddress.id)) {
         SafeFuture.runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
       }
+    }
+  }
+
+  internal val peerCount: Int
+    get() = p2pNetwork.peerCount
+
+  internal fun isConnected(peer: String): Boolean {
+    val peerAddress =
+      PeerAddress(
+        LibP2PNodeId(
+          PeerId.fromBase58(
+            peer,
+          ),
+        ),
+      )
+    return p2pNetwork.isConnected(peerAddress)
+  }
+
+  internal fun dropPeer(
+    peer: String,
+    reason: DisconnectReason,
+  ): SafeFuture<Unit> {
+    val maybePeer =
+      p2pNetwork
+        .getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
+        .getOrNull()
+    return if (maybePeer == null) {
+      log.warn("Trying to disconnect from peer {}, but there's no connection to it!", peer)
+      SafeFuture.completedFuture(Unit)
+    } else {
+      maybePeer.disconnectCleanly(reason).thenApply { }
+    }
+  }
+
+  // TODO: This is pretty much WIP. This should be addressed with the syncing
+  internal fun sendRequest(
+    peer: String,
+    rpcMethod: MaruRpcMethod,
+    request: Bytes,
+    responseHandler: MaruRpcResponseHandler,
+  ): SafeFuture<RpcStreamController<MaruOutgoingRpcRequestHandler>> {
+    val maybePeer =
+      p2pNetwork
+        .getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
+        .getOrNull()
+    return if (maybePeer == null) {
+      SafeFuture.failedFuture(IllegalStateException("Peer $peer is not connected!"))
+    } else {
+      maybePeer.sendRequest(rpcMethod, request, responseHandler)
     }
   }
 }

@@ -64,7 +64,7 @@ class SpyingP2PNetwork(
 
   override fun stop(): SafeFuture<Unit> = SafeFuture.completedFuture(Unit)
 
-  override fun broadcastMessage(message: Message<*>) {
+  override fun broadcastMessage(message: Message<*>): SafeFuture<Unit> {
     when (message.type) {
       MessageType.QBFT -> {
         val decodedMessage = decodedMessage(message.toBesuMessageData())
@@ -75,6 +75,8 @@ class SpyingP2PNetwork(
 
       MessageType.BLOCK -> emittedBlockMessages.add(message.payload as SealedBeaconBlock)
     }
+
+    return SafeFuture.completedFuture(Unit)
   }
 
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int =
@@ -83,4 +85,7 @@ class SpyingP2PNetwork(
   override fun unsubscribe(subscriptionId: Int) {
     p2pNetwork.unsubscribe(subscriptionId)
   }
+
+  override val port: UInt
+    get() = p2pNetwork.port
 }

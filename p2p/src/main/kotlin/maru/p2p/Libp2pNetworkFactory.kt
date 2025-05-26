@@ -68,10 +68,11 @@ object Libp2pNetworkFactory {
     val rpcMethod = MaruRpcMethod()
     val gossipTopicHandlers = GossipTopicHandlers()
 
+    val topicHandler = SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer)
     val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BLOCK, Version.V1)
     gossipTopicHandlers.add(
       sealedBlocksTopicId,
-      SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer),
+      topicHandler,
     )
 
     val gossipParams = GossipParamsBuilder().heartbeatInterval(1.seconds).build()
@@ -116,15 +117,18 @@ object Libp2pNetworkFactory {
 
     val advertisedAddresses = listOf(ipv4Address)
 
-    return LibP2PNetwork(
-      /* privKey = */ privateKey,
-      /* nodeId = */ libP2PNodeId,
-      /* host = */ host,
-      /* peerManager = */ peerManager,
-      /* advertisedAddresses = */ advertisedAddresses,
-      /* gossipNetwork = */ gossipNetwork,
-      /* listenPorts = */ listOf(1),
-    )
+    val p2pNetwork =
+      LibP2PNetwork(
+        /* privKey = */ privateKey,
+        /* nodeId = */ libP2PNodeId,
+        /* host = */ host,
+        /* peerManager = */ peerManager,
+        /* advertisedAddresses = */ advertisedAddresses,
+        /* gossipNetwork = */ gossipNetwork,
+        /* listenPorts = */ listOf(1),
+      )
+    p2pNetwork.subscribe(sealedBlocksTopicId, topicHandler)
+    return p2pNetwork
   }
 
   private fun getMessageFactory(

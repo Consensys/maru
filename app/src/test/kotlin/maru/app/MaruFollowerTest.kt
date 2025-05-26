@@ -66,16 +66,21 @@ class MaruFollowerTest {
     injectableSealedBlocksFakeNetwork = InjectableSealedBlocksFakeNetwork()
     val validatorP2PNetwork =
       object : P2PNetwork by NoOpP2PNetwork {
-        override fun broadcastMessage(message: Message<*>) {
+        override fun broadcastMessage(message: Message<*>): SafeFuture<Unit> =
           if (message.type == MessageType.BLOCK) {
-            SafeFuture.runAsync {
-              // To untie Validator's callstack from follower's concerns
-              injectableSealedBlocksFakeNetwork.injectSealedBlock(
-                message.payload as SealedBeaconBlock,
-              )
-            }
+            SafeFuture
+              .of(
+                SafeFuture
+                  .runAsync {
+                    // To untie Validator's callstack from follower's concerns
+                    injectableSealedBlocksFakeNetwork.injectSealedBlock(
+                      message.payload as SealedBeaconBlock,
+                    )
+                  },
+              ).thenApply { }
+          } else {
+            SafeFuture.completedFuture(Unit)
           }
-        }
       }
     validatorStack = NetworkParticipantStack(cluster = cluster, p2pNetwork = validatorP2PNetwork)
     followerStack =
