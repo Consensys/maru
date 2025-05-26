@@ -97,7 +97,7 @@ jobs:
           INTERVAL_SECONDS=2
           END_TIME=$((SECONDS + TIMEOUT_SECONDS))
           while [ $SECONDS -lt $END_TIME ]; do
-            echo $(docker logs maru | tail)
+            echo $(docker logs maru)
             echo $(docker logs maru | grep -q "Maru is up")
             LOGS=$(docker logs maru 2>&1)
             if echo "$LOGS" | grep -q "$SEARCH_STRING"; then
