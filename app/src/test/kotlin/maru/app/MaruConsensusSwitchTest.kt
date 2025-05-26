@@ -36,9 +36,11 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.api.parallel.Isolated
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 
+@Isolated
 class MaruConsensusSwitchTest {
   companion object {
     private const val VANILLA_EXTRA_DATA_LENGTH = 32
