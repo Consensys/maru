@@ -58,11 +58,11 @@ jobs:
     secrets: inherit
 
   build-for-testing:
-    needs: [ testing, run-e2e-tests ]
-    if: ${{ always() && !cancelled() && (needs.testing.result == 'skipped' || needs.testing.result == 'success') && (needs.run-e2e-tests.result == 'skipped' || needs.run-e2e-tests.outputs.tests_outcome == 'success') }}
+    #needs: [ testing, run-e2e-tests ]
+    #if: ${{ always() && !cancelled() && (needs.testing.result == 'skipped' || needs.testing.result == 'success') && (needs.run-e2e-tests.result == 'skipped' || needs.run-e2e-tests.outputs.tests_outcome == 'success') }}
+    if: ${{ always() && !cancelled() }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
-      develop_tag: 'develop'
       image_name: 'consensys/maru'
       push_image: false
   
