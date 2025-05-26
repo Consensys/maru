@@ -25,3 +25,6 @@ build-local-image:
 
 run-local-image:
 	docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d
+
+run-local-image-partial:
+	docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d maru

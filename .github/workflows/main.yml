@@ -57,9 +57,53 @@ jobs:
       has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
     secrets: inherit
 
-  build-and-publish:
+  build-for-testing:
     needs: [ testing, run-e2e-tests ]
     if: ${{ always() && !cancelled() && (needs.testing.result == 'skipped' || needs.testing.result == 'success') && (needs.run-e2e-tests.result == 'skipped' || needs.run-e2e-tests.outputs.tests_outcome == 'success') }}
+    uses: ./.github/workflows/maru-build-and-publish.yml
+    with:
+      develop_tag: 'develop'
+      image_name: 'consensys/maru'
+      push_image: false
+  
+  maru-image-smoke-test:
+    needs: [ build-for-testing ]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download local docker image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: linea-maru
+      - name: Load Docker images
+        run: |
+          pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
+          gunzip -c $GITHUB_WORKSPACE/linea-maru/linea-maru-docker-image.tar.gz| docker load &&
+      - name: Run Docker with maru container
+        run: |
+          MARU=${{ needs.build-for-testing.outputs.commit_tag }} make run-local-image-partial
+      - name: Check Maru Docker logs
+        run: |
+          SEARCH_STRING="Maru is up"
+          TIMEOUT_SECONDS=30
+          INTERVAL_SECONDS=2
+          END_TIME=$((SECONDS + TIMEOUT_SECONDS))
+          while [ $SECONDS -lt $END_TIME ]; do
+            LOGS=$(docker logs maru 2>&1)
+            if echo "$LOGS" | grep -q "$SEARCH_STRING"; then
+              echo "Found '$SEARCH_STRING' in logs. Marking job as successful."
+              exit 0
+            fi
+            echo "String '$SEARCH_STRING' not found yet. Retrying in $INTERVAL_SECONDS seconds..."
+            sleep $INTERVAL_SECONDS
+          done
+          echo "Timeout of $TIMEOUT_SECONDS seconds reached. String '$SEARCH_STRING' not found in logs."
+          exit 1
+  
+  build-build-and-publish:
+    needs: [ maru-image-smoke-test ]
+    if: ${{ always() && !cancelled() && needs.maru-image-smoke-test.result == 'success' }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
       develop_tag: 'develop'
