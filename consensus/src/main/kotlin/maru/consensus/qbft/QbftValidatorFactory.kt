@@ -87,13 +87,6 @@ class QbftValidatorFactory(
   private val p2PNetwork: P2PNetwork,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
-    qbftOptions
-    require(
-      forkSpec.blockTimeSeconds * 1000 >
-        qbftOptions.communicationMargin.inWholeMilliseconds,
-    ) {
-      "communicationMargin can't be more than blockTimeSeconds"
-    }
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
 
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
@@ -130,10 +123,8 @@ class QbftValidatorFactory(
         blockBuilderIdentity = Validator(localAddress.toArray()),
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
-            qbftOptions.communicationMargin,
+            qbftOptions.minBlockBuildTime,
           ),
-        nextBlockTimestampProvider = nextBlockTimestampProvider,
-        clock = clock,
       )
 
     val besuForksSchedule = ForksScheduleAdapter(forkSpec, qbftOptions)

@@ -44,7 +44,6 @@ object MaruFactory {
     data-path="$dataPath"
 
     [qbft-options]
-    communication-margin=200m
 
     [p2p-config]
     port = 3322
