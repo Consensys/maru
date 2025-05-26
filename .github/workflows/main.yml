@@ -83,7 +83,7 @@ jobs:
           gunzip -c $GITHUB_WORKSPACE/linea-maru/linea-maru-docker-image.tar.gz | docker load
       - name: Run Docker with maru container
         run: |
-          MARU=${{ needs.build-for-testing.outputs.commit_tag }} make run-local-image-partial
+          MARU_TAG=${{ needs.build-for-testing.outputs.commit_tag }} make run-local-image-partial
       - name: List docker containers/images
         continue-on-error: true
         run: |
