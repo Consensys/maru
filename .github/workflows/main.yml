@@ -63,6 +63,7 @@ jobs:
     if: ${{ always() && !cancelled() }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
+      develop_tag: 'develop'
       image_name: 'consensys/maru'
       push_image: false
   
