@@ -168,8 +168,6 @@ class P2PNetworkImpl(
    */
   override fun unsubscribeFromBlocks(subscriptionId: Int) = sealedBlocksSubscriptionManager.unsubscribe(subscriptionId)
 
-  override val port: UInt = p2pNetwork.listenPorts.first().toUInt()
-
   fun addStaticPeer(peerAddress: MultiaddrPeerAddress) {
     if (peerAddress.id == p2pNetwork.nodeId) { // Don't connect to self
       return

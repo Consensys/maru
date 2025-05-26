@@ -98,9 +98,4 @@ interface P2PNetwork {
   fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int
 
   fun unsubscribeFromBlocks(subscriptionId: Int)
-
-  /**
-   * Only for the tests
-   */
-  val port: UInt
 }

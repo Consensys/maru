@@ -85,7 +85,4 @@ class SpyingP2PNetwork(
   override fun unsubscribeFromBlocks(subscriptionId: Int) {
     p2pNetwork.unsubscribeFromBlocks(subscriptionId)
   }
-
-  override val port: UInt
-    get() = p2pNetwork.port
 }

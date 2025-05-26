@@ -46,6 +46,4 @@ object NoOpP2PNetwork : P2PNetwork {
   override fun unsubscribeFromBlocks(subscriptionId: Int) {
     log.debug("Unsubscription called for subscriptionId={}", subscriptionId)
   }
-
-  override val port: UInt = 0u
 }
