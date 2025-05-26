@@ -44,7 +44,6 @@ object MaruFactory {
     data-path="$dataPath"
 
     [qbft-options]
-    communication-margin=200m
 
     [payloadValidator]
     engine-api-endpoint = { endpoint = "$engineApiRpc" }

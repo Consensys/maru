@@ -2,7 +2,6 @@
 data-path="/tmp/maru-db"
 
 [qbft-options]
-communication-margin=100m
 
 [p2p-config]
 port = 3322

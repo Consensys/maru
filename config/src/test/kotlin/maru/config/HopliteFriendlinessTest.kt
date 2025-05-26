@@ -30,8 +30,6 @@ class HopliteFriendlinessTest {
     private-key-path = "/private-key/path"
 
     [qbft-options]
-    private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
-    communication-margin=100m
 
     [p2p-config]
     port = 3322
@@ -61,9 +59,7 @@ class HopliteFriendlinessTest {
         MaruConfigDtoToml(
           persistence = Persistence(dataPath = Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
-            QbftOptions(
-              100.milliseconds,
-            ),
+            QbftOptions(),
           p2pConfig =
             P2P(
               ipAddress = "127.0.0.1",
@@ -106,9 +102,7 @@ class HopliteFriendlinessTest {
         MaruConfigDtoToml(
           persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
-            QbftOptions(
-              communicationMargin = 100.milliseconds,
-            ),
+            QbftOptions(),
           p2pConfig =
             P2P(
               ipAddress = "127.0.0.1",
@@ -160,9 +154,7 @@ class HopliteFriendlinessTest {
                 ),
             ),
           qbftOptions =
-            QbftOptions(
-              communicationMargin = 100.milliseconds,
-            ),
+            QbftOptions(),
           followers =
             FollowersConfig(
               mapOf(
@@ -183,9 +175,7 @@ class HopliteFriendlinessTest {
         MaruConfig(
           persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
-            QbftOptions(
-              communicationMargin = 100.milliseconds,
-            ),
+            QbftOptions(),
           p2pConfig =
             P2P(
               ipAddress = "127.0.0.1",
@@ -215,8 +205,7 @@ class HopliteFriendlinessTest {
 
   private val qbftOptions =
     """
-    private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
-    communication-margin=100m
+    min-block-build-time=200m
     data-path="/some/path"
     message-queue-limit = 1000
     round-expiry = 1000
@@ -232,7 +221,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         QbftOptions(
-          communicationMargin = 100.milliseconds,
+          minBlockBuildTime = 200.milliseconds,
           messageQueueLimit = 1000,
           roundExpiry = 1.seconds,
           duplicateMessageLimit = 100,
