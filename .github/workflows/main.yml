@@ -79,7 +79,7 @@ jobs:
       - name: Load Docker images
         run: |
           pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
-          gunzip -c $GITHUB_WORKSPACE/linea-maru/linea-maru-docker-image.tar.gz| docker load &&
+          gunzip -c $GITHUB_WORKSPACE/linea-maru/linea-maru-docker-image.tar.gz| docker load
       - name: Run Docker with maru container
         run: |
           MARU=${{ needs.build-for-testing.outputs.commit_tag }} make run-local-image-partial
@@ -101,7 +101,7 @@ jobs:
           echo "Timeout of $TIMEOUT_SECONDS seconds reached. String '$SEARCH_STRING' not found in logs."
           exit 1
   
-  build-build-and-publish:
+  build-and-publish:
     needs: [ maru-image-smoke-test ]
     if: ${{ always() && !cancelled() && needs.maru-image-smoke-test.result == 'success' }}
     uses: ./.github/workflows/maru-build-and-publish.yml
