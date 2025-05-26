@@ -89,7 +89,7 @@ jobs:
         run: |
           docker ps -la && docker images
           docker container ls -a
-          cat ./initialization/genesis-maru.json
+          cat ./docker/initialization/genesis-maru.json
       - name: Check Maru Docker logs
         run: |
           SEARCH_STRING="Maru is up"
