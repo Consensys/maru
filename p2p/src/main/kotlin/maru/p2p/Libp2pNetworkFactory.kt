@@ -34,9 +34,7 @@ import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import java.util.Optional
 import kotlin.random.Random
-import maru.core.SealedBeaconBlock
 import maru.p2p.topics.SealedBlocksTopicHandler
-import maru.serialization.Serializer
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import pubsub.pb.Rpc
@@ -60,19 +58,16 @@ object Libp2pNetworkFactory {
     privateKey: PrivKey,
     port: String,
     ipAddress: String,
-    sealedBlocksSubscriptionManager: SubscriptionManager<SealedBeaconBlock>,
-    serializer: Serializer<SealedBeaconBlock>,
-    topicIdGenerator: TopicIdGenerator,
+    sealedBlocksTopicHandler: SealedBlocksTopicHandler,
+    sealedBlocksTopicId: String,
   ): P2PNetwork<Peer> {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val rpcMethod = MaruRpcMethod()
     val gossipTopicHandlers = GossipTopicHandlers()
 
-    val topicHandler = SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer)
-    val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BLOCK, Version.V1)
     gossipTopicHandlers.add(
       sealedBlocksTopicId,
-      topicHandler,
+      sealedBlocksTopicHandler,
     )
 
     val gossipParams = GossipParamsBuilder().heartbeatInterval(1.seconds).build()
@@ -127,7 +122,6 @@ object Libp2pNetworkFactory {
         /* gossipNetwork = */ gossipNetwork,
         /* listenPorts = */ listOf(1),
       )
-    p2pNetwork.subscribe(sealedBlocksTopicId, topicHandler)
     return p2pNetwork
   }
 

@@ -24,6 +24,7 @@ import java.util.function.Supplier
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
+import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.Serializer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -43,6 +44,8 @@ class SubscriptionManager<E> {
   private val log = LogManager.getLogger(this.javaClass)
   private val nextSubscriptionId = AtomicInteger()
   private val subscriptions: MutableMap<Int, (E) -> SafeFuture<ValidationResult>> = mutableMapOf()
+
+  fun hasSubscriptions(): Boolean = subscriptions.isNotEmpty()
 
   @Synchronized
   fun subscribeToBlocks(subscriber: (E) -> SafeFuture<ValidationResult>): Int {
@@ -99,13 +102,13 @@ class P2PNetworkImpl(
   private val serializer: Serializer<SealedBeaconBlock>,
 ) : P2PNetwork {
   private val topicIdGenerator = LineaTopicIdGenerator(chainId)
-
-  private val subscriptionManager = SubscriptionManager<SealedBeaconBlock>()
+  private val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BLOCK, Version.V1)
+  private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
+  private val sealedBlocksTopicHandler = SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer)
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
     p2pConfig: P2P,
-    serializer: Serializer<SealedBeaconBlock>,
   ): TekuP2PNetwork<Peer> {
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
 
@@ -113,13 +116,12 @@ class P2PNetworkImpl(
       privateKey = privateKey,
       ipAddress = p2pConfig.ipAddress,
       port = p2pConfig.port,
-      sealedBlocksSubscriptionManager = subscriptionManager,
-      serializer = serializer,
-      topicIdGenerator = topicIdGenerator,
+      sealedBlocksTopicHandler = sealedBlocksTopicHandler,
+      sealedBlocksTopicId = sealedBlocksTopicId,
     )
   }
 
-  private val p2pNetwork: TekuP2PNetwork<Peer> = buildP2PNetwork(privateKeyBytes, p2pConfig, serializer)
+  private val p2pNetwork: TekuP2PNetwork<Peer> = buildP2PNetwork(privateKeyBytes, p2pConfig)
 
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val delayedExecutor =
@@ -149,10 +151,22 @@ class P2PNetworkImpl(
       }
     }
 
-  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int =
-    subscriptionManager.subscribeToBlocks(subscriber::handleSealedBlock)
+  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
+    val subscriptionManagerHadSubscriptions = sealedBlocksSubscriptionManager.hasSubscriptions()
 
-  override fun unsubscribe(subscriptionId: Int) = subscriptionManager.unsubscribe(subscriptionId)
+    return sealedBlocksSubscriptionManager.subscribeToBlocks(subscriber::handleSealedBlock).also {
+      if (!subscriptionManagerHadSubscriptions) {
+        p2pNetwork.subscribe(sealedBlocksTopicId, sealedBlocksTopicHandler)
+      }
+    }
+  }
+
+  /**
+   * Unsubscribes the handler with a given subscriptionId from sealed block handling.
+   * Note that it's impossible to unsubscribe from a topic on LibP2P level, so the messages will still be received and
+   * handled by LibP2P, but not processed by Maru
+   */
+  override fun unsubscribeFromBlocks(subscriptionId: Int) = sealedBlocksSubscriptionManager.unsubscribe(subscriptionId)
 
   override val port: UInt = p2pNetwork.listenPorts.first().toUInt()
 

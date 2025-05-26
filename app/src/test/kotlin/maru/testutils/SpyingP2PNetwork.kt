@@ -82,8 +82,8 @@ class SpyingP2PNetwork(
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int =
     p2pNetwork.subscribeToBlocks(subscriber)
 
-  override fun unsubscribe(subscriptionId: Int) {
-    p2pNetwork.unsubscribe(subscriptionId)
+  override fun unsubscribeFromBlocks(subscriptionId: Int) {
+    p2pNetwork.unsubscribeFromBlocks(subscriptionId)
   }
 
   override val port: UInt

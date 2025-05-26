@@ -97,7 +97,7 @@ interface P2PNetwork {
    */
   fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int
 
-  fun unsubscribe(subscriptionId: Int)
+  fun unsubscribeFromBlocks(subscriptionId: Int)
 
   /**
    * Only for the tests

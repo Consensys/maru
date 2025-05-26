@@ -32,7 +32,7 @@ class QbftConsensusFollower(
 
   override fun stop() {
     if (subscriptionId != null) {
-      p2pNetwork.unsubscribe(subscriptionId!!)
+      p2pNetwork.unsubscribeFromBlocks(subscriptionId!!)
     }
   }
 }

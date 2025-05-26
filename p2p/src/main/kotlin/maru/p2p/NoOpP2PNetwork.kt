@@ -43,7 +43,7 @@ object NoOpP2PNetwork : P2PNetwork {
     return 0
   }
 
-  override fun unsubscribe(subscriptionId: Int) {
+  override fun unsubscribeFromBlocks(subscriptionId: Int) {
     log.debug("Unsubscription called for subscriptionId={}", subscriptionId)
   }
 
