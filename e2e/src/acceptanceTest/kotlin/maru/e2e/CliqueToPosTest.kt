@@ -130,7 +130,8 @@ class CliqueToPosTest {
 
       val containerShortNames =
         TestEnvironment.allClients
-          .map { it.key }.toMutableList()
+          .map { it.key }
+          .toMutableList()
           .also { if (useMaruContainer) it.add("maru") }
       containerShortNames.forEach { containerShortName ->
         qbftCluster
