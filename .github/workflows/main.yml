@@ -111,7 +111,7 @@ jobs:
     needs: [ build-for-testing ]
     uses: ./.github/workflows/smoke-tests.yml
     with:
-      input: ${{ needs.build-for-testing.outputs.commit_tag }}
+      commit-tag: ${{ needs.build-for-testing.outputs.commit_tag }}
   
   build-and-publish:
     needs: [ maru-image-smoke-test ]
