@@ -95,6 +95,8 @@ class MaruApp(
     }
   }
 
+  fun p2pPort(): UInt = p2pNetwork.port
+
   private val ethereumJsonRpcClient =
     Helpers.createWeb3jClient(
       config.validatorElNode.ethApiEndpoint,
@@ -139,13 +141,13 @@ class MaruApp(
       }
 
   fun start() {
-    p2pNetwork.start()
+    p2pNetwork.start().get()
     protocolStarter.start()
     log.info("Maru is up")
   }
 
   fun stop() {
-    p2pNetwork.stop()
+    p2pNetwork.stop().get()
     protocolStarter.stop()
     log.info("Maru is down")
   }

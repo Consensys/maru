@@ -17,6 +17,7 @@ package maru.p2p.topics
 
 import java.util.Optional
 import maru.core.SealedBeaconBlock
+import maru.p2p.LINEA_DOMAIN
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
 import maru.p2p.ValidationResult
@@ -31,6 +32,7 @@ import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 class SealedBlocksTopicHandler(
   val subscriptionManager: SubscriptionManager<SealedBeaconBlock>,
   val sealedBeaconBlockSerializer: Serializer<SealedBeaconBlock>,
+  val topicId: String,
 ) : TopicHandler {
   companion object {
     fun ValidationResult.toLibP2P(): Libp2pValidationResult =
@@ -44,7 +46,13 @@ class SealedBlocksTopicHandler(
   override fun prepareMessage(
     payload: Bytes,
     arrivalTimestamp: Optional<UInt64>,
-  ): PreparedGossipMessage = MaruPreparedGossipMessage(payload, arrivalTimestamp)
+  ): PreparedGossipMessage =
+    MaruPreparedGossipMessage(
+      origMessage = payload,
+      arrTimestamp = arrivalTimestamp,
+      domain = LINEA_DOMAIN,
+      topicId = topicId,
+    )
 
   override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> {
     val deserializaedMessage = sealedBeaconBlockSerializer.deserialize(message.originalMessage.toArray())
