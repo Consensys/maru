@@ -80,7 +80,7 @@ class CliqueToPosTest {
     private val genesisDir = File("../docker/initialization")
     private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
     private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
-    private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
+    private val log: Logger = LogManager.getLogger(this::javaClass)
 
     private fun parsePragueSwitchTimestamp(): Long {
       val objectMapper = ObjectMapper()
@@ -130,12 +130,8 @@ class CliqueToPosTest {
 
       val containerShortNames =
         TestEnvironment.allClients
-          .map {
-            it.key
-          }.toMutableList()
-          .also {
-            it.add("maru")
-          }
+          .map { it.key }.toMutableList()
+          .also { if (useMaruContainer) it.add("maru") }
       containerShortNames.forEach { containerShortName ->
         qbftCluster
           .dockerExecutable()

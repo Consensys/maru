@@ -55,21 +55,19 @@ jobs:
     secrets: inherit
 
   build-for-testing:
-    #needs: [ testing, run-e2e-tests ]
-    #if: ${{ always() && !cancelled() && (needs.testing.result == 'skipped' || needs.testing.result == 'success') && (needs.run-e2e-tests.result == 'skipped' || needs.run-e2e-tests.outputs.tests_outcome == 'success') }}
     if: ${{ always() && !cancelled() }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
       develop_tag: 'develop'
       image_name: 'consensys/maru'
       push_image: false
-  
+
   maru-image-smoke-test:
     needs: [ build-for-testing ]
     uses: ./.github/workflows/smoke-tests.yml
     with:
       commit-tag: ${{ needs.build-for-testing.outputs.commit_tag }}
-  
+
   build-and-publish:
     needs: [ maru-image-smoke-test ]
     if: ${{ always() && !cancelled() && needs.maru-image-smoke-test.result == 'success' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
