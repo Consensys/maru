@@ -36,7 +36,6 @@ import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 class P2PTest {
   companion object {
     private val chainId = 1337u
-    private const val GOSSIP_MESSAGE = "0xdeadbeef"
 
     private const val IPV4 = "127.0.0.1"
 

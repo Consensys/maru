@@ -50,7 +50,12 @@ class SubscriptionManager<E> {
             Supplier<String> { "Error from subscription=$subscriptionId while handling event=$event!" },
             th,
           )
-          SafeFuture.failedFuture(th)
+          SafeFuture.completedFuture<ValidationResult>(
+            ValidationResult.Companion.Failed(
+              "Exception during event handling",
+              th,
+            ),
+          )
         }
       }
     return if (subscriptions.isNotEmpty()) {

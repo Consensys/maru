@@ -33,23 +33,20 @@ sealed interface ValidationResult {
 
   companion object {
     object Successful : ValidationResult {
-      override val code: ValidationResultCode
-        get() = ValidationResultCode.ACCEPT
+      override val code = ValidationResultCode.ACCEPT
     }
 
     data class Failed(
       val error: String,
       val cause: Throwable? = null,
     ) : ValidationResult {
-      override val code: ValidationResultCode
-        get() = ValidationResultCode.REJECT
+      override val code = ValidationResultCode.REJECT
     }
 
     data class KindaFine(
       val comment: String,
     ) : ValidationResult {
-      override val code: ValidationResultCode
-        get() = ValidationResultCode.IGNORE
+      override val code = ValidationResultCode.IGNORE
     }
 
     fun fromForkChoiceUpdatedResult(forkChoiceUpdatedResult: ForkChoiceUpdatedResult): ValidationResult {
