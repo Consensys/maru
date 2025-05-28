@@ -1,5 +1,6 @@
 [persistence]
 data-path="/tmp/maru-db"
+private-key-path="/tmp/maru-db/private-key"
 
 [qbft-options]
 
@@ -8,7 +9,7 @@ port = 3322
 ip-address = "127.0.0.1"
 
 [payload-validator]
-el-client-engine-api-endpoint = { endpoint = "http://sequencer:8550" }
+engine-api-endpoint = { endpoint = "http://sequencer:8550" }
 eth-api-endpoint = { endpoint = "http://sequencer:8545" }
 
 [follower-engine-apis]
