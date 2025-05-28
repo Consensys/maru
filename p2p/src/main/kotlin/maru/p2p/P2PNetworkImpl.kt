@@ -102,7 +102,7 @@ class P2PNetworkImpl(
   private val serializer: Serializer<SealedBeaconBlock>,
 ) : P2PNetwork {
   private val topicIdGenerator = LineaTopicIdGenerator(chainId)
-  private val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BLOCK, Version.V1)
+  private val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler = SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer)
 
@@ -144,7 +144,7 @@ class P2PNetworkImpl(
   override fun broadcastMessage(message: Message<*>): SafeFuture<*> =
     when (message.type) {
       MessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
-      MessageType.BLOCK -> {
+      MessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serializer.serialize(message.payload as SealedBeaconBlock))
         p2pNetwork.gossip(topicIdGenerator.topicId(message.type, message.version), serializedSealedBeaconBlock)

@@ -19,7 +19,7 @@ import java.util.Optional
 import maru.core.SealedBeaconBlock
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
-import maru.p2p.ValidationResult
+import maru.p2p.ValidationResultCode
 import maru.serialization.Serializer
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -33,11 +33,13 @@ class SealedBlocksTopicHandler(
   val sealedBeaconBlockSerializer: Serializer<SealedBeaconBlock>,
 ) : TopicHandler {
   companion object {
-    fun ValidationResult.toLibP2P(): Libp2pValidationResult =
+    fun ValidationResultCode.toLibP2P(): Libp2pValidationResult =
       when (this) {
-        is ValidationResult.Companion.Successful -> Libp2pValidationResult.Valid
-        is ValidationResult.Companion.Failed -> Libp2pValidationResult.Invalid
-        is ValidationResult.Companion.KindaFine -> Libp2pValidationResult.Ignore
+        ValidationResultCode.ACCEPT -> Libp2pValidationResult.Valid
+        ValidationResultCode.REJECT -> Libp2pValidationResult.Invalid
+        ValidationResultCode.IGNORE -> Libp2pValidationResult.Ignore
+        // TODO: We don't have a case for this yet, so maybe it isn't right
+        ValidationResultCode.KEEP_FOR_THE_FUTURE -> Libp2pValidationResult.Ignore
       }
   }
 
@@ -48,7 +50,7 @@ class SealedBlocksTopicHandler(
 
   override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> {
     val deserializaedMessage = sealedBeaconBlockSerializer.deserialize(message.originalMessage.toArray())
-    return subscriptionManager.handleEvent(deserializaedMessage).thenApply { it.toLibP2P() }
+    return subscriptionManager.handleEvent(deserializaedMessage).thenApply { it.code.toLibP2P() }
   }
 
   override fun getMaxMessageSize(): Int = 10485760

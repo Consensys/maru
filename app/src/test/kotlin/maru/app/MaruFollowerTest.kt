@@ -67,7 +67,7 @@ class MaruFollowerTest {
     val validatorP2PNetwork =
       object : P2PNetwork by NoOpP2PNetwork {
         override fun broadcastMessage(message: Message<*>): SafeFuture<Unit> =
-          if (message.type == MessageType.BLOCK) {
+          if (message.type == MessageType.BEACON_BLOCK) {
             SafeFuture
               .of(
                 SafeFuture

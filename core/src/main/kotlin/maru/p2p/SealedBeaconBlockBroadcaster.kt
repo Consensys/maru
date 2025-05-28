@@ -23,7 +23,7 @@ class SealedBeaconBlockBroadcaster(
 ) : SealedBeaconBlockHandler<Unit> {
   override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<Unit> {
     // TODO: New block message might need an intermediary wrapper in the future
-    val message = Message(MessageType.BLOCK, payload = sealedBeaconBlock)
+    val message = Message(MessageType.BEACON_BLOCK, payload = sealedBeaconBlock)
     p2PNetwork.broadcastMessage(message)
     return SafeFuture.completedFuture(Unit)
   }

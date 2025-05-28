@@ -161,6 +161,6 @@ object DataGenerators {
 
   fun randomBlockMessage(): Message<SealedBeaconBlock> {
     val sealedBeaconBlock = randomSealedBeaconBlock(1u)
-    return Message(MessageType.BLOCK, Version.V1, sealedBeaconBlock)
+    return Message(MessageType.BEACON_BLOCK, Version.V1, sealedBeaconBlock)
   }
 }

@@ -73,7 +73,7 @@ class SpyingP2PNetwork(
         p2pNetwork.broadcastMessage(message)
       }
 
-      MessageType.BLOCK -> emittedBlockMessages.add(message.payload as SealedBeaconBlock)
+      MessageType.BEACON_BLOCK -> emittedBlockMessages.add(message.payload as SealedBeaconBlock)
     }
 
     return SafeFuture.completedFuture(Unit)
