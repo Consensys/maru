@@ -19,8 +19,6 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.util.Optional
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.Supplier
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
@@ -39,61 +37,6 @@ import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 
-class SubscriptionManager<E> {
-  private val log = LogManager.getLogger(this.javaClass)
-  private val nextSubscriptionId = AtomicInteger()
-  private val subscriptions: MutableMap<Int, (E) -> SafeFuture<ValidationResult>> = mutableMapOf()
-
-  fun hasSubscriptions(): Boolean = subscriptions.isNotEmpty()
-
-  @Synchronized
-  fun subscribeToBlocks(subscriber: (E) -> SafeFuture<ValidationResult>): Int {
-    val subscriptionId = nextSubscriptionId.get()
-    subscriptions[subscriptionId] = subscriber
-    nextSubscriptionId.incrementAndGet()
-    return subscriptionId
-  }
-
-  @Synchronized
-  fun unsubscribe(subscriptionId: Int) {
-    subscriptions.remove(subscriptionId)
-  }
-
-  fun handleEvent(event: E): SafeFuture<ValidationResult> {
-    val handlerFutures =
-      subscriptions.map { (subscriptionId, handler) ->
-        try {
-          handler(event)
-        } catch (th: Throwable) {
-          log.debug(
-            Supplier<String> { "Error from subscription=$subscriptionId while handling event=$event!" },
-            th,
-          )
-          SafeFuture.failedFuture(th)
-        }
-      }
-    return if (subscriptions.isNotEmpty()) {
-      SafeFuture.collectAll(handlerFutures.stream()).thenApply {
-        it.reduce { acc: ValidationResult, next: ValidationResult ->
-          when {
-            acc is ValidationResult.Companion.Failed -> acc
-            next is ValidationResult.Companion.Failed -> next
-            acc is ValidationResult.Companion.KindaFine -> acc
-            next is ValidationResult.Companion.KindaFine -> next
-            else -> acc
-          }
-        }
-      }
-    } else {
-      SafeFuture.completedFuture(
-        ValidationResult.Companion.KindaFine(
-          "No subscription to imply message validity",
-        ),
-      )
-    }
-  }
-}
-
 class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
@@ -101,7 +44,7 @@ class P2PNetworkImpl(
   private val serializer: Serializer<SealedBeaconBlock>,
 ) : P2PNetwork {
   private val topicIdGenerator = LineaTopicIdGenerator(chainId)
-  private val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BLOCK, Version.V1)
+  private val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer, sealedBlocksTopicId)
@@ -150,7 +93,7 @@ class P2PNetworkImpl(
   override fun broadcastMessage(message: Message<*>): SafeFuture<*> =
     when (message.type) {
       MessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
-      MessageType.BLOCK -> {
+      MessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serializer.serialize(message.payload as SealedBeaconBlock))
         p2pNetwork.gossip(topicIdGenerator.topicId(message.type, message.version), serializedSealedBeaconBlock)
