@@ -217,7 +217,7 @@ class P2PTest {
       p2pNetworkImpl2.start()
       p2pNetworkImpl2.subscribeToBlocks {
         blocksReceived.add(it)
-        SafeFuture.completedFuture(ValidationResult.Companion.Successful)
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
 
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
@@ -264,13 +264,13 @@ class P2PTest {
       p2PNetworkImpl1.start()
 
       p2PNetworkImpl2.start()
-      p2PNetworkImpl2.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Successful) }
+      p2PNetworkImpl2.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
 
       val blockReceived = SafeFuture<SealedBeaconBlock>()
       p2PNetworkImpl3.start()
       p2PNetworkImpl3.subscribeToBlocks {
         blockReceived.complete(it)
-        SafeFuture.completedFuture(ValidationResult.Companion.Successful)
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
 
       awaitUntilAsserted { assertNetworkIsConnectedToPeer(p2PNetworkImpl1, PEER_ID_NODE_2) }

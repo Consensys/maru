@@ -34,18 +34,18 @@ sealed interface ValidationResult {
   val code: ValidationResultCode
 
   companion object {
-    object Successful : ValidationResult {
+    object Valid : ValidationResult {
       override val code = ValidationResultCode.ACCEPT
     }
 
-    data class Failed(
+    data class Invalid(
       val error: String,
       val cause: Throwable? = null,
     ) : ValidationResult {
       override val code = ValidationResultCode.REJECT
     }
 
-    data class KindaFine(
+    data class Ignore(
       val comment: String,
     ) : ValidationResult {
       override val code = ValidationResultCode.IGNORE
@@ -54,9 +54,9 @@ sealed interface ValidationResult {
     fun fromForkChoiceUpdatedResult(forkChoiceUpdatedResult: ForkChoiceUpdatedResult): ValidationResult {
       val payloadStatus = forkChoiceUpdatedResult.payloadStatus
       return when (payloadStatus.status) {
-        ExecutionPayloadStatus.VALID -> Successful
-        ExecutionPayloadStatus.INVALID -> Failed(payloadStatus.validationError!!)
-        else -> KindaFine("Payload status is ${payloadStatus.status}")
+        ExecutionPayloadStatus.VALID -> Valid
+        ExecutionPayloadStatus.INVALID -> Invalid(payloadStatus.validationError!!)
+        else -> Ignore("Payload status is ${payloadStatus.status}")
       }
     }
   }
