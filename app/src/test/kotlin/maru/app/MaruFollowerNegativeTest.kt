@@ -126,6 +126,6 @@ class MaruFollowerNegativeTest {
     val blockWithWrongSeal = originalSealedBlock.copy(commitSeals = setOf(Seal(alternatedSignature)))
     val result = followerP2PNetwork.injectSealedBlock(blockWithWrongSeal).get()
 
-    assertThat(result).isInstanceOf(ValidationResult.Companion.Failed::class.java)
+    assertThat(result).isInstanceOf(ValidationResult.Companion.Invalid::class.java)
   }
 }
