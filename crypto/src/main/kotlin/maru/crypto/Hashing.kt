@@ -13,11 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.serialization.rlp
+package maru.crypto
 
-import maru.core.Hasher
-import maru.crypto.Hashing
+import java.security.MessageDigest
+import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.datatypes.Hash
 
-object KeccakHasher : Hasher {
-  override fun hash(serializedBytes: ByteArray): ByteArray = Hashing.keccak(serializedBytes)
+object Hashing {
+  fun shortShaHash(inputData: ByteArray): ByteArray = sha256(inputData).slice(0 until 20).toByteArray()
+
+  private fun sha256(input: ByteArray): ByteArray {
+    val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
+    return digest.digest(input)
+  }
+
+  fun keccak(serializedBytes: ByteArray): ByteArray = Hash.hash(Bytes.wrap(serializedBytes)).toArray()
 }
