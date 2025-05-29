@@ -51,7 +51,7 @@ class SubscriptionManager<E> {
             th,
           )
           SafeFuture.completedFuture<ValidationResult>(
-            ValidationResult.Companion.Failed(
+            ValidationResult.Companion.Invalid(
               "Exception during event handling",
               th,
             ),
@@ -62,17 +62,17 @@ class SubscriptionManager<E> {
       SafeFuture.collectAll(handlerFutures.stream()).thenApply {
         it.reduce { acc: ValidationResult, next: ValidationResult ->
           when {
-            acc is ValidationResult.Companion.Failed -> acc
-            next is ValidationResult.Companion.Failed -> next
-            acc is ValidationResult.Companion.KindaFine -> acc
-            next is ValidationResult.Companion.KindaFine -> next
+            acc is ValidationResult.Companion.Invalid -> acc
+            next is ValidationResult.Companion.Invalid -> next
+            acc is ValidationResult.Companion.Ignore -> acc
+            next is ValidationResult.Companion.Ignore -> next
             else -> acc
           }
         }
       }
     } else {
       SafeFuture.completedFuture(
-        ValidationResult.Companion.KindaFine(
+        ValidationResult.Companion.Ignore(
           "No subscription to imply message validity",
         ),
       )

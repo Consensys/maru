@@ -32,14 +32,14 @@ class SubscriptionManagerTest {
   fun `hasSubscriptions returns false when empty and true after subscribe`() {
     assertThat(manager.hasSubscriptions()).isFalse()
 
-    manager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Successful) }
+    manager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
     assertThat(manager.hasSubscriptions()).isTrue()
   }
 
   @Test
   fun `subscribeToBlocks returns unique ids and can unsubscribe`() {
-    val id1 = manager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Successful) }
-    val id2 = manager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Successful) }
+    val id1 = manager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
+    val id2 = manager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
     assertThat(id2).isNotEqualTo(id1)
 
     manager.unsubscribe(id1)
@@ -53,34 +53,34 @@ class SubscriptionManagerTest {
     val results = mutableListOf<String>()
     manager.subscribeToBlocks {
       results.add("first")
-      SafeFuture.completedFuture(ValidationResult.Companion.Successful)
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
     manager.subscribeToBlocks {
       results.add("second")
-      SafeFuture.completedFuture(ValidationResult.Companion.KindaFine("meh"))
+      SafeFuture.completedFuture(ValidationResult.Companion.Ignore("meh"))
     }
     val future = manager.handleEvent("event")
     val result = future.get()
     assertThat(results).containsExactly("first", "second")
-    assertThat(result).isInstanceOf(ValidationResult.Companion.KindaFine::class.java)
+    assertThat(result).isInstanceOf(ValidationResult.Companion.Ignore::class.java)
   }
 
   @Test
   fun `handleEvent returns Failed if any subscriber fails`() {
     manager.subscribeToBlocks {
-      SafeFuture.completedFuture(ValidationResult.Companion.Successful)
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
     manager.subscribeToBlocks {
-      SafeFuture.completedFuture(ValidationResult.Companion.Failed("fail"))
+      SafeFuture.completedFuture(ValidationResult.Companion.Invalid("fail"))
     }
     val result = manager.handleEvent("event").get()
-    assertThat(result).isInstanceOf(ValidationResult.Companion.Failed::class.java)
+    assertThat(result).isInstanceOf(ValidationResult.Companion.Invalid::class.java)
   }
 
   @Test
   fun `handleEvent returns KindaFine if no subscriptions`() {
     val result = manager.handleEvent("event").get()
-    assertThat(result).isInstanceOf(ValidationResult.Companion.KindaFine::class.java)
+    assertThat(result).isInstanceOf(ValidationResult.Companion.Ignore::class.java)
   }
 
   @Test
@@ -89,34 +89,34 @@ class SubscriptionManagerTest {
       throw RuntimeException("boom")
     }
     val result = manager.handleEvent("event").get()
-    assertThat(result).isInstanceOf(ValidationResult.Companion.Failed::class.java)
+    assertThat(result).isInstanceOf(ValidationResult.Companion.Invalid::class.java)
   }
 
   @Test
   fun `handleEvent aggregates with Failed over KindaFine and Successful`() {
     manager.subscribeToBlocks {
-      SafeFuture.completedFuture(ValidationResult.Companion.Successful)
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
     manager.subscribeToBlocks {
-      SafeFuture.completedFuture(ValidationResult.Companion.KindaFine("meh"))
+      SafeFuture.completedFuture(ValidationResult.Companion.Ignore("meh"))
     }
     manager.subscribeToBlocks {
-      SafeFuture.completedFuture(ValidationResult.Companion.Failed("fail"))
+      SafeFuture.completedFuture(ValidationResult.Companion.Invalid("fail"))
     }
     val result = manager.handleEvent("event").get()
-    assertThat(result).isInstanceOf(ValidationResult.Companion.Failed::class.java)
+    assertThat(result).isInstanceOf(ValidationResult.Companion.Invalid::class.java)
   }
 
   @Test
   fun `handleEvent aggregates with KindaFine over Successful`() {
     manager.subscribeToBlocks {
-      SafeFuture.completedFuture(ValidationResult.Companion.Successful)
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
     manager.subscribeToBlocks {
-      SafeFuture.completedFuture(ValidationResult.Companion.KindaFine("meh"))
+      SafeFuture.completedFuture(ValidationResult.Companion.Ignore("meh"))
     }
     val result = manager.handleEvent("event").get()
-    assertThat(result).isInstanceOf(ValidationResult.Companion.KindaFine::class.java)
+    assertThat(result).isInstanceOf(ValidationResult.Companion.Ignore::class.java)
   }
 
   @Test
@@ -126,11 +126,11 @@ class SubscriptionManagerTest {
     val id1 =
       manager.subscribeToBlocks {
         called1 = true
-        SafeFuture.completedFuture(ValidationResult.Companion.Successful)
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
     manager.subscribeToBlocks {
       called2 = true
-      SafeFuture.completedFuture(ValidationResult.Companion.Successful)
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
     manager.unsubscribe(id1)
     manager.handleEvent("event").get()

@@ -246,7 +246,7 @@ class MaruApp(
     ) {
       protocolStarterBlockHandlerEntry.second
         .handleNewBlock(it)
-        .thenApply { ValidationResult.Companion.Successful }
+        .thenApply { ValidationResult.Companion.Valid }
     }
 
     return protocolStarter
