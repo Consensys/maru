@@ -101,10 +101,10 @@ class TransactionalSealedBeaconBlockImporter(
             .importBlock(resultingState, sealedBeaconBlock.beaconBlock)
         }.thenApply {
           updater.commit()
-          ValidationResult.Companion.Successful as ValidationResult
+          ValidationResult.Companion.Valid as ValidationResult
         }.exceptionally { ex ->
           updater.rollback()
-          ValidationResult.Companion.Failed(ex.message!!, ex.cause)
+          ValidationResult.Companion.Invalid(ex.message!!, ex.cause)
         }.whenComplete { _, _ ->
           updater.close()
         }
@@ -126,8 +126,8 @@ class ValidatingSealedBeaconBlockImporter(
   companion object {
     fun Result<Unit, String>.toDomain(): ValidationResult =
       when (this) {
-        is Ok -> ValidationResult.Companion.Successful
-        is Err -> ValidationResult.Companion.Failed(this.error, null)
+        is Ok -> ValidationResult.Companion.Valid
+        is Err -> ValidationResult.Companion.Invalid(this.error, null)
       }
   }
 

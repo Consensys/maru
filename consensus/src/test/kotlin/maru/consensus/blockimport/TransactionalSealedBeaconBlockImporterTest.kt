@@ -82,7 +82,7 @@ class TransactionalSealedBeaconBlockImporterTest {
     )
 
     val result = qbftBlockImporter.importBlock(sealedBeaconBlock).get()
-    assertThat(result).isEqualTo(ValidationResult.Companion.Successful)
+    assertThat(result).isEqualTo(ValidationResult.Companion.Valid)
     assertThat(beaconChain.getLatestBeaconState()).isEqualTo(beaconState)
   }
 
@@ -116,7 +116,7 @@ class TransactionalSealedBeaconBlockImporterTest {
 
     val result = qbftBlockImporter.importBlock(sealedBeaconBlock).get()
 
-    assertThat(result).isEqualTo(ValidationResult.Companion.Failed(expectedException.toString(), expectedException))
+    assertThat(result).isEqualTo(ValidationResult.Companion.Invalid(expectedException.toString(), expectedException))
     val stateAfterTransition = beaconChain.getLatestBeaconState()
     assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
   }

@@ -45,13 +45,13 @@ class ValidatingSealedBeaconBlockImporterTest {
     val beaconBlockImporter =
       SealedBeaconBlockImporter { _ ->
         SafeFuture.completedFuture(
-          ValidationResult.Companion.Successful as ValidationResult,
+          ValidationResult.Companion.Valid as ValidationResult,
         )
       }
 
     val importer = ValidatingSealedBeaconBlockImporter(sealsVerifier, beaconBlockImporter, blockValidatorFactory)
     val result = importer.importBlock(sealedBeaconBlock).get()
-    assertThat(result).isEqualTo(ValidationResult.Companion.Successful)
+    assertThat(result).isEqualTo(ValidationResult.Companion.Valid)
   }
 
   @Test
@@ -59,7 +59,7 @@ class ValidatingSealedBeaconBlockImporterTest {
     val sealsVerifier = SealsVerifier { _, _ -> SafeFuture.completedFuture(Err("seal error")) }
     val blockValidatorFactory = BeaconBlockValidatorFactory { blockValidator(Ok(Unit)) }
     var called = false
-    val expectedValidationResult: ValidationResult = ValidationResult.Companion.Failed("seal error")
+    val expectedValidationResult: ValidationResult = ValidationResult.Companion.Invalid("seal error")
     val beaconBlockImporter =
       SealedBeaconBlockImporter { _ ->
         called = true
@@ -83,12 +83,12 @@ class ValidatingSealedBeaconBlockImporterTest {
     val beaconBlockImporter =
       SealedBeaconBlockImporter { _ ->
         called = true
-        SafeFuture.completedFuture(ValidationResult.Companion.Successful as ValidationResult)
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid as ValidationResult)
       }
 
     val importer = ValidatingSealedBeaconBlockImporter(sealsVerifier, beaconBlockImporter, blockValidatorFactory)
     val result = importer.importBlock(sealedBeaconBlock).get()
-    assertThat(result).isEqualTo(ValidationResult.Companion.Failed("block error"))
+    assertThat(result).isEqualTo(ValidationResult.Companion.Invalid("block error"))
     assertThat(called).isFalse()
   }
 
@@ -100,7 +100,7 @@ class ValidatingSealedBeaconBlockImporterTest {
       SealedBeaconBlockImporter { _ ->
         SafeFuture.completedFuture(
           ValidationResult.Companion
-            .Successful as ValidationResult,
+            .Valid as ValidationResult,
         )
       }
 
