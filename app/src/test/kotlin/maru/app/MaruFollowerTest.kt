@@ -20,7 +20,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.app.Checks.getMinedBlocks
-import maru.consensus.ElFork
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
@@ -46,7 +45,6 @@ class MaruFollowerTest {
 
   @BeforeEach
   fun setUp() {
-    val elFork = ElFork.Prague
     transactionsHelper = BesuTransactionsHelper()
     cluster =
       Cluster(
@@ -60,9 +58,7 @@ class MaruFollowerTest {
         MaruFactory.buildTestMaruValidatorWithP2p(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
-          elFork = elFork,
           dataDir = tmpDir,
-          validatorP2pPort = 0u,
         )
       }
     validatorStack.maruApp.start()
@@ -73,9 +69,8 @@ class MaruFollowerTest {
         MaruFactory.buildTestMaruFollowerWithP2pNetwork(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
-          elFork = elFork,
           dataDir = tmpDir,
-          validatorP2pPort = validatorStack.p2pPort,
+          validatorPortForStaticPeering = validatorStack.p2pPort,
         )
       }
     followerStack.maruApp.start()

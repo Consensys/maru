@@ -20,7 +20,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.app.Checks.getMinedBlocks
-import maru.consensus.ElFork
 import maru.core.Seal
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.ValidationResult
@@ -50,7 +49,6 @@ class MaruFollowerNegativeTest {
 
   private val transactionsHelper: BesuTransactionsHelper = BesuTransactionsHelper()
   private val log = LogManager.getLogger(this.javaClass)
-  val elFork = ElFork.Prague
 
   @Test
   fun `Maru follower doesn't import blocks without proper signature`() {
@@ -60,7 +58,6 @@ class MaruFollowerNegativeTest {
         MaruFactory.buildTestMaruValidatorWithoutP2p(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
-          elFork = elFork,
           dataDir = tmpDir,
           p2pNetwork = spyingP2PNetwork,
         )
@@ -84,7 +81,6 @@ class MaruFollowerNegativeTest {
         MaruFactory.buildTestMaruFollowerWithoutP2pNetwork(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
-          elFork = elFork,
           dataDir = tmpDir,
           p2pNetwork = followerP2PNetwork,
         )

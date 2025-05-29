@@ -37,7 +37,6 @@ class NetworkParticipantStack(
     MaruFactory.buildTestMaruValidatorWithoutP2p(
       ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
       engineApiRpc = engineRpcUrl,
-      elFork = elFork,
       dataDir = tmpDir,
       p2pNetwork = p2pNetwork,
     )

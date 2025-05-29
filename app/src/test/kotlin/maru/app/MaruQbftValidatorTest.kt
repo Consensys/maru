@@ -19,7 +19,6 @@ import com.github.michaelbull.result.Ok
 import maru.app.Checks.getMinedBlocks
 import maru.app.Checks.verifyBlockTime
 import maru.app.Checks.verifyBlockTimeWithAGapOn
-import maru.consensus.ElFork
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.consensus.validation.QuorumOfSealsVerifier
@@ -257,7 +256,6 @@ class MaruQbftValidatorTest {
       MaruFactory.buildTestMaruValidatorWithoutP2p(
         ethereumJsonRpcUrl = networkParticipantStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = networkParticipantStack.besuNode.engineRpcUrl().get(),
-        elFork = ElFork.Prague,
         dataDir = networkParticipantStack.tmpDir,
       )
     // The difference from the previous test is that BeaconChain is instantiated with the Maru instance and it's not
