@@ -16,6 +16,7 @@
 package maru.app
 
 import java.time.Clock
+import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.consensus.BlockMetadata
@@ -141,13 +142,22 @@ class MaruApp(
       }
 
   fun start() {
-    p2pNetwork.start().get()
+    try {
+      p2pNetwork.start().get()
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the P2P network", th)
+      exitProcess(1)
+    }
     protocolStarter.start()
     log.info("Maru is up")
   }
 
   fun stop() {
-    p2pNetwork.stop().get()
+    try {
+      p2pNetwork.stop().get()
+    } catch (th: Throwable) {
+      log.warn("Error while trying to stop the P2P network", th)
+    }
     protocolStarter.stop()
     log.info("Maru is down")
   }

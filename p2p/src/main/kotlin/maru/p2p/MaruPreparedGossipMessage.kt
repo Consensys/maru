@@ -15,12 +15,12 @@
  */
 package maru.p2p
 
-import java.security.MessageDigest
 import java.util.Optional
+import maru.crypto.Hashing
 import org.apache.tuweni.bytes.Bytes
-import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import tech.pegasys.teku.networking.p2p.gossip.PreparedGossipMessage
+import tech.pegasys.teku.spec.logic.common.helpers.MathHelpers
 
 class MaruPreparedGossipMessage(
   private val origMessage: Bytes,
@@ -29,25 +29,16 @@ class MaruPreparedGossipMessage(
   private val topicId: String,
 ) : PreparedGossipMessage {
   companion object {
-    fun shortShaHash(inputData: Bytes): Bytes = sha256(inputData).slice(0, 20)
-
-    private fun sha256(input: Bytes): Bytes32 {
-      val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
-      input.update(digest)
-      return Bytes32.wrap(digest.digest())
-    }
   }
 
   // It's for deduplication of messages
+  // topic length comes from Altair consensus spec
+  // https://github.com/ethereum/consensus-specs/blob/dev/specs/altair/p2p-interface.md#the-gossip-domain-gossipsub
   override fun getMessageId(): Bytes =
-    shortShaHash(
-      Bytes.wrap(
-        origMessage,
-        Bytes.wrap(domain.toByteArray()),
-        Bytes.wrap(
-          topicId
-            .toByteArray(),
-        ),
+    Bytes.wrap(
+      Hashing.shortShaHash(
+        domain.toByteArray() + encodeTopicLength(topicId.toByteArray()).toArray() +
+          topicId.toByteArray() + origMessage.toArray(),
       ),
     )
 
@@ -57,4 +48,6 @@ class MaruPreparedGossipMessage(
   override fun getOriginalMessage(): Bytes = origMessage
 
   override fun getArrivalTimestamp(): Optional<UInt64> = arrTimestamp
+
+  private fun encodeTopicLength(topicBytes: ByteArray): Bytes = MathHelpers.uint64ToBytes(topicBytes.size.toLong())
 }
