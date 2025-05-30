@@ -67,6 +67,7 @@ class HopliteFriendlinessTest {
               staticPeers = emptyList(),
               reconnectDelay = 500.milliseconds,
             ),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", discoveryPort = "9876", staticPeers = emptyList()),
           payloadValidator =
             PayloadValidatorDto(
               ethApiEndpoint =
@@ -110,6 +111,7 @@ class HopliteFriendlinessTest {
               staticPeers = emptyList(),
               reconnectDelay = 500.milliseconds,
             ),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", discoveryPort = "9876", staticPeers = emptyList()),
           payloadValidator =
             PayloadValidatorDto(
               ethApiEndpoint =
@@ -138,6 +140,7 @@ class HopliteFriendlinessTest {
             P2P(
               ipAddress = "127.0.0.1",
               port = "3322",
+              discoveryPort = "9876",
               staticPeers = emptyList(),
               reconnectDelay = 500.milliseconds,
             ),
@@ -183,6 +186,7 @@ class HopliteFriendlinessTest {
               staticPeers = emptyList(),
               reconnectDelay = 500.milliseconds,
             ),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", discoveryPort = "9876", staticPeers = emptyList()),
           validatorElNode =
             ValidatorElNode(
               engineApiEndpoint =
