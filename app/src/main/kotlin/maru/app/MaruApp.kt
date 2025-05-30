@@ -147,7 +147,12 @@ class MaruApp(
   }
 
   fun stop() {
-    p2pNetwork.stop().get()
+    try {
+      p2pNetwork.stop().get()
+    } catch (th: Throwable) {
+      log.warn("Error while trying to stop the P2P network", th)
+    }
+
     protocolStarter.stop()
     log.info("Maru is down")
   }
