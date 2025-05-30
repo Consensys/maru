@@ -71,7 +71,7 @@ class HopliteFriendlinessTest {
               ),
               validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
             ),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", discoveryPort = "9876", staticPeers = emptyList()),
           payloadValidator =
             PayloadValidatorDtoToml(
               ethApiEndpoint =
@@ -114,7 +114,7 @@ class HopliteFriendlinessTest {
                 ),
               validatorSet = setOf("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"),
             ),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", discoveryPort = "9876", staticPeers = emptyList()),
           payloadValidator =
             PayloadValidatorDtoToml(
               ethApiEndpoint =
@@ -139,7 +139,7 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfig(
           persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", discoveryPort = "9876", staticPeers = emptyList()),
           validatorElNode =
             ValidatorElNode(
               engineApiEndpoint =
@@ -199,7 +199,7 @@ class HopliteFriendlinessTest {
                   ),
                 ),
             ),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", discoveryPort = "9876", staticPeers = emptyList()),
           validatorElNode =
             ValidatorElNode(
               engineApiEndpoint =

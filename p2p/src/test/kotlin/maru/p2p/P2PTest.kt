@@ -67,8 +67,8 @@ class P2PTest {
 
   @Test
   fun `static peer can be added`() {
-    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, emptyList()))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, "0", emptyList(), emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, "0", emptyList(), emptyList()))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -88,8 +88,8 @@ class P2PTest {
 
   @Test
   fun `static peers can be removed`() {
-    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, emptyList()))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, "0", emptyList(), emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, "0", emptyList(), emptyList()))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -114,8 +114,8 @@ class P2PTest {
 
   @Test
   fun `static peers can be configured`() {
-    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, "0", emptyList(), emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, "0", emptyList(), listOf(PEER_ADDRESS_NODE_1)))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -133,8 +133,8 @@ class P2PTest {
 
   @Test
   fun `static peers reconnect`() {
-    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, "0", emptyList(), emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, "0", emptyList(), listOf(PEER_ADDRESS_NODE_1)))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -161,8 +161,8 @@ class P2PTest {
 
   @Test
   fun `two peers can gossip with each other`() {
-    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, "0", emptyList(), emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, "0", emptyList(), listOf(PEER_ADDRESS_NODE_1)))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -189,10 +189,10 @@ class P2PTest {
 
   @Test
   fun `peer receiving gossip passes message on`() {
-    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, "0", emptyList(), emptyList()))
     val p2pManager2 =
-      P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1, PEER_ADDRESS_NODE_3)))
-    val p2pManager3 = P2PManager(key3, P2P(IPV4, PORT3, emptyList()))
+      P2PManager(key2, P2P(IPV4, PORT2, "0", emptyList(), listOf(PEER_ADDRESS_NODE_1, PEER_ADDRESS_NODE_3)))
+    val p2pManager3 = P2PManager(key3, P2P(IPV4, PORT3, "0", emptyList(), emptyList()))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
@@ -235,8 +235,8 @@ class P2PTest {
 
   @Test
   fun `peer can send a request`() {
-    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, emptyList()))
-    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, listOf(PEER_ADDRESS_NODE_1)))
+    val p2pManager1 = P2PManager(key1, P2P(IPV4, PORT1, "0", emptyList(), emptyList()))
+    val p2pManager2 = P2PManager(key2, P2P(IPV4, PORT2, "0", emptyList(), listOf(PEER_ADDRESS_NODE_1)))
     try {
       p2pManager1.start()
       val p2pNetwork1 = p2pManager1.p2pNetwork
