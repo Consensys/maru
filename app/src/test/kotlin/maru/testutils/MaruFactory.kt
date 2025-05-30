@@ -105,6 +105,33 @@ object MaruFactory {
     [persistence]
     data-path="$dataPath"
 
+    [p2p-config]
+    port = 0
+    ip-address = "127.0.0.1"
+    static-peers = []
+
+    [qbft-options]
+
+    [payloadValidator]
+    engine-api-endpoint = { endpoint = "$engineApiRpc" }
+    eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
+    """.trimIndent()
+
+  private fun buildMaruFollowerConfigString(
+    ethereumJsonRpcUrl: String,
+    engineApiRpc: String,
+    dataPath: String,
+    validatorP2pPort: UInt,
+  ): String =
+    """
+    [persistence]
+    data-path="$dataPath"
+
+    [p2p-config]
+    port = 0
+    ip-address = "127.0.0.1"
+    static-peers = ["/ip4/127.0.0.1/tcp/$validatorP2pPort/p2p/$VALIDATOR_NODE_ID"]
+
     [payload-validator]
     engine-api-endpoint = { endpoint = "$engineApiRpc" }
     eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
@@ -216,6 +243,8 @@ object MaruFactory {
           dataPath = dataDir.toString(),
         ),
       )
+    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
+
     val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
 
@@ -223,6 +252,31 @@ object MaruFactory {
       config = appConfig.domainFriendly(),
       beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
       p2pNetwork = p2pNetwork,
+    )
+  }
+
+  fun buildTestMaruFollower(
+    ethereumJsonRpcUrl: String,
+    engineApiRpc: String,
+    elFork: ElFork,
+    dataDir: Path,
+    validatorP2pPort: UInt,
+  ): MaruApp {
+    val appConfig =
+      Utils.parseTomlConfig<MaruConfigDtoToml>(
+        buildMaruFollowerConfigString(
+          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+          engineApiRpc = engineApiRpc,
+          dataPath = dataDir.toString(),
+          validatorP2pPort = validatorP2pPort,
+        ),
+      )
+    val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
+    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
+
+    return MaruApp(
+      config = appConfig.domainFriendly(),
+      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
     )
   }
 
