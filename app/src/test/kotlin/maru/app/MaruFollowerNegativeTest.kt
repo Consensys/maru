@@ -49,13 +49,14 @@ class MaruFollowerNegativeTest {
 
   private val transactionsHelper: BesuTransactionsHelper = BesuTransactionsHelper()
   private val log = LogManager.getLogger(this.javaClass)
+  private val maruFactory = MaruFactory()
 
   @Test
   fun `Maru follower doesn't import blocks without proper signature`() {
     val spyingP2PNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
     val validatorStack =
-      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruValidatorWithoutP2p(
+      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        maruFactory.buildTestMaruValidatorWithoutP2p(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
@@ -77,8 +78,8 @@ class MaruFollowerNegativeTest {
     val followerStack =
       NetworkParticipantStack(
         cluster = cluster,
-      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruFollowerWithoutP2pNetwork(
+      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        maruFactory.buildTestMaruFollowerWithoutP2pNetwork(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,

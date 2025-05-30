@@ -42,6 +42,7 @@ class MaruFollowerTest {
   private lateinit var followerStack: NetworkParticipantStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
+  private val maruFactory = MaruFactory()
 
   @BeforeEach
   fun setUp() {
@@ -54,8 +55,8 @@ class MaruFollowerTest {
       )
 
     validatorStack =
-      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruValidatorWithP2p(
+      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        maruFactory.buildTestMaruValidatorWithP2p(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
@@ -65,8 +66,8 @@ class MaruFollowerTest {
     followerStack =
       NetworkParticipantStack(
         cluster = cluster,
-      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruFollowerWithP2pNetwork(
+      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        maruFactory.buildTestMaruFollowerWithP2pNetwork(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
