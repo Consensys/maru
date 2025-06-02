@@ -125,4 +125,135 @@ class MaruFollowerTest {
         assertThat(blocksImportedByFollower).isEqualTo(blocksProducedByQbftValidator)
       }
   }
+
+  @Test
+  fun `Maru follower is able to import after going down`() {
+    val validatorGenesis =
+      validatorStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    val followerGenesis =
+      followerStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    assertThat(validatorGenesis).isEqualTo(followerGenesis)
+
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    followerStack.maruApp.stop()
+    followerStack.maruApp.close()
+    followerStack.maruApp =
+      MaruFactory.buildTestMaruFollowerWithP2pNetwork(
+        ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
+        dataDir = followerStack.tmpDir,
+        validatorPortForStaticPeering = validatorStack.p2pPort,
+      )
+    followerStack.maruApp.start()
+
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    await
+      .pollDelay(100.milliseconds.toJavaDuration())
+      .timeout(5.seconds.toJavaDuration())
+      .untilAsserted {
+        val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce * 2)
+        val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce * 2)
+        assertThat(blocksImportedByFollower).isEqualTo(blocksProducedByQbftValidator)
+      }
+  }
+
+  @Test
+  fun `Maru follower is able to import after Validator stack is going down`() {
+    val validatorGenesis =
+      validatorStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    val followerGenesis =
+      followerStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    assertThat(validatorGenesis).isEqualTo(followerGenesis)
+
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    val validatorP2pPort = validatorStack.p2pPort
+
+    validatorStack.maruApp.stop()
+    validatorStack.maruApp.close()
+    validatorStack.maruApp =
+      MaruFactory.buildTestMaruValidatorWithP2p(
+        ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
+        dataDir = validatorStack.tmpDir,
+        p2pPort = validatorP2pPort,
+      )
+    validatorStack.maruApp.start()
+    Thread.sleep(MaruFactory.defaultReconnectDelay.inWholeMilliseconds)
+
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    await
+      .pollDelay(100.milliseconds.toJavaDuration())
+      .timeout(5.seconds.toJavaDuration())
+      .untilAsserted {
+        val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce * 2)
+        val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce * 2)
+        assertThat(blocksImportedByFollower).isEqualTo(blocksProducedByQbftValidator)
+      }
+  }
 }
