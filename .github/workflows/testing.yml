@@ -24,6 +24,8 @@ jobs:
     if: ${{ inputs.consensus-client-changed == 'true' }}
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-med ]
     name: Consensus client tests
     steps:
