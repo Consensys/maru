@@ -53,7 +53,7 @@ jobs:
     if: ${{ inputs.has-changes-requiring-build == 'true' }}
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_TOKEN_READONLY: ${{ secrets.DOCKERHUB_TOKEN_READONLY }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
     runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-med]
