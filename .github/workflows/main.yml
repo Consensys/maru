@@ -68,6 +68,7 @@ jobs:
     uses: ./.github/workflows/smoke-tests.yml
     with:
       commit-tag: ${{ needs.build-for-testing.outputs.commit_tag }}
+    secrets: inherit
 
   build-and-publish:
     needs: [ maru-image-smoke-test ]
