@@ -16,9 +16,9 @@
 package maru.app
 
 import com.github.michaelbull.result.Ok
-import maru.app.Checks.getMinedBlocks
-import maru.app.Checks.verifyBlockTime
-import maru.app.Checks.verifyBlockTimeWithAGapOn
+import maru.testutils.Checks.getMinedBlocks
+import maru.testutils.Checks.verifyBlockTime
+import maru.testutils.Checks.verifyBlockTimeWithAGapOn
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.consensus.validation.QuorumOfSealsVerifier
