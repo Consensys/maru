@@ -88,10 +88,11 @@ class MaruFactory {
     MaruConfig(
       persistence = Persistence(dataPath = dataDir),
       qbftOptions = qbftOptions,
-      validatorElNode = ValidatorElNode(
-        ethApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
-        engineApiEndpoint = ApiEndpointConfig(URI.create(engineApiRpc).toURL()),
-      ),
+      validatorElNode =
+        ValidatorElNode(
+          ethApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
+          engineApiEndpoint = ApiEndpointConfig(URI.create(engineApiRpc).toURL()),
+        ),
       p2pConfig = p2pConfig,
       followers = followers,
     )
