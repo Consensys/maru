@@ -42,6 +42,7 @@ class MaruFollowerTest {
   private lateinit var followerStack: NetworkParticipantStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
+  private val maruFactory = MaruFactory()
 
   @BeforeEach
   fun setUp() {
@@ -54,8 +55,8 @@ class MaruFollowerTest {
       )
 
     validatorStack =
-      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruValidatorWithP2p(
+      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        maruFactory.buildTestMaruValidatorWithP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
@@ -65,8 +66,8 @@ class MaruFollowerTest {
     followerStack =
       NetworkParticipantStack(
         cluster = cluster,
-      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruFollowerWithP2pNetwork(
+      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        maruFactory.buildTestMaruFollowerWithP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
@@ -162,7 +163,7 @@ class MaruFollowerTest {
     followerStack.maruApp.stop()
     followerStack.maruApp.close()
     followerStack.maruApp =
-      MaruFactory.buildTestMaruFollowerWithP2pNetwork(
+      maruFactory.buildTestMaruFollowerWithP2pPeering(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
@@ -228,7 +229,7 @@ class MaruFollowerTest {
     validatorStack.maruApp.stop()
     validatorStack.maruApp.close()
     validatorStack.maruApp =
-      MaruFactory.buildTestMaruValidatorWithP2p(
+      maruFactory.buildTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
         dataDir = validatorStack.tmpDir,

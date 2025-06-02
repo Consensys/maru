@@ -16,6 +16,7 @@
 package maru.app
 
 import java.time.Clock
+import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.consensus.BlockMetadata
@@ -36,6 +37,7 @@ import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.core.Protocol
+import maru.crypto.Crypto
 import maru.database.kv.KvDatabaseFactory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
@@ -141,7 +143,12 @@ class MaruApp(
       }
 
   fun start() {
-    p2pNetwork.start().get()
+    try {
+      p2pNetwork.start().get()
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the P2P network", th)
+      exitProcess(1)
+    }
     protocolStarter.start()
     log.info("Maru is up")
   }
@@ -152,7 +159,6 @@ class MaruApp(
     } catch (th: Throwable) {
       log.warn("Error while trying to stop the P2P network", th)
     }
-
     protocolStarter.stop()
     log.info("Maru is down")
   }
@@ -160,12 +166,6 @@ class MaruApp(
   override fun close() {
     beaconChain.close()
   }
-
-  private fun privateKeyBytesWithoutPrefix() =
-    privateKeyBytes
-      .slice(
-        privateKeyBytes.size - 32..privateKeyBytes.size - 1,
-      ).toByteArray()
 
   private fun createProtocolStarter(
     config: MaruConfig,
@@ -201,7 +201,7 @@ class MaruApp(
           )
         QbftProtocolFactoryWithBeaconChainInitialization(
           qbftOptions = config.qbftOptions!!,
-          privateKeyBytes = privateKeyBytesWithoutPrefix(),
+          privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyBytes),
           validatorElNodeConfig = config.validatorElNode,
           metricsSystem = metricsSystem,
           finalizationStateProvider = finalizationStateProviderStub,
