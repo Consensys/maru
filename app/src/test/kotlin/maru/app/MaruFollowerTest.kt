@@ -244,7 +244,7 @@ class MaruFollowerTest {
   }
 
   @Test
-  fun `Maru follower is able to import blocks after its validator node goes down`() {
+  fun `Maru follower is able to import blocks after its validator el node goes down`() {
     val validatorGenesis =
       validatorStack.besuNode
         .nodeRequests()
