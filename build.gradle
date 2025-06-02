@@ -166,8 +166,8 @@ subprojects {
   apply plugin: "jacoco"
 
   tasks.withType(Test) {
-    // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
-    maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?: (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
+    // Completely relying on junit concurrent threads rather than on Gradle's concurrent processes
+    maxParallelForks = 1
   }
 
   tasks.withType(JavaCompile) {
