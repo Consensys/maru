@@ -56,7 +56,7 @@ class MaruFollowerTest {
 
     validatorStack =
       NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        maruFactory.buildTestMaruValidatorWithP2p(
+        maruFactory.buildTestMaruValidatorWithP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
@@ -67,7 +67,7 @@ class MaruFollowerTest {
       NetworkParticipantStack(
         cluster = cluster,
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        maruFactory.buildTestMaruFollowerWithP2pNetwork(
+        maruFactory.buildTestMaruFollowerWithP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,

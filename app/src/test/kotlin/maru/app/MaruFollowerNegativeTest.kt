@@ -56,7 +56,7 @@ class MaruFollowerNegativeTest {
     val spyingP2PNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
     val validatorStack =
       NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        maruFactory.buildTestMaruValidatorWithoutP2p(
+        maruFactory.buildTestMaruValidatorWithoutP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
@@ -79,7 +79,7 @@ class MaruFollowerNegativeTest {
       NetworkParticipantStack(
         cluster = cluster,
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        maruFactory.buildTestMaruFollowerWithoutP2pNetwork(
+        maruFactory.buildTestMaruFollowerWithoutP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,

@@ -70,7 +70,7 @@ class MaruQbftValidatorTest {
     spyingP2pNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
     networkParticipantStack =
       NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        maruFactory.buildTestMaruValidatorWithoutP2p(
+        maruFactory.buildTestMaruValidatorWithoutP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
@@ -256,7 +256,7 @@ class MaruQbftValidatorTest {
 
     Thread.sleep(3000)
     networkParticipantStack.maruApp =
-      maruFactory.buildTestMaruValidatorWithoutP2p(
+      maruFactory.buildTestMaruValidatorWithoutP2pPeering(
         ethereumJsonRpcUrl = networkParticipantStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = networkParticipantStack.besuNode.engineRpcUrl().get(),
         dataDir = networkParticipantStack.tmpDir,

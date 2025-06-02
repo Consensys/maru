@@ -116,7 +116,7 @@ class MaruFactory {
   private fun buildFollowersConfig(engineApiRpc: String): FollowersConfig =
     FollowersConfig(mapOf("validator-el-node" to ApiEndpointConfig(URI.create(engineApiRpc).toURL())))
 
-  fun buildTestMaruValidatorWithoutP2p(
+  fun buildTestMaruValidatorWithoutP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
@@ -133,7 +133,7 @@ class MaruFactory {
     return buildApp(config, p2pNetwork = p2pNetwork)
   }
 
-  fun buildTestMaruValidatorWithP2p(
+  fun buildTestMaruValidatorWithP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
@@ -153,7 +153,7 @@ class MaruFactory {
     return buildApp(config = config, p2pNetwork = p2pNetwork)
   }
 
-  fun buildTestMaruFollowerWithP2pNetwork(
+  fun buildTestMaruFollowerWithP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
@@ -172,7 +172,7 @@ class MaruFactory {
     return buildApp(config)
   }
 
-  fun buildTestMaruFollowerWithoutP2pNetwork(
+  fun buildTestMaruFollowerWithoutP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
