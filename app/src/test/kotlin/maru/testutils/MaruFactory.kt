@@ -105,13 +105,6 @@ object MaruFactory {
     [persistence]
     data-path="$dataPath"
 
-    [p2p-config]
-    port = 0
-    ip-address = "127.0.0.1"
-    static-peers = []
-
-    [qbft-options]
-
     [payloadValidator]
     engine-api-endpoint = { endpoint = "$engineApiRpc" }
     eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
