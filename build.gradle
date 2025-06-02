@@ -158,17 +158,13 @@ allprojects {
     systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
     systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
     // To make room for Besu threads
-    systemProperties["junit.jupiter.execution.parallel.config.dynamic.factor"] = 0.8
+    systemProperties["junit.jupiter.execution.parallel.config.dynamic.factor"] = 0.7
+    maxParallelForks = 1
   }
 }
 
 subprojects {
   apply plugin: "jacoco"
-
-  tasks.withType(Test) {
-    // Completely relying on junit concurrent threads rather than on Gradle's concurrent processes
-    maxParallelForks = 1
-  }
 
   tasks.withType(JavaCompile) {
     options.fork = true
