@@ -17,11 +17,11 @@ package maru.app
 
 import java.util.Optional
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
+import net.consensys.linea.metrics.MetricsCategory as LineaMetricsCategory
 
-enum class MaruMetricsCategory : MetricCategory {
+enum class MaruMetricsCategory : MetricCategory, LineaMetricsCategory {
   STORAGE {
-    override fun getName(): String = "storage"
-
+    override fun getName(): String = this.name.lowercase()
     override fun getApplicationPrefix(): Optional<String> = Optional.empty()
   },
 }

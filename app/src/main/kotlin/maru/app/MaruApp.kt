@@ -15,6 +15,9 @@
  */
 package maru.app
 
+import io.libp2p.core.PeerId
+import io.micrometer.core.instrument.MeterRegistry
+import io.vertx.micrometer.backends.BackendRegistries
 import java.time.Clock
 import kotlin.system.exitProcess
 import maru.config.FollowersConfig
@@ -39,12 +42,17 @@ import maru.core.BeaconBlockBody
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.kv.KvDatabaseFactory
+import io.libp2p.core.crypto.unmarshalPrivateKey
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import maru.serialization.rlp.RLPSerializers
+import net.consensys.linea.metrics.Tag
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
+import net.consensys.linea.vertx.ObservabilityServer
+import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -52,7 +60,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruApp(
-  config: MaruConfig,
+  val config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
@@ -60,10 +68,28 @@ class MaruApp(
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
+  private val vertx =
+    VertxFactory.createVertx(
+      jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
+      prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+    )
+
+  private val observabilityServer =
+    ObservabilityServer(
+      ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
+    )
+
+
   private var privateKeyBytes: ByteArray =
     GeneratingFilePrivateKeySource(
       config.persistence.privateKeyPath.toString(),
     ).privateKeyBytes.toArray()
+
+  private val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKeyBytes).publicKey())
+  private val meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow()
+  private val micrometerMetricsFacade = MicrometerMetricsFacade(
+    meterRegistry, "maru", commonTags = listOf(Tag("nodeid", nodeId.toBase58())),)
+
 
   init {
     if (!config.persistence.privateKeyPath
@@ -95,6 +121,7 @@ class MaruApp(
           serializer = RLPSerializers.SealedBeaconBlockSerializer,
         )
     }
+
   }
 
   fun p2pPort(): UInt = p2pNetwork.port
@@ -164,6 +191,7 @@ class MaruApp(
   }
 
   override fun close() {
+    vertx.close()
     beaconChain.close()
   }
 

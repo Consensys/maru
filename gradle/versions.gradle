@@ -156,5 +156,10 @@ dependencyManagement {
     imports {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
     }
+
+    dependency "build.linea.internal:metrics:20250528-develop"
+    dependency "build.linea.internal:micrometer:20250528-develop"
+    dependency "build.linea.internal:vertx-helper:20250528-develop"
+    dependency "build.linea.internal:json-rpc:20250528-develop"
   }
 }
