@@ -19,8 +19,8 @@ import java.time.Clock
 import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
+import maru.config.consensus.qbft.QbftConsensusConfig.Companion.ElFork
 import maru.consensus.BlockMetadata
-import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestBlockMetadataCache
 import maru.consensus.NewBlockHandler
@@ -92,7 +92,7 @@ class MaruApp(
           privateKeyBytes = privateKeyBytes,
           p2pConfig = config.p2pConfig!!,
           chainId = beaconGenesisConfig.chainId,
-          serializer = RLPSerializers.SealedBeaconBlockSerializer,
+          serDe = RLPSerializers.SealedBeaconBlockSerializer,
         )
     }
   }

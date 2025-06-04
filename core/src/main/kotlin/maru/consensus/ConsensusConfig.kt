@@ -13,10 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.serialization
+package maru.consensus
 
-interface Serializer<T> {
-  fun serialize(value: T): ByteArray
-
-  fun deserialize(bytes: ByteArray): T
-}
+interface ConsensusConfig

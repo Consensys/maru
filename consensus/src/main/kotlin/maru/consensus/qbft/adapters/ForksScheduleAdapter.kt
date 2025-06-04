@@ -18,8 +18,8 @@ package maru.consensus.qbft.adapters
 import java.math.BigInteger
 import java.util.Optional
 import maru.config.QbftOptions
+import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
-import maru.consensus.qbft.QbftConsensusConfig
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.config.BftConfigOptions
 import org.hyperledger.besu.datatypes.Address

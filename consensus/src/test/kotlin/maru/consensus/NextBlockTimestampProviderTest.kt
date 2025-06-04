@@ -19,7 +19,8 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
-import maru.consensus.qbft.QbftConsensusConfig
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.config.consensus.qbft.QbftConsensusConfig.Companion.ElFork
 import org.assertj.core.api.Assertions.assertThat
 
 class NextBlockTimestampProviderTest {

@@ -13,15 +13,9 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.kv
+package maru.config.consensus.delegated
 
-import maru.serialization.SerDe
-import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
+import maru.consensus.ConsensusConfig
 
-class KvStoreSerializerAdapter<T>(
-  private val serDe: SerDe<T>,
-) : KvStoreSerializer<T> {
-  override fun deserialize(bytes: ByteArray): T = serDe.deserialize(bytes)
-
-  override fun serialize(value: T): ByteArray = serDe.serialize(value)
-}
+// Only for comparisons in the tests to set common ground
+data object ElDelegatedConfig : ConsensusConfig

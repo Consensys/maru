@@ -13,15 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.kv
+package maru.serialization
 
-import maru.serialization.SerDe
-import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
-
-class KvStoreSerializerAdapter<T>(
-  private val serDe: SerDe<T>,
-) : KvStoreSerializer<T> {
-  override fun deserialize(bytes: ByteArray): T = serDe.deserialize(bytes)
-
-  override fun serialize(value: T): ByteArray = serDe.serialize(value)
+interface Deserializer<T> {
+  fun deserialize(bytes: ByteArray): T
 }
+
+interface Serializer<T> {
+  fun serialize(value: T): ByteArray
+}
+
+interface SerDe<T> :
+  Serializer<T>,
+  Deserializer<T>

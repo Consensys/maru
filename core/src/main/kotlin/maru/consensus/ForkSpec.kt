@@ -18,12 +18,6 @@ package maru.consensus
 import java.util.NavigableSet
 import java.util.TreeSet
 
-interface ConsensusConfig
-
-enum class ElFork {
-  Prague,
-}
-
 data class ForkSpec(
   val timestampSeconds: Long,
   val blockTimeSeconds: Int,

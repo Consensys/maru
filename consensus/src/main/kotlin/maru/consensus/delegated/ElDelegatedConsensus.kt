@@ -16,7 +16,6 @@
 package maru.consensus.delegated
 
 import java.util.concurrent.TimeUnit
-import maru.consensus.ConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
 import maru.consensus.ProtocolFactory
@@ -52,9 +51,6 @@ class ElDelegatedConsensus(
   private val onNewBlock: NewBlockHandler<*>,
   private val blockTimeSeconds: Int,
 ) : Protocol {
-  // Only for comparisons in the tests to set common ground
-  data object ElDelegatedConfig : ConsensusConfig
-
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   @Volatile

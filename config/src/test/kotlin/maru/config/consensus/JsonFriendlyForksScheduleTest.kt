@@ -13,18 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.config
+package maru.config.consensus
 
-import maru.consensus.ElFork
+import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
-import maru.consensus.delegated.ElDelegatedConsensus
-import maru.consensus.qbft.QbftConsensusConfig
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
-import org.apache.tuweni.bytes.Bytes
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 
 class JsonFriendlyForksScheduleTest {
@@ -55,23 +52,26 @@ class JsonFriendlyForksScheduleTest {
         .parseBeaconChainConfig(
           genesisConfig,
         ).domainFriendly()
-    assertThat(config).isEqualTo(
+    Assertions.assertThat(config).isEqualTo(
       ForksSchedule(
         1337u,
         setOf(
           ForkSpec(
             timestampSeconds = 2,
             blockTimeSeconds = 4,
-            ElDelegatedConsensus.ElDelegatedConfig,
+            ElDelegatedConfig,
           ),
           ForkSpec(
             timestampSeconds = 4,
             blockTimeSeconds = 6,
             configuration =
               QbftConsensusConfig(
-                feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
-                validatorSet = setOf(Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
-                elFork = ElFork.Prague,
+                feeRecipient = "0x0000000000000000000000000000000000000000".fromHexToByteArray(),
+                validatorSet =
+                  setOf(
+                    Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray()),
+                  ),
+                elFork = QbftConsensusConfig.Companion.ElFork.Prague,
               ),
           ),
         ),
@@ -93,10 +93,11 @@ class JsonFriendlyForksScheduleTest {
         }
       }
       """.trimIndent()
-    assertThatThrownBy {
-      Utils.parseBeaconChainConfig(
-        invalidConfiguration,
-      )
-    }.isInstanceOf(Exception::class.java)
+    Assertions
+      .assertThatThrownBy {
+        Utils.parseBeaconChainConfig(
+          invalidConfiguration,
+        )
+      }.isInstanceOf(Exception::class.java)
   }
 }

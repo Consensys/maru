@@ -15,36 +15,25 @@
  */
 package maru.serialization.rlp
 
-import maru.core.SealedBeaconBlock
+import maru.core.Seal
+import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class SealedBeaconBlockSerializer(
-  private val beaconBlockSerializer: BeaconBlockSerializer,
-  private val sealSerializer: SealSerializer,
-) : RLPSerializer<SealedBeaconBlock> {
+class SealSerDe : RLPSerDe<Seal> {
   override fun writeTo(
-    value: SealedBeaconBlock,
+    value: Seal,
     rlpOutput: RLPOutput,
   ) {
     rlpOutput.startList()
-
-    beaconBlockSerializer.writeTo(value.beaconBlock, rlpOutput)
-    rlpOutput.writeList(value.commitSeals) { commitSeal, output ->
-      sealSerializer.writeTo(commitSeal, output)
-    }
-
+    rlpOutput.writeBytes(Bytes.wrap(value.signature))
     rlpOutput.endList()
   }
 
-  override fun readFrom(rlpInput: RLPInput): SealedBeaconBlock {
+  override fun readFrom(rlpInput: RLPInput): Seal {
     rlpInput.enterList()
-
-    val beaconBlock = beaconBlockSerializer.readFrom(rlpInput)
-    val commitSeals = rlpInput.readList { sealSerializer.readFrom(rlpInput) }.toSet()
-
+    val signature = rlpInput.readBytes().toArray()
     rlpInput.leaveList()
-
-    return SealedBeaconBlock(beaconBlock, commitSeals)
+    return Seal(signature)
   }
 }

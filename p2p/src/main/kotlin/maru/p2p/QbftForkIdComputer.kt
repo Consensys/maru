@@ -13,15 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database.kv
+package maru.p2p
 
-import maru.serialization.SerDe
-import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkIdHasher
+import maru.crypto.Hashing
+import maru.serialization.ForkIdSerializers
 
-class KvStoreSerializerAdapter<T>(
-  private val serDe: SerDe<T>,
-) : KvStoreSerializer<T> {
-  override fun deserialize(bytes: ByteArray): T = serDe.deserialize(bytes)
-
-  override fun serialize(value: T): ByteArray = serDe.serialize(value)
-}
+val QbftForkIdComputer: ForkIdHasher<QbftConsensusConfig> =
+  ForkIdHasher(
+    ForkIdSerializers
+      .QbftForkIdSerializer,
+    Hashing::shortShaHash,
+  )
