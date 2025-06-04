@@ -78,7 +78,7 @@ data class QbftOptions(
 ) {
   init {
     require(feeRecipient.size == 20) {
-      "feesRecipient address must be 20 bytes long, " +
+      "feeRecipient address must be 20 bytes long, " +
         "but it's ${feeRecipient.size} bytes long!"
     }
   }
