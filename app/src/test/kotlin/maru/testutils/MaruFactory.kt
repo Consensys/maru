@@ -69,7 +69,11 @@ class MaruFactory {
     }
 
     """.trimIndent()
-  private val validatorQbftOptions = QbftOptions(feeRecipient = validatorAddress.fromHexToByteArray())
+  private val validatorQbftOptions =
+    QbftOptions(
+      feeRecipient = validatorAddress.fromHexToByteArray(),
+      minBlockBuildTime = 200.milliseconds,
+    )
 
   private val beaconGenesisConfig: ForksSchedule =
     run {
@@ -87,7 +91,7 @@ class MaruFactory {
     qbftOptions: QbftOptions? = null,
   ): MaruConfig =
     MaruConfig(
-      Persistence(dataPath = dataDir),
+      persistence = Persistence(dataPath = dataDir),
       qbftOptions = qbftOptions,
       validatorElNode =
         ValidatorElNode(
