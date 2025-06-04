@@ -50,7 +50,7 @@ data class QbftConsensusConfig(
     other as QbftConsensusConfig
 
     if (!feeRecipient.contentEquals(other.feeRecipient)) return false
-    if (validatorSet.containsAll(validatorSet)) return false
+    if (validatorSet.containsAll(other.validatorSet)) return false
     if (elFork != other.elFork) return false
 
     return true
