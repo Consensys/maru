@@ -39,7 +39,7 @@ import tech.pegasys.teku.infrastructure.async.ScheduledExecutorAsyncRunner
 import tech.pegasys.teku.networking.p2p.discovery.discv5.SecretKeyParser
 
 class DiscoveryService(
-  private val privateKeyBytes: ByteArray,
+  privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
 ) {
   companion object {
@@ -115,7 +115,8 @@ class DiscoveryService(
       .streamLiveNodes()
       .map { node: NodeRecord ->
         convertNodeRecordToDiscoveryPeer(node)
-      }.toList()
+      }.filter { peerIsOnTheRightChain(it) }
+      .toList()
 
   fun getLocalNodeRecord(): NodeRecord = localNodeRecord
 
@@ -184,4 +185,8 @@ class DiscoveryService(
 
     fun encode(): Bytes = Bytes.wrap(genesisHash.toArrayUnsafe() + nextForkTimestamp.toBytes().toArrayUnsafe())
   }
+}
+
+private fun peerIsOnTheRightChain(peer: DiscoveryService.MaruDiscoveryPeer): Boolean {
+  return true; // TODO: check the fork id here
 }
