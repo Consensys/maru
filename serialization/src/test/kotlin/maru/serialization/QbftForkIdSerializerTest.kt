@@ -18,29 +18,24 @@ package maru.serialization
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.config.consensus.qbft.QbftConsensusConfig.Companion.ElFork
 import maru.consensus.ForkId
-import maru.core.Validator
+import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 
 class QbftForkIdSerializerTest {
-  private fun validator(address: Byte) = Validator(ByteArray(20) { address })
-
-  private val dummyFeeRecipient = ByteArray(20) { 0x00 }
   private val dummyChainId: UInt = 1u
 
   @Test
   fun `serialization is deterministic regardless of validator set order`() {
-    val v1 = validator(1)
-    val v2 = validator(2)
+    val v1 = DataGenerators.randomValidator()
+    val v2 = DataGenerators.randomValidator()
     val config1 =
       QbftConsensusConfig(
-        feeRecipient = dummyFeeRecipient,
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
     val config2 =
       QbftConsensusConfig(
-        feeRecipient = dummyFeeRecipient,
         validatorSet = setOf(v2, v1),
         elFork = ElFork.Prague,
       )
@@ -53,17 +48,15 @@ class QbftForkIdSerializerTest {
 
   @Test
   fun `serialization changes when validator set changes`() {
-    val v1 = validator(1)
-    val v2 = validator(2)
+    val v1 = DataGenerators.randomValidator()
+    val v2 = DataGenerators.randomValidator()
     val config1 =
       QbftConsensusConfig(
-        feeRecipient = dummyFeeRecipient,
         validatorSet = setOf(v1),
         elFork = ElFork.Prague,
       )
     val config2 =
       QbftConsensusConfig(
-        feeRecipient = dummyFeeRecipient,
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )

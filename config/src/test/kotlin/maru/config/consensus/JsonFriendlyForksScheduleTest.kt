@@ -17,11 +17,13 @@ package maru.config.consensus
 
 import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.config.consensus.qbft.QbftConsensusConfig.Companion.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 class JsonFriendlyForksScheduleTest {
@@ -38,7 +40,6 @@ class JsonFriendlyForksScheduleTest {
           "type": "qbft",
           "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
           "blockTimeSeconds": 6,
-          "feeRecipient": "0x0000000000000000000000000000000000000000",
           "elFork": "Prague"
         }
       }
@@ -52,7 +53,7 @@ class JsonFriendlyForksScheduleTest {
         .parseBeaconChainConfig(
           genesisConfig,
         ).domainFriendly()
-    Assertions.assertThat(config).isEqualTo(
+    assertThat(config).isEqualTo(
       ForksSchedule(
         1337u,
         setOf(
@@ -66,12 +67,8 @@ class JsonFriendlyForksScheduleTest {
             blockTimeSeconds = 6,
             configuration =
               QbftConsensusConfig(
-                feeRecipient = "0x0000000000000000000000000000000000000000".fromHexToByteArray(),
-                validatorSet =
-                  setOf(
-                    Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray()),
-                  ),
-                elFork = QbftConsensusConfig.Companion.ElFork.Prague,
+                validatorSet = setOf(Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
+                elFork = ElFork.Prague,
               ),
           ),
         ),
@@ -87,17 +84,15 @@ class JsonFriendlyForksScheduleTest {
         "config": {
           "4": {
             "type": "qbft",
-            "feeRecipient": "0x0000000000000000000000000000000000000000",
             "elFork": "Prague"
           }
         }
       }
       """.trimIndent()
-    Assertions
-      .assertThatThrownBy {
-        Utils.parseBeaconChainConfig(
-          invalidConfiguration,
-        )
-      }.isInstanceOf(Exception::class.java)
+    assertThatThrownBy {
+      Utils.parseBeaconChainConfig(
+        invalidConfiguration,
+      )
+    }.isInstanceOf(Exception::class.java)
   }
 }

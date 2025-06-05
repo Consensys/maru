@@ -28,7 +28,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class QbftForkIdComputerTest {
-  private val dummyFeeRecipient = Random.nextBytes(20)
   private val dummyChainId: UInt = Random.nextUInt()
 
   @Test
@@ -37,7 +36,6 @@ class QbftForkIdComputerTest {
     val v2 = DataGenerators.randomValidator()
     val config1 =
       QbftConsensusConfig(
-        feeRecipient = dummyFeeRecipient,
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
@@ -61,13 +59,11 @@ class QbftForkIdComputerTest {
     val v2 = DataGenerators.randomValidator()
     val config1 =
       QbftConsensusConfig(
-        feeRecipient = dummyFeeRecipient,
         validatorSet = setOf(v1),
         elFork = ElFork.Prague,
       )
     val config2 =
       QbftConsensusConfig(
-        feeRecipient = dummyFeeRecipient,
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
@@ -88,7 +84,6 @@ class QbftForkIdComputerTest {
     val v2 = DataGenerators.randomValidator()
     val config =
       QbftConsensusConfig(
-        feeRecipient = dummyFeeRecipient,
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
@@ -109,7 +104,6 @@ class QbftForkIdComputerTest {
     val v2 = DataGenerators.randomValidator()
     val config =
       QbftConsensusConfig(
-        feeRecipient = dummyFeeRecipient,
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )

@@ -18,7 +18,6 @@ package maru.consensus.qbft.adapters
 import java.math.BigInteger
 import java.util.Optional
 import maru.config.QbftOptions
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.config.BftConfigOptions
@@ -63,7 +62,7 @@ class ForksScheduleAdapter(
         override fun getFutureMessagesMaxDistance(): Int = config.futureMessageMaxDistance.toInt()
 
         override fun getMiningBeneficiary(): Optional<Address> =
-          Optional.of(Address.wrap(Bytes.wrap((spec.configuration as QbftConsensusConfig).feeRecipient)))
+          Optional.of(Address.wrap(Bytes.wrap(config.feeRecipient)))
 
         override fun getBlockRewardWei(): BigInteger = BigInteger.ZERO
 

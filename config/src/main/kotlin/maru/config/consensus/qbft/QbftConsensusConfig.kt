@@ -19,7 +19,6 @@ import maru.consensus.ConsensusConfig
 import maru.core.Validator
 
 data class QbftConsensusConfig(
-  val feeRecipient: ByteArray,
   val validatorSet: Set<Validator>,
   val elFork: ElFork,
 ) : ConsensusConfig {
@@ -27,32 +26,5 @@ data class QbftConsensusConfig(
     enum class ElFork {
       Prague,
     }
-  }
-
-  init {
-    require(feeRecipient.size == 20) {
-      "feesRecipient address must be 20 bytes long, " +
-        "but it's only ${feeRecipient.size} bytes long!"
-    }
-  }
-
-  override fun hashCode(): Int {
-    var result = feeRecipient.contentHashCode()
-    result = 31 * result + validatorSet.hashCode()
-    result = 31 * result + elFork.hashCode()
-    return result
-  }
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as QbftConsensusConfig
-
-    if (!feeRecipient.contentEquals(other.feeRecipient)) return false
-    if (validatorSet.containsAll(other.validatorSet)) return false
-    if (elFork != other.elFork) return false
-
-    return true
   }
 }
