@@ -20,6 +20,7 @@ import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class InjectableSealedBlocksFakeNetwork : P2PNetwork by NoOpP2PNetwork {
   var handler: SealedBeaconBlockHandler<ValidationResult>? = null
@@ -29,7 +30,6 @@ class InjectableSealedBlocksFakeNetwork : P2PNetwork by NoOpP2PNetwork {
     return 0
   }
 
-  fun injectSealedBlock(sealedBlock: SealedBeaconBlock) {
+  fun injectSealedBlock(sealedBlock: SealedBeaconBlock): SafeFuture<ValidationResult> =
     handler!!.handleSealedBlock(sealedBlock)
-  }
 }

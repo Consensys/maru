@@ -36,12 +36,12 @@ class DiscoveryTest {
   companion object {
     private const val IPV4 = "127.0.0.1"
 
-    private const val PORT1 = "9234"
-    private const val PORT2 = "9235"
-    private const val PORT3 = "9236"
-    private const val PORT4 = "9237"
-    private const val PORT5 = "9238"
-    private const val PORT6 = "9239"
+    private const val PORT1 = 9234u
+    private const val PORT2 = 9235u
+    private const val PORT3 = 9236u
+    private const val PORT4 = 9237u
+    private const val PORT5 = 9238u
+    private const val PORT6 = 9239u
 
     private const val PRIVATE_KEY1: String =
       "0x12c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2"

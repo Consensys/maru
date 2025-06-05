@@ -15,9 +15,6 @@
  */
 package maru.consensus.config
 
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.ExperimentalHoplite
-import com.sksamuel.hoplite.json.JsonPropertySource
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -25,12 +22,10 @@ import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.qbft.QbftConsensusConfig
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
-import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
-@OptIn(ExperimentalHoplite::class)
 class JsonFriendlyForksScheduleTest {
   private val genesisConfig =
     """
@@ -45,7 +40,6 @@ class JsonFriendlyForksScheduleTest {
           "type": "qbft",
           "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
           "blockTimeSeconds": 6,
-          "feeRecipient": "0x0000000000000000000000000000000000000000",
           "elFork": "Prague"
         }
       }
@@ -55,9 +49,10 @@ class JsonFriendlyForksScheduleTest {
   @Test
   fun genesisFileIsConvertableToDomain() {
     val config =
-      parseJsonConfig<JsonFriendlyForksSchedule>(
-        genesisConfig,
-      ).domainFriendly()
+      Utils
+        .parseBeaconChainConfig(
+          genesisConfig,
+        ).domainFriendly()
     assertThat(config).isEqualTo(
       ForksSchedule(
         1337u,
@@ -72,7 +67,6 @@ class JsonFriendlyForksScheduleTest {
             blockTimeSeconds = 6,
             configuration =
               QbftConsensusConfig(
-                feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
                 validatorSet = setOf(Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
                 elFork = ElFork.Prague,
               ),
@@ -90,25 +84,15 @@ class JsonFriendlyForksScheduleTest {
         "config": {
           "4": {
             "type": "qbft",
-            "feeRecipient": "0x0000000000000000000000000000000000000000",
             "elFork": "Prague"
           }
         }
       }
       """.trimIndent()
     assertThatThrownBy {
-      parseJsonConfig<JsonFriendlyForksSchedule>(
+      Utils.parseBeaconChainConfig(
         invalidConfiguration,
       )
     }.isInstanceOf(Exception::class.java)
   }
-
-  private inline fun <reified T : Any> parseJsonConfig(json: String): T =
-    ConfigLoaderBuilder
-      .default()
-      .addDecoder(ForkConfigDecoder())
-      .withExplicitSealedTypes()
-      .addSource(JsonPropertySource(json))
-      .build()
-      .loadConfigOrThrow<T>()
 }

@@ -13,13 +13,20 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft
+package maru.consensus.config
 
-import maru.consensus.ConsensusConfig
-import maru.consensus.ElFork
-import maru.core.Validator
+import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.ExperimentalHoplite
+import com.sksamuel.hoplite.json.JsonPropertySource
 
-data class QbftConsensusConfig(
-  val validatorSet: Set<Validator>,
-  val elFork: ElFork,
-) : ConsensusConfig
+@OptIn(ExperimentalHoplite::class)
+object Utils {
+  fun parseBeaconChainConfig(json: String): JsonFriendlyForksSchedule =
+    ConfigLoaderBuilder
+      .default()
+      .addDecoder(ForkConfigDecoder)
+      .withExplicitSealedTypes()
+      .addSource(JsonPropertySource(json))
+      .build()
+      .loadConfigOrThrow<JsonFriendlyForksSchedule>()
+}

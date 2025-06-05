@@ -24,7 +24,7 @@ import maru.serialization.rlp.RLPSerializers
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
-import org.awaitility.Awaitility
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -39,9 +39,9 @@ class P2PTest {
 
     private const val IPV4 = "127.0.0.1"
 
-    private const val PORT1 = "9234"
-    private const val PORT2 = "9235"
-    private const val PORT3 = "9236"
+    private const val PORT1 = 9234u
+    private const val PORT2 = 9235u
+    private const val PORT3 = 9236u
 
     private const val PRIVATE_KEY1: String =
       "0x0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2"
@@ -69,14 +69,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
@@ -87,8 +87,8 @@ class P2PTest {
 
       p2PNetworkImpl1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -100,14 +100,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
@@ -118,13 +118,13 @@ class P2PTest {
 
       p2PNetworkImpl1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
       p2PNetworkImpl1.removeStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 0) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 0) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 0) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 0) }
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -136,14 +136,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = "0", staticPeers = listOf(PEER_ADDRESS_NODE_1)),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = listOf(PEER_ADDRESS_NODE_1)),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
@@ -152,8 +152,8 @@ class P2PTest {
 
       p2pNetworkImpl2.start()
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -165,14 +165,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = "0", staticPeers = listOf(PEER_ADDRESS_NODE_1)),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = listOf(PEER_ADDRESS_NODE_1)),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
@@ -181,13 +181,13 @@ class P2PTest {
 
       p2pNetworkImpl2.start()
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
       p2PNetworkImpl1.dropPeer(PEER_ID_NODE_2, DisconnectReason.TOO_MANY_PEERS)
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -199,36 +199,38 @@ class P2PTest {
     val p2pNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = "0", staticPeers = listOf(PEER_ADDRESS_NODE_1)),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = listOf(PEER_ADDRESS_NODE_1)),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
     try {
       p2pNetworkImpl1.start()
 
-      val blockReceived = SafeFuture<SealedBeaconBlock>()
+      val blocksReceived = mutableListOf<SealedBeaconBlock>()
       p2pNetworkImpl2.start()
       p2pNetworkImpl2.subscribeToBlocks {
-        blockReceived.complete(it)
+        blocksReceived.add(it)
         SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
-      val randomBlockMessage = DataGenerators.randomBlockMessage()
-      p2pNetworkImpl1.broadcastMessage(randomBlockMessage).get()
+      val randomBlockMessage1 = DataGenerators.randomBlockMessage()
+      p2pNetworkImpl1.broadcastMessage(randomBlockMessage1).get()
+      val randomBlockMessage2 = DataGenerators.randomBlockMessage()
+      p2pNetworkImpl1.broadcastMessage(randomBlockMessage2).get()
 
-      assertThat(
-        blockReceived.get(100, TimeUnit.MILLISECONDS),
-      ).isEqualTo(randomBlockMessage.payload)
+      awaitUntilAsserted {
+        assertThat(blocksReceived).hasSameElementsAs(listOf(randomBlockMessage1.payload, randomBlockMessage2.payload))
+      }
     } finally {
       p2pNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -240,7 +242,7 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
@@ -251,7 +253,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT2,
-            discoveryPort = "0",
+            discoveryPort = 0u,
             staticPeers = listOf(PEER_ADDRESS_NODE_1, PEER_ADDRESS_NODE_3),
           ),
         chainId = chainId,
@@ -260,7 +262,7 @@ class P2PTest {
     val p2PNetworkImpl3 =
       P2PNetworkImpl(
         privateKeyBytes = key3,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT3, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT3, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
@@ -277,8 +279,8 @@ class P2PTest {
         SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
 
-      awaitUntilAsserted({ assertNetworkIsConnectedToPeer(p2PNetworkImpl1, PEER_ID_NODE_2) })
-      awaitUntilAsserted({ assertNetworkIsConnectedToPeer(p2PNetworkImpl3, PEER_ID_NODE_2) })
+      awaitUntilAsserted { assertNetworkIsConnectedToPeer(p2PNetworkImpl1, PEER_ID_NODE_2) }
+      awaitUntilAsserted { assertNetworkIsConnectedToPeer(p2PNetworkImpl3, PEER_ID_NODE_2) }
 
       assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1)
       assertNetworkHasPeers(network = p2PNetworkImpl2, peers = 2)
@@ -305,14 +307,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = "0", staticPeers = emptyList()),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
     val p2pManagerImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = "0", staticPeers = listOf(PEER_ADDRESS_NODE_1)),
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = listOf(PEER_ADDRESS_NODE_1)),
         chainId = chainId,
         serializer = RLPSerializers.SealedBeaconBlockSerializer,
       )
@@ -321,8 +323,8 @@ class P2PTest {
 
       p2pManagerImpl2.start()
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) }
 
       val request = Bytes.wrap(byteArrayOf(0, 0, 1, 2, 3, 4))
       val maruRpcResponseHandler = MaruRpcResponseHandler()
@@ -349,12 +351,11 @@ class P2PTest {
   }
 
   private fun awaitUntilAsserted(
-    condition: () -> Unit,
     timeout: Long = 6000L,
     timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
+    condition: () -> Unit,
   ) {
-    Awaitility
-      .await()
+    await()
       .timeout(timeout, timeUnit)
       .untilAsserted(condition)
   }

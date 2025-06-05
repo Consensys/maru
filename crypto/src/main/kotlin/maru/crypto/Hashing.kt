@@ -13,19 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.config
+package maru.crypto
 
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.ExperimentalHoplite
-import com.sksamuel.hoplite.toml.TomlPropertySource
+import java.security.MessageDigest
+import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.datatypes.Hash
 
-@OptIn(ExperimentalHoplite::class)
-object Utils {
-  inline fun <reified T : Any> parseTomlConfig(toml: String): T =
-    ConfigLoaderBuilder
-      .default()
-      .withExplicitSealedTypes()
-      .addSource(TomlPropertySource(toml))
-      .build()
-      .loadConfigOrThrow<T>()
+object Hashing {
+  fun shortShaHash(inputData: ByteArray): ByteArray = sha256(inputData).slice(0 until 20).toByteArray()
+
+  private fun sha256(input: ByteArray): ByteArray {
+    val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
+    return digest.digest(input)
+  }
+
+  fun keccak(serializedBytes: ByteArray): ByteArray = Hash.hash(Bytes.wrap(serializedBytes)).toArray()
 }
