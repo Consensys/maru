@@ -18,7 +18,7 @@ package maru.app
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.micrometer.core.instrument.MeterRegistry
-import io.vertx.micrometer.backends.BackendRegistries
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.time.Clock
 import java.util.Optional
 import kotlin.system.exitProcess
@@ -87,7 +87,7 @@ class MaruApp(
     ).privateKeyBytes.toArray()
 
   private val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKeyBytes).publicKey())
-  private val meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow()
+  private val meterRegistry: MeterRegistry = SimpleMeterRegistry()
   private val metricsFacade =
     MicrometerMetricsFacade(
       meterRegistry,

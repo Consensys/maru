@@ -19,12 +19,14 @@ import java.util.Optional
 import maru.core.ExecutionPayload
 import maru.mappers.Mappers.toDomainExecutionPayload
 import maru.mappers.Mappers.toExecutionPayloadV3
-import net.consensys.linea.metrics.CounterProvider
+import maru.metrics.MaruMetricsCategory
+import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
-import net.consensys.linea.metrics.TimerProvider
+import net.consensys.linea.metrics.TimerCapture
 import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
+import tech.pegasys.teku.ethereum.executionclient.schema.GetPayloadV4Response
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
@@ -35,66 +37,51 @@ import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
 class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
   private val web3jEngineClient: Web3JExecutionEngineClient,
-  private val timerProvider: TimerProvider,
-  private val counterProvider: CounterProvider,
+  private val metricsFacade: MetricsFacade,
 ) : ExecutionLayerEngineApiClient {
+  private fun <T> createRequestTimer(method: String): TimerCapture<Response<T>> {
+    val endpoint = ""
+    return metricsFacade.createDynamicTagTimer<Response<T>>(
+      category = MaruMetricsCategory.ENGINE_API,
+      name = "request.latency",
+      description = "Execution Engine API request latency",
+      tags = listOf(Tag("fork", "prague"), Tag("endpoint", endpoint), Tag("method", method)),
+      dynamicTagValueExtractor = {
+        when {
+          it.payload != null -> "success"
+          else -> "failure"
+        }
+      },
+      dynamicTagKey = "status",
+      dynamicTagValueExtractorOnError = { "ERROR" },
+    )
+  }
+
   override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
-    timerProvider
-      .withTags(listOf(Tag("method", "getPayload")))
+    createRequestTimer<GetPayloadV4Response>("getPayload")
       .captureTime(web3jEngineClient.getPayloadV4(payloadId))
       .thenApply {
         when {
           it.payload != null -> {
-            counterProvider
-              .withTags(
-                listOf(
-                  Tag("method", "getPayload"),
-                  Tag("status", "success"),
-                ),
-              ).increment()
             Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
           }
-
           it.errorMessage != null -> {
-            counterProvider
-              .withTags(
-                listOf(
-                  Tag("method", "getPayload"),
-                  Tag("status", "failure"),
-                ),
-              ).increment()
             Response.fromErrorMessage(it.errorMessage)
           }
-
           else ->
             throw IllegalStateException("Failed to get payload!")
         }
       }
 
   override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =
-    timerProvider
-      .withTags(listOf(Tag("method", "newPayload")))
+    createRequestTimer<PayloadStatusV1>("newPayload")
       .captureTime(
         web3jEngineClient
           .newPayloadV4(executionPayload.toExecutionPayloadV3(), emptyList(), Bytes32.ZERO, emptyList()),
       ).thenApply {
         if (it.payload != null) {
-          counterProvider
-            .withTags(
-              listOf(
-                Tag("method", "newPayload"),
-                Tag("status", "success"),
-              ),
-            ).increment()
           Response.fromPayloadReceivedAsJson(it.payload)
         } else {
-          counterProvider
-            .withTags(
-              listOf(
-                Tag("method", "newPayload"),
-                Tag("status", "failure"),
-              ),
-            ).increment()
           Response.fromErrorMessage(it.errorMessage)
         }
       }
@@ -103,30 +90,10 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
     forkChoiceState: ForkChoiceStateV1,
     payloadAttributes: PayloadAttributesV1?,
   ): SafeFuture<Response<ForkChoiceUpdatedResult>> =
-    timerProvider
-      .withTags(listOf(Tag("method", "newPayload")))
+    createRequestTimer<ForkChoiceUpdatedResult>("forkChoiceUpdate")
       .captureTime(
         web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3())),
-      ).thenPeek {
-        when {
-          it.payload != null ->
-            counterProvider
-              .withTags(
-                listOf(
-                  Tag("method", "forkChoiceUpdate"),
-                  Tag("status", "success"),
-                ),
-              ).increment()
-          else ->
-            counterProvider
-              .withTags(
-                listOf(
-                  Tag("method", "forkChoiceUpdate"),
-                  Tag("status", "failure"),
-                ),
-              ).increment()
-        }
-      }
+      )
 
   private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =
     PayloadAttributesV3(
