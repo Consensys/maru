@@ -44,6 +44,9 @@ class HopliteFriendlinessTest {
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
     eth-api-endpoint = { endpoint = "http://localhost:8545" }
+
+    [observability-options]
+    port = 8080
     """.trimIndent()
   private val rawConfig =
     """
@@ -93,6 +96,7 @@ class HopliteFriendlinessTest {
                 ),
               "follower2" to ApiEndpointDto(URI.create("http://localhost:4321").toURL()),
             ),
+          observabilityOptions = ObservabilityOptions(port = 8080u),
         ),
       )
   }
@@ -127,6 +131,7 @@ class HopliteFriendlinessTest {
                 ),
             ),
           followerEngineApis = null,
+          observabilityOptions = ObservabilityOptions(port = 8080u),
         ),
       )
   }
@@ -166,6 +171,7 @@ class HopliteFriendlinessTest {
                 "follower2" to ApiEndpointConfig(URI.create("http://localhost:4321").toURL()),
               ),
             ),
+          observabilityOptions = ObservabilityOptions(port = 8080u),
         ),
       )
   }
@@ -203,6 +209,7 @@ class HopliteFriendlinessTest {
             FollowersConfig(
               emptyMap(),
             ),
+          observabilityOptions = ObservabilityOptions(port = 8080u),
         ),
       )
   }

@@ -76,10 +76,17 @@ data class QbftOptions(
   val futureMessagesLimit: Long = 1000L,
 )
 
+data class ObservabilityOptions(
+  val port: UInt,
+  val prometheusMetricsEnabled: Boolean = true,
+  val jvmMetricsEnabled: Boolean = true,
+)
+
 data class MaruConfig(
   val persistence: Persistence,
   val qbftOptions: QbftOptions?,
   val p2pConfig: P2P?,
   val validatorElNode: ValidatorElNode,
   val followers: FollowersConfig,
+  val observabilityOptions: ObservabilityOptions,
 )

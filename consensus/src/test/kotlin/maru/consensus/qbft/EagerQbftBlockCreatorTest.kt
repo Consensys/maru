@@ -33,16 +33,19 @@ import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.core.ext.DataGenerators
+import maru.core.ext.metrics.TestMetrics
 import maru.database.BeaconChain
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.mappers.Mappers.toDomain
+import maru.metrics.MaruMetricsCategory
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
+import net.consensys.linea.metrics.Tag
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -271,6 +274,28 @@ class EagerQbftBlockCreatorTest {
     return JsonRpcExecutionLayerManager(
       PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
         Web3JExecutionEngineClient(engineApiClient),
+        timerProvider =
+          TestMetrics.TestMetricsFacade.createTimerProvider(
+            category = MaruMetricsCategory.ENGINE_API,
+            name = "request.latency",
+            description = "Execution Engine API request latency",
+            commonTags =
+              listOf(
+                Tag("fork", "prague"),
+                Tag("endpoint", besuInstance.engineRpcUrl().get().toString()),
+              ),
+          ),
+        counterProvider =
+          TestMetrics.TestMetricsFacade.createCounterProvider(
+            category = MaruMetricsCategory.ENGINE_API,
+            name = "request.latency",
+            description = "Execution Engine API request latency",
+            commonTags =
+              listOf(
+                Tag("fork", "prague"),
+                Tag("endpoint", besuInstance.engineRpcUrl().get().toString()),
+              ),
+          ),
       ),
     )
   }

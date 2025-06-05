@@ -15,7 +15,12 @@
  */
 package maru.app
 
+import io.libp2p.core.PeerId
+import io.libp2p.core.crypto.unmarshalPrivateKey
+import io.micrometer.core.instrument.MeterRegistry
+import io.vertx.micrometer.backends.BackendRegistries
 import java.time.Clock
+import java.util.Optional
 import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
@@ -45,14 +50,19 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import maru.serialization.rlp.RLPSerializers
+import net.consensys.linea.metrics.Tag
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
+import net.consensys.linea.vertx.ObservabilityServer
+import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruApp(
-  config: MaruConfig,
+  val config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
@@ -60,10 +70,30 @@ class MaruApp(
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
+  private val vertx =
+    VertxFactory.createVertx(
+      jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
+      prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+    )
+
+  private val observabilityServer =
+    ObservabilityServer(
+      ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
+    )
+
   private var privateKeyBytes: ByteArray =
     GeneratingFilePrivateKeySource(
       config.persistence.privateKeyPath.toString(),
     ).privateKeyBytes.toArray()
+
+  private val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKeyBytes).publicKey())
+  private val meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow()
+  private val metricsFacade =
+    MicrometerMetricsFacade(
+      meterRegistry,
+      "maru",
+      allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
+    )
 
   init {
     if (!config.persistence.privateKeyPath
@@ -113,32 +143,41 @@ class MaruApp(
       lastBlockMetadataCache.updateLatestBlockMetadata(blockMetadata)
       SafeFuture.completedFuture(Unit)
     }
-
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
 
-  private val metricsSystem = NoOpMetricsSystem()
   private val finalizationStateProviderStub = { it: BeaconBlockBody ->
     LogManager.getLogger("FinalizationStateProvider").debug("fetching the latest finalized state")
     FinalizationState(it.executionPayload.blockHash, it.executionPayload.blockHash)
   }
 
+  private val metricsSystem = NoOpMetricsSystem()
   private val beaconChain =
     KvDatabaseFactory
       .createRocksDbDatabase(
         databasePath = config.persistence.dataPath,
         metricsSystem = metricsSystem,
-        metricCategory = MaruMetricsCategory.STORAGE,
+        metricCategory =
+          object : MetricCategory {
+            override fun getName(): String = "STORAGE"
+
+            override fun getApplicationPrefix(): Optional<String> = Optional.empty()
+          },
       )
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
     followers.followers
       .mapValues {
-        val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
+        val engineApiClient =
+          Helpers.buildExecutionEngineClient(
+            endpoint = it.value,
+            elFork = ElFork.Prague,
+            metricsFacade = metricsFacade,
+          )
         FollowerBeaconBlockImporter.create(engineApiClient) as NewBlockHandler<Unit>
       }
 
@@ -164,6 +203,7 @@ class MaruApp(
   }
 
   override fun close() {
+    vertx.close()
     beaconChain.close()
   }
 
@@ -211,6 +251,7 @@ class MaruApp(
           clock = clock,
           p2pNetwork = p2pNetwork,
           beaconChainInitialization = beaconChainInitialization,
+          metricsFacade = metricsFacade,
         )
       } else {
         QbftFollowerFactory(
@@ -219,6 +260,7 @@ class MaruApp(
           newBlockHandler = blockImportHandlers,
           validatorElNodeConfig = config.validatorElNode,
           beaconChainInitialization = beaconChainInitialization,
+          metricsFacade = metricsFacade,
         )
       }
     val delegatedConsensusNewBlockHandler =
