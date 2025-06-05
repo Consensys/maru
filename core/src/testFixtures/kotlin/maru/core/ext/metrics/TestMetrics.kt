@@ -19,7 +19,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 
 object TestMetrics {
-  private val TestMeterRegistry = SimpleMeterRegistry()
+  val TestMeterRegistry = SimpleMeterRegistry()
   val TestMetricsFacade =
     MicrometerMetricsFacade(
       registry = TestMeterRegistry,

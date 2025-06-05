@@ -157,10 +157,11 @@ dependencyManagement {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
     }
 
-    // TODO: Update to actual version this once metric PR is merged in monorepo
-    dependency "build.linea.internal:metrics:20250528-develop"
-    dependency "build.linea.internal:micrometer:20250528-develop"
-    dependency "build.linea.internal:vertx-helper:20250528-develop"
-    dependency "build.linea.internal:json-rpc:20250528-develop"
+    dependencySet(group: 'build.linea.internal', version: 'unspecified') {
+      entry 'metrics'
+      entry 'micrometer'
+      entry 'vertx-helper'
+      entry 'json-rpc'
+    }
   }
 }

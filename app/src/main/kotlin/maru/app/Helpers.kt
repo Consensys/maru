@@ -24,9 +24,7 @@ import maru.config.ApiEndpointConfig
 import maru.consensus.ElFork
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
-import maru.metrics.MaruMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.linea.metrics.Tag
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
@@ -64,20 +62,7 @@ object Helpers {
       ElFork.Prague ->
         PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
           web3jEngineClient = web3jExecutionLayerClient,
-          timerProvider =
-            metricsFacade.createTimerProvider(
-              category = MaruMetricsCategory.ENGINE_API,
-              name = "request.latency",
-              description = "Execution Engine API request latency",
-              commonTags = listOf(Tag("fork", "prague"), Tag("endpoint", endpoint.endpoint.toString())),
-            ),
-          counterProvider =
-            metricsFacade.createCounterProvider(
-              category = MaruMetricsCategory.ENGINE_API,
-              name = "request.counter",
-              description = "Execution Engine API request counter",
-              commonTags = listOf(Tag("fork", "prague"), Tag("endpoint", endpoint.endpoint.toString())),
-            ),
+          metricsFacade = metricsFacade,
         )
     }
   }
