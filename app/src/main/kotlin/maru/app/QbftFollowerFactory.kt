@@ -32,6 +32,7 @@ import maru.core.Protocol
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
+import net.consensys.linea.metrics.MetricsFacade
 
 class QbftFollowerFactory(
   val p2PNetwork: P2PNetwork,
@@ -39,6 +40,7 @@ class QbftFollowerFactory(
   val newBlockHandler: NewBlockHandler<*>,
   val validatorElNodeConfig: maru.config.ValidatorElNode,
   val beaconChainInitialization: BeaconChainInitialization,
+  val metricsFacade: MetricsFacade,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)
@@ -52,7 +54,8 @@ class QbftFollowerFactory(
     val engineApiExecutionLayerClient =
       Helpers.buildExecutionEngineClient(
         validatorElNodeConfig.engineApiEndpoint,
-        qbftConsensusConfig.elFork,
+        elFork = qbftConsensusConfig.elFork,
+        metricsFacade = metricsFacade,
       )
     val executionLayerManager =
       JsonRpcExecutionLayerManager(

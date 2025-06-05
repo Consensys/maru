@@ -13,15 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app
+package maru.metrics
 
-import java.util.Optional
-import org.hyperledger.besu.plugin.services.metrics.MetricCategory
-import net.consensys.linea.metrics.MetricsCategory as LineaMetricsCategory
+import net.consensys.linea.metrics.MetricsCategory
 
-enum class MaruMetricsCategory : MetricCategory, LineaMetricsCategory {
-  STORAGE {
-    override fun getName(): String = this.name.lowercase()
-    override fun getApplicationPrefix(): Optional<String> = Optional.empty()
-  },
+enum class MaruMetricsCategory : MetricsCategory {
+  ENGINE_API,
 }
