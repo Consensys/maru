@@ -31,8 +31,8 @@ import maru.core.Validator
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.PayloadStatus
+import maru.p2p.GossipMessageType
 import maru.p2p.Message
-import maru.p2p.MessageType
 import maru.p2p.Version
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
@@ -159,8 +159,8 @@ object DataGenerators {
   fun randomValidPayloadStatus(): PayloadStatus =
     PayloadStatus(ExecutionPayloadStatus.VALID, latestValidHash = Random.nextBytes(32), validationError = null)
 
-  fun randomBlockMessage(): Message<SealedBeaconBlock> {
+  fun randomBlockMessage(): Message<SealedBeaconBlock, GossipMessageType> {
     val sealedBeaconBlock = randomSealedBeaconBlock(1u)
-    return Message(MessageType.BEACON_BLOCK, Version.V1, sealedBeaconBlock)
+    return Message(GossipMessageType.BEACON_BLOCK, Version.V1, sealedBeaconBlock)
   }
 }

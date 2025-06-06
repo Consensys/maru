@@ -22,9 +22,9 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
-import maru.p2p.messages.MessageSerializer
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusHandler
+import maru.p2p.messages.StatusMessageSerializer
 import maru.p2p.messages.StatusSerializer
 import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.Serializer
@@ -46,20 +46,21 @@ class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
   private val chainId: UInt,
-  serializer: Serializer<SealedBeaconBlock>,
+  private val serializer: Serializer<SealedBeaconBlock>,
 ) : P2PNetwork,
   PeerLookup {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
-  private val sealedBlocksTopicId = topicIdGenerator.id(MessageType.BEACON_BLOCK, Version.V1)
+  private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler = SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer)
-  private val messageSerializer = MessageSerializer(serializer, StatusSerializer())
   private val protocolIdGenerator = LineaRpcProtocolIdGenerator(chainId = chainId)
+  private val statusMessageSerializer = StatusMessageSerializer(StatusSerializer())
   private val statusRpcMethod =
-    MaruRpcMethod<Message<Status>, Message<Status>>(
-      messageType = MessageType.STATUS,
+    MaruRpcMethod<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>>(
+      messageType = RpcMessageType.STATUS,
       rpcMessageHandler = StatusHandler(),
-      messageSerializer = messageSerializer,
+      requestMessageSerializer = statusMessageSerializer,
+      responseMessageSerializer = statusMessageSerializer,
       peerLookup = this,
       protocolIdGenerator = protocolIdGenerator,
     )
@@ -100,21 +101,29 @@ class P2PNetworkImpl(
 
   override fun stop(): SafeFuture<Unit> = p2pNetwork.stop().thenApply { }
 
-  override fun broadcastMessage(message: Message<*>): SafeFuture<*> {
-    val messageBytes: Bytes = Bytes.wrap(messageSerializer.serialize(message))
-    return p2pNetwork.gossip(topicIdGenerator.id(message.type, message.version), messageBytes)
-  }
+  override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*> =
+    when (message.type.toEnum()) {
+      GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
+      GossipMessageType.BEACON_BLOCK -> {
+        require(message.payload is SealedBeaconBlock)
+        val serializedSealedBeaconBlock = Bytes.wrap(serializer.serialize(message.payload as SealedBeaconBlock))
+        p2pNetwork.gossip(topicIdGenerator.id(message.type, message.version), serializedSealedBeaconBlock)
+      }
+    }
 
   fun sendRpcMessage(
-    message: Message<*>,
+    message: Message<*, RpcMessageType>,
     peer: Peer,
   ): SafeFuture<*> {
     val rpcMethod =
-      when (message.type) {
-        MessageType.QBFT -> TODO()
-        MessageType.BEACON_BLOCK -> TODO()
-        MessageType.STATUS -> statusRpcMethod
+      when (message.type.toEnum()) {
+        RpcMessageType.STATUS -> statusRpcMethod
       }
+
+    val messageSerializer: Serializer<Message<*, RpcMessageType>> =
+      when (message.type.toEnum()) {
+        RpcMessageType.STATUS -> statusMessageSerializer
+      } as Serializer<Message<*, RpcMessageType>>
 
     val peerId = peer.id.toString()
     val request: Bytes = Bytes.wrap(messageSerializer.serialize(message))

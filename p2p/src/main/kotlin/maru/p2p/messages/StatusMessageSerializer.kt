@@ -13,18 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.p2p
+package maru.p2p.messages
 
-import maru.core.SealedBeaconBlock
-import tech.pegasys.teku.infrastructure.async.SafeFuture
+import maru.p2p.Message
+import maru.p2p.RpcMessageType
+import maru.p2p.Version
+import maru.serialization.Serializer
 
-class SealedBeaconBlockBroadcaster(
-  val p2PNetwork: P2PNetwork,
-) : SealedBeaconBlockHandler<Unit> {
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<Unit> {
-    // TODO: New block message might need an intermediary wrapper in the future
-    val message = Message(GossipMessageType.BEACON_BLOCK, payload = sealedBeaconBlock)
-    p2PNetwork.broadcastMessage(message)
-    return SafeFuture.completedFuture(Unit)
-  }
+class StatusMessageSerializer(
+  private val statusSerializer: Serializer<Status>,
+) : Serializer<Message<Status, RpcMessageType>> {
+  override fun serialize(message: Message<Status, RpcMessageType>): ByteArray =
+    statusSerializer.serialize(message.payload)
+
+  override fun deserialize(bytes: ByteArray): Message<Status, RpcMessageType> =
+    Message(RpcMessageType.STATUS, Version.V1, statusSerializer.deserialize(bytes))
 }

@@ -20,10 +20,11 @@ import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 
-class MaruRpcMethod<TRequest : Message<*>, TResponse : Message<*>>(
-  private val messageType: MessageType,
+class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>>(
+  private val messageType: RpcMessageType,
   private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
-  private val messageSerializer: Serializer<Message<*>>,
+  private val requestMessageSerializer: Serializer<TRequest>,
+  private val responseMessageSerializer: Serializer<TResponse>,
   private val peerLookup: PeerLookup,
   protocolIdGenerator: MessageIdGenerator,
 ) : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
@@ -34,7 +35,8 @@ class MaruRpcMethod<TRequest : Message<*>, TResponse : Message<*>>(
   override fun createIncomingRequestHandler(protocolId: String): RpcRequestHandler =
     MaruIncomingRpcRequestHandler<TRequest, TResponse>(
       rpcMessageHandler = rpcMessageHandler,
-      messageSerializer = messageSerializer,
+      requestMessageSerializer = requestMessageSerializer,
+      responseMessageSerializer = responseMessageSerializer,
       peerLookup = peerLookup,
     )
 

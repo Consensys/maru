@@ -22,8 +22,8 @@ import kotlin.time.toJavaDuration
 import maru.app.Checks.getMinedBlocks
 import maru.consensus.ElFork
 import maru.core.SealedBeaconBlock
+import maru.p2p.GossipMessageType
 import maru.p2p.Message
-import maru.p2p.MessageType
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.testutils.InjectableSealedBlocksFakeNetwork
@@ -66,8 +66,8 @@ class MaruFollowerTest {
     injectableSealedBlocksFakeNetwork = InjectableSealedBlocksFakeNetwork()
     val validatorP2PNetwork =
       object : P2PNetwork by NoOpP2PNetwork {
-        override fun broadcastMessage(message: Message<*>): SafeFuture<Unit> =
-          if (message.type == MessageType.BEACON_BLOCK) {
+        override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<Unit> =
+          if (message.type == GossipMessageType.BEACON_BLOCK) {
             SafeFuture
               .of(
                 SafeFuture

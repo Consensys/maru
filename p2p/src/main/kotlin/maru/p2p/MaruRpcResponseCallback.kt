@@ -25,9 +25,9 @@ import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
-class MaruRpcResponseCallback<TResponse : Message<*>>(
+class MaruRpcResponseCallback<TResponse : Message<*, *>>(
   private val rpcStream: RpcStream,
-  private val messageSerializer: Serializer<Message<*>>,
+  private val messageSerializer: Serializer<TResponse>,
 ) : ResponseCallback<TResponse> {
   private val log = LogManager.getLogger(this.javaClass)
 

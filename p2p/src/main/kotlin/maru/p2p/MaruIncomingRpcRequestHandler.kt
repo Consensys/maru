@@ -22,9 +22,10 @@ import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
-class MaruIncomingRpcRequestHandler<TRequest : Message<*>, TResponse : Message<*>>(
+class MaruIncomingRpcRequestHandler<TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>>(
   private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
-  private val messageSerializer: Serializer<Message<*>>,
+  private val requestMessageSerializer: Serializer<TRequest>,
+  private val responseMessageSerializer: Serializer<TResponse>,
   private val peerLookup: PeerLookup,
 ) : RpcRequestHandler {
   override fun active(
@@ -42,7 +43,7 @@ class MaruIncomingRpcRequestHandler<TRequest : Message<*>, TResponse : Message<*
     val peer = peerLookup.getPeer(nodeId)
 
     // TODO handle unchecked cast
-    val message = messageSerializer.deserialize(bytes) as TRequest
+    val message = requestMessageSerializer.deserialize(bytes) as TRequest
 
     rpcMessageHandler.handleIncomingMessage(
       peer = peer,
@@ -50,7 +51,7 @@ class MaruIncomingRpcRequestHandler<TRequest : Message<*>, TResponse : Message<*
       callback =
         MaruRpcResponseCallback(
           rpcStream = rpcStream,
-          messageSerializer = messageSerializer,
+          messageSerializer = responseMessageSerializer,
         ),
     )
   }

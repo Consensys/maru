@@ -87,7 +87,7 @@ interface P2PNetwork {
    */
   fun stop(): SafeFuture<Unit>
 
-  fun broadcastMessage(message: Message<*>): SafeFuture<*>
+  fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*>
 
   /**
    * @return subscription id

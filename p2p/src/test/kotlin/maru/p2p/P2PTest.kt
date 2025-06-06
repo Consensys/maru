@@ -323,7 +323,7 @@ class P2PTest {
 
       val statusPayload = Status(Random.nextBytes(32), Random.nextBytes(32), Random.nextULong())
       val statusMessage =
-        Message(MessageType.STATUS, Version.V1, statusPayload)
+        Message(RpcMessageType.STATUS, Version.V1, statusPayload)
 
       val responseFuture = p2pManagerImpl2.sendRpcMessage(statusMessage, p2pManagerImpl2.getPeer(PEER_ID_NODE_1)!!)
 
