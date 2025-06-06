@@ -6,10 +6,9 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.serialization
+package maru.config.consensus.delegated
 
-interface Serializer<T> {
-  fun serialize(value: T): ByteArray
+import maru.consensus.ConsensusConfig
 
-  fun deserialize(bytes: ByteArray): T
-}
+// Only for comparisons in the tests to set common ground
+data object ElDelegatedConfig : ConsensusConfig

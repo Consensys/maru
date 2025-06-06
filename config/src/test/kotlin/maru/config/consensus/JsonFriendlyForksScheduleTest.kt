@@ -6,13 +6,13 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus.config
+package maru.config.consensus
 
-import maru.consensus.ElFork
+import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.config.consensus.qbft.QbftConsensusConfig.Companion.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
-import maru.consensus.delegated.ElDelegatedConsensus
-import maru.consensus.qbft.QbftConsensusConfig
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
 import org.assertj.core.api.Assertions.assertThat
@@ -53,7 +53,7 @@ class JsonFriendlyForksScheduleTest {
           ForkSpec(
             timestampSeconds = 2,
             blockTimeSeconds = 4,
-            ElDelegatedConsensus.ElDelegatedConfig,
+            ElDelegatedConfig,
           ),
           ForkSpec(
             timestampSeconds = 4,

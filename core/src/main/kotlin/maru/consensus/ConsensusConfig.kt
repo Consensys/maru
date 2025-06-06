@@ -6,11 +6,6 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.serialization.rlp
+package maru.consensus
 
-import maru.core.Hasher
-import maru.crypto.Hashing
-
-object KeccakHasher : Hasher {
-  override fun hash(serializedBytes: ByteArray): ByteArray = Hashing.keccak(serializedBytes)
-}
+interface ConsensusConfig
