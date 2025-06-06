@@ -16,70 +16,46 @@
 package maru.p2p
 
 import kotlin.random.Random
-import kotlin.random.nextUInt
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.config.consensus.qbft.QbftConsensusConfig.Companion.ElFork
 import maru.consensus.ForkId
 import maru.consensus.ForkIdHasher
+import maru.consensus.ForkSpec
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
 import maru.serialization.ForkIdSerializers
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 
 class QbftForkIdComputerTest {
-  private val dummyChainId: UInt = Random.nextUInt()
+  private val dummyChainId: UInt = 1u
+  private val forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash)
 
   @Test
-  fun `hash is deterministic for same input`() {
+  fun `serialization is deterministic for separate instances with the same values`() {
     val v1 = DataGenerators.randomValidator()
     val v2 = DataGenerators.randomValidator()
     val config1 =
       QbftConsensusConfig(
         validatorSet = setOf(v1, v2),
-        elFork = ElFork.Prague,
-      )
-    // The result is supposed to be the same, but we need a copy to prove that hash depends on data
-    val config2 = config1.copy(validatorSet = config1.validatorSet)
-    val genesisRoot1 = Random.nextBytes(32)
-    val genesisRoot2 = genesisRoot1.clone()
-    val forkId1 = ForkId(dummyChainId, config1, genesisRoot1)
-    val forkId2 = ForkId(dummyChainId, config2, genesisRoot2)
-    val hasher = ForkIdHasher(ForkIdSerializers.QbftForkIdSerializer, Hashing::shortShaHash)
-
-    val hash1 = hasher.hash(forkId1)
-    val hash2 = hasher.hash(forkId2)
-
-    assertThat(hash1).isEqualTo(hash2)
-  }
-
-  @Test
-  fun `hash changes when consensus config changes`() {
-    val v1 = DataGenerators.randomValidator()
-    val v2 = DataGenerators.randomValidator()
-    val config1 =
-      QbftConsensusConfig(
-        validatorSet = setOf(v1),
         elFork = ElFork.Prague,
       )
     val config2 =
       QbftConsensusConfig(
-        validatorSet = setOf(v1, v2),
+        validatorSet = setOf(v2, v1),
         elFork = ElFork.Prague,
       )
-    val genesisRoot = Random.nextBytes(32)
-    val forkId1 = ForkId(dummyChainId, config1, genesisRoot)
-    val forkId2 = forkId1.copy(consensusConfig = config2)
-    val hasher = ForkIdHasher(ForkIdSerializers.QbftForkIdSerializer, Hashing::shortShaHash)
-
-    val hash1 = hasher.hash(forkId1)
-    val hash2 = hasher.hash(forkId2)
-
-    assertThat(hash1).isNotEqualTo(hash2)
+    val forkSpec1 = ForkSpec(1, 1, config1)
+    val forkSpec2 = forkSpec1.copy(configuration = config2)
+    val forkId1 = ForkId(dummyChainId, forkSpec1, Random.nextBytes(32))
+    val forkId2 = forkId1.copy(forkSpec = forkSpec2)
+    val hash1 = forkIdHasher.hash(forkId1)
+    val hash2 = forkIdHasher.hash(forkId2)
+    Assertions.assertThat(hash1).isEqualTo(hash2)
   }
 
   @Test
-  fun `hash changes when chainId changes`() {
+  fun `serialization changes when fork spec changes`() {
     val v1 = DataGenerators.randomValidator()
     val v2 = DataGenerators.randomValidator()
     val config =
@@ -87,19 +63,17 @@ class QbftForkIdComputerTest {
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
-    val genesisRoot = Random.nextBytes(32)
-    val forkId1 = ForkId(1u, config, genesisRoot)
-    val forkId2 = forkId1.copy(2u)
-    val hasher = ForkIdHasher(ForkIdSerializers.QbftForkIdSerializer, Hashing::shortShaHash)
-
-    val hash1 = hasher.hash(forkId1)
-    val hash2 = hasher.hash(forkId2)
-
-    assertThat(hash1).isNotEqualTo(hash2)
+    val forkSpec1 = ForkSpec(1, 1, config)
+    val forkSpec2 = forkSpec1.copy(blockTimeSeconds = 2)
+    val forkId1 = ForkId(dummyChainId, forkSpec1, Random.nextBytes(32))
+    val forkId2 = forkId1.copy(forkSpec = forkSpec2)
+    val hash1 = forkIdHasher.hash(forkId1)
+    val hash2 = forkIdHasher.hash(forkId2)
+    Assertions.assertThat(hash1).isNotEqualTo(hash2)
   }
 
   @Test
-  fun `hash changes when genesisRootHash changes`() {
+  fun `serialization changes when chain id changes`() {
     val v1 = DataGenerators.randomValidator()
     val v2 = DataGenerators.randomValidator()
     val config =
@@ -107,15 +81,28 @@ class QbftForkIdComputerTest {
         validatorSet = setOf(v1, v2),
         elFork = ElFork.Prague,
       )
-    val genesisRoot1 = Random.nextBytes(32)
-    val genesisRoot2 = Random.nextBytes(32)
-    val forkId1 = ForkId(dummyChainId, config, genesisRoot1)
-    val forkId2 = forkId1.copy(genesisRootHash = genesisRoot2)
-    val hasher = ForkIdHasher(ForkIdSerializers.QbftForkIdSerializer, Hashing::shortShaHash)
+    val forkSpec = ForkSpec(1, 1, config)
+    val forkId1 = ForkId(dummyChainId, forkSpec, Random.nextBytes(32))
+    val forkId2 = forkId1.copy(chainId = 21U)
+    val hash1 = forkIdHasher.hash(forkId1)
+    val hash2 = forkIdHasher.hash(forkId2)
+    Assertions.assertThat(hash1).isNotEqualTo(hash2)
+  }
 
-    val hash1 = hasher.hash(forkId1)
-    val hash2 = hasher.hash(forkId2)
-
-    assertThat(hash1).isNotEqualTo(hash2)
+  @Test
+  fun `serialization changes when genesis root hash changes`() {
+    val v1 = DataGenerators.randomValidator()
+    val v2 = DataGenerators.randomValidator()
+    val config =
+      QbftConsensusConfig(
+        validatorSet = setOf(v1, v2),
+        elFork = ElFork.Prague,
+      )
+    val forkSpec = ForkSpec(1, 1, config)
+    val forkId1 = ForkId(dummyChainId, forkSpec, Random.nextBytes(32))
+    val forkId2 = forkId1.copy(genesisRootHash = Random.nextBytes(32))
+    val hash1 = forkIdHasher.hash(forkId1)
+    val hash2 = forkIdHasher.hash(forkId2)
+    Assertions.assertThat(hash1).isNotEqualTo(hash2)
   }
 }

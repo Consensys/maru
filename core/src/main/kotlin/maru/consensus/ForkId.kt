@@ -18,19 +18,19 @@ package maru.consensus
 import maru.core.Hasher
 import maru.serialization.Serializer
 
-data class ForkId<T : ConsensusConfig>(
+data class ForkId(
   val chainId: UInt,
-  val consensusConfig: T,
+  val forkSpec: ForkSpec,
   val genesisRootHash: ByteArray,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as ForkId<*>
+    other as ForkId
 
     if (chainId != other.chainId) return false
-    if (consensusConfig != other.consensusConfig) return false
+    if (forkSpec != other.forkSpec) return false
     if (!genesisRootHash.contentEquals(other.genesisRootHash)) return false
 
     return true
@@ -38,15 +38,15 @@ data class ForkId<T : ConsensusConfig>(
 
   override fun hashCode(): Int {
     var result = chainId.hashCode()
-    result = 31 * result + consensusConfig.hashCode()
+    result = 31 * result + forkSpec.hashCode()
     result = 31 * result + genesisRootHash.contentHashCode()
     return result
   }
 }
 
-class ForkIdHasher<T : ConsensusConfig>(
-  val forkIdSerializer: Serializer<ForkId<T>>,
+class ForkIdHasher(
+  val forkIdSerializer: Serializer<ForkId>,
   val hasher: Hasher,
 ) {
-  fun hash(forkId: ForkId<T>): ByteArray = hasher.hash(forkIdSerializer.serialize(forkId)).takeLast(4).toByteArray()
+  fun hash(forkId: ForkId): ByteArray = hasher.hash(forkIdSerializer.serialize(forkId)).takeLast(4).toByteArray()
 }

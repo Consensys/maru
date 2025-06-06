@@ -15,14 +15,13 @@
  */
 package maru.p2p
 
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHasher
 import maru.crypto.Hashing
 import maru.serialization.ForkIdSerializers
 
-val QbftForkIdComputer: ForkIdHasher<QbftConsensusConfig> =
+val QbftForkIdComputer: ForkIdHasher =
   ForkIdHasher(
     ForkIdSerializers
-      .QbftForkIdSerializer,
+      .ForkIdSerializer,
     Hashing::shortShaHash,
   )

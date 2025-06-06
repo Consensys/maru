@@ -18,6 +18,7 @@ package maru.serialization
 import java.nio.ByteBuffer
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkId
+import maru.consensus.ForkSpec
 import maru.extensions.encodeHex
 
 object ForkIdSerializers {
@@ -35,15 +36,33 @@ object ForkIdSerializers {
     }
   }
 
-  object QbftForkIdSerializer : Serializer<ForkId<QbftConsensusConfig>> {
-    override fun serialize(value: ForkId<QbftConsensusConfig>): ByteArray {
-      val serializedConsensusConfig = QbftConsensusConfigSerializer.serialize(value.consensusConfig)
+  object ForkSpecSerializer : Serializer<ForkSpec> {
+    override fun serialize(value: ForkSpec): ByteArray =
+      when (value.configuration) {
+        is QbftConsensusConfig -> {
+          val serializedConsensusConfig =
+            QbftConsensusConfigSerializer.serialize(value.configuration as QbftConsensusConfig)
+          ByteBuffer
+            .allocate(4 + 8 + serializedConsensusConfig.size)
+            .putInt(value.blockTimeSeconds)
+            .putLong(value.timestampSeconds)
+            .put(serializedConsensusConfig)
+            .array()
+        }
+
+        else -> throw IllegalArgumentException("${value.configuration.javaClass.simpleName} is not supported!")
+      }
+  }
+
+  object ForkIdSerializer : Serializer<ForkId> {
+    override fun serialize(value: ForkId): ByteArray {
+      val serializedForkSpec = ForkSpecSerializer.serialize(value.forkSpec)
 
       val buffer =
         ByteBuffer
-          .allocate(4 + serializedConsensusConfig.size + 32)
+          .allocate(4 + serializedForkSpec.size + 32)
           .putInt(value.chainId.toInt())
-          .put(serializedConsensusConfig)
+          .put(serializedForkSpec)
           .put(value.genesisRootHash)
 
       return buffer.array()
