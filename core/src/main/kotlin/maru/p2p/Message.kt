@@ -19,7 +19,6 @@ enum class Version : Comparable<Version> {
   V1,
 }
 
-// TODO message types are different between gossip and rpc
 enum class GossipMessageType : BaseMessageType<GossipMessageType> {
   QBFT,
   BEACON_BLOCK,
