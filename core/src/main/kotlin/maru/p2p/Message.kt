@@ -24,9 +24,10 @@ enum class Version : Comparable<Version> {
 enum class MessageType {
   QBFT, // Won't be supported until Milestone 6
   BEACON_BLOCK,
+  STATUS,
 }
 
-data class Message<T : Any>(
+data class Message<T>(
   val type: MessageType,
   val version: Version = Version.V1,
   val payload: T,
@@ -35,22 +36,32 @@ data class Message<T : Any>(
     when (type) {
       MessageType.QBFT -> Unit // require(payload is BftMessage≤*>) Not adding this to avoid dependency on QBFT
       MessageType.BEACON_BLOCK -> require(payload is SealedBeaconBlock)
+      MessageType.STATUS -> Unit // Not adding this to avoid dependency on P2P
     }
   }
 }
 
-interface TopicIdGenerator {
-  fun topicId(
+interface MessageIdGenerator {
+  fun id(
     messageType: MessageType,
     version: Version,
   ): String
 }
 
-class LineaTopicIdGenerator(
+class LineaMessageIdGenerator(
   private val chainId: UInt,
-) : TopicIdGenerator {
-  override fun topicId(
+) : MessageIdGenerator {
+  override fun id(
     messageType: MessageType,
     version: Version,
   ): String = "/linea/$chainId/${messageType.toString().lowercase()}/$version"
+}
+
+class LineaRpcProtocolIdGenerator(
+  private val chainId: UInt,
+) : MessageIdGenerator {
+  override fun id(
+    messageType: MessageType,
+    version: Version,
+  ): String = "/linea/req/$chainId/${messageType.toString().lowercase()}/$version"
 }

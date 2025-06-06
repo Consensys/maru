@@ -17,12 +17,16 @@ package maru.p2p
 
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
-import org.apache.tuweni.bytes.Bytes
+import maru.serialization.Serializer
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
-class MaruIncomingRpcRequestHandler : RpcRequestHandler {
+class MaruIncomingRpcRequestHandler<TRequest : Message<*>, TResponse : Message<*>>(
+  private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
+  private val messageSerializer: Serializer<Message<*>>,
+  private val peerLookup: PeerLookup,
+) : RpcRequestHandler {
   override fun active(
     nodeId: NodeId,
     rpcStream: RpcStream,
@@ -35,7 +39,20 @@ class MaruIncomingRpcRequestHandler : RpcRequestHandler {
     byteBuffer: ByteBuf,
   ) {
     val bytes = ByteBufUtil.getBytes(byteBuffer)
-    rpcStream.writeBytes(Bytes.wrap(bytes).reverse())
+    val peer = peerLookup.getPeer(nodeId)
+
+    // TODO handle unchecked cast
+    val message = messageSerializer.deserialize(bytes) as TRequest
+
+    rpcMessageHandler.handleIncomingMessage(
+      peer = peer,
+      message = message,
+      callback =
+        MaruRpcResponseCallback(
+          rpcStream = rpcStream,
+          messageSerializer = messageSerializer,
+        ),
+    )
   }
 
   override fun readComplete(

@@ -15,42 +15,50 @@
  */
 package maru.p2p
 
+import maru.serialization.Serializer
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 
-private const val LINEA = "linea"
+class MaruRpcMethod<TRequest : Message<*>, TResponse : Message<*>>(
+  private val messageType: MessageType,
+  private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
+  private val messageSerializer: Serializer<Message<*>>,
+  private val peerLookup: PeerLookup,
+  protocolIdGenerator: MessageIdGenerator,
+) : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
+  private val protocolId = protocolIdGenerator.id(messageType, version = Version.V1)
 
-class MaruRpcMethod : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
-  override fun getIds(): MutableList<String> = mutableListOf(LINEA)
+  override fun getIds(): MutableList<String> = mutableListOf(protocolId)
 
-  override fun createIncomingRequestHandler(protocolId: String): RpcRequestHandler {
-    val maruRpcRequestHandler = MaruIncomingRpcRequestHandler()
-    return maruRpcRequestHandler
-  }
+  override fun createIncomingRequestHandler(protocolId: String): RpcRequestHandler =
+    MaruIncomingRpcRequestHandler<TRequest, TResponse>(
+      rpcMessageHandler = rpcMessageHandler,
+      messageSerializer = messageSerializer,
+      peerLookup = peerLookup,
+    )
 
   override fun createOutgoingRequestHandler(
     protocolId: String,
     request: Bytes,
     responseHandler: MaruRpcResponseHandler,
-  ): MaruOutgoingRpcRequestHandler {
-    val maruRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler)
-    return maruRpcRequestHandler
-  }
+  ): MaruOutgoingRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler)
 
   override fun encodeRequest(bytes: Bytes): Bytes = bytes
 
   override fun equals(other: Any?): Boolean {
-    if (this === other) {
-      return true
-    }
-    if (other == null || javaClass != other.javaClass) {
-      return false
-    }
-    val rpcMethod: MaruRpcMethod =
-      other as MaruRpcMethod
-    return LINEA == rpcMethod.ids.first()
+    if (this === other) return true
+    if (other !is MaruRpcMethod<*, *>) return false
+
+    if (messageType != other.messageType) return false
+    if (protocolId != other.protocolId) return false
+
+    return true
   }
 
-  override fun hashCode(): Int = 42
+  override fun hashCode(): Int {
+    var result = messageType.hashCode()
+    result = 31 * result + protocolId.hashCode()
+    return result
+  }
 }

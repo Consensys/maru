@@ -19,9 +19,11 @@ plugins {
 
 dependencies {
   implementation(project(":config"))
+  implementation(project(":serialization"))
 
   implementation "io.libp2p:jvm-libp2p"
   implementation "tech.pegasys.teku.internal:p2p"
+  implementation "tech.pegasys.teku.internal:eth2"
 
   implementation "tech.pegasys.teku.internal:spec"
   implementation "tech.pegasys.teku.internal:storage"
@@ -30,6 +32,7 @@ dependencies {
   implementation("org.hyperledger.besu:plugin-api")
   implementation("org.hyperledger.besu.internal:core")
   implementation("org.hyperledger.besu.internal:metrics-core")
+  implementation "org.hyperledger.besu.internal:rlp"
 
   implementation "io.libp2p:jvm-libp2p"
 

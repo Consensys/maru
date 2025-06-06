@@ -22,6 +22,10 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
+import maru.p2p.messages.MessageSerializer
+import maru.p2p.messages.Status
+import maru.p2p.messages.StatusHandler
+import maru.p2p.messages.StatusSerializer
 import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.Serializer
 import org.apache.logging.log4j.LogManager
@@ -41,13 +45,24 @@ import tech.pegasys.teku.networking.p2p.network.P2PNetwork as TekuP2PNetwork
 class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
-  chainId: UInt,
-  private val serializer: Serializer<SealedBeaconBlock>,
-) : P2PNetwork {
-  private val topicIdGenerator = LineaTopicIdGenerator(chainId)
-  private val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BEACON_BLOCK, Version.V1)
+  private val chainId: UInt,
+  serializer: Serializer<SealedBeaconBlock>,
+) : P2PNetwork,
+  PeerLookup {
+  private val topicIdGenerator = LineaMessageIdGenerator(chainId)
+  private val sealedBlocksTopicId = topicIdGenerator.id(MessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler = SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer)
+  private val messageSerializer = MessageSerializer(serializer, StatusSerializer())
+  private val protocolIdGenerator = LineaRpcProtocolIdGenerator(chainId = chainId)
+  private val statusRpcMethod =
+    MaruRpcMethod<Message<Status>, Message<Status>>(
+      messageType = MessageType.STATUS,
+      rpcMessageHandler = StatusHandler(),
+      messageSerializer = messageSerializer,
+      peerLookup = this,
+      protocolIdGenerator = protocolIdGenerator,
+    )
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
@@ -61,6 +76,7 @@ class P2PNetworkImpl(
       port = p2pConfig.port,
       sealedBlocksTopicHandler = sealedBlocksTopicHandler,
       sealedBlocksTopicId = sealedBlocksTopicId,
+      rpcMethods = listOf(statusRpcMethod),
     )
   }
 
@@ -84,15 +100,30 @@ class P2PNetworkImpl(
 
   override fun stop(): SafeFuture<Unit> = p2pNetwork.stop().thenApply { }
 
-  override fun broadcastMessage(message: Message<*>): SafeFuture<*> =
-    when (message.type) {
-      MessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
-      MessageType.BEACON_BLOCK -> {
-        require(message.payload is SealedBeaconBlock)
-        val serializedSealedBeaconBlock = Bytes.wrap(serializer.serialize(message.payload as SealedBeaconBlock))
-        p2pNetwork.gossip(topicIdGenerator.topicId(message.type, message.version), serializedSealedBeaconBlock)
+  override fun broadcastMessage(message: Message<*>): SafeFuture<*> {
+    val messageBytes: Bytes = Bytes.wrap(messageSerializer.serialize(message))
+    return p2pNetwork.gossip(topicIdGenerator.id(message.type, message.version), messageBytes)
+  }
+
+  fun sendRpcMessage(
+    message: Message<*>,
+    peer: Peer,
+  ): SafeFuture<*> {
+    val rpcMethod =
+      when (message.type) {
+        MessageType.QBFT -> TODO()
+        MessageType.BEACON_BLOCK -> TODO()
+        MessageType.STATUS -> statusRpcMethod
       }
-    }
+
+    val peerId = peer.id.toString()
+    val request: Bytes = Bytes.wrap(messageSerializer.serialize(message))
+    val responseHandler = MaruRpcResponseHandler()
+    return sendRequest(peerId, rpcMethod, request, responseHandler)
+      .thenCompose {
+        responseHandler.response()
+      }.thenApply { bytes -> messageSerializer.deserialize(bytes.toArrayUnsafe()) }
+  }
 
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
     val subscriptionManagerHadSubscriptions = sealedBlocksSubscriptionManager.hasSubscriptions()
@@ -130,6 +161,8 @@ class P2PNetworkImpl(
       p2pNetwork.getPeer(peerAddress.id).ifPresent { peer -> peer.disconnectImmediately(Optional.empty(), true) }
     }
   }
+
+  override fun getPeer(nodeId: NodeId): Peer = p2pNetwork.getPeer(nodeId).get()
 
   private fun maintainPersistentConnection(peerAddress: MultiaddrPeerAddress): SafeFuture<Unit> =
     p2pNetwork
@@ -200,18 +233,20 @@ class P2PNetworkImpl(
   // TODO: This is pretty much WIP. This should be addressed with the syncing
   internal fun sendRequest(
     peer: String,
-    rpcMethod: MaruRpcMethod,
+    rpcMethod: MaruRpcMethod<*, *>,
     request: Bytes,
     responseHandler: MaruRpcResponseHandler,
   ): SafeFuture<RpcStreamController<MaruOutgoingRpcRequestHandler>> {
-    val maybePeer =
-      p2pNetwork
-        .getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
-        .getOrNull()
+    val maybePeer = getPeer(peer)
     return if (maybePeer == null) {
       SafeFuture.failedFuture(IllegalStateException("Peer $peer is not connected!"))
     } else {
       maybePeer.sendRequest(rpcMethod, request, responseHandler)
     }
   }
+
+  internal fun getPeer(peer: String) =
+    p2pNetwork
+      .getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
+      .getOrNull()
 }

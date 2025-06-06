@@ -41,7 +41,8 @@ class SpyingP2PNetwork(
         "Unsupported message type: ${this.type}"
       }
       require(this.payload is BesuMessageData) {
-        "Message is QBFT, but its payload is of type: ${this.payload.javaClass}"
+        "Message is QBFT, but its payload is of type: ${this.payload
+          ?.javaClass}"
       }
       return this.payload as BesuMessageData
     }
@@ -74,6 +75,7 @@ class SpyingP2PNetwork(
       }
 
       MessageType.BEACON_BLOCK -> emittedBlockMessages.add(message.payload as SealedBeaconBlock)
+      MessageType.STATUS -> TODO()
     }
 
     return SafeFuture.completedFuture(Unit)
