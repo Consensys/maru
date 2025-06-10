@@ -1,17 +1,10 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.testutils
 
@@ -37,6 +30,7 @@ import maru.consensus.ForksSchedule
 import maru.consensus.config.Utils
 import maru.crypto.Crypto
 import maru.extensions.encodeHex
+import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 
@@ -63,13 +57,17 @@ class MaruFactory {
           "type": "qbft",
           "blockTimeSeconds": 1,
           "validatorSet": ["$validatorAddress"],
-          "feeRecipient": "$validatorAddress",
           "elFork": "Prague"
         }
       }
     }
 
     """.trimIndent()
+  private val validatorQbftOptions =
+    QbftOptions(
+      feeRecipient = validatorAddress.fromHexToByteArray(),
+      minBlockBuildTime = 200.milliseconds,
+    )
 
   private val beaconGenesisConfig: ForksSchedule =
     run {
@@ -139,7 +137,7 @@ class MaruFactory {
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
-        qbftOptions = QbftOptions(minBlockBuildTime = 200.milliseconds),
+        qbftOptions = validatorQbftOptions,
       )
     writeValidatorPrivateKey(config)
     return buildApp(config, p2pNetwork = p2pNetwork)
@@ -160,7 +158,7 @@ class MaruFactory {
         dataDir = dataDir,
         p2pConfig = p2pConfig,
         followers = FollowersConfig(emptyMap()),
-        qbftOptions = QbftOptions(),
+        qbftOptions = validatorQbftOptions,
       )
     writeValidatorPrivateKey(config)
     return buildApp(config = config, p2pNetwork = p2pNetwork)
@@ -214,7 +212,7 @@ class MaruFactory {
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
-        qbftOptions = QbftOptions(),
+        qbftOptions = validatorQbftOptions,
       )
     writeValidatorPrivateKey(config)
     val genesisContent =

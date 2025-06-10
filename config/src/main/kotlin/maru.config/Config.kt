@@ -1,17 +1,10 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.config
 
@@ -74,7 +67,43 @@ data class QbftOptions(
   val duplicateMessageLimit: Int = 100,
   val futureMessageMaxDistance: Long = 10L,
   val futureMessagesLimit: Long = 1000L,
-)
+  val feeRecipient: ByteArray,
+) {
+  init {
+    require(feeRecipient.size == 20) {
+      "feeRecipient address must be 20 bytes long, " +
+        "but it's ${feeRecipient.size} bytes long!"
+    }
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as QbftOptions
+
+    if (messageQueueLimit != other.messageQueueLimit) return false
+    if (duplicateMessageLimit != other.duplicateMessageLimit) return false
+    if (futureMessageMaxDistance != other.futureMessageMaxDistance) return false
+    if (futureMessagesLimit != other.futureMessagesLimit) return false
+    if (minBlockBuildTime != other.minBlockBuildTime) return false
+    if (roundExpiry != other.roundExpiry) return false
+    if (!feeRecipient.contentEquals(other.feeRecipient)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = messageQueueLimit
+    result = 31 * result + duplicateMessageLimit
+    result = 31 * result + futureMessageMaxDistance.hashCode()
+    result = 31 * result + futureMessagesLimit.hashCode()
+    result = 31 * result + minBlockBuildTime.hashCode()
+    result = 31 * result + roundExpiry.hashCode()
+    result = 31 * result + feeRecipient.contentHashCode()
+    return result
+  }
+}
 
 data class ObservabilityOptions(
   val port: UInt,
