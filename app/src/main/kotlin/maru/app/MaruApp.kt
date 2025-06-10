@@ -12,7 +12,7 @@ import java.time.Clock
 import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
-import maru.config.consensus.qbft.QbftConsensusConfig.Companion.ElFork
+import maru.config.consensus.ElFork
 import maru.consensus.BlockMetadata
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestBlockMetadataCache

@@ -10,7 +10,6 @@ package maru.config.consensus
 
 import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.config.consensus.qbft.QbftConsensusConfig.Companion.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.core.Validator

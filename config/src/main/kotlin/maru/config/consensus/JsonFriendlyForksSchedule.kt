@@ -26,7 +26,6 @@ import kotlin.collections.toSet
 import kotlin.reflect.KType
 import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.config.consensus.qbft.QbftConsensusConfig.Companion.ElFork
 import maru.consensus.ConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
