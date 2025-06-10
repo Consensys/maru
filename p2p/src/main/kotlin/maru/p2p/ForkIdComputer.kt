@@ -12,7 +12,7 @@ import maru.consensus.ForkIdHasher
 import maru.crypto.Hashing
 import maru.serialization.ForkIdSerializers
 
-val QbftForkIdComputer: ForkIdHasher =
+val ForkIdComputer: ForkIdHasher =
   ForkIdHasher(
     ForkIdSerializers
       .ForkIdSerializer,

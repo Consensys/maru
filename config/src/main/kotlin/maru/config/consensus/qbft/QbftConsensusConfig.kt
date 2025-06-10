@@ -8,16 +8,11 @@
  */
 package maru.config.consensus.qbft
 
+import maru.config.consensus.ElFork
 import maru.consensus.ConsensusConfig
 import maru.core.Validator
 
 data class QbftConsensusConfig(
   val validatorSet: Set<Validator>,
   val elFork: ElFork,
-) : ConsensusConfig {
-  companion object {
-    enum class ElFork {
-      Prague,
-    }
-  }
-}
+) : ConsensusConfig
