@@ -57,15 +57,15 @@ object Helpers {
       ElFork.Prague ->
         PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
           web3jEngineClient = web3jExecutionLayerClient,
-          timerProvider =
-            metricsFacade.createTimerProvider(
+          timerFactory =
+            metricsFacade.createTimerFactory(
               category = MaruMetricsCategory.ENGINE_API,
               name = "request.latency",
               description = "Execution Engine API request latency",
               commonTags = listOf(Tag("fork", "prague"), Tag("endpoint", endpoint.endpoint.toString())),
             ),
-          counterProvider =
-            metricsFacade.createCounterProvider(
+          counterFactory =
+            metricsFacade.createCounterFactory(
               category = MaruMetricsCategory.ENGINE_API,
               name = "request.counter",
               description = "Execution Engine API request counter",

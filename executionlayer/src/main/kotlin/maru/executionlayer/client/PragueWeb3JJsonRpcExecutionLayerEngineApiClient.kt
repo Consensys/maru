@@ -10,11 +10,12 @@ package maru.executionlayer.client
 
 import java.util.Optional
 import maru.core.ExecutionPayload
+import maru.extensions.captureTimeSafeFuture
 import maru.mappers.Mappers.toDomainExecutionPayload
 import maru.mappers.Mappers.toExecutionPayloadV3
-import net.consensys.linea.metrics.CounterProvider
+import net.consensys.linea.metrics.CounterFactory
 import net.consensys.linea.metrics.Tag
-import net.consensys.linea.metrics.TimerProvider
+import net.consensys.linea.metrics.TimerFactory
 import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
@@ -28,18 +29,18 @@ import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
 class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
   private val web3jEngineClient: Web3JExecutionEngineClient,
-  private val timerProvider: TimerProvider,
-  private val counterProvider: CounterProvider,
+  private val timerFactory: TimerFactory,
+  private val counterFactory: CounterFactory,
 ) : ExecutionLayerEngineApiClient {
   override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
-    timerProvider
-      .withTags(listOf(Tag("method", "getPayload")))
-      .captureTime(web3jEngineClient.getPayloadV4(payloadId))
+    timerFactory
+      .create(listOf(Tag("method", "getPayload")))
+      .captureTimeSafeFuture(web3jEngineClient.getPayloadV4(payloadId))
       .thenApply {
         when {
           it.payload != null -> {
-            counterProvider
-              .withTags(
+            counterFactory
+              .create(
                 listOf(
                   Tag("method", "getPayload"),
                   Tag("status", "success"),
@@ -49,8 +50,8 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
           }
 
           it.errorMessage != null -> {
-            counterProvider
-              .withTags(
+            counterFactory
+              .create(
                 listOf(
                   Tag("method", "getPayload"),
                   Tag("status", "failure"),
@@ -65,15 +66,15 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
       }
 
   override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =
-    timerProvider
-      .withTags(listOf(Tag("method", "newPayload")))
-      .captureTime(
+    timerFactory
+      .create(listOf(Tag("method", "newPayload")))
+      .captureTimeSafeFuture(
         web3jEngineClient
           .newPayloadV4(executionPayload.toExecutionPayloadV3(), emptyList(), Bytes32.ZERO, emptyList()),
       ).thenApply {
         if (it.payload != null) {
-          counterProvider
-            .withTags(
+          counterFactory
+            .create(
               listOf(
                 Tag("method", "newPayload"),
                 Tag("status", "success"),
@@ -81,8 +82,8 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
             ).increment()
           Response.fromPayloadReceivedAsJson(it.payload)
         } else {
-          counterProvider
-            .withTags(
+          counterFactory
+            .create(
               listOf(
                 Tag("method", "newPayload"),
                 Tag("status", "failure"),
@@ -96,23 +97,23 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
     forkChoiceState: ForkChoiceStateV1,
     payloadAttributes: PayloadAttributesV1?,
   ): SafeFuture<Response<ForkChoiceUpdatedResult>> =
-    timerProvider
-      .withTags(listOf(Tag("method", "newPayload")))
-      .captureTime(
+    timerFactory
+      .create(listOf(Tag("method", "newPayload")))
+      .captureTimeSafeFuture(
         web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3())),
       ).thenPeek {
         when {
           it.payload != null ->
-            counterProvider
-              .withTags(
+            counterFactory
+              .create(
                 listOf(
                   Tag("method", "forkChoiceUpdate"),
                   Tag("status", "success"),
                 ),
               ).increment()
           else ->
-            counterProvider
-              .withTags(
+            counterFactory
+              .create(
                 listOf(
                   Tag("method", "forkChoiceUpdate"),
                   Tag("status", "failure"),

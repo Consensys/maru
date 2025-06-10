@@ -267,8 +267,8 @@ class EagerQbftBlockCreatorTest {
     return JsonRpcExecutionLayerManager(
       PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
         Web3JExecutionEngineClient(engineApiClient),
-        timerProvider =
-          TestMetrics.TestMetricsFacade.createTimerProvider(
+        timerFactory =
+          TestMetrics.TestMetricsFacade.createTimerFactory(
             category = MaruMetricsCategory.ENGINE_API,
             name = "request.latency",
             description = "Execution Engine API request latency",
@@ -278,8 +278,8 @@ class EagerQbftBlockCreatorTest {
                 Tag("endpoint", besuInstance.engineRpcUrl().get().toString()),
               ),
           ),
-        counterProvider =
-          TestMetrics.TestMetricsFacade.createCounterProvider(
+        counterFactory =
+          TestMetrics.TestMetricsFacade.createCounterFactory(
             category = MaruMetricsCategory.ENGINE_API,
             name = "request.latency",
             description = "Execution Engine API request latency",

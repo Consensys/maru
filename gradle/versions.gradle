@@ -162,5 +162,7 @@ dependencyManagement {
     dependency "build.linea.internal:micrometer:20250528-develop"
     dependency "build.linea.internal:vertx-helper:20250528-develop"
     dependency "build.linea.internal:json-rpc:20250528-develop"
+    dependency "build.linea.internal:futures:20250528-develop"
+
   }
 }
