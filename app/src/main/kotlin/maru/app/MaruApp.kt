@@ -172,12 +172,6 @@ class MaruApp(
 
   fun start() {
     try {
-      p2pNetwork.start().get()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the P2P network", th)
-      throw th
-    }
-    try {
       vertx
         .deployVerticle(
           ObservabilityServer(
@@ -188,22 +182,28 @@ class MaruApp(
       log.error("Error while trying to start the observability server", th)
       throw th
     }
+    try {
+      p2pNetwork.start().get()
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the P2P network", th)
+      throw th
+    }
     protocolStarter.start()
     log.info("Maru is up")
   }
 
   fun stop() {
     try {
-      p2pNetwork.stop().get()
-    } catch (th: Throwable) {
-      log.warn("Error while trying to stop the P2P network", th)
-    }
-    try {
       vertx.deploymentIDs().forEach {
         vertx.undeploy(it).get()
       }
     } catch (th: Throwable) {
       log.warn("Error while trying to stop the vertx verticles", th)
+    }
+    try {
+      p2pNetwork.stop().get()
+    } catch (th: Throwable) {
+      log.warn("Error while trying to stop the P2P network", th)
     }
     protocolStarter.stop()
     log.info("Maru is down")
