@@ -14,7 +14,6 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.micrometer.backends.BackendRegistries
 import java.time.Clock
 import java.util.Optional
-import kotlin.system.exitProcess
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
