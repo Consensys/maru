@@ -43,6 +43,7 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import maru.serialization.rlp.RLPSerializers
+import net.consensys.linea.async.get
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
@@ -196,7 +197,11 @@ class MaruApp(
   }
 
   override fun close() {
-    vertx.close()
+    try {
+      vertx.close().get()
+    } catch (th: Throwable) {
+      log.error("Error while trying to close Vertx", th)
+    }
     beaconChain.close()
   }
 

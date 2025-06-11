@@ -14,6 +14,8 @@ dependencies {
   implementation(project(":jvm-libs:extensions"))
   implementation(project(":jvm-libs:mappers"))
 
+  implementation "build.linea.internal:futures"
+
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
   implementation "io.vertx:vertx-micrometer-metrics"
