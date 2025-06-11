@@ -36,6 +36,7 @@ import maru.core.BeaconBlockBody
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.kv.KvDatabaseFactory
+import maru.metrics.MaruMetricsCategory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
@@ -111,8 +112,18 @@ class MaruApp(
           p2pConfig = config.p2pConfig!!,
           chainId = beaconGenesisConfig.chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
+          metricsFacade = metricsFacade,
         )
     }
+
+    metricsFacade.createGauge(
+      category = MaruMetricsCategory.METADATA,
+      name = "block.height",
+      description = "Latest block height",
+      measurementSupplier = {
+        lastBlockMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
+      },
+    )
   }
 
   fun p2pPort(): UInt = p2pNetwork.port
