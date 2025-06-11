@@ -32,13 +32,11 @@ import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClien
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.mappers.Mappers.toDomain
-import maru.metrics.MaruMetricsCategory
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
-import net.consensys.linea.metrics.Tag
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -59,7 +57,6 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
 import org.web3j.protocol.core.DefaultBlockParameter
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
@@ -266,29 +263,8 @@ class EagerQbftBlockCreatorTest {
         .build()
     return JsonRpcExecutionLayerManager(
       PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-        Web3JExecutionEngineClient(engineApiClient),
-        timerFactory =
-          TestMetrics.TestMetricsFacade.createTimerFactory(
-            category = MaruMetricsCategory.ENGINE_API,
-            name = "request.latency",
-            description = "Execution Engine API request latency",
-            commonTags =
-              listOf(
-                Tag("fork", "prague"),
-                Tag("endpoint", besuInstance.engineRpcUrl().get().toString()),
-              ),
-          ),
-        counterFactory =
-          TestMetrics.TestMetricsFacade.createCounterFactory(
-            category = MaruMetricsCategory.ENGINE_API,
-            name = "request.latency",
-            description = "Execution Engine API request latency",
-            commonTags =
-              listOf(
-                Tag("fork", "prague"),
-                Tag("endpoint", besuInstance.engineRpcUrl().get().toString()),
-              ),
-          ),
+        web3jClient = engineApiClient,
+        metricsFacade = TestMetrics.TestMetricsFacade,
       ),
     )
   }

@@ -9,8 +9,12 @@
 package maru.extensions
 
 import net.consensys.linea.async.toSafeFuture
+import net.consensys.linea.metrics.DynamicTagTimer
 import net.consensys.linea.metrics.Timer
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun <T> Timer.captureTimeSafeFuture(safeFuture: SafeFuture<T>): SafeFuture<T> =
+  this.captureTime(safeFuture.toCompletableFuture()).toSafeFuture()
+
+fun <T> DynamicTagTimer<T>.captureTimeSafeFuture(safeFuture: SafeFuture<T>): SafeFuture<T> =
   this.captureTime(safeFuture.toCompletableFuture()).toSafeFuture()

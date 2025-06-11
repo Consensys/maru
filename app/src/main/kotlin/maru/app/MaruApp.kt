@@ -70,11 +70,6 @@ class MaruApp(
       prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
     )
 
-  private val observabilityServer =
-    ObservabilityServer(
-      ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
-    )
-
   private var privateKeyBytes: ByteArray =
     GeneratingFilePrivateKeySource(
       config.persistence.privateKeyPath.toString(),
@@ -163,6 +158,7 @@ class MaruApp(
       )
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
+  @Suppress("UNCHECKED_CAST")
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
     followers.followers
       .mapValues {
@@ -180,7 +176,18 @@ class MaruApp(
       p2pNetwork.start().get()
     } catch (th: Throwable) {
       log.error("Error while trying to start the P2P network", th)
-      exitProcess(1)
+      throw th
+    }
+    try {
+      vertx
+        .deployVerticle(
+          ObservabilityServer(
+            ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
+          ),
+        ).get()
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the observability server", th)
+      throw th
     }
     protocolStarter.start()
     log.info("Maru is up")
@@ -192,16 +199,18 @@ class MaruApp(
     } catch (th: Throwable) {
       log.warn("Error while trying to stop the P2P network", th)
     }
+    try {
+      vertx.deploymentIDs().forEach {
+        vertx.undeploy(it).get()
+      }
+    } catch (th: Throwable) {
+      log.warn("Error while trying to stop the vertx verticles", th)
+    }
     protocolStarter.stop()
     log.info("Maru is down")
   }
 
   override fun close() {
-    try {
-      vertx.close().get()
-    } catch (th: Throwable) {
-      log.error("Error while trying to close Vertx", th)
-    }
     beaconChain.close()
   }
 

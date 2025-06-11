@@ -84,7 +84,7 @@ class MaruFactory {
     followers: FollowersConfig = FollowersConfig(emptyMap()),
     qbftOptions: QbftOptions? = null,
     observabilityOptions: ObservabilityOptions =
-      ObservabilityOptions(port = 8080u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
+      ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
   ): MaruConfig =
     MaruConfig(
       persistence = Persistence(dataPath = dataDir),

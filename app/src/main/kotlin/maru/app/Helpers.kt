@@ -17,12 +17,9 @@ import maru.config.ApiEndpointConfig
 import maru.config.consensus.ElFork
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
-import maru.metrics.MaruMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.linea.metrics.Tag
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
@@ -52,25 +49,11 @@ object Helpers {
     metricsFacade: MetricsFacade,
   ): ExecutionLayerEngineApiClient {
     val web3JEngineApiClient: Web3JClient = createWeb3jClient(endpoint)
-    val web3jExecutionLayerClient = Web3JExecutionEngineClient(web3JEngineApiClient)
     return when (elFork) {
       ElFork.Prague ->
         PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-          web3jEngineClient = web3jExecutionLayerClient,
-          timerFactory =
-            metricsFacade.createTimerFactory(
-              category = MaruMetricsCategory.ENGINE_API,
-              name = "request.latency",
-              description = "Execution Engine API request latency",
-              commonTags = listOf(Tag("fork", "prague"), Tag("endpoint", endpoint.endpoint.toString())),
-            ),
-          counterFactory =
-            metricsFacade.createCounterFactory(
-              category = MaruMetricsCategory.ENGINE_API,
-              name = "request.counter",
-              description = "Execution Engine API request counter",
-              commonTags = listOf(Tag("fork", "prague"), Tag("endpoint", endpoint.endpoint.toString())),
-            ),
+          web3jClient = web3JEngineApiClient,
+          metricsFacade = metricsFacade,
         )
     }
   }
