@@ -8,10 +8,6 @@
  */
 package maru.app
 
-import io.libp2p.core.PeerId
-import io.libp2p.core.crypto.unmarshalPrivateKey
-import io.micrometer.core.instrument.MeterRegistry
-import io.vertx.micrometer.backends.BackendRegistries
 import java.time.Clock
 import java.util.Optional
 import maru.config.FollowersConfig
@@ -39,12 +35,8 @@ import maru.database.kv.KvDatabaseFactory
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
-import maru.serialization.rlp.RLPSerializers
 import net.consensys.linea.async.get
-import net.consensys.linea.metrics.Tag
-import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
-import net.consensys.linea.vertx.ObservabilityServer
-import net.consensys.linea.vertx.VertxFactory
+import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -52,35 +44,17 @@ import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
-  val config: MaruConfig,
+  config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
-  private var p2pNetwork: P2PNetwork,
+  private val p2pNetwork: P2PNetwork,
   private val privateKeyProvider: () -> ByteArray,
   private val finalizationProvider: FinalizationProvider = InstantFinalizationProvider,
+  private val api: Api,
+  private val metricsFacade: MetricsFacade,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
-
-  private val vertx =
-    VertxFactory.createVertx(
-      jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
-      prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
-    )
-
-  private var privateKeyBytes: ByteArray =
-    GeneratingFilePrivateKeySource(
-      config.persistence.privateKeyPath.toString(),
-    ).privateKeyBytes.toArray()
-
-  private val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKeyBytes).publicKey())
-  private val meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow()
-  private val metricsFacade =
-    MicrometerMetricsFacade(
-      meterRegistry,
-      "maru",
-      allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
-    )
 
   init {
     if (config.qbftOptions == null) {
@@ -113,7 +87,6 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val metricsSystem = NoOpMetricsSystem()
 
   private val metricsSystem = NoOpMetricsSystem()
   private val beaconChain =
@@ -134,20 +107,20 @@ class MaruApp(
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
     followers.followers
       .mapValues {
-        val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
+        val engineApiClient =
+          Helpers.buildExecutionEngineClient(
+            endpoint = it.value,
+            elFork = ElFork.Prague,
+            metricsFacade = metricsFacade,
+          )
         FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider) as NewBlockHandler<Unit>
       }
 
   fun start() {
     try {
-      vertx
-        .deployVerticle(
-          ObservabilityServer(
-            ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
-          ),
-        ).get()
+      api.start()
     } catch (th: Throwable) {
-      log.error("Error while trying to start the observability server", th)
+      log.error("Error while trying to start the api server", th)
       throw th
     }
     try {
@@ -162,11 +135,9 @@ class MaruApp(
 
   fun stop() {
     try {
-      vertx.deploymentIDs().forEach {
-        vertx.undeploy(it).get()
-      }
+      api.stop()
     } catch (th: Throwable) {
-      log.warn("Error while trying to stop the vertx verticles", th)
+      log.warn("Error while trying to stop the api server", th)
     }
     try {
       p2pNetwork.stop().get()

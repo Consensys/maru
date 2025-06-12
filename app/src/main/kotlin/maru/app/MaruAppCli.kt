@@ -18,6 +18,8 @@ import maru.config.MaruConfigDtoToml
 import maru.config.QbftOptionsDecoder
 import maru.config.consensus.ForkConfigDecoder
 import maru.config.consensus.JsonFriendlyForksSchedule
+import net.consensys.linea.async.get
+import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.Configurator
@@ -96,11 +98,19 @@ class MaruAppCli : Callable<Int> {
     val parsedAppConfig = appConfig.getUnsafe()
     val parsedBeaconGenesisConfig = beaconGenesisConfig.getUnsafe()
 
+    val config = parsedAppConfig.domainFriendly()
+    val vertx =
+      VertxFactory.createVertx(
+        jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
+        prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+      )
+
     val app =
       MaruAppFactory()
         .create(
-          config = parsedAppConfig.domainFriendly(),
+          config = config,
           beaconGenesisConfig = parsedBeaconGenesisConfig.domainFriendly(),
+          vertx = vertx,
         )
     app.start()
 
@@ -108,7 +118,14 @@ class MaruAppCli : Callable<Int> {
       .getRuntime()
       .addShutdownHook(
         Thread {
-          app.stop()
+          try {
+            app.stop()
+          } catch (_: Throwable) {
+          }
+          try {
+            vertx.close().get()
+          } catch (_: Throwable) {
+          }
           if (LogManager.getContext() is LoggerContext) {
             // Disable log4j auto shutdown hook is not used otherwise
             // Messages in App.stop won't appear in the logs

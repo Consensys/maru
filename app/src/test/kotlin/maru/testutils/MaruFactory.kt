@@ -34,6 +34,7 @@ import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
+import net.consensys.linea.vertx.VertxFactory
 
 /**
  * The same MaruFactory should be used per network. Otherwise, validators won't match between Maru instances
@@ -113,6 +114,11 @@ class MaruFactory {
       config = config,
       beaconGenesisConfig = beaconGenesisConfig,
       overridingP2PNetwork = overridingP2PNetwork,
+      vertx =
+        VertxFactory.createVertx(
+          jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
+          prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+        ),
     )
 
   private fun buildP2pConfig(
