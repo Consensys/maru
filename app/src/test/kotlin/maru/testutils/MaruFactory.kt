@@ -18,6 +18,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 import maru.app.MaruApp
+import maru.app.MaruAppFactory
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
@@ -106,8 +107,13 @@ class MaruFactory {
   private fun buildApp(
     config: MaruConfig,
     beaconGenesisConfig: ForksSchedule = this.beaconGenesisConfig,
-    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
-  ): MaruApp = MaruApp(config = config, beaconGenesisConfig = beaconGenesisConfig, p2pNetwork = p2pNetwork)
+    overridingP2PNetwork: P2PNetwork? = null,
+  ): MaruApp =
+    MaruAppFactory().create(
+      config = config,
+      beaconGenesisConfig = beaconGenesisConfig,
+      overridingP2PNetwork = overridingP2PNetwork,
+    )
 
   private fun buildP2pConfig(
     p2pPort: UInt = 0u,
@@ -130,7 +136,7 @@ class MaruFactory {
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
-    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+    overridingP2PNetwork: P2PNetwork? = null,
   ): MaruApp {
     val config =
       buildMaruConfig(
@@ -140,14 +146,14 @@ class MaruFactory {
         qbftOptions = validatorQbftOptions,
       )
     writeValidatorPrivateKey(config)
-    return buildApp(config, p2pNetwork = p2pNetwork)
+    return buildApp(config, overridingP2PNetwork = overridingP2PNetwork)
   }
 
   fun buildTestMaruValidatorWithP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
-    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+    overridingP2PNetwork: P2PNetwork? = null,
     p2pPort: UInt = 0u,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
@@ -161,7 +167,7 @@ class MaruFactory {
         qbftOptions = validatorQbftOptions,
       )
     writeValidatorPrivateKey(config)
-    return buildApp(config = config, p2pNetwork = p2pNetwork)
+    return buildApp(config = config, overridingP2PNetwork = overridingP2PNetwork)
   }
 
   fun buildTestMaruFollowerWithP2pPeering(
@@ -197,7 +203,7 @@ class MaruFactory {
         dataDir = dataDir,
         followers = followers,
       )
-    return buildApp(config, p2pNetwork = p2pNetwork)
+    return buildApp(config, overridingP2PNetwork = p2pNetwork)
   }
 
   fun buildTestMaruValidatorWithConsensusSwitch(
@@ -235,6 +241,6 @@ class MaruFactory {
       }
       """.trimIndent()
     val beaconGenesisConfig = Utils.parseBeaconChainConfig(genesisContent).domainFriendly()
-    return buildApp(config, beaconGenesisConfig = beaconGenesisConfig, p2pNetwork = p2pNetwork)
+    return buildApp(config, beaconGenesisConfig = beaconGenesisConfig, overridingP2PNetwork = p2pNetwork)
   }
 }
