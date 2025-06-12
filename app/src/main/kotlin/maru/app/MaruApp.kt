@@ -9,7 +9,7 @@
 package maru.app
 
 import java.time.Clock
-import kotlin.system.exitProcess
+import java.util.Optional
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
@@ -35,9 +35,12 @@ import maru.database.kv.KvDatabaseFactory
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
+import net.consensys.linea.async.get
+import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
@@ -45,9 +48,11 @@ class MaruApp(
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
-  private var p2pNetwork: P2PNetwork,
+  private val p2pNetwork: P2PNetwork,
   private val privateKeyProvider: () -> ByteArray,
   private val finalizationProvider: FinalizationProvider = InstantFinalizationProvider,
+  private val api: Api,
+  private val metricsFacade: MetricsFacade,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -77,42 +82,63 @@ class MaruApp(
       lastBlockMetadataCache.updateLatestBlockMetadata(blockMetadata)
       SafeFuture.completedFuture(Unit)
     }
-
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val metricsSystem = NoOpMetricsSystem()
 
+  private val metricsSystem = NoOpMetricsSystem()
   private val beaconChain =
     KvDatabaseFactory
       .createRocksDbDatabase(
         databasePath = config.persistence.dataPath,
         metricsSystem = metricsSystem,
-        metricCategory = MaruMetricsCategory.STORAGE,
+        metricCategory =
+          object : MetricCategory {
+            override fun getName(): String = "STORAGE"
+
+            override fun getApplicationPrefix(): Optional<String> = Optional.empty()
+          },
       )
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
+  @Suppress("UNCHECKED_CAST")
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
     followers.followers
       .mapValues {
-        val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
+        val engineApiClient =
+          Helpers.buildExecutionEngineClient(
+            endpoint = it.value,
+            elFork = ElFork.Prague,
+            metricsFacade = metricsFacade,
+          )
         FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider) as NewBlockHandler<Unit>
       }
 
   fun start() {
     try {
+      api.start()
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the api server", th)
+      throw th
+    }
+    try {
       p2pNetwork.start().get()
     } catch (th: Throwable) {
       log.error("Error while trying to start the P2P network", th)
-      exitProcess(1)
+      throw th
     }
     protocolStarter.start()
     log.info("Maru is up")
   }
 
   fun stop() {
+    try {
+      api.stop()
+    } catch (th: Throwable) {
+      log.warn("Error while trying to stop the api server", th)
+    }
     try {
       p2pNetwork.stop().get()
     } catch (th: Throwable) {
@@ -170,6 +196,7 @@ class MaruApp(
           clock = clock,
           p2pNetwork = p2pNetwork,
           beaconChainInitialization = beaconChainInitialization,
+          metricsFacade = metricsFacade,
         )
       } else {
         QbftFollowerFactory(
@@ -178,6 +205,7 @@ class MaruApp(
           newBlockHandler = blockImportHandlers,
           validatorElNodeConfig = config.validatorElNode,
           beaconChainInitialization = beaconChainInitialization,
+          metricsFacade = metricsFacade,
         )
       }
     val delegatedConsensusNewBlockHandler =

@@ -8,6 +8,10 @@
  */
 package maru.app
 
+import io.libp2p.core.PeerId
+import io.libp2p.core.crypto.unmarshalPrivateKey
+import io.vertx.core.Vertx
+import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Path
 import java.time.Clock
 import maru.config.MaruConfig
@@ -17,6 +21,8 @@ import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
 import maru.serialization.rlp.RLPSerializers
+import net.consensys.linea.metrics.Tag
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
@@ -28,6 +34,7 @@ class MaruAppFactory {
     beaconGenesisConfig: ForksSchedule,
     clock: Clock = Clock.systemUTC(),
     overridingP2PNetwork: P2PNetwork? = null,
+    vertx: Vertx,
   ): MaruApp {
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val p2pNetwork =
@@ -36,6 +43,15 @@ class MaruAppFactory {
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
       )
+
+    val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
+    val metricsFacade =
+      MicrometerMetricsFacade(
+        BackendRegistries.getDefaultNow(),
+        "maru",
+        allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
+      )
+
     val maru =
       MaruApp(
         config = config,
@@ -43,6 +59,12 @@ class MaruAppFactory {
         clock = clock,
         p2pNetwork = p2pNetwork,
         privateKeyProvider = { privateKey },
+        api =
+          Api(
+            config = Api.Config(observabilityPort = config.observabilityOptions.port),
+            vertx = vertx,
+          ),
+        metricsFacade = metricsFacade,
       )
 
     return maru

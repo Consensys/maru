@@ -22,6 +22,7 @@ import maru.app.MaruAppFactory
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
+import maru.config.ObservabilityOptions
 import maru.config.P2P
 import maru.config.Persistence
 import maru.config.QbftOptions
@@ -33,6 +34,7 @@ import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
+import net.consensys.linea.vertx.VertxFactory
 
 /**
  * The same MaruFactory should be used per network. Otherwise, validators won't match between Maru instances
@@ -83,6 +85,8 @@ class MaruFactory {
     p2pConfig: P2P? = null,
     followers: FollowersConfig = FollowersConfig(emptyMap()),
     qbftOptions: QbftOptions? = null,
+    observabilityOptions: ObservabilityOptions =
+      ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
   ): MaruConfig =
     MaruConfig(
       persistence = Persistence(dataPath = dataDir),
@@ -94,6 +98,7 @@ class MaruFactory {
         ),
       p2pConfig = p2pConfig,
       followers = followers,
+      observabilityOptions = observabilityOptions,
     )
 
   private fun writeValidatorPrivateKey(config: MaruConfig) {
@@ -109,6 +114,11 @@ class MaruFactory {
       config = config,
       beaconGenesisConfig = beaconGenesisConfig,
       overridingP2PNetwork = overridingP2PNetwork,
+      vertx =
+        VertxFactory.createVertx(
+          jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
+          prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+        ),
     )
 
   private fun buildP2pConfig(

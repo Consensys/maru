@@ -15,6 +15,7 @@ import maru.app.MaruAppCli.Companion.loadConfig
 import maru.app.MaruAppFactory
 import maru.config.MaruConfigDtoToml
 import maru.config.consensus.JsonFriendlyForksSchedule
+import net.consensys.linea.vertx.VertxFactory
 
 const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX =
   "0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
@@ -42,9 +43,15 @@ object MaruFactory {
     val beaconGenesisConfig =
       loadConfig<JsonFriendlyForksSchedule>(listOf(maruGenesisFile))
 
+    val config = maruConfig.getUnsafe().domainFriendly()
     return MaruAppFactory().create(
-      config = maruConfig.getUnsafe().domainFriendly(),
+      config = config,
       beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
+      vertx =
+        VertxFactory.createVertx(
+          jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
+          prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+        ),
     )
   }
 
