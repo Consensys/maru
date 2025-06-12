@@ -18,6 +18,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 import maru.app.MaruApp
+import maru.app.MaruAppFactory
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
@@ -103,7 +104,12 @@ class MaruFactory {
     config: MaruConfig,
     beaconGenesisConfig: ForksSchedule = this.beaconGenesisConfig,
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
-  ): MaruApp = MaruApp(config = config, beaconGenesisConfig = beaconGenesisConfig, p2pNetwork = p2pNetwork)
+  ): MaruApp =
+    MaruAppFactory().create(
+      config = config,
+      beaconGenesisConfig = beaconGenesisConfig,
+      overridingP2PNetwork = p2pNetwork,
+    )
 
   private fun buildP2pConfig(
     p2pPort: UInt = 0u,
