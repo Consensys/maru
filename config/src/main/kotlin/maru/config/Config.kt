@@ -13,6 +13,8 @@ import java.nio.file.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import linea.domain.BlockParameter
+import linea.domain.RetryConfig
 
 data class Persistence(
   val dataPath: Path,
@@ -22,6 +24,7 @@ data class Persistence(
 data class ApiEndpointConfig(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
+  val requestRetries: RetryConfig = RetryConfig(),
 )
 
 data class FollowersConfig(
@@ -111,6 +114,13 @@ data class ObservabilityOptions(
   val jvmMetricsEnabled: Boolean = true,
 )
 
+data class LineaConfig(
+  val contractAddress: String,
+  val l1EthApi: ApiEndpointConfig,
+  val l1PollingInterval: Duration = 6.seconds,
+  val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
+)
+
 data class MaruConfig(
   val persistence: Persistence,
   val qbftOptions: QbftOptions?,
@@ -118,4 +128,5 @@ data class MaruConfig(
   val validatorElNode: ValidatorElNode,
   val followers: FollowersConfig,
   val observabilityOptions: ObservabilityOptions,
+  val linea: LineaConfig? = null,
 )

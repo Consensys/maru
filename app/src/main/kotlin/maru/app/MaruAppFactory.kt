@@ -10,9 +10,15 @@ package maru.app
 
 import java.nio.file.Path
 import java.time.Clock
+import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
+import linea.web3j.createWeb3jHttpClient
+import linea.web3j.ethapi.createEthApiClient
 import maru.config.MaruConfig
 import maru.config.P2P
 import maru.consensus.ForksSchedule
+import maru.consensus.state.FinalizationProvider
+import maru.consensus.state.InstantFinalizationProvider
+import maru.finalization.LineaFinalizationProvider
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
@@ -36,6 +42,7 @@ class MaruAppFactory {
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
       )
+
     val maru =
       MaruApp(
         config = config,
@@ -43,6 +50,7 @@ class MaruAppFactory {
         clock = clock,
         p2pNetwork = p2pNetwork,
         privateKeyProvider = { privateKey },
+        finalizationProvider = setupFinalizationProvider(config),
       )
 
     return maru
@@ -50,6 +58,34 @@ class MaruAppFactory {
 
   companion object {
     private val log = LogManager.getLogger(MaruApp::class.java)
+
+    fun setupFinalizationProvider(config: MaruConfig): FinalizationProvider =
+      config.linea
+        ?.let { lineaConfig ->
+          val contractClient =
+            Web3JLineaRollupSmartContractClientReadOnly(
+              web3j =
+                createWeb3jHttpClient(
+                  rpcUrl = lineaConfig.l1EthApi.endpoint.toString(),
+                  log = LogManager.getLogger("clients.l1.linea"),
+                ),
+              contractAddress = lineaConfig.contractAddress,
+              log = LogManager.getLogger("clients.l1.linea"),
+            )
+          LineaFinalizationProvider(
+            lineaContract = contractClient,
+            l2EthApi =
+              createEthApiClient(
+                rpcUrl = config.validatorElNode.ethApiEndpoint.toString(),
+                log = LogManager.getLogger("clients.l2.eth.el"),
+                // FIXME: add support for request retries when we have Vert.x in the app
+                requestRetryConfig = null,
+                vertx = null, // Vert.x is not used in this context
+              ),
+            pollingUpdateInterval = lineaConfig.l1PollingInterval,
+            l1HighestBlock = lineaConfig.l1HighestBlockTag,
+          )
+        } ?: InstantFinalizationProvider
 
     fun setupP2PNetwork(
       p2pConfig: P2P?,

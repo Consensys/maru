@@ -65,6 +65,14 @@ dependencyManagement {
 
     dependency 'io.pkts:pkts-core:3.0.10'
 
+    dependencySet(group: 'build.linea.internal', version: '0.0.1-v20250610200556') {
+      entry 'core'
+      entry 'domain-models'
+      entry 'interfaces'
+      entry 'linea-contract-clients'
+      entry 'web3j-extensions'
+    }
+
     dependencySet(group: 'io.tmio', version: '2.4.2') {
       entry 'tuweni-bytes'
       entry 'tuweni-config'
