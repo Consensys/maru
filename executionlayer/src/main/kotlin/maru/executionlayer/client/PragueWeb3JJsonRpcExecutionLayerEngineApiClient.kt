@@ -10,6 +10,7 @@ package maru.executionlayer.client
 
 import java.util.Optional
 import maru.core.ExecutionPayload
+import maru.extensions.captureTimeSafeFuture
 import maru.extensions.getEndpoint
 import maru.mappers.Mappers.toDomainExecutionPayload
 import maru.mappers.Mappers.toExecutionPayloadV3
@@ -56,35 +57,43 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
     )
 
   override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
-    web3jEngineClient.getPayloadV4(payloadId).thenApply {
-      when {
-        it.payload != null ->
-          Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
+    createRequestTimer<ExecutionPayload>(method = "getPayload").captureTimeSafeFuture(
+      web3jEngineClient.getPayloadV4(payloadId).thenApply {
+        when {
+          it.payload != null ->
+            Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
 
-        it.errorMessage != null ->
-          Response.fromErrorMessage(it.errorMessage)
+          it.errorMessage != null ->
+            Response.fromErrorMessage(it.errorMessage)
 
-        else ->
-          throw IllegalStateException("Failed to get payload!")
-      }
-    }
+          else ->
+            throw IllegalStateException("Failed to get payload!")
+        }
+      },
+    )
 
   override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =
-    web3jEngineClient
-      .newPayloadV4(executionPayload.toExecutionPayloadV3(), emptyList(), Bytes32.ZERO, emptyList())
-      .thenApply {
-        if (it.payload != null) {
-          Response.fromPayloadReceivedAsJson(it.payload)
-        } else {
-          Response.fromErrorMessage(it.errorMessage)
-        }
-      }
+    createRequestTimer<PayloadStatusV1>(method = "newPayload").captureTimeSafeFuture(
+      web3jEngineClient
+        .newPayloadV4(executionPayload.toExecutionPayloadV3(), emptyList(), Bytes32.ZERO, emptyList())
+        .thenApply {
+          if (it.payload != null) {
+            Response.fromPayloadReceivedAsJson(it.payload)
+          } else {
+            Response.fromErrorMessage(it.errorMessage)
+          }
+        },
+    )
 
   override fun forkChoiceUpdate(
     forkChoiceState: ForkChoiceStateV1,
     payloadAttributes: PayloadAttributesV1?,
   ): SafeFuture<Response<ForkChoiceUpdatedResult>> =
-    web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3()))
+    createRequestTimer<ForkChoiceUpdatedResult>(
+      method = "forkChoiceUpdate",
+    ).captureTimeSafeFuture(
+      web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3())),
+    )
 
   private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =
     PayloadAttributesV3(

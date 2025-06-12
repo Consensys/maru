@@ -157,11 +157,13 @@ dependencyManagement {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
     }
 
-    dependency "build.linea.internal:metrics:0.0.1-v20250610200556"
-    dependency "build.linea.internal:micrometer:0.0.1-v20250610200556"
-    dependency "build.linea.internal:vertx-helper:0.0.1-v20250610200556"
-    dependency "build.linea.internal:json-rpc:0.0.1-v20250610200556"
-    dependency "build.linea.internal:futures:0.0.1-v20250610200556"
+    def lineaPackagesVersion = "0.0.1-v20250610200556"
+
+    dependency "build.linea.internal:metrics:$lineaPackagesVersion"
+    dependency "build.linea.internal:micrometer:$lineaPackagesVersion"
+    dependency "build.linea.internal:vertx-helper:$lineaPackagesVersion"
+    dependency "build.linea.internal:json-rpc:$lineaPackagesVersion"
+    dependency "build.linea.internal:futures:$lineaPackagesVersion"
 
   }
 }
