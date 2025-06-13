@@ -8,12 +8,14 @@
  */
 package maru.p2p.topics
 
+import java.util.NavigableMap
 import java.util.Optional
+import java.util.PriorityQueue
 import maru.core.SealedBeaconBlock
 import maru.p2p.LINEA_DOMAIN
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
-import maru.p2p.ValidationResultCode
+import maru.p2p.topics.SealedBlocksTopicHandler.Companion.toLibP2P
 import maru.serialization.Serializer
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -22,27 +24,32 @@ import tech.pegasys.teku.networking.p2p.gossip.PreparedGossipMessage
 import tech.pegasys.teku.networking.p2p.gossip.TopicHandler
 import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 
-class SealedBlocksTopicHandler(
-  private val subscriptionManager: SubscriptionManager<SealedBeaconBlock>,
-  private val sealedBeaconBlockSerializer: Serializer<SealedBeaconBlock>,
+interface Sequential {
+  val sequenceNumber: ULong
+}
+
+class SequentialTopicHandler<T : Sequential>(
+  private var nextExpectedSequenceNumber: ULong,
+  private val subscriptionManager: SubscriptionManager<T>,
+  private val serializer: Serializer<T>,
   private val topicId: String,
 ) : TopicHandler {
-  companion object {
-    fun ValidationResultCode.toLibP2P(): Libp2pValidationResult =
-      when (this) {
-        ValidationResultCode.ACCEPT -> Libp2pValidationResult.Valid
-        ValidationResultCode.REJECT -> Libp2pValidationResult.Invalid
-        ValidationResultCode.IGNORE -> Libp2pValidationResult.Ignore
-        // TODO: We don't have a case for this yet, so maybe it isn't right
-        ValidationResultCode.KEEP_FOR_THE_FUTURE -> Libp2pValidationResult.Ignore
-      }
-  }
-
-
+  private val pendingBlocks = PriorityQueue<Sequential>()
+  override fun prepareMessage(
+    payload: Bytes,
+    arrivalTimestamp: Optional<UInt64>,
+  ): PreparedGossipMessage =
+    MaruPreparedGossipMessage(
+      origMessage = payload,
+      arrTimestamp = arrivalTimestamp,
+      domain = LINEA_DOMAIN,
+      topicId = topicId,
+    )
 
   override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> {
     val deserializaedMessage = sealedBeaconBlockSerializer.deserialize(message.originalMessage.toArray())
     return subscriptionManager.handleEvent(deserializaedMessage).thenApply { it.code.toLibP2P() }
+
   }
 
   override fun getMaxMessageSize(): Int = 10485760
