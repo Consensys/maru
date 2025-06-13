@@ -40,6 +40,7 @@ class SequentialTopicHandlerTest {
       deserializer = deserializer,
       sequenceNumberExtractor = extractor,
       topicId = "test-topic",
+      maxQueueSize = 10,
     )
   }
 
@@ -94,11 +95,59 @@ class SequentialTopicHandlerTest {
   fun `ignores out-of-order message if queue is full`() {
     val handler = makeHandler(initialSeq = 1uL)
     // Fill the queue
-    for (i in 2uL..1001uL) {
+    for (i in 2uL..11uL) {
       handler.handleMessage(makeMessage(i))
     }
     // This one should be ignored
-    val result = handler.handleMessage(makeMessage(1002uL)).join()
+    val result = handler.handleMessage(makeMessage(12uL)).join()
+    assertThat(result).isEqualTo(Libp2pValidationResult.Ignore)
+  }
+
+  @Test
+  fun `returns Ignore when deserializer throws exception`() {
+    val subscriptionManager = SubscriptionManager<ULong>()
+    subscriptionManager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
+    val deserializer =
+      object : Deserializer<ULong> {
+        override fun deserialize(bytes: ByteArray): ULong = throw IllegalArgumentException("bad data")
+      }
+    val extractor = SequenceNumberExtractor<ULong> { it }
+    val handler =
+      SequentialTopicHandler(
+        initialExpectedSequenceNumber = 1uL,
+        subscriptionManager = subscriptionManager,
+        deserializer = deserializer,
+        sequenceNumberExtractor = extractor,
+        topicId = "test-topic",
+      )
+    val msg = makeMessage(1uL)
+    assertThat(handler.handleMessage(msg).join()).isEqualTo(Libp2pValidationResult.Invalid)
+  }
+
+  @Test
+  fun `processed pending messages after the gap was filled`() {
+    val processed = mutableListOf<ULong>()
+    val handler =
+      makeHandler(initialSeq = 1uL) {
+        processed.add(it)
+        ValidationResult.Companion.Valid
+      }
+    // Fill the queue
+    for (i in 2uL..5uL) {
+      handler.handleMessage(makeMessage(i))
+    }
+    // Now process the first message to drain the queue
+    handler.handleMessage(makeMessage(1uL)).join()
+    // Try to add another out-of-order message after draining
+    val result2 = handler.handleMessage(makeMessage(6uL)).join()
+    assertThat(result2).isEqualTo(Libp2pValidationResult.Valid)
+  }
+
+  @Test
+  fun `ignores message with negative sequence number`() {
+    val handler = makeHandler(initialSeq = 1uL)
+    val msg = makeMessage(ULong.MIN_VALUE) // 0uL, which is less than initial expected 1uL
+    val result = handler.handleMessage(msg).join()
     assertThat(result).isEqualTo(Libp2pValidationResult.Ignore)
   }
 }

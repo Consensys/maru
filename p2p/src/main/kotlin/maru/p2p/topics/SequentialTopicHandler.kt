@@ -16,6 +16,8 @@ import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
 import maru.p2p.ValidationResultCode
 import maru.serialization.Deserializer
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
@@ -30,7 +32,8 @@ fun interface SequenceNumberExtractor<T> {
 /**
  * Topic handler which triggers event handling only in case there's a "next" event, defined by its sequence number
  *
- * When there's a P2P message that is from the future, it will ba passed to subscriptionManager later
+ * When there's a P2P message that is from the future, it will ba passed to subscriptionManager later, when all the
+ * previous events are handled
  * Messages behind the current expected sequence number are not validated and ignored.
  *
  * Note that messages ahead of the current expected sequence number won't be propagated over the network until they're
@@ -43,7 +46,10 @@ class SequentialTopicHandler<T>(
   private val deserializer: Deserializer<T>,
   private val sequenceNumberExtractor: SequenceNumberExtractor<T>,
   private val topicId: String,
+  private val maxQueueSize: Int = 1000,
 ) : TopicHandler {
+  private val log: Logger = LogManager.getLogger(this::javaClass)
+
   companion object {
     fun ValidationResultCode.toLibP2P(): Libp2pValidationResult =
       when (this) {
@@ -53,7 +59,6 @@ class SequentialTopicHandler<T>(
       }
   }
 
-  private val maxQueueSize = 1000
   private val nextExpectedSequenceNumber = AtomicLong(initialExpectedSequenceNumber.toLong())
 
   private val comparator: Comparator<Pair<T, SafeFuture<Libp2pValidationResult>>> =
@@ -75,44 +80,53 @@ class SequentialTopicHandler<T>(
     )
 
   @Synchronized
-  override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> {
-    val deserializedMessage = deserializer.deserialize(message.originalMessage.toArray())
-    val sequenceNumber = sequenceNumberExtractor.extractSequenceNumber(deserializedMessage)
-    val nextExpectedSequenceNumber = nextExpectedSequenceNumber.get().toULong()
-    return when {
-      sequenceNumber == nextExpectedSequenceNumber -> {
-        handleEvent(deserializedMessage).also {
-          processPendingEvents()
+  override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> =
+    try {
+      val deserializedMessage = deserializer.deserialize(message.originalMessage.toArray())
+      val sequenceNumber = sequenceNumberExtractor.extractSequenceNumber(deserializedMessage)
+      val nextExpectedSequenceNumber = nextExpectedSequenceNumber.get().toULong()
+      when {
+        sequenceNumber == nextExpectedSequenceNumber -> {
+          val futureToReturn = handleEvent(deserializedMessage)
+          futureToReturn.thenAccept {
+            processNextPendingEvent()
+          }
+          futureToReturn
         }
-      }
 
-      sequenceNumber > nextExpectedSequenceNumber && pendingEvents.size < maxQueueSize -> {
-        val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
-        pendingEvents.add(deserializedMessage to delayedHandlingFuture)
-        // Note that it will be completed only when it's handled
-        delayedHandlingFuture
-      }
+        sequenceNumber > nextExpectedSequenceNumber && pendingEvents.size < maxQueueSize -> {
+          val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
+          pendingEvents.add(deserializedMessage to delayedHandlingFuture)
+          // Note that it will be completed only when it's handled
+          delayedHandlingFuture
+        }
 
-      else -> SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
+        else -> SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
+      }
+    } catch (th: Throwable) {
+      log.error("Unexpected exception while handling message=$message with id=${message.messageId}", th)
+      SafeFuture.completedFuture(Libp2pValidationResult.Invalid)
     }
-  }
 
-  private fun processPendingEvents() {
-    while (pendingEvents.isNotEmpty() &&
+  private fun processNextPendingEvent() {
+    if (pendingEvents.isNotEmpty() &&
       sequenceNumberExtractor.extractSequenceNumber(pendingEvents.peek().first) ==
       nextExpectedSequenceNumber
         .get()
         .toULong()
     ) {
       val (nextEventToHandle, future) = pendingEvents.remove()
-      handleEvent(nextEventToHandle).propagateTo(future)
+      handleEvent(nextEventToHandle)
+        .whenSuccess { processNextPendingEvent() }
+        .propagateTo(future)
     }
   }
 
-  private fun handleEvent(event: T): SafeFuture<Libp2pValidationResult> {
-    nextExpectedSequenceNumber.incrementAndGet()
-    return subscriptionManager.handleEvent(event).thenApply { it.code.toLibP2P() }
-  }
+  private fun handleEvent(event: T): SafeFuture<Libp2pValidationResult> =
+    subscriptionManager.handleEvent(event).thenApply {
+      nextExpectedSequenceNumber.incrementAndGet()
+      it.code.toLibP2P()
+    }
 
   override fun getMaxMessageSize(): Int = 10485760
 }
