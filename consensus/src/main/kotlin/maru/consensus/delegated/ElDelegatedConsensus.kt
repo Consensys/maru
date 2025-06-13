@@ -91,7 +91,6 @@ class ElDelegatedConsensus(
             ).thenApply { }
         }
 
-    // Update the current task reference
     currentTask = future
     return future
   }
