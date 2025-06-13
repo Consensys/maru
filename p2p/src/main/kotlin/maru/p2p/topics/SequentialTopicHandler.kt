@@ -87,6 +87,7 @@ class SequentialTopicHandler<T>(
       val nextExpectedSequenceNumber = nextExpectedSequenceNumber.get().toULong()
       when {
         sequenceNumber == nextExpectedSequenceNumber -> {
+          log.debug("Handling message with sequenceNumber={}", sequenceNumber)
           val futureToReturn = handleEvent(deserializedMessage)
           futureToReturn.thenAccept {
             processNextPendingEvent()
@@ -95,13 +96,25 @@ class SequentialTopicHandler<T>(
         }
 
         sequenceNumber > nextExpectedSequenceNumber && pendingEvents.size < maxQueueSize -> {
+          log.debug(
+            "Adding message with sequenceNumber={} to the queue, expectedSequenceNumber={}",
+            sequenceNumber,
+            nextExpectedSequenceNumber,
+          )
           val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
           pendingEvents.add(deserializedMessage to delayedHandlingFuture)
           // Note that it will be completed only when it's handled
           delayedHandlingFuture
         }
 
-        else -> SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
+        else -> {
+          log.debug(
+            "Ignoring message with sequenceNumber={}, expectedSequenceNumber={}",
+            sequenceNumber,
+            nextExpectedSequenceNumber,
+          )
+          SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
+        }
       }
     } catch (th: Throwable) {
       log.error("Unexpected exception while handling message=$message with id=${message.messageId}", th)
