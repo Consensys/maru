@@ -10,6 +10,7 @@ package maru.p2p.topics
 
 import java.util.Optional
 import java.util.PriorityQueue
+import java.util.concurrent.atomic.AtomicLong
 import maru.p2p.LINEA_DOMAIN
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
@@ -26,8 +27,18 @@ fun interface SequenceNumberExtractor<T> {
   fun extractSequenceNumber(event: T): ULong
 }
 
+/**
+ * Topic handler which triggers event handling only in case there's a "next" event, defined by its sequence number
+ *
+ * When there's a P2P message that is from the future, it will ba passed to subscriptionManager later
+ * Messages behind the current expected sequence number are not validated and ignored.
+ *
+ * Note that messages ahead of the current expected sequence number won't be propagated over the network until they're
+ * handled
+ * @param sequenceNumberExtractor definition of sequentiality for T
+ */
 class SequentialTopicHandler<T>(
-  private var nextExpectedSequenceNumber: ULong,
+  initialExpectedSequenceNumber: ULong,
   private val subscriptionManager: SubscriptionManager<T>,
   private val deserializer: Deserializer<T>,
   private val sequenceNumberExtractor: SequenceNumberExtractor<T>,
@@ -39,10 +50,11 @@ class SequentialTopicHandler<T>(
         ValidationResultCode.ACCEPT -> Libp2pValidationResult.Valid
         ValidationResultCode.REJECT -> Libp2pValidationResult.Invalid
         ValidationResultCode.IGNORE -> Libp2pValidationResult.Ignore
-        // TODO: We don't have a case for this yet, so maybe it isn't right
-        ValidationResultCode.KEEP_FOR_THE_FUTURE -> Libp2pValidationResult.Ignore
       }
   }
+
+  private val maxQueueSize = 1000
+  private val nextExpectedSequenceNumber = AtomicLong(initialExpectedSequenceNumber.toLong())
 
   private val comparator: Comparator<Pair<T, SafeFuture<Libp2pValidationResult>>> =
     Comparator.comparing {
@@ -66,25 +78,40 @@ class SequentialTopicHandler<T>(
   override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> {
     val deserializedMessage = deserializer.deserialize(message.originalMessage.toArray())
     val sequenceNumber = sequenceNumberExtractor.extractSequenceNumber(deserializedMessage)
-    if (sequenceNumber == nextExpectedSequenceNumber) {
-      nextExpectedSequenceNumber++
-      return subscriptionManager.handleEvent(deserializedMessage).thenApply { it.code.toLibP2P() }.also {
-        processPendingBlocks()
+    val nextExpectedSequenceNumber = nextExpectedSequenceNumber.get().toULong()
+    return when {
+      sequenceNumber == nextExpectedSequenceNumber -> {
+        handleEvent(deserializedMessage).also {
+          processPendingEvents()
+        }
       }
-    } else {
-      val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
-      pendingEvents.add(deserializedMessage to delayedHandlingFuture)
-      return delayedHandlingFuture
+
+      sequenceNumber > nextExpectedSequenceNumber && pendingEvents.size < maxQueueSize -> {
+        val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
+        pendingEvents.add(deserializedMessage to delayedHandlingFuture)
+        // Note that it will be completed only when it's handled
+        delayedHandlingFuture
+      }
+
+      else -> SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
     }
   }
 
-  private fun processPendingBlocks() {
+  private fun processPendingEvents() {
     while (pendingEvents.isNotEmpty() &&
-      sequenceNumberExtractor.extractSequenceNumber(pendingEvents.peek().first) == nextExpectedSequenceNumber
+      sequenceNumberExtractor.extractSequenceNumber(pendingEvents.peek().first) ==
+      nextExpectedSequenceNumber
+        .get()
+        .toULong()
     ) {
       val (nextEventToHandle, future) = pendingEvents.remove()
-      subscriptionManager.handleEvent(nextEventToHandle).thenApply { it.code.toLibP2P() }.propagateTo(future)
+      handleEvent(nextEventToHandle).propagateTo(future)
     }
+  }
+
+  private fun handleEvent(event: T): SafeFuture<Libp2pValidationResult> {
+    nextExpectedSequenceNumber.incrementAndGet()
+    return subscriptionManager.handleEvent(event).thenApply { it.code.toLibP2P() }
   }
 
   override fun getMaxMessageSize(): Int = 10485760

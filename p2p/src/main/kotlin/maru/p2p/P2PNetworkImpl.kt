@@ -42,7 +42,7 @@ class P2PNetworkImpl(
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     SequentialTopicHandler(
-      nextExpectedSequenceNumber = nextExpectedBlockNumber,
+      initialExpectedSequenceNumber = nextExpectedBlockNumber,
       subscriptionManager = sealedBlocksSubscriptionManager,
       sequenceNumberExtractor = { it.beaconBlock.beaconBlockHeader.number },
       deserializer = serDe,
