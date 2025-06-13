@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
-import maru.p2p.topics.SealedBlocksTopicHandler
+import maru.p2p.topics.SequentialTopicHandler
 import maru.serialization.SerDe
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -35,12 +35,19 @@ class P2PNetworkImpl(
   private val p2pConfig: P2P,
   chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
+  nextExpectedBlockNumber: ULong,
 ) : P2PNetwork {
   private val topicIdGenerator = LineaTopicIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
-    SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
+    SequentialTopicHandler(
+      initialExpectedSequenceNumber = nextExpectedBlockNumber,
+      subscriptionManager = sealedBlocksSubscriptionManager,
+      sequenceNumberExtractor = { it.beaconBlock.beaconBlockHeader.number },
+      deserializer = serDe,
+      topicId = sealedBlocksTopicId,
+    )
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
@@ -60,7 +67,7 @@ class P2PNetworkImpl(
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
   private val p2pNetwork = builtNetwork.p2PNetwork
 
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this::javaClass)
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
   private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()

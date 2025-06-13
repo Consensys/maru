@@ -27,7 +27,6 @@ import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.ProtocolStarterBlockHandler
 import maru.consensus.SealedBeaconBlockHandlerAdapter
-import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.delegated.ElDelegatedConsensusFactory
@@ -48,6 +47,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
@@ -58,6 +58,8 @@ class MaruApp(
   private var p2pNetwork: P2PNetwork,
   private val privateKeyProvider: () -> ByteArray,
   private val finalizationProvider: FinalizationProvider = InstantFinalizationProvider,
+  private val lastBlockMetadataCache: LatestBlockMetadataCache,
+  private val ethereumJsonRpcClient: Web3JClient,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -90,14 +92,6 @@ class MaruApp(
 
   fun p2pPort(): UInt = p2pNetwork.port
 
-  private val ethereumJsonRpcClient =
-    Helpers.createWeb3jClient(
-      config.validatorElNode.ethApiEndpoint,
-    )
-
-  private val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
-  private val lastBlockMetadataCache: LatestBlockMetadataCache =
-    LatestBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
   private val metadataProviderCacheUpdater =
     NewBlockHandler<Unit> { beaconBlock ->
       val blockMetadata = BlockMetadata.fromBeaconBlock(beaconBlock)
