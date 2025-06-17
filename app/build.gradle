@@ -11,7 +11,7 @@ dependencies {
   implementation(project(":storage"))
   implementation(project(":crypto"))
   implementation(project(":serialization"))
-  implementation(project(":linea-finalization-provider")) {
+  api(project(":linea-finalization-provider")) {
     exclude group: "build.linea", module: "besu-libs"
   }
   implementation("build.linea.internal:web3j-extensions") {
