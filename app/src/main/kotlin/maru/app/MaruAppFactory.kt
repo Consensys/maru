@@ -10,6 +10,7 @@ package maru.app
 
 import java.nio.file.Path
 import java.time.Clock
+import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
@@ -34,6 +35,8 @@ class MaruAppFactory {
     beaconGenesisConfig: ForksSchedule,
     clock: Clock = Clock.systemUTC(),
     overridingP2PNetwork: P2PNetwork? = null,
+    overridingFinalizationProvider: FinalizationProvider? = null,
+    overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
   ): MaruApp {
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val p2pNetwork =
@@ -42,6 +45,9 @@ class MaruAppFactory {
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
       )
+    val finalizationProvider =
+      overridingFinalizationProvider
+        ?: setupFinalizationProvider(config, overridingLineaContractClient)
 
     val maru =
       MaruApp(
@@ -50,7 +56,7 @@ class MaruAppFactory {
         clock = clock,
         p2pNetwork = p2pNetwork,
         privateKeyProvider = { privateKey },
-        finalizationProvider = setupFinalizationProvider(config),
+        finalizationProvider = finalizationProvider,
       )
 
     return maru
@@ -59,24 +65,33 @@ class MaruAppFactory {
   companion object {
     private val log = LogManager.getLogger(MaruApp::class.java)
 
-    fun setupFinalizationProvider(config: MaruConfig): FinalizationProvider =
-      config.linea
+    fun setupFinalizationProvider(
+      config: MaruConfig,
+      overridingLineaContractClient: LineaRollupSmartContractClientReadOnly?,
+    ): FinalizationProvider {
+      require(config.linea != null) {
+        "Either Linea configuration or Validator EL Node configuration must be provided to set up finalization provider."
+      }
+      return config.linea
         ?.let { lineaConfig ->
           val contractClient =
-            Web3JLineaRollupSmartContractClientReadOnly(
-              web3j =
-                createWeb3jHttpClient(
-                  rpcUrl = lineaConfig.l1EthApi.endpoint.toString(),
-                  log = LogManager.getLogger("clients.l1.linea"),
-                ),
-              contractAddress = lineaConfig.contractAddress,
-              log = LogManager.getLogger("clients.l1.linea"),
-            )
+            overridingLineaContractClient
+              ?: Web3JLineaRollupSmartContractClientReadOnly(
+                web3j =
+                  createWeb3jHttpClient(
+                    rpcUrl = lineaConfig.l1EthApi.endpoint.toString(),
+                    log = LogManager.getLogger("clients.l1.linea"),
+                  ),
+                contractAddress = lineaConfig.contractAddress,
+                log = LogManager.getLogger("clients.l1.linea"),
+              )
           LineaFinalizationProvider(
             lineaContract = contractClient,
             l2EthApi =
               createEthApiClient(
-                rpcUrl = config.validatorElNode.ethApiEndpoint.toString(),
+                rpcUrl =
+                  config.validatorElNode.ethApiEndpoint.endpoint
+                    .toString(),
                 log = LogManager.getLogger("clients.l2.eth.el"),
                 // FIXME: add support for request retries when we have Vert.x in the app
                 requestRetryConfig = null,
@@ -86,6 +101,7 @@ class MaruAppFactory {
             l1HighestBlock = lineaConfig.l1HighestBlockTag,
           )
         } ?: InstantFinalizationProvider
+    }
 
     fun setupP2PNetwork(
       p2pConfig: P2P?,
