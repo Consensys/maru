@@ -68,11 +68,8 @@ class MaruAppFactory {
     fun setupFinalizationProvider(
       config: MaruConfig,
       overridingLineaContractClient: LineaRollupSmartContractClientReadOnly?,
-    ): FinalizationProvider {
-      require(config.linea != null) {
-        "Either Linea configuration or Validator EL Node configuration must be provided to set up finalization provider."
-      }
-      return config.linea
+    ): FinalizationProvider =
+      config.linea
         ?.let { lineaConfig ->
           val contractClient =
             overridingLineaContractClient
@@ -101,7 +98,6 @@ class MaruAppFactory {
             l1HighestBlock = lineaConfig.l1HighestBlockTag,
           )
         } ?: InstantFinalizationProvider
-    }
 
     fun setupP2PNetwork(
       p2pConfig: P2P?,
