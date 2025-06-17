@@ -47,12 +47,12 @@ allprojects {
       licenseHeaderFile("${rootDir}/gradle/spotless/java-kotlin.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*." +
         "*ConsenSys AG\\.)")
     }
-//    // spotless check applied to build.gradle (groovy) files
-//    groovyGradle {
-//      target '*.gradle'
-//      greclipse('4.31').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
-//      endWithNewline()
-//    }
+    // spotless check applied to build.gradle (groovy) files
+    groovyGradle {
+      target '*.gradle'
+      greclipse('4.31').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
+      endWithNewline()
+    }
   }
 
   tasks.withType(JavaCompile).configureEach {
@@ -157,18 +157,12 @@ allprojects {
     systemProperties["junit.jupiter.execution.parallel.enabled"] = true
     systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
     systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
-    // To make room for Besu threads
-    systemProperties["junit.jupiter.execution.parallel.config.dynamic.factor"] = 0.8
+    maxParallelForks = 1
   }
 }
 
 subprojects {
   apply plugin: "jacoco"
-
-  tasks.withType(Test) {
-    // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
-    maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?: (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
-  }
 
   tasks.withType(JavaCompile) {
     options.fork = true

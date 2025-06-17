@@ -15,6 +15,14 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
+  id 'java-test-fixtures'
+}
+
+sourceSets {
+  testFixtures {
+    compileClasspath += sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.runtimeClasspath
+  }
 }
 
 dependencies {
@@ -26,9 +34,6 @@ dependencies {
   implementation(project(":executionlayer")) {
     because "because of protocol builders"
   }
-
-  implementation "com.sksamuel.hoplite:hoplite-json"
-  implementation "com.sksamuel.hoplite:hoplite-core"
 
   api("org.hyperledger.besu.internal:common") {
     because("API of the BftEventHandler interface")

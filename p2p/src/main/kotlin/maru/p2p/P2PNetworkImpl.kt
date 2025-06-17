@@ -1,17 +1,10 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.p2p
 
@@ -27,7 +20,7 @@ import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusMessageSerializer
 import maru.p2p.messages.StatusSerializer
 import maru.p2p.topics.SealedBlocksTopicHandler
-import maru.serialization.Serializer
+import maru.serialization.SerDe
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -40,19 +33,18 @@ import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
-import tech.pegasys.teku.networking.p2p.network.P2PNetwork as TekuP2PNetwork
 
 class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
-  private val chainId: UInt,
-  private val serializer: Serializer<SealedBeaconBlock>,
-) : P2PNetwork,
-  PeerLookup {
+  chainId: UInt,
+  private val serDe: SerDe<SealedBeaconBlock>,
+) : P2PNetwork {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
-  private val sealedBlocksTopicHandler = SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer)
+  private val sealedBlocksTopicHandler =
+    SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
   private val protocolIdGenerator = LineaRpcProtocolIdGenerator(chainId = chainId)
   private val statusMessageSerializer = StatusMessageSerializer(StatusSerializer())
   private val statusRpcMethod =
@@ -68,10 +60,10 @@ class P2PNetworkImpl(
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
     p2pConfig: P2P,
-  ): TekuP2PNetwork<Peer> {
+  ): TekuLibP2PNetwork {
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
 
-    return Libp2pNetworkFactory.build(
+    return Libp2pNetworkFactory(LINEA_DOMAIN).build(
       privateKey = privateKey,
       ipAddress = p2pConfig.ipAddress,
       port = p2pConfig.port,
@@ -81,7 +73,8 @@ class P2PNetworkImpl(
     )
   }
 
-  private val p2pNetwork: TekuP2PNetwork<Peer> = buildP2PNetwork(privateKeyBytes, p2pConfig)
+  private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
+  private val p2pNetwork = builtNetwork.p2PNetwork
 
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val delayedExecutor =
@@ -92,6 +85,11 @@ class P2PNetworkImpl(
     p2pNetwork
       .start()
       .thenApply {
+        log.info(
+          "Starting P2P network. port=$port, nodeId=${
+            p2pNetwork.nodeId
+          }",
+        )
         p2pConfig.staticPeers.forEach { peer ->
           p2pNetwork
             .createPeerAddress(peer)
@@ -106,7 +104,7 @@ class P2PNetworkImpl(
       GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
-        val serializedSealedBeaconBlock = Bytes.wrap(serializer.serialize(message.payload as SealedBeaconBlock))
+        val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload as SealedBeaconBlock))
         p2pNetwork.gossip(topicIdGenerator.id(message.type, message.version), serializedSealedBeaconBlock)
       }
     }
@@ -207,6 +205,17 @@ class P2PNetworkImpl(
       }
     }
   }
+
+  override val port
+    get(): UInt =
+      builtNetwork.host.network.transports
+        .first()
+        .listenAddresses()
+        .first()
+        .components
+        .last()
+        .stringValue!!
+        .toUInt()
 
   internal val peerCount: Int
     get() = p2pNetwork.peerCount

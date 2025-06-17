@@ -1,17 +1,10 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.app
 
@@ -22,8 +15,9 @@ import com.sksamuel.hoplite.addFileSource
 import java.io.File
 import java.util.concurrent.Callable
 import maru.config.MaruConfigDtoToml
-import maru.consensus.config.ForkConfigDecoder
-import maru.consensus.config.JsonFriendlyForksSchedule
+import maru.config.QbftOptionsDecoder
+import maru.config.consensus.ForkConfigDecoder
+import maru.config.consensus.JsonFriendlyForksSchedule
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.Configurator
@@ -47,9 +41,9 @@ class MaruAppCli : Callable<Int> {
     inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
       val confBuilder: ConfigLoaderBuilder =
         ConfigLoaderBuilder.Companion
-          .empty()
-          .addDecoder(ForkConfigDecoder())
-          .addDefaults()
+          .default()
+          .addDecoder(QbftOptionsDecoder)
+          .addDecoder(ForkConfigDecoder)
           .withExplicitSealedTypes()
       for (configFile in configFiles.reversed()) {
         // files must be added in reverse order for overriding
@@ -102,7 +96,12 @@ class MaruAppCli : Callable<Int> {
     val parsedAppConfig = appConfig.getUnsafe()
     val parsedBeaconGenesisConfig = beaconGenesisConfig.getUnsafe()
 
-    val app = MaruApp(parsedAppConfig.domainFriendly(), parsedBeaconGenesisConfig.domainFriendly())
+    val app =
+      MaruAppFactory()
+        .create(
+          config = parsedAppConfig.domainFriendly(),
+          beaconGenesisConfig = parsedBeaconGenesisConfig.domainFriendly(),
+        )
     app.start()
 
     Runtime

@@ -1,20 +1,14 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.e2e
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.net.URI
 import java.util.Optional
 import java.util.UUID
@@ -22,6 +16,7 @@ import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import org.web3j.protocol.Web3j
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -29,6 +24,11 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object TestEnvironment {
+  val testMetricsFacade =
+    MicrometerMetricsFacade(
+      registry = SimpleMeterRegistry(),
+      metricsPrefix = "maru.e2e",
+    )
   private val jwtConfigPath = "../docker/jwt"
   private val jwtConfig: Optional<JwtConfig> =
     JwtConfig.createIfNeeded(

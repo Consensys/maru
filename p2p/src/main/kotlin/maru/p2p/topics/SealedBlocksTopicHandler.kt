@@ -1,26 +1,20 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.p2p.topics
 
 import java.util.Optional
 import maru.core.SealedBeaconBlock
+import maru.p2p.LINEA_DOMAIN
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
 import maru.p2p.ValidationResultCode
-import maru.serialization.Serializer
+import maru.serialization.SerDe
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
@@ -30,7 +24,8 @@ import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 
 class SealedBlocksTopicHandler(
   val subscriptionManager: SubscriptionManager<SealedBeaconBlock>,
-  val sealedBeaconBlockSerializer: Serializer<SealedBeaconBlock>,
+  val sealedBeaconBlockSerDe: SerDe<SealedBeaconBlock>,
+  val topicId: String,
 ) : TopicHandler {
   companion object {
     fun ValidationResultCode.toLibP2P(): Libp2pValidationResult =
@@ -46,10 +41,16 @@ class SealedBlocksTopicHandler(
   override fun prepareMessage(
     payload: Bytes,
     arrivalTimestamp: Optional<UInt64>,
-  ): PreparedGossipMessage = MaruPreparedGossipMessage(payload, arrivalTimestamp)
+  ): PreparedGossipMessage =
+    MaruPreparedGossipMessage(
+      origMessage = payload,
+      arrTimestamp = arrivalTimestamp,
+      domain = LINEA_DOMAIN,
+      topicId = topicId,
+    )
 
   override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> {
-    val deserializaedMessage = sealedBeaconBlockSerializer.deserialize(message.originalMessage.toArray())
+    val deserializaedMessage = sealedBeaconBlockSerDe.deserialize(message.originalMessage.toArray())
     return subscriptionManager.handleEvent(deserializaedMessage).thenApply { it.code.toLibP2P() }
   }
 

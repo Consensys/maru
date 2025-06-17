@@ -1,25 +1,23 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.app
 
+import io.libp2p.core.PeerId
+import io.libp2p.core.crypto.unmarshalPrivateKey
+import io.micrometer.core.instrument.MeterRegistry
+import io.vertx.micrometer.backends.BackendRegistries
 import java.time.Clock
+import java.util.Optional
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
+import maru.config.consensus.ElFork
 import maru.consensus.BlockMetadata
-import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestBlockMetadataCache
 import maru.consensus.NewBlockHandler
@@ -33,49 +31,54 @@ import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.delegated.ElDelegatedConsensusFactory
-import maru.consensus.state.FinalizationState
-import maru.core.BeaconBlockBody
+import maru.consensus.state.FinalizationProvider
+import maru.consensus.state.InstantFinalizationProvider
 import maru.core.Protocol
+import maru.crypto.Crypto
 import maru.database.kv.KvDatabaseFactory
-import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
-import maru.p2p.P2PNetworkImpl
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
-import maru.serialization.rlp.RLPSerializers
+import net.consensys.linea.async.get
+import net.consensys.linea.metrics.Tag
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
+import net.consensys.linea.vertx.ObservabilityServer
+import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruApp(
-  config: MaruConfig,
+  val config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
-  private var p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+  private var p2pNetwork: P2PNetwork,
+  private val privateKeyProvider: () -> ByteArray,
+  private val finalizationProvider: FinalizationProvider = InstantFinalizationProvider,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
-  private var privateKeyBytes: ByteArray =
-    GeneratingFilePrivateKeySource(
-      config.persistence.privateKeyPath.toString(),
-    ).privateKeyBytes.toArray()
+  private val vertx =
+    VertxFactory.createVertx(
+      jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
+      prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+    )
+
+  private var privateKeyBytes: ByteArray = privateKeyProvider.invoke()
+
+  private val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKeyBytes).publicKey())
+  private val meterRegistry: MeterRegistry = BackendRegistries.getDefaultNow()
+  private val metricsFacade =
+    MicrometerMetricsFacade(
+      meterRegistry,
+      "maru",
+      allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
+    )
 
   init {
-    if (!config.persistence.privateKeyPath
-        .toFile()
-        .exists()
-    ) {
-      log.info(
-        "Private key file ${config.persistence.privateKeyPath} does not exist. A new private key will be generated and stored in that location.",
-      )
-    } else {
-      log.info(
-        "Private key file ${config.persistence.privateKeyPath} already exists. Maru will use the existing private key.",
-      )
-    }
     if (config.qbftOptions == null) {
       log.info("Qbft options are not defined. Maru is running in follower-only node")
     }
@@ -83,17 +86,9 @@ class MaruApp(
       log.info("P2PManager is not defined.")
     }
     log.info(config.toString())
-
-    config.p2pConfig?.let {
-      p2pNetwork =
-        P2PNetworkImpl(
-          privateKeyBytes = privateKeyBytes,
-          p2pConfig = config.p2pConfig!!,
-          chainId = beaconGenesisConfig.chainId,
-          serializer = RLPSerializers.SealedBeaconBlockSerializer,
-        )
-    }
   }
+
+  fun p2pPort(): UInt = p2pNetwork.port
 
   private val ethereumJsonRpcClient =
     Helpers.createWeb3jClient(
@@ -109,43 +104,69 @@ class MaruApp(
       lastBlockMetadataCache.updateLatestBlockMetadata(blockMetadata)
       SafeFuture.completedFuture(Unit)
     }
-
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-
   private val metricsSystem = NoOpMetricsSystem()
-  private val finalizationStateProviderStub = { it: BeaconBlockBody ->
-    LogManager.getLogger("FinalizationStateProvider").debug("fetching the latest finalized state")
-    FinalizationState(it.executionPayload.blockHash, it.executionPayload.blockHash)
-  }
-
   private val beaconChain =
     KvDatabaseFactory
       .createRocksDbDatabase(
         databasePath = config.persistence.dataPath,
         metricsSystem = metricsSystem,
-        metricCategory = MaruMetricsCategory.STORAGE,
+        metricCategory =
+          object : MetricCategory {
+            override fun getName(): String = "STORAGE"
+
+            override fun getApplicationPrefix(): Optional<String> = Optional.empty()
+          },
       )
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
+  @Suppress("UNCHECKED_CAST")
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
     followers.followers
       .mapValues {
-        val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
-        FollowerBeaconBlockImporter.create(engineApiClient) as NewBlockHandler<Unit>
+        val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague, metricsFacade)
+        FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider) as NewBlockHandler<Unit>
       }
 
   fun start() {
-    p2pNetwork.start()
+    try {
+      vertx
+        .deployVerticle(
+          ObservabilityServer(
+            ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
+          ),
+        ).get()
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the observability server", th)
+      throw th
+    }
+    try {
+      p2pNetwork.start().get()
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the P2P network", th)
+      throw th
+    }
     protocolStarter.start()
     log.info("Maru is up")
   }
 
   fun stop() {
-    p2pNetwork.stop()
+    try {
+      vertx.deploymentIDs().forEach {
+        vertx.undeploy(it).get()
+      }
+    } catch (th: Throwable) {
+      log.warn("Error while trying to stop the vertx verticles", th)
+    }
+    try {
+      p2pNetwork.stop().get()
+    } catch (th: Throwable) {
+      log.warn("Error while trying to stop the P2P network", th)
+    }
     protocolStarter.stop()
     log.info("Maru is down")
   }
@@ -153,12 +174,6 @@ class MaruApp(
   override fun close() {
     beaconChain.close()
   }
-
-  private fun privateKeyBytesWithoutPrefix() =
-    privateKeyBytes
-      .slice(
-        privateKeyBytes.size - 32..privateKeyBytes.size - 1,
-      ).toByteArray()
 
   private fun createProtocolStarter(
     config: MaruConfig,
@@ -194,16 +209,17 @@ class MaruApp(
           )
         QbftProtocolFactoryWithBeaconChainInitialization(
           qbftOptions = config.qbftOptions!!,
-          privateKeyBytes = privateKeyBytesWithoutPrefix(),
+          privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider()),
           validatorElNodeConfig = config.validatorElNode,
           metricsSystem = metricsSystem,
-          finalizationStateProvider = finalizationStateProviderStub,
+          finalizationStateProvider = finalizationProvider,
           nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
           newBlockHandler = sealedBlockHandlerMultiplexer,
           beaconChain = beaconChain,
           clock = clock,
           p2pNetwork = p2pNetwork,
           beaconChainInitialization = beaconChainInitialization,
+          metricsFacade = metricsFacade,
         )
       } else {
         QbftFollowerFactory(
@@ -212,6 +228,7 @@ class MaruApp(
           newBlockHandler = blockImportHandlers,
           validatorElNodeConfig = config.validatorElNode,
           beaconChainInitialization = beaconChainInitialization,
+          metricsFacade = metricsFacade,
         )
       }
     val delegatedConsensusNewBlockHandler =

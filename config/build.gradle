@@ -30,5 +30,6 @@ dependencies {
   implementation(project(":core"))
 
   implementation "com.sksamuel.hoplite:hoplite-toml"
+  implementation "com.sksamuel.hoplite:hoplite-json"
   implementation "com.sksamuel.hoplite:hoplite-core"
 }

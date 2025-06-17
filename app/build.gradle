@@ -14,12 +14,16 @@ dependencies {
   implementation(project(":jvm-libs:extensions"))
   implementation(project(":jvm-libs:mappers"))
 
+  implementation "build.linea.internal:futures"
+
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
+  implementation "io.vertx:vertx-micrometer-metrics"
 
   implementation("org.hyperledger.besu.internal:metrics-core")
   implementation("org.hyperledger.besu.internal:algorithms")
   implementation("tech.pegasys.teku.internal:p2p")
+  implementation("io.libp2p:jvm-libp2p")
 
   testImplementation(project(":jvm-libs:test-utils"))
   testImplementation(testFixtures(project(":core")))
@@ -59,4 +63,9 @@ jar {
       'Multi-Release': 'true'
       )
   }
+}
+
+test {
+  // To make room for Besu threads
+  systemProperties["junit.jupiter.execution.parallel.config.dynamic.factor"] = 0.7
 }

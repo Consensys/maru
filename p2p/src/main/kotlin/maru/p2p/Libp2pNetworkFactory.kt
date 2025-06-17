@@ -1,17 +1,10 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.p2p
 
@@ -54,15 +47,22 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 
-object Libp2pNetworkFactory {
+data class TekuLibP2PNetwork(
+  val p2PNetwork: P2PNetwork<Peer>,
+  val host: Host,
+)
+
+class Libp2pNetworkFactory(
+  private val domain: String,
+) {
   fun build(
     privateKey: PrivKey,
-    port: String,
+    port: UInt,
     ipAddress: String,
     sealedBlocksTopicHandler: SealedBlocksTopicHandler,
     sealedBlocksTopicId: String,
-    rpcMethods: List<RpcMethod<*, *, *>>,
-  ): P2PNetwork<Peer> {
+    rpcMethods: List<RpcMethod<*, *, *>>
+  ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val gossipTopicHandlers = GossipTopicHandlers()
 
@@ -124,9 +124,9 @@ object Libp2pNetworkFactory {
         /* peerManager = */ peerManager,
         /* advertisedAddresses = */ advertisedAddresses,
         /* gossipNetwork = */ gossipNetwork,
-        /* listenPorts = */ listOf(1),
+        /* listenPorts = */ listOf(port.toInt()),
       )
-    return p2pNetwork
+    return TekuLibP2PNetwork(p2pNetwork, host)
   }
 
   private fun getMessageFactory(
@@ -141,7 +141,14 @@ object Libp2pNetworkFactory {
       gossipTopicHandlers
         .getHandlerForTopic(topic)
         .map { handler -> handler.prepareMessage(payload, arrivalTimestamp) }
-        .orElse(MaruPreparedGossipMessage(payload, arrivalTimestamp))
+        .orElse(
+          MaruPreparedGossipMessage(
+            origMessage = payload,
+            arrTimestamp = arrivalTimestamp,
+            domain = domain,
+            topicId = topic,
+          ),
+        )
 
     return PreparedPubsubMessage(msg, preparedMessage)
   }
