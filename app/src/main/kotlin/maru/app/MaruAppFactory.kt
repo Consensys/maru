@@ -8,6 +8,9 @@
  */
 package maru.app
 
+import io.libp2p.core.PeerId
+import io.libp2p.core.crypto.unmarshalPrivateKey
+import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Path
 import java.time.Clock
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
@@ -24,6 +27,10 @@ import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
 import maru.serialization.rlp.RLPSerializers
+import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.metrics.Tag
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
+import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
@@ -39,11 +46,26 @@ class MaruAppFactory {
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
   ): MaruApp {
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
+    val vertx =
+      VertxFactory.createVertx(
+        jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
+        prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+      )
+
+    val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
+    val metricsFacade =
+      MicrometerMetricsFacade(
+        BackendRegistries.getDefaultNow(),
+        "maru",
+        allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
+      )
+
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
         p2pConfig = config.p2pConfig,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
+        metricsFacade = metricsFacade,
       )
     val finalizationProvider =
       overridingFinalizationProvider
@@ -57,6 +79,8 @@ class MaruAppFactory {
         p2pNetwork = p2pNetwork,
         privateKeyProvider = { privateKey },
         finalizationProvider = finalizationProvider,
+        metricsFacade = metricsFacade,
+        vertx = vertx,
       )
 
     return maru
@@ -103,6 +127,7 @@ class MaruAppFactory {
       p2pConfig: P2P?,
       privateKey: ByteArray,
       chainId: UInt,
+      metricsFacade: MetricsFacade,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -110,6 +135,7 @@ class MaruAppFactory {
           p2pConfig = p2pConfig,
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
+          metricsFacade = metricsFacade,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
