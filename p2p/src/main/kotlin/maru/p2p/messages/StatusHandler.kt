@@ -20,10 +20,6 @@ class StatusHandler : RpcMessageHandler<Message<Status, RpcMessageType>, Message
     message: Message<Status, RpcMessageType>,
     callback: ResponseCallback<Message<Status, RpcMessageType>>,
   ) {
-    println("Received status message from peer: ${peer.id} with payload: ${message.payload}")
     callback.respondAndCompleteSuccessfully(message) // TODO respond with real status message
-    // update peer status
-    // get our local status
-    // respond with our local status
   }
 }
