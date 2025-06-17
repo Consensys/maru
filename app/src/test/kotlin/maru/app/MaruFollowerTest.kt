@@ -13,14 +13,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.testutils.Checks.getMinedBlocks
-import maru.app.Checks.getMinedBlocks
-import maru.consensus.ElFork
-import maru.core.SealedBeaconBlock
-import maru.p2p.GossipMessageType
-import maru.p2p.Message
-import maru.p2p.NoOpP2PNetwork
-import maru.p2p.P2PNetwork
-import maru.testutils.InjectableSealedBlocksFakeNetwork
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper

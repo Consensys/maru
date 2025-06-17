@@ -10,15 +10,15 @@ package maru.p2p
 
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
-import maru.serialization.Serializer
+import maru.serialization.SerDe
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
 class MaruIncomingRpcRequestHandler<TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>>(
   private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
-  private val requestMessageSerializer: Serializer<TRequest>,
-  private val responseMessageSerializer: Serializer<TResponse>,
+  private val requestMessageSerDe: SerDe<TRequest>,
+  private val responseMessageSerDe: SerDe<TResponse>,
   private val peerLookup: PeerLookup,
 ) : RpcRequestHandler {
   override fun active(
@@ -35,8 +35,7 @@ class MaruIncomingRpcRequestHandler<TRequest : Message<*, RpcMessageType>, TResp
     val bytes = ByteBufUtil.getBytes(byteBuffer)
     val peer = peerLookup.getPeer(nodeId)
 
-    // TODO handle unchecked cast
-    val message = requestMessageSerializer.deserialize(bytes) as TRequest
+    val message = requestMessageSerDe.deserialize(bytes)
 
     rpcMessageHandler.handleIncomingMessage(
       peer = peer,
@@ -44,7 +43,7 @@ class MaruIncomingRpcRequestHandler<TRequest : Message<*, RpcMessageType>, TResp
       callback =
         MaruRpcResponseCallback(
           rpcStream = rpcStream,
-          messageSerializer = responseMessageSerializer,
+          messageSerializer = responseMessageSerDe,
         ),
     )
   }

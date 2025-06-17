@@ -17,7 +17,7 @@ import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusHandler
-import maru.p2p.messages.StatusMessageSerializer
+import maru.p2p.messages.StatusMessageSerDe
 import maru.p2p.messages.StatusSerializer
 import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.SerDe
@@ -39,20 +39,21 @@ class P2PNetworkImpl(
   private val p2pConfig: P2P,
   chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
-) : P2PNetwork {
+) : P2PNetwork,
+  PeerLookup {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
   private val protocolIdGenerator = LineaRpcProtocolIdGenerator(chainId = chainId)
-  private val statusMessageSerializer = StatusMessageSerializer(StatusSerializer())
+  private val statusMessageSerDe = StatusMessageSerDe(StatusSerializer())
   private val statusRpcMethod =
     MaruRpcMethod<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>>(
       messageType = RpcMessageType.STATUS,
       rpcMessageHandler = StatusHandler(),
-      requestMessageSerializer = statusMessageSerializer,
-      responseMessageSerializer = statusMessageSerializer,
+      requestMessageSerDe = statusMessageSerDe,
+      responseMessageSerDe = statusMessageSerDe,
       peerLookup = this,
       protocolIdGenerator = protocolIdGenerator,
     )
@@ -118,18 +119,18 @@ class P2PNetworkImpl(
         RpcMessageType.STATUS -> statusRpcMethod
       }
 
-    val messageSerializer: Serializer<Message<*, RpcMessageType>> =
+    val messageSerDe: SerDe<Message<*, RpcMessageType>> =
       when (message.type.toEnum()) {
-        RpcMessageType.STATUS -> statusMessageSerializer
-      } as Serializer<Message<*, RpcMessageType>>
+        RpcMessageType.STATUS -> statusMessageSerDe
+      } as SerDe<Message<*, RpcMessageType>>
 
     val peerId = peer.id.toString()
-    val request: Bytes = Bytes.wrap(messageSerializer.serialize(message))
+    val request: Bytes = Bytes.wrap(messageSerDe.serialize(message))
     val responseHandler = MaruRpcResponseHandler()
     return sendRequest(peerId, rpcMethod, request, responseHandler)
       .thenCompose {
         responseHandler.response()
-      }.thenApply { bytes -> messageSerializer.deserialize(bytes.toArrayUnsafe()) }
+      }.thenApply { bytes -> messageSerDe.deserialize(bytes.toArrayUnsafe()) }
   }
 
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {

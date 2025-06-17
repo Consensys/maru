@@ -61,7 +61,7 @@ class Libp2pNetworkFactory(
     ipAddress: String,
     sealedBlocksTopicHandler: SealedBlocksTopicHandler,
     sealedBlocksTopicId: String,
-    rpcMethods: List<RpcMethod<*, *, *>>
+    rpcMethods: List<RpcMethod<*, *, *>>,
   ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val gossipTopicHandlers = GossipTopicHandlers()

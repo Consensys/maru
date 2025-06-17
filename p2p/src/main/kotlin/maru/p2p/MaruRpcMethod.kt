@@ -8,7 +8,7 @@
  */
 package maru.p2p
 
-import maru.serialization.Serializer
+import maru.serialization.SerDe
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
@@ -16,8 +16,8 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>>(
   private val messageType: RpcMessageType,
   private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
-  private val requestMessageSerializer: Serializer<TRequest>,
-  private val responseMessageSerializer: Serializer<TResponse>,
+  private val requestMessageSerDe: SerDe<TRequest>,
+  private val responseMessageSerDe: SerDe<TResponse>,
   private val peerLookup: PeerLookup,
   protocolIdGenerator: MessageIdGenerator,
 ) : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
@@ -28,8 +28,8 @@ class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*
   override fun createIncomingRequestHandler(protocolId: String): RpcRequestHandler =
     MaruIncomingRpcRequestHandler<TRequest, TResponse>(
       rpcMessageHandler = rpcMessageHandler,
-      requestMessageSerializer = requestMessageSerializer,
-      responseMessageSerializer = responseMessageSerializer,
+      requestMessageSerDe = requestMessageSerDe,
+      responseMessageSerDe = responseMessageSerDe,
       peerLookup = peerLookup,
     )
 
