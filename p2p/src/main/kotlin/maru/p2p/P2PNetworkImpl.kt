@@ -18,7 +18,7 @@ import maru.core.SealedBeaconBlock
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusMessageSerDe
-import maru.p2p.messages.StatusSerializer
+import maru.p2p.messages.StatusSerDe
 import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.SerDe
 import org.apache.logging.log4j.LogManager
@@ -47,7 +47,7 @@ class P2PNetworkImpl(
   private val sealedBlocksTopicHandler =
     SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
   private val protocolIdGenerator = LineaRpcProtocolIdGenerator(chainId = chainId)
-  private val statusMessageSerDe = StatusMessageSerDe(StatusSerializer())
+  private val statusMessageSerDe = StatusMessageSerDe(StatusSerDe())
   private val statusRpcMethod =
     MaruRpcMethod<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>>(
       messageType = RpcMessageType.STATUS,

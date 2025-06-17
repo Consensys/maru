@@ -13,7 +13,7 @@ import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class StatusSerializer : RLPSerDe<Status> {
+class StatusSerDe : RLPSerDe<Status> {
   override fun writeTo(
     value: Status,
     rlpOutput: RLPOutput,
