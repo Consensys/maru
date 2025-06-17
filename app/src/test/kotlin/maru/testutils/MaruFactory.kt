@@ -18,6 +18,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
+import linea.kotlin.decodeHex
 import maru.app.MaruApp
 import maru.app.MaruAppFactory
 import maru.config.ApiEndpointConfig
@@ -94,7 +95,7 @@ class MaruFactory {
     val lineaConfig =
       overridingLineaContractClient?.let {
         LineaConfig(
-          contractAddress = overridingLineaContractClient.getAddress(),
+          contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
           l1EthApi = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
           l1PollingInterval = 100.milliseconds,
         )

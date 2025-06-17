@@ -16,6 +16,7 @@ import java.nio.file.Path
 import java.time.Clock
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
+import linea.kotlin.encodeHex
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.config.MaruConfig
@@ -105,7 +106,7 @@ class MaruAppFactory {
                     rpcUrl = lineaConfig.l1EthApi.endpoint.toString(),
                     log = LogManager.getLogger("clients.l1.linea"),
                   ),
-                contractAddress = lineaConfig.contractAddress,
+                contractAddress = lineaConfig.contractAddress.encodeHex(),
                 log = LogManager.getLogger("clients.l1.linea"),
               )
           LineaFinalizationProvider(

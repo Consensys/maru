@@ -15,6 +15,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
+import linea.kotlin.assertIs20Bytes
 
 data class Persistence(
   val dataPath: Path,
@@ -115,11 +116,15 @@ data class ObservabilityOptions(
 )
 
 data class LineaConfig(
-  val contractAddress: String,
+  val contractAddress: ByteArray,
   val l1EthApi: ApiEndpointConfig,
   val l1PollingInterval: Duration = 6.seconds,
   val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
-)
+) {
+  init {
+    contractAddress.assertIs20Bytes("contractAddress")
+  }
+}
 
 data class MaruConfig(
   val persistence: Persistence,
