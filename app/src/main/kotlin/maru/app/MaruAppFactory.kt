@@ -10,6 +10,7 @@ package maru.app
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
+import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Path
 import java.time.Clock
@@ -69,7 +70,7 @@ class MaruAppFactory {
       )
     val finalizationProvider =
       overridingFinalizationProvider
-        ?: setupFinalizationProvider(config, overridingLineaContractClient)
+        ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
 
     val maru =
       MaruApp(
@@ -92,6 +93,7 @@ class MaruAppFactory {
     fun setupFinalizationProvider(
       config: MaruConfig,
       overridingLineaContractClient: LineaRollupSmartContractClientReadOnly?,
+      vertx: Vertx,
     ): FinalizationProvider =
       config.linea
         ?.let { lineaConfig ->
@@ -114,9 +116,8 @@ class MaruAppFactory {
                   config.validatorElNode.ethApiEndpoint.endpoint
                     .toString(),
                 log = LogManager.getLogger("clients.l2.eth.el"),
-                // FIXME: add support for request retries when we have Vert.x in the app
-                requestRetryConfig = null,
-                vertx = null, // Vert.x is not used in this context
+                requestRetryConfig = lineaConfig.l1EthApi.requestRetries,
+                vertx = vertx,
               ),
             pollingUpdateInterval = lineaConfig.l1PollingInterval,
             l1HighestBlock = lineaConfig.l1HighestBlockTag,
