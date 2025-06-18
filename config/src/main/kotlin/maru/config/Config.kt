@@ -25,7 +25,11 @@ data class Persistence(
 data class ApiEndpointConfig(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
-  val requestRetries: RetryConfig = RetryConfig(),
+  val requestRetries: RetryConfig =
+    RetryConfig.endlessRetry(
+      backoffDelay = 1.seconds,
+      failuresWarningThreshold = 3u,
+    ),
 )
 
 data class FollowersConfig(
