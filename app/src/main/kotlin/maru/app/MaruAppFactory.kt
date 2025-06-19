@@ -13,9 +13,11 @@ import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Path
 import java.time.Clock
+import java.util.Optional
 import maru.config.MaruConfig
 import maru.config.P2P
 import maru.consensus.ForksSchedule
+import maru.database.kv.KvDatabaseFactory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
@@ -25,6 +27,8 @@ import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruAppFactory {
@@ -50,6 +54,7 @@ class MaruAppFactory {
         "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
       )
+    val besuMetricsSystem = NoOpMetricsSystem()
 
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
@@ -58,6 +63,18 @@ class MaruAppFactory {
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
       )
+    val beaconChain =
+      KvDatabaseFactory
+        .createRocksDbDatabase(
+          databasePath = config.persistence.dataPath,
+          metricsSystem = besuMetricsSystem,
+          metricCategory =
+            object : MetricCategory {
+              override fun getName(): String = "STORAGE"
+
+              override fun getApplicationPrefix(): Optional<String> = Optional.empty()
+            },
+        )
     val maru =
       MaruApp(
         config = config,
@@ -67,6 +84,8 @@ class MaruAppFactory {
         privateKeyProvider = { privateKey },
         metricsFacade = metricsFacade,
         vertx = vertx,
+        beaconChain = beaconChain,
+        metricsSystem = besuMetricsSystem,
       )
 
     return maru

@@ -10,7 +10,6 @@ package maru.app
 
 import io.vertx.core.Vertx
 import java.time.Clock
-import java.util.Optional
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
@@ -32,7 +31,7 @@ import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
-import maru.database.kv.KvDatabaseFactory
+import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
@@ -42,8 +41,7 @@ import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
-import org.hyperledger.besu.plugin.services.metrics.MetricCategory
+import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
@@ -56,6 +54,8 @@ class MaruApp(
   private val finalizationProvider: FinalizationProvider = InstantFinalizationProvider,
   private val vertx: Vertx,
   private val metricsFacade: MetricsFacade,
+  private val beaconChain: BeaconChain,
+  private val metricsSystem: MetricsSystem,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -99,19 +99,6 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val metricsSystem = NoOpMetricsSystem()
-  private val beaconChain =
-    KvDatabaseFactory
-      .createRocksDbDatabase(
-        databasePath = config.persistence.dataPath,
-        metricsSystem = metricsSystem,
-        metricCategory =
-          object : MetricCategory {
-            override fun getName(): String = "STORAGE"
-
-            override fun getApplicationPrefix(): Optional<String> = Optional.empty()
-          },
-      )
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
   @Suppress("UNCHECKED_CAST")
