@@ -8,6 +8,7 @@
  */
 package maru.p2p.messages
 
+import maru.consensus.ForkIdHashProvider
 import maru.database.BeaconChain
 import maru.p2p.Message
 import maru.p2p.RpcMessageHandler
@@ -17,15 +18,14 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class StatusHandler(
   private val beaconChain: BeaconChain,
-  // TODO use the real fork ID hash provider
-  private val forkIdHashProvider: () -> ByteArray = { ByteArray(0) },
+  private val forkIdHashProvider: ForkIdHashProvider,
 ) : RpcMessageHandler<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>> {
   override fun handleIncomingMessage(
     peer: Peer,
     message: Message<Status, RpcMessageType>,
     callback: ResponseCallback<Message<Status, RpcMessageType>>,
   ) {
-    val forkId = forkIdHashProvider()
+    val forkId = forkIdHashProvider.getForkIdHash()
     val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
     val statusPayload = Status(forkId = forkId, latestBeaconBlockHeader.hash, latestBeaconBlockHeader.number)
     val statusMessage =

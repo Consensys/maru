@@ -8,6 +8,7 @@
  */
 package maru.p2p
 
+import maru.consensus.ForkIdHashProvider
 import maru.database.BeaconChain
 import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusMessageSerDe
@@ -16,6 +17,7 @@ import maru.serialization.SerDe
 
 class RpcMethodFactory(
   private val beaconChain: BeaconChain,
+  private val forkIdHashProvider: ForkIdHashProvider,
   chainId: UInt,
 ) {
   private val protocolIdGenerator = LineaRpcProtocolIdGenerator(chainId = chainId)
@@ -30,7 +32,7 @@ class RpcMethodFactory(
     val statusRpcMethod =
       MaruRpcMethod(
         messageType = RpcMessageType.STATUS,
-        rpcMessageHandler = StatusHandler(beaconChain),
+        rpcMessageHandler = StatusHandler(beaconChain, forkIdHashProvider),
         requestMessageSerDe = statusMessageSerDe,
         responseMessageSerDe = statusMessageSerDe,
         peerLookup = peerLookup,

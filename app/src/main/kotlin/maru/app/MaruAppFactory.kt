@@ -16,12 +16,16 @@ import java.time.Clock
 import java.util.Optional
 import maru.config.MaruConfig
 import maru.config.P2P
+import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
+import maru.crypto.Hashing
 import maru.database.kv.KvDatabaseFactory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.RpcMethodFactory
+import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -69,7 +73,27 @@ class MaruAppFactory {
               override fun getApplicationPrefix(): Optional<String> = Optional.empty()
             },
         )
-    val rpcMaruAppFactory = RpcMethodFactory(beaconChain = beaconChain, chainId = beaconGenesisConfig.chainId)
+
+    val forkIdHasher =
+      ForkIdHasher(
+        ForkIdSerializers
+          .ForkIdSerializer,
+        Hashing::shortShaHash,
+      )
+    val forkIdHashProvider =
+      ForkIdHashProvider(
+        chainId = beaconGenesisConfig.chainId,
+        beaconChain = beaconChain,
+        forksSchedule = beaconGenesisConfig,
+        forkIdHasher = forkIdHasher,
+        clock = clock,
+      )
+    val rpcMaruAppFactory =
+      RpcMethodFactory(
+        beaconChain = beaconChain,
+        forkIdHashProvider = forkIdHashProvider,
+        chainId = beaconGenesisConfig.chainId,
+      )
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
         p2pConfig = config.p2pConfig,

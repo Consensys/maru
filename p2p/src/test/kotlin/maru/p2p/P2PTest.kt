@@ -9,15 +9,25 @@
 package maru.p2p
 
 import java.lang.Thread.sleep
+import java.time.Clock
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 import kotlin.random.nextULong
 import maru.config.P2P
+import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ConsensusConfig
+import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHasher
+import maru.consensus.ForkSpec
+import maru.consensus.ForksSchedule
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
+import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
 import maru.p2p.messages.Status
+import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
@@ -61,8 +71,31 @@ class P2PTest {
     private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
     private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0u))
+    private val forkIdHashProvider =
+      createForkIdHashProvider()
     private val rpcMethodFactory =
-      RpcMethodFactory(beaconChain = beaconChain, chainId = chainId)
+      RpcMethodFactory(beaconChain = beaconChain, forkIdHashProvider = forkIdHashProvider, chainId = chainId)
+
+    fun createForkIdHashProvider(): ForkIdHashProvider {
+      val consensusConfig: ConsensusConfig =
+        QbftConsensusConfig(
+          validatorSet =
+            setOf(
+              DataGenerators.randomValidator(),
+              DataGenerators.randomValidator(),
+            ),
+          elFork = ElFork.Prague,
+        )
+      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0L, 1, consensusConfig)))
+
+      return ForkIdHashProvider(
+        chainId = chainId,
+        beaconChain = beaconChain,
+        forksSchedule = forksSchedule,
+        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+        Clock.systemUTC(),
+      )
+    }
   }
 
   @Test
@@ -363,7 +396,7 @@ class P2PTest {
           RpcMessageType.STATUS,
           Version.V1,
           Status(
-            forkId = ByteArray(0),
+            forkId = forkIdHashProvider.getForkIdHash(),
             latestStateRoot = latestBeaconBlockHeader.hash,
             latestBlockNumber = latestBeaconBlockHeader.number,
           ),
