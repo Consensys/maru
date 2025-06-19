@@ -16,13 +16,24 @@ import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class StatusHandler(
-  beaconChain: BeaconChain,
+  private val beaconChain: BeaconChain,
+  // TODO use the real fork ID hash provider
+  private val forkIdHashProvider: () -> ByteArray = { ByteArray(0) },
 ) : RpcMessageHandler<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>> {
   override fun handleIncomingMessage(
     peer: Peer,
     message: Message<Status, RpcMessageType>,
     callback: ResponseCallback<Message<Status, RpcMessageType>>,
   ) {
-    callback.respondAndCompleteSuccessfully(message) // TODO respond with real status message
+    val forkId = forkIdHashProvider()
+    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
+    val statusPayload = Status(forkId = forkId, latestBeaconBlockHeader.hash, latestBeaconBlockHeader.number)
+    val statusMessage =
+      Message(
+        type = RpcMessageType.STATUS,
+        version = message.version,
+        payload = statusPayload,
+      )
+    callback.respondAndCompleteSuccessfully(statusMessage)
   }
 }

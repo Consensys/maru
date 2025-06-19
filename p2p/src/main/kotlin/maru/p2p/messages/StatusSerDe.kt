@@ -21,8 +21,8 @@ class StatusSerDe : RLPSerDe<Status> {
     rlpOutput.startList()
 
     rlpOutput.writeBytes(Bytes.wrap(value.forkId))
-    rlpOutput.writeBytes(Bytes.wrap(value.headStateRoot))
-    rlpOutput.writeLong(value.headBlockNumber.toLong())
+    rlpOutput.writeBytes(Bytes.wrap(value.latestStateRoot))
+    rlpOutput.writeLong(value.latestBlockNumber.toLong())
 
     rlpOutput.endList()
   }
@@ -36,6 +36,6 @@ class StatusSerDe : RLPSerDe<Status> {
 
     rlpInput.leaveList()
 
-    return Status(forkId = forkId, headStateRoot = headStateRoot, headBlockNumber = headBlockNumber)
+    return Status(forkId = forkId, latestStateRoot = headStateRoot, latestBlockNumber = headBlockNumber)
   }
 }

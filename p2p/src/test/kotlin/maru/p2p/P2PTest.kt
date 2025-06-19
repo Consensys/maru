@@ -60,8 +60,9 @@ class P2PTest {
     private val key1 = Bytes.fromHexString(PRIVATE_KEY1).toArray()
     private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
     private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
+    private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0u))
     private val rpcMethodFactory =
-      RpcMethodFactory(beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0u)), chainId = chainId)
+      RpcMethodFactory(beaconChain = beaconChain, chainId = chainId)
   }
 
   @Test
@@ -350,16 +351,30 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) }
 
-      val statusPayload = Status(Random.nextBytes(32), Random.nextBytes(32), Random.nextULong())
       val statusMessage =
-        Message(RpcMessageType.STATUS, Version.V1, statusPayload)
+        Message(
+          RpcMessageType.STATUS,
+          Version.V1,
+          Status(Random.nextBytes(32), Random.nextBytes(32), Random.nextULong()),
+        )
+      val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
+      val expectedStatusMessage =
+        Message(
+          RpcMessageType.STATUS,
+          Version.V1,
+          Status(
+            forkId = ByteArray(0),
+            latestStateRoot = latestBeaconBlockHeader.hash,
+            latestBlockNumber = latestBeaconBlockHeader.number,
+          ),
+        )
 
       val responseFuture = p2pManagerImpl2.sendRpcMessage(statusMessage, p2pManagerImpl2.getPeer(PEER_ID_NODE_1)!!)
 
       assertThatNoException().isThrownBy { responseFuture.get(500L, TimeUnit.MILLISECONDS) }
       assertThat(
         responseFuture.get(500L, TimeUnit.MILLISECONDS),
-      ).isEqualTo(statusMessage)
+      ).isEqualTo(expectedStatusMessage)
     } finally {
       p2PNetworkImpl1.stop()
       p2pManagerImpl2.stop()
