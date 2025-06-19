@@ -16,7 +16,7 @@ import maru.serialization.SerDe
 class StatusMessageSerDe(
   private val statusSerDe: SerDe<Status>,
 ) : SerDe<Message<Status, RpcMessageType>> {
-  override fun serialize(message: Message<Status, RpcMessageType>): ByteArray = statusSerDe.serialize(message.payload)
+  override fun serialize(value: Message<Status, RpcMessageType>): ByteArray = statusSerDe.serialize(value.payload)
 
   override fun deserialize(bytes: ByteArray): Message<Status, RpcMessageType> =
     Message(RpcMessageType.STATUS, Version.V1, statusSerDe.deserialize(bytes))

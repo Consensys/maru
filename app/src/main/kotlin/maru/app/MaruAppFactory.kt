@@ -21,6 +21,7 @@ import maru.database.kv.KvDatabaseFactory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
+import maru.p2p.RpcMethodFactory
 import maru.serialization.rlp.RLPSerializers
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -56,13 +57,6 @@ class MaruAppFactory {
       )
     val besuMetricsSystem = NoOpMetricsSystem()
 
-    val p2pNetwork =
-      overridingP2PNetwork ?: setupP2PNetwork(
-        p2pConfig = config.p2pConfig,
-        privateKey = privateKey,
-        chainId = beaconGenesisConfig.chainId,
-        metricsFacade = metricsFacade,
-      )
     val beaconChain =
       KvDatabaseFactory
         .createRocksDbDatabase(
@@ -75,6 +69,16 @@ class MaruAppFactory {
               override fun getApplicationPrefix(): Optional<String> = Optional.empty()
             },
         )
+    val rpcMaruAppFactory = RpcMethodFactory(beaconChain = beaconChain, chainId = beaconGenesisConfig.chainId)
+    val p2pNetwork =
+      overridingP2PNetwork ?: setupP2PNetwork(
+        p2pConfig = config.p2pConfig,
+        privateKey = privateKey,
+        chainId = beaconGenesisConfig.chainId,
+        metricsFacade = metricsFacade,
+        rpcMethodFactory = rpcMaruAppFactory,
+      )
+
     val maru =
       MaruApp(
         config = config,
@@ -99,6 +103,7 @@ class MaruAppFactory {
       privateKey: ByteArray,
       chainId: UInt,
       metricsFacade: MetricsFacade,
+      rpcMethodFactory: RpcMethodFactory,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -107,6 +112,7 @@ class MaruAppFactory {
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
           metricsFacade = metricsFacade,
+          rpcMethodFactory = rpcMethodFactory,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

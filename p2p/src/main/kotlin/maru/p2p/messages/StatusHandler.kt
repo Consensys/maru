@@ -8,13 +8,16 @@
  */
 package maru.p2p.messages
 
+import maru.database.BeaconChain
 import maru.p2p.Message
 import maru.p2p.RpcMessageHandler
 import maru.p2p.RpcMessageType
 import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
-class StatusHandler : RpcMessageHandler<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>> {
+class StatusHandler(
+  beaconChain: BeaconChain,
+) : RpcMessageHandler<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>> {
   override fun handleIncomingMessage(
     peer: Peer,
     message: Message<Status, RpcMessageType>,
