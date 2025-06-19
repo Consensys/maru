@@ -15,12 +15,15 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
+import maru.metrics.MaruMetricsCategory
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusMessageSerDe
 import maru.p2p.messages.StatusSerDe
 import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.SerDe
+import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -39,13 +42,19 @@ class P2PNetworkImpl(
   private val p2pConfig: P2P,
   chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
-) : P2PNetwork,
-  PeerLookup {
+  private val metricsFacade: MetricsFacade,
+) : P2PNetwork, PeerLookup {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
+  private val broadcastMessageCounterFactory =
+    metricsFacade.createCounterFactory(
+      category = MaruMetricsCategory.P2P_NETWORK,
+      name = "message.broadcast.counter",
+      description = "Count of messages broadcasted over the P2P network",
+    )
   private val protocolIdGenerator = LineaRpcProtocolIdGenerator(chainId = chainId)
   private val statusMessageSerDe = StatusMessageSerDe(StatusSerDe())
   private val statusRpcMethod =
@@ -96,12 +105,26 @@ class P2PNetworkImpl(
             .createPeerAddress(peer)
             ?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
+      }.thenPeek {
+        metricsFacade.createGauge(
+          category = MaruMetricsCategory.P2P_NETWORK,
+          name = "peer.count",
+          description = "Number of peers connected to the P2P network",
+          measurementSupplier = { peerCount.toLong() },
+        )
       }
 
   override fun stop(): SafeFuture<Unit> = p2pNetwork.stop().thenApply { }
 
-  override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*> =
-    when (message.type.toEnum()) {
+  override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*> {
+    broadcastMessageCounterFactory
+      .create(
+        listOf(
+          Tag("message.type", message.type.name),
+          Tag("message.version", message.version.name),
+        ),
+      ).increment()
+    return when (message.type.toEnum()) {
       GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
@@ -109,6 +132,7 @@ class P2PNetworkImpl(
         p2pNetwork.gossip(topicIdGenerator.id(message.type, message.version), serializedSealedBeaconBlock)
       }
     }
+  }
 
   fun sendRpcMessage(
     message: Message<*, RpcMessageType>,
