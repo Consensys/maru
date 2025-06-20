@@ -13,18 +13,27 @@ import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Path
 import java.time.Clock
+import java.util.Optional
 import maru.config.MaruConfig
 import maru.config.P2P
+import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
+import maru.crypto.Hashing
+import maru.database.kv.KvDatabaseFactory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
+import maru.p2p.RpcMethodFactory
+import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruAppFactory {
@@ -50,14 +59,49 @@ class MaruAppFactory {
         "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
       )
+    val besuMetricsSystem = NoOpMetricsSystem()
 
+    val beaconChain =
+      KvDatabaseFactory
+        .createRocksDbDatabase(
+          databasePath = config.persistence.dataPath,
+          metricsSystem = besuMetricsSystem,
+          metricCategory =
+            object : MetricCategory {
+              override fun getName(): String = "STORAGE"
+
+              override fun getApplicationPrefix(): Optional<String> = Optional.empty()
+            },
+        )
+
+    val forkIdHasher =
+      ForkIdHasher(
+        ForkIdSerializers
+          .ForkIdSerializer,
+        Hashing::shortShaHash,
+      )
+    val forkIdHashProvider =
+      ForkIdHashProvider(
+        chainId = beaconGenesisConfig.chainId,
+        beaconChain = beaconChain,
+        forksSchedule = beaconGenesisConfig,
+        forkIdHasher = forkIdHasher,
+      )
+    val rpcMaruAppFactory =
+      RpcMethodFactory(
+        beaconChain = beaconChain,
+        forkIdHashProvider = forkIdHashProvider,
+        chainId = beaconGenesisConfig.chainId,
+      )
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
         p2pConfig = config.p2pConfig,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
+        rpcMethodFactory = rpcMaruAppFactory,
       )
+
     val maru =
       MaruApp(
         config = config,
@@ -67,6 +111,8 @@ class MaruAppFactory {
         privateKeyProvider = { privateKey },
         metricsFacade = metricsFacade,
         vertx = vertx,
+        beaconChain = beaconChain,
+        metricsSystem = besuMetricsSystem,
       )
 
     return maru
@@ -80,6 +126,7 @@ class MaruAppFactory {
       privateKey: ByteArray,
       chainId: UInt,
       metricsFacade: MetricsFacade,
+      rpcMethodFactory: RpcMethodFactory,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -88,6 +135,7 @@ class MaruAppFactory {
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
           metricsFacade = metricsFacade,
+          rpcMethodFactory = rpcMethodFactory,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

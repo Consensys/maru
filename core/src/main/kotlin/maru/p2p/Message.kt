@@ -8,42 +8,73 @@
  */
 package maru.p2p
 
-import maru.core.SealedBeaconBlock
-
 enum class Version : Comparable<Version> {
   V1,
 }
 
-enum class MessageType {
-  QBFT, // Won't be supported until Milestone 6
+enum class GossipMessageType : BaseMessageType<GossipMessageType> {
+  QBFT,
   BEACON_BLOCK,
+  ;
+
+  override fun type(): String = name
 }
 
-data class Message<T : Any>(
-  val type: MessageType,
+enum class RpcMessageType : BaseMessageType<RpcMessageType> {
+  STATUS(),
+  ;
+
+  override fun type(): String = name
+}
+
+interface BaseMessageType<TMessageType> {
+  fun type(): String
+}
+
+data class Message<TPayload, TMessageType>(
+  val type: BaseMessageType<TMessageType>,
   val version: Version = Version.V1,
-  val payload: T,
-) {
-  init {
-    when (type) {
-      MessageType.QBFT -> Unit // require(payload is BftMessage≤*>) Not adding this to avoid dependency on QBFT
-      MessageType.BEACON_BLOCK -> require(payload is SealedBeaconBlock)
-    }
+  val payload: TPayload,
+)
+
+fun BaseMessageType<GossipMessageType>.toEnum(): GossipMessageType =
+  if (type() == GossipMessageType.BEACON_BLOCK.name) {
+    GossipMessageType.BEACON_BLOCK
+  } else if (type() == GossipMessageType.QBFT.name) {
+    GossipMessageType.QBFT
+  } else {
+    throw IllegalArgumentException("Unsupported message type: ${type()}")
+  }
+
+fun BaseMessageType<RpcMessageType>.toEnum(): RpcMessageType {
+  if (type() == RpcMessageType.STATUS.name) {
+    return RpcMessageType.STATUS
+  } else {
+    throw IllegalArgumentException("Unsupported message type: ${type()}")
   }
 }
 
-interface TopicIdGenerator {
-  fun topicId(
-    messageType: MessageType,
+interface MessageIdGenerator {
+  fun id(
+    messageType: BaseMessageType<*>,
     version: Version,
   ): String
 }
 
-class LineaTopicIdGenerator(
+class LineaMessageIdGenerator(
   private val chainId: UInt,
-) : TopicIdGenerator {
-  override fun topicId(
-    messageType: MessageType,
+) : MessageIdGenerator {
+  override fun id(
+    messageType: BaseMessageType<*>,
     version: Version,
-  ): String = "/linea/$chainId/${messageType.toString().lowercase()}/$version"
+  ): String = "/linea/$chainId/${messageType.type().lowercase()}/$version"
+}
+
+class LineaRpcProtocolIdGenerator(
+  private val chainId: UInt,
+) : MessageIdGenerator {
+  override fun id(
+    messageType: BaseMessageType<*>,
+    version: Version,
+  ): String = "/linea/req/$chainId/${messageType.type().lowercase()}/$version"
 }
