@@ -38,21 +38,18 @@ data class Message<TPayload, TMessageType>(
 )
 
 fun BaseMessageType<GossipMessageType>.toEnum(): GossipMessageType =
-  if (type() == GossipMessageType.BEACON_BLOCK.name) {
-    GossipMessageType.BEACON_BLOCK
-  } else if (type() == GossipMessageType.QBFT.name) {
-    GossipMessageType.QBFT
-  } else {
-    throw IllegalArgumentException("Unsupported message type: ${type()}")
+  when (type()) {
+    GossipMessageType.BEACON_BLOCK.name -> GossipMessageType.BEACON_BLOCK
+    GossipMessageType.QBFT.name -> GossipMessageType.QBFT
+    else -> throw IllegalArgumentException("Unsupported message type: ${type()}")
   }
 
-fun BaseMessageType<RpcMessageType>.toEnum(): RpcMessageType {
+fun BaseMessageType<RpcMessageType>.toEnum(): RpcMessageType =
   if (type() == RpcMessageType.STATUS.name) {
-    return RpcMessageType.STATUS
+    RpcMessageType.STATUS
   } else {
     throw IllegalArgumentException("Unsupported message type: ${type()}")
   }
-}
 
 interface MessageIdGenerator {
   fun id(
