@@ -9,7 +9,6 @@
 package maru.p2p
 
 import java.lang.Thread.sleep
-import java.time.Clock
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 import kotlin.random.nextULong
@@ -93,7 +92,6 @@ class P2PTest {
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
         forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
-        Clock.systemUTC(),
       )
     }
   }
@@ -396,7 +394,7 @@ class P2PTest {
           RpcMessageType.STATUS,
           Version.V1,
           Status(
-            forkId = forkIdHashProvider.getForkIdHash(),
+            forkIdHash = forkIdHashProvider.currentForkIdHash(),
             latestStateRoot = latestBeaconBlockHeader.hash,
             latestBlockNumber = latestBeaconBlockHeader.number,
           ),

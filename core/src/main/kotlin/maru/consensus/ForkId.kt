@@ -8,7 +8,6 @@
  */
 package maru.consensus
 
-import java.time.Clock
 import maru.core.Hasher
 import maru.database.BeaconChain
 import maru.serialization.Serializer
@@ -51,13 +50,18 @@ class ForkIdHashProvider(
   private val beaconChain: BeaconChain,
   private val forksSchedule: ForksSchedule,
   private val forkIdHasher: ForkIdHasher,
-  private val clock: Clock,
 ) {
-  fun getForkIdHash(): ByteArray {
+  fun currentForkIdHash(): ByteArray {
     val forkId =
       ForkId(
         chainId = chainId,
-        forkSpec = forksSchedule.getForkByTimestamp(clock.millis()),
+        forkSpec =
+          forksSchedule.getForkByTimestamp(
+            beaconChain
+              .getLatestBeaconState()
+              .latestBeaconBlockHeader.timestamp
+              .toLong(),
+          ),
         genesisRootHash =
           beaconChain.getBeaconState(0u)?.latestBeaconBlockHeader?.hash
             ?: throw IllegalStateException("Genesis state not found"),

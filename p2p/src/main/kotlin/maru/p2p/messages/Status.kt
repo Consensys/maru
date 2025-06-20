@@ -9,7 +9,7 @@
 package maru.p2p.messages
 
 data class Status(
-  val forkId: ByteArray,
+  val forkIdHash: ByteArray,
   val latestStateRoot: ByteArray,
   val latestBlockNumber: ULong,
 ) {
@@ -17,7 +17,7 @@ data class Status(
     if (this === other) return true
     if (other !is Status) return false
 
-    if (!forkId.contentEquals(other.forkId)) return false
+    if (!forkIdHash.contentEquals(other.forkIdHash)) return false
     if (!latestStateRoot.contentEquals(other.latestStateRoot)) return false
     if (latestBlockNumber != other.latestBlockNumber) return false
 
@@ -25,7 +25,7 @@ data class Status(
   }
 
   override fun hashCode(): Int {
-    var result = forkId.contentHashCode()
+    var result = forkIdHash.contentHashCode()
     result = 31 * result + latestStateRoot.contentHashCode()
     result = 31 * result + latestBlockNumber.hashCode()
     return result

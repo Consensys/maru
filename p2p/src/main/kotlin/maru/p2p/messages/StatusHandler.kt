@@ -25,9 +25,9 @@ class StatusHandler(
     message: Message<Status, RpcMessageType>,
     callback: ResponseCallback<Message<Status, RpcMessageType>>,
   ) {
-    val forkId = forkIdHashProvider.getForkIdHash()
+    val forkIdHash = forkIdHashProvider.currentForkIdHash()
     val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
-    val statusPayload = Status(forkId = forkId, latestBeaconBlockHeader.hash, latestBeaconBlockHeader.number)
+    val statusPayload = Status(forkIdHash = forkIdHash, latestBeaconBlockHeader.hash, latestBeaconBlockHeader.number)
     val statusMessage =
       Message(
         type = RpcMessageType.STATUS,

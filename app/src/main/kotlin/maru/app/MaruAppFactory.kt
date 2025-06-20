@@ -86,7 +86,6 @@ class MaruAppFactory {
         beaconChain = beaconChain,
         forksSchedule = beaconGenesisConfig,
         forkIdHasher = forkIdHasher,
-        clock = clock,
       )
     val rpcMaruAppFactory =
       RpcMethodFactory(
