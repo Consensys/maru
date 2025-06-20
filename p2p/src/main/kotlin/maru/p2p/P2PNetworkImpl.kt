@@ -15,8 +15,8 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
-import maru.p2p.discovery.MaruDiscoveryService
 import maru.metrics.MaruMetricsCategory
+import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.SerDe
 import net.consensys.linea.metrics.MetricsFacade
