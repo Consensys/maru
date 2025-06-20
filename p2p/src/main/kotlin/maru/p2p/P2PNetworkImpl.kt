@@ -1,17 +1,10 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.p2p
 
@@ -23,8 +16,11 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.p2p.discovery.MaruDiscoveryService
+import maru.metrics.MaruMetricsCategory
 import maru.p2p.topics.SealedBlocksTopicHandler
-import maru.serialization.Serializer
+import maru.serialization.SerDe
+import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -42,13 +38,20 @@ class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
   chainId: UInt,
-  private val serializer: Serializer<SealedBeaconBlock>,
+  private val serDe: SerDe<SealedBeaconBlock>,
+  private val metricsFacade: MetricsFacade,
 ) : P2PNetwork {
   private val topicIdGenerator = LineaTopicIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.topicId(MessageType.BEACON_BLOCK, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
-    SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer, sealedBlocksTopicId)
+    SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
+  private val broadcastMessageCounterFactory =
+    metricsFacade.createCounterFactory(
+      category = MaruMetricsCategory.P2P_NETWORK,
+      name = "message.broadcast.counter",
+      description = "Count of messages broadcasted over the P2P network",
+    )
   private val maruPeerManagerService = MaruPeerManagerService(p2pConfig = p2pConfig)
 
   private fun buildP2PNetwork(
@@ -102,6 +105,13 @@ class P2PNetworkImpl(
         discoveryService.start()
       }.thenPeek {
         maruPeerManagerService.start(discoveryService, p2pNetwork)
+      }.thenPeek {
+        metricsFacade.createGauge(
+          category = MaruMetricsCategory.P2P_NETWORK,
+          name = "peer.count",
+          description = "Number of peers connected to the P2P network",
+          measurementSupplier = { peerCount.toLong() },
+        )
       }
 
   override fun stop(): SafeFuture<Unit> {
@@ -111,15 +121,23 @@ class P2PNetworkImpl(
     return SafeFuture.allOf(p2pStop, pmStop).thenApply {}
   }
 
-  override fun broadcastMessage(message: Message<*>): SafeFuture<*> =
-    when (message.type) {
+  override fun broadcastMessage(message: Message<*>): SafeFuture<*> {
+    broadcastMessageCounterFactory
+      .create(
+        listOf(
+          Tag("message.type", message.type.name),
+          Tag("message.version", message.version.name),
+        ),
+      ).increment()
+    return when (message.type) {
       MessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       MessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
-        val serializedSealedBeaconBlock = Bytes.wrap(serializer.serialize(message.payload as SealedBeaconBlock))
+        val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload as SealedBeaconBlock))
         p2pNetwork.gossip(topicIdGenerator.topicId(message.type, message.version), serializedSealedBeaconBlock)
       }
     }
+  }
 
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
     val subscriptionManagerHadSubscriptions = sealedBlocksSubscriptionManager.hasSubscriptions()

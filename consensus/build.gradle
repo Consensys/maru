@@ -35,9 +35,6 @@ dependencies {
     because "because of protocol builders"
   }
 
-  implementation "com.sksamuel.hoplite:hoplite-json"
-  implementation "com.sksamuel.hoplite:hoplite-core"
-
   api("org.hyperledger.besu.internal:common") {
     because("API of the BftEventHandler interface")
   }
@@ -63,4 +60,5 @@ dependencies {
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
   testImplementation "tech.pegasys.teku.internal:executionclient"
   testImplementation "tech.pegasys.teku.internal:spec"
+  testImplementation "build.linea.internal:metrics"
 }

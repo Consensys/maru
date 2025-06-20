@@ -19,6 +19,7 @@ plugins {
 
 dependencies {
   implementation(project(":config"))
+  implementation(project(":serialization"))
   implementation(project(":crypto"))
 
   implementation "io.libp2p:jvm-libp2p"
@@ -37,6 +38,8 @@ dependencies {
   implementation "io.tmio:tuweni-rlp"
 
   implementation 'tech.pegasys.discovery:discovery'
+
+  implementation "build.linea.internal:metrics"
 
   implementation "io.libp2p:jvm-libp2p"
 

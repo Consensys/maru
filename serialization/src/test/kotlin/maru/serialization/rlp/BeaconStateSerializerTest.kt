@@ -1,17 +1,10 @@
 /*
-   Copyright 2025 Consensys Software Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.serialization.rlp
 
@@ -21,19 +14,20 @@ import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.core.Validator
 import maru.core.ext.DataGenerators
+import maru.crypto.Hashing
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class BeaconStateSerializerTest {
-  private val validatorSerializer = ValidatorSerializer()
+  private val validatorSerializer = ValidatorSerDe()
   private val beaconBlockHeaderSerializer =
-    BeaconBlockHeaderSerializer(
+    BeaconBlockHeaderSerDe(
       validatorSerializer = validatorSerializer,
-      hasher = KeccakHasher,
+      hasher = Hashing::keccak,
       headerHashFunction = HashUtil::headerHash,
     )
   private val serializer =
-    BeaconStateSerializer(
+    BeaconStateSerDe(
       beaconBlockHeaderSerializer = beaconBlockHeaderSerializer,
       validatorSerializer = validatorSerializer,
     )
