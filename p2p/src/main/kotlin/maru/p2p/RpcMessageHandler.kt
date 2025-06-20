@@ -8,10 +8,7 @@
  */
 package maru.p2p
 
-import java.util.Optional
-import okhttp3.Request
 import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
-import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
 /**
@@ -27,6 +24,4 @@ interface RpcMessageHandler<TRequest, TResponse> {
     message: TRequest,
     callback: ResponseCallback<TResponse>,
   )
-
-  fun validateRequest(request: Request): Optional<RpcException> = Optional.empty()
 }
