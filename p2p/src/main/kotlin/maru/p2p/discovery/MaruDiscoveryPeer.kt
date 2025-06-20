@@ -13,17 +13,18 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.p2p
+package maru.p2p.discovery
 
-import tech.pegasys.teku.networking.p2p.network.PeerHandler
-import tech.pegasys.teku.networking.p2p.peer.Peer
+import java.net.InetSocketAddress
+import java.util.Optional
+import org.apache.tuweni.bytes.Bytes
+import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
 
-class MaruPeerHandler : PeerHandler {
-  override fun onConnect(peer: Peer) {
-    // TODO("Not yet implemented1")
-  }
-
-  override fun onDisconnect(peer: Peer) {
-    // TODO("Not yet implemented2")
-  }
+class MaruDiscoveryPeer(
+  publicKeyBytes: Bytes,
+  val nodeIdBytes: Bytes,
+  val addr: InetSocketAddress,
+  val maruForkId: Optional<MaruForkId>,
+) : DiscoveryPeer(publicKeyBytes, nodeIdBytes, addr, null, null, null) {
+  override fun toString(): String = "MaruDiscoveryPeer(nodeId=$nodeIdBytes, address=$addr, maruForkId=$maruForkId)"
 }

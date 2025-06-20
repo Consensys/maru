@@ -67,6 +67,7 @@ class Libp2pNetworkFactory(
     ipAddress: String,
     sealedBlocksTopicHandler: SealedBlocksTopicHandler,
     sealedBlocksTopicId: String,
+    maruPeerManagerService: MaruPeerManagerService,
   ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val rpcMethod = MaruRpcMethod()
@@ -103,7 +104,7 @@ class Libp2pNetworkFactory(
       PeerManager(
         metricsSystem,
         ReputationManager.NOOP,
-        listOf<PeerHandler>(MaruPeerHandler()),
+        listOf<PeerHandler>(maruPeerManagerService),
         listOf(rpcHandler),
       ) { _ -> 50.0 } // TODO: I guess we need a scoring function here
 

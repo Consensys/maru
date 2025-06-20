@@ -15,14 +15,12 @@
  */
 package maru.p2p.discovery
 
-import java.net.InetSocketAddress
 import java.time.Duration
 import java.util.function.Consumer
 import maru.config.P2P
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
-import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.crypto.SECP256K1.SecretKey
 import org.apache.tuweni.units.bigints.UInt64
 import org.ethereum.beacon.discovery.DiscoverySystem
@@ -38,12 +36,12 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.async.ScheduledExecutorAsyncRunner
 import tech.pegasys.teku.networking.p2p.discovery.discv5.SecretKeyParser
 
-class DiscoveryService(
+class MaruDiscoveryService(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
 ) {
   companion object {
-    val BOOTNODE_REFRESH_DELAY: Duration = Duration.ofMinutes(2)
+    val BOOTNODE_REFRESH_DELAY: Duration = Duration.ofMinutes(2L)
   }
 
   private val log: Logger = LogManager.getLogger(this::javaClass)
@@ -51,7 +49,9 @@ class DiscoveryService(
   private lateinit var discoverySystem: DiscoverySystem
 
   private val privateKey = SecretKeyParser.fromLibP2pPrivKey(Bytes.wrap(privateKeyBytes))
-  private val localNodeRecord = localNodeRecord(privateKey = privateKey)
+
+  // add the fork id here as a custom field
+  private val localNodeRecord = localNodeRecord(privateKey = privateKey, p2pConfig = p2pConfig)
 
   val delayedExecutor =
     ScheduledExecutorAsyncRunner.create(
@@ -79,12 +79,10 @@ class DiscoveryService(
 
     discoverySystem = discoveryNetworkBuilder.build()
 
-    val maruForkId = MaruForkId.MARU_INITIAL_FORK_ID // TODO: set the correct fork id here
-
     discoverySystem
       .start()
       .thenRun {
-        discoverySystem.updateCustomFieldValue(MaruForkId.MARU_FORK_ID_FIELD_NAME, maruForkId.encode())
+        // discoverySystem.updateCustomFieldValue(MaruForkId.MARU_FORK_ID_FIELD_NAME, maruForkId.encode())
         // TODO: do we want another custom field to identify topics/role/something else?
         this.bootnodeRefreshTask =
           delayedExecutor.runWithFixedDelay(
@@ -101,6 +99,7 @@ class DiscoveryService(
   }
 
   fun stop() {
+    bootnodeRefreshTask?.cancel()
     discoverySystem.stop()
   }
 
@@ -135,14 +134,16 @@ class DiscoveryService(
           .of(discoverySystem.ping(bootnode))
           .exceptionally {
             log.info("Bootnode {} is unresponsive", bootnode)
-            println("Bootnode ${bootnode?.nodeId} is unresponsive")
             throw it
           }
       },
     )
   }
 
-  private fun localNodeRecord(privateKey: SecretKey): NodeRecord {
+  private fun localNodeRecord(
+    privateKey: SecretKey,
+    p2pConfig: P2P,
+  ): NodeRecord {
     val nodeRecordBuilder: NodeRecordBuilder =
       NodeRecordBuilder()
         .secretKey(privateKey)
@@ -150,43 +151,12 @@ class DiscoveryService(
         .address(
           p2pConfig.ipAddress,
           p2pConfig.discoveryPort.toInt(),
+          p2pConfig.port.toInt(),
         ).customField(MaruForkId.MARU_FORK_ID_FIELD_NAME, MaruForkId.MARU_INITIAL_FORK_ID.encode())
     return nodeRecordBuilder.build()
   }
 
-  data class MaruDiscoveryPeer(
-    val publicKey: Bytes,
-    val nodeId: Bytes,
-    val address: InetSocketAddress,
-    val maruForkId: MaruForkId,
-  )
-
-  class MaruForkId(
-    val genesisHash: Bytes32,
-    val nextForkTimestamp: UInt64 = UInt64.ZERO,
-  ) {
-    companion object {
-      val MARU_INITIAL_FORK_ID =
-        MaruForkId(
-          Bytes32.fromHexString("0x112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00"),
-          UInt64.ZERO,
-        )
-      val MARU_FORK_ID_FIELD_NAME = "mfid"
-
-      fun fromNodeRecord(nodeRecord: NodeRecord): MaruForkId = decode(nodeRecord.get(MARU_FORK_ID_FIELD_NAME) as Bytes)
-
-      fun decode(encodedForkId: Bytes): MaruForkId {
-        require(encodedForkId.size() == 40) { "Invalid encoded MaruForkId length: ${encodedForkId.size()}" }
-        val genesisHash = Bytes32.wrap(encodedForkId.slice(0, 32).toArrayUnsafe())
-        val nextForkTimestamp = UInt64.fromBytes(encodedForkId.slice(32))
-        return MaruForkId(genesisHash, nextForkTimestamp)
-      }
-    }
-
-    fun encode(): Bytes = Bytes.wrap(genesisHash.toArrayUnsafe() + nextForkTimestamp.toBytes().toArrayUnsafe())
+  private fun peerIsOnTheRightChain(peer: MaruDiscoveryPeer): Boolean {
+    return true; // TODO: check the fork id here
   }
-}
-
-private fun peerIsOnTheRightChain(peer: DiscoveryService.MaruDiscoveryPeer): Boolean {
-  return true; // TODO: check the fork id here
 }

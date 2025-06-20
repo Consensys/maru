@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
+import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.Serializer
 import org.apache.logging.log4j.LogManager
@@ -48,6 +49,7 @@ class P2PNetworkImpl(
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serializer, sealedBlocksTopicId)
+  private val maruPeerManagerService = MaruPeerManagerService(p2pConfig = p2pConfig)
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
@@ -61,11 +63,21 @@ class P2PNetworkImpl(
       port = p2pConfig.port,
       sealedBlocksTopicHandler = sealedBlocksTopicHandler,
       sealedBlocksTopicId = sealedBlocksTopicId,
+      maruPeerManagerService = maruPeerManagerService,
     )
   }
 
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
   private val p2pNetwork = builtNetwork.p2PNetwork
+  private val discoveryService =
+    MaruDiscoveryService(
+      privateKeyBytes =
+        privateKeyBytes
+          .slice(
+            (privateKeyBytes.size - 32).rangeTo(privateKeyBytes.size - 1),
+          ).toByteArray(),
+      p2pConfig = p2pConfig,
+    )
 
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val delayedExecutor =
@@ -86,9 +98,18 @@ class P2PNetworkImpl(
             .createPeerAddress(peer)
             ?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
+      }.thenPeek {
+        discoveryService.start()
+      }.thenPeek {
+        maruPeerManagerService.start(discoveryService, p2pNetwork)
       }
 
-  override fun stop(): SafeFuture<Unit> = p2pNetwork.stop().thenApply { }
+  override fun stop(): SafeFuture<Unit> {
+    val pmStop = maruPeerManagerService.stop()
+    discoveryService.stop()
+    val p2pStop = p2pNetwork.stop()
+    return SafeFuture.allOf(p2pStop, pmStop).thenApply {}
+  }
 
   override fun broadcastMessage(message: Message<*>): SafeFuture<*> =
     when (message.type) {

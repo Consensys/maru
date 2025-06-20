@@ -15,18 +15,12 @@
  */
 package maru.p2p
 
-import java.util.Base64
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
-import maru.p2p.discovery.DiscoveryService
+import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.tuweni.bytes.Bytes
-import org.apache.tuweni.bytes.Bytes32
-import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
-import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
-import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
-import org.ethereum.beacon.discovery.schema.NodeRecordFactory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -58,7 +52,7 @@ class DiscoveryTest {
   @Test
   fun `discovery finds nodes`() {
     val bootnode =
-      DiscoveryService(
+      MaruDiscoveryService(
         privateKeyBytes = key1,
         p2pConfig =
           P2P(
@@ -69,10 +63,10 @@ class DiscoveryTest {
           ),
       )
 
-    val enrString = getBootnodeEnrString()
+    val enrString = getBootnodeEnrString(key1, IPV4, PORT2.toInt(), PORT1.toInt())
 
     val discoveryService2 =
-      DiscoveryService(
+      MaruDiscoveryService(
         privateKeyBytes = key2,
         p2pConfig =
           P2P(
@@ -84,7 +78,7 @@ class DiscoveryTest {
       )
 
     val discoveryService3 =
-      DiscoveryService(
+      MaruDiscoveryService(
         privateKeyBytes = key3,
         p2pConfig =
           P2P(
@@ -108,7 +102,7 @@ class DiscoveryTest {
           assertThat(
             get
               .stream()
-              .filter { it.nodeId == discoveryService3.getLocalNodeRecord().nodeId }
+              .filter { it.nodeIdBytes == discoveryService3.getLocalNodeRecord().nodeId }
               .count(),
           ).isGreaterThan(0L)
         }
@@ -120,7 +114,7 @@ class DiscoveryTest {
           assertThat(
             get
               .stream()
-              .filter { it.nodeId == discoveryService2.getLocalNodeRecord().nodeId }
+              .filter { it.nodeIdBytes == discoveryService2.getLocalNodeRecord().nodeId }
               .count(),
           ).isGreaterThan(0L)
         }
@@ -132,7 +126,7 @@ class DiscoveryTest {
           assertThat(
             get
               .stream()
-              .filter { it.nodeId == discoveryService2.getLocalNodeRecord().nodeId }
+              .filter { it.nodeIdBytes == discoveryService2.getLocalNodeRecord().nodeId }
               .count(),
           ).isGreaterThan(0L)
         }
@@ -144,7 +138,7 @@ class DiscoveryTest {
           assertThat(
             get
               .stream()
-              .filter { it.nodeId == discoveryService3.getLocalNodeRecord().nodeId }
+              .filter { it.nodeIdBytes == discoveryService3.getLocalNodeRecord().nodeId }
               .count(),
           ).isGreaterThan(0L)
         }
@@ -153,23 +147,5 @@ class DiscoveryTest {
       discoveryService2.stop()
       discoveryService3.stop()
     }
-  }
-
-  private fun getBootnodeEnrString(): String {
-    val secretKey = SECP256K1.SecretKey.fromBytes(Bytes32.wrap(key1))
-    val bootnodeNR =
-      NodeRecordBuilder()
-        .nodeRecordFactory(NodeRecordFactory(IdentitySchemaInterpreter.V4))
-        .seq(1)
-        .secretKey(secretKey)
-        .address(IPV4, PORT2.toInt())
-        .customField(
-          DiscoveryService.MaruForkId.MARU_FORK_ID_FIELD_NAME,
-          DiscoveryService.MaruForkId.MARU_INITIAL_FORK_ID.encode(),
-        ).build()
-    val enr = bootnodeNR.serialize()
-    val encode = Base64.getUrlEncoder().encode(enr.toArray())
-    val enrString = "enr:${String(encode)}"
-    return enrString
   }
 }

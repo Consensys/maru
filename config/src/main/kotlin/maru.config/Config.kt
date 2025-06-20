@@ -42,6 +42,7 @@ data class P2P(
   val bootnodes: List<String> = emptyList(),
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
+  val maxPeers: Int = 25,
 )
 
 data class ValidatorElNode(
