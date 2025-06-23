@@ -42,6 +42,7 @@ class HopliteFriendlinessTest {
 
     [observability-options]
     port = 9090
+    metrics-system-port = 9091
 
     [api-config]
     port = 8080
@@ -124,7 +125,7 @@ class HopliteFriendlinessTest {
         p2pConfig = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
-        observabilityOptions = ObservabilityOptions(port = 9090u),
+        observabilityOptions = ObservabilityOptions(port = 9090u, metricsSystemPort = 9091u),
         apiConfig = ApiConfig(port = 8080u),
       ),
     )
@@ -141,7 +142,7 @@ class HopliteFriendlinessTest {
         p2pConfig = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = null,
-        observabilityOptions = ObservabilityOptions(port = 9090u),
+        observabilityOptions = ObservabilityOptions(port = 9090u, metricsSystemPort = 9091u),
         apiConfig = ApiConfig(port = 8080u),
       ),
     )
@@ -162,7 +163,7 @@ class HopliteFriendlinessTest {
           ),
         qbftOptions = qbftOptions,
         followers = followersConfig,
-        observabilityOptions = ObservabilityOptions(port = 9090u),
+        observabilityOptions = ObservabilityOptions(port = 9090u, metricsSystemPort = 9091u),
         apiConfig = ApiConfig(port = 8080u),
       ),
     )
@@ -183,7 +184,7 @@ class HopliteFriendlinessTest {
             ethApiEndpoint = ethApiEndpoint,
           ),
         followers = emptyFollowersConfig,
-        observabilityOptions = ObservabilityOptions(port = 9090u),
+        observabilityOptions = ObservabilityOptions(port = 9090u, metricsSystemPort = 9091u),
         apiConfig = ApiConfig(port = 8080u),
       ),
     )
@@ -234,7 +235,7 @@ class HopliteFriendlinessTest {
           p2pConfig = p2pConfig,
           payloadValidator = payloadValidator,
           followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
-          observabilityOptions = ObservabilityOptions(port = 9090u),
+          observabilityOptions = ObservabilityOptions(port = 9090u, metricsSystemPort = 9091u),
           apiConfig = ApiConfig(port = 8080u),
         ),
       )
@@ -252,7 +253,11 @@ class HopliteFriendlinessTest {
             ),
           qbftOptions = qbftOptions,
           followers = followersConfig,
-          observabilityOptions = ObservabilityOptions(port = 9090u),
+          observabilityOptions =
+            ObservabilityOptions(
+              port = 9090u,
+              metricsSystemPort = 9091u,
+            ),
           apiConfig = ApiConfig(port = 8080u),
         ),
       )

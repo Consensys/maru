@@ -39,6 +39,7 @@ import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 
 /**
  * The same MaruFactory should be used per network. Otherwise, validators won't match between Maru instances
@@ -90,7 +91,10 @@ class MaruFactory {
     followers: FollowersConfig = FollowersConfig(emptyMap()),
     qbftOptions: QbftOptions? = null,
     observabilityOptions: ObservabilityOptions =
-      ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
+      ObservabilityOptions(
+        port = 0u,
+        metricsSystemPort = 0u,
+      ),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
     allowEmptyBlocks: Boolean = false,
@@ -138,6 +142,7 @@ class MaruFactory {
       overridingP2PNetwork = overridingP2PNetwork,
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
+      metricsSystem = NoOpMetricsSystem(),
     )
 
   private fun buildP2pConfig(

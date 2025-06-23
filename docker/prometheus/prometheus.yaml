@@ -9,3 +9,4 @@ scrape_configs:
     static_configs:
       - targets:
           - maru:9090
+          - maru:9091

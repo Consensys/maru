@@ -14,7 +14,6 @@ import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Path
 import java.time.Clock
-import java.util.Optional
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.kotlin.encodeHex
@@ -33,6 +32,7 @@ import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
 import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
+import maru.metrics.MaruMetricsSystemCategory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
@@ -45,8 +45,8 @@ import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
-import org.hyperledger.besu.plugin.services.metrics.MetricCategory
+import org.hyperledger.besu.metrics.prometheus.PrometheusMetricsSystem
+import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruAppFactory {
@@ -59,36 +59,45 @@ class MaruAppFactory {
     overridingP2PNetwork: P2PNetwork? = null,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    metricsSystem: MetricsSystem =
+      PrometheusMetricsSystem(
+        MaruMetricsSystemCategory.entries.toSet(),
+        true,
+      ),
   ): MaruApp {
     log.info("configs: {}", config)
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
-    val vertx =
-      VertxFactory.createVertx(
-        jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
-        prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
-      )
-
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
+
+    val vertx =
+      VertxFactory.createVertx()
     val metricsFacade =
       MicrometerMetricsFacade(
         BackendRegistries.getDefaultNow(),
         "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
       )
-    val besuMetricsSystem = NoOpMetricsSystem()
 
     val beaconChain =
       KvDatabaseFactory
         .createRocksDbDatabase(
           databasePath = config.persistence.dataPath,
-          metricsSystem = besuMetricsSystem,
-          metricCategory =
-            object : MetricCategory {
-              override fun getName(): String = "STORAGE"
-
-              override fun getApplicationPrefix(): Optional<String> = Optional.empty()
-            },
+          metricsSystem = metricsSystem,
+          metricCategory = MaruMetricsSystemCategory.STORAGE,
         )
+
+    val metricsServer =
+      MetricsServer(
+        vertx = vertx,
+        config =
+          MetricsServer.Config(
+            portForMetricsFacade = config.observabilityOptions.port.toInt(),
+            portForMetricsSystem = config.observabilityOptions.metricsSystemPort.toInt(),
+            enabledMetricsSystemCategories = metricsSystem.enabledCategories,
+          ),
+        metricsFacade = metricsFacade,
+        metricsSystem = metricsSystem,
+      )
 
     val forkIdHasher =
       ForkIdHasher(
@@ -123,9 +132,11 @@ class MaruAppFactory {
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
+        metricsSystem = metricsSystem,
         nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
         statusMessageFactory = statusMessageFactory,
       )
+
     val finalizationProvider =
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
@@ -149,8 +160,9 @@ class MaruAppFactory {
         finalizationProvider = finalizationProvider,
         metricsFacade = metricsFacade,
         vertx = vertx,
+        metricsSystem = metricsSystem,
         beaconChain = beaconChain,
-        metricsSystem = besuMetricsSystem,
+        metricsServer = metricsServer,
         lastBlockMetadataCache = lastBlockMetadataCache,
         ethereumJsonRpcClient = ethereumJsonRpcClient,
         apiServer = apiServer,
@@ -202,6 +214,7 @@ class MaruAppFactory {
       chainId: UInt,
       nextExpectedBeaconBlockNumber: ULong = 1UL,
       metricsFacade: MetricsFacade,
+      metricsSystem: MetricsSystem,
       statusMessageFactory: StatusMessageFactory,
     ): P2PNetwork =
       p2pConfig?.let {
@@ -212,6 +225,7 @@ class MaruAppFactory {
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
           nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsFacade = metricsFacade,
+          metricsSystem = metricsSystem,
           statusMessageFactory = statusMessageFactory,
         )
       } ?: run {

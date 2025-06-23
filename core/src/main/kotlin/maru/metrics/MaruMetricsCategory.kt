@@ -8,10 +8,20 @@
  */
 package maru.metrics
 
+import java.util.Optional
 import net.consensys.linea.metrics.MetricsCategory
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory as BesuMetricsCategory
 
 enum class MaruMetricsCategory : MetricsCategory {
   ENGINE_API,
   METADATA,
   P2P_NETWORK,
+}
+
+enum class MaruMetricsSystemCategory : BesuMetricsCategory {
+  STORAGE {
+    override fun getName(): String = "storage"
+
+    override fun getApplicationPrefix(): Optional<String> = Optional.empty()
+  },
 }

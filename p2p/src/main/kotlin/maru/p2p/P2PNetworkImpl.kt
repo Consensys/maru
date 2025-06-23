@@ -25,6 +25,7 @@ import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
@@ -40,6 +41,7 @@ class P2PNetworkImpl(
   private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
+  private val metricsSystem: MetricsSystem,
   private val statusMessageFactory: StatusMessageFactory,
   nextExpectedBeaconBlockNumber: ULong,
 ) : P2PNetwork {
@@ -64,6 +66,7 @@ class P2PNetworkImpl(
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
     p2pConfig: P2P,
+    metricsSystem: MetricsSystem,
   ): TekuLibP2PNetwork {
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
     val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
@@ -78,12 +81,13 @@ class P2PNetworkImpl(
       port = p2pConfig.port,
       sealedBlocksTopicHandler = sealedBlocksTopicHandler,
       sealedBlocksTopicId = sealedBlocksTopicId,
+      metricsSystem = metricsSystem,
       rpcMethods = rpcMethods.all(),
       maruPeerManager = maruPeerManager,
     )
   }
 
-  private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
+  private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig, metricsSystem)
   internal val p2pNetwork = builtNetwork.p2PNetwork
   private val log: Logger = LogManager.getLogger(this::javaClass)
   private val delayedExecutor =
