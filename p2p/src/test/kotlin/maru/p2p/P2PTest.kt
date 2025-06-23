@@ -400,7 +400,7 @@ class P2PTest {
           ),
         )
 
-      val responseFuture = p2pManagerImpl2.sendRpcMessage(statusMessage, p2pManagerImpl2.getPeer(PEER_ID_NODE_1)!!)
+      val responseFuture = p2pManagerImpl2.sendRpcMessage(statusMessage, PEER_ID_NODE_1)
 
       assertThatNoException().isThrownBy { responseFuture.get(500L, TimeUnit.MILLISECONDS) }
       assertThat(

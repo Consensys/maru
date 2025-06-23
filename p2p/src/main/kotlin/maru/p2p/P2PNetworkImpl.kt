@@ -122,13 +122,12 @@ class P2PNetworkImpl(
     }
   }
 
-  fun sendRpcMessage(
+  override fun sendRpcMessage(
     message: Message<*, RpcMessageType>,
-    peer: Peer,
+    peerId: String,
   ): SafeFuture<*> {
     val rpcMethodRecord =
       rpcMethods[message.type.toEnum()] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
-    val peerId = peer.id.toString()
     val request: Bytes = Bytes.wrap(rpcMethodRecord.serDe.serialize(message))
     val responseHandler = MaruRpcResponseHandler()
     return sendRequest(peerId, rpcMethodRecord.rpcMethod, request, responseHandler)
