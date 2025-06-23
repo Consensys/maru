@@ -24,7 +24,9 @@ import maru.config.P2P
 import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
+import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
+import maru.metrics.MaruMetricsSystemCategory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
@@ -34,6 +36,8 @@ import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
+import org.hyperledger.besu.metrics.prometheus.PrometheusMetricsSystem
+import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruAppFactory {
@@ -46,20 +50,35 @@ class MaruAppFactory {
     overridingP2PNetwork: P2PNetwork? = null,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    metricsSystem: MetricsSystem =
+      PrometheusMetricsSystem(
+        MaruMetricsSystemCategory.entries.toSet(),
+        true,
+      ),
   ): MaruApp {
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
-    val vertx =
-      VertxFactory.createVertx(
-        jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
-        prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
-      )
-
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
+
+    val vertx =
+      VertxFactory.createVertx()
     val metricsFacade =
       MicrometerMetricsFacade(
         BackendRegistries.getDefaultNow(),
         "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
+      )
+
+    val metricsServer =
+      MetricsServer(
+        vertx = vertx,
+        config =
+          MetricsServer.Config(
+            portForMetricsFacade = config.observabilityOptions.port.toInt(),
+            portForMetricsSystem = config.observabilityOptions.metricsSystemPort.toInt(),
+            enabledMetricsSystemCategories = metricsSystem.enabledCategories,
+          ),
+        metricsFacade = metricsFacade,
+        metricsSystem = metricsSystem,
       )
 
     val p2pNetwork =
@@ -68,10 +87,20 @@ class MaruAppFactory {
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
+        metricsSystem = metricsSystem,
       )
+
     val finalizationProvider =
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
+
+    val beaconChain =
+      KvDatabaseFactory
+        .createRocksDbDatabase(
+          databasePath = config.persistence.dataPath,
+          metricsSystem = metricsSystem,
+          metricCategory = MaruMetricsSystemCategory.STORAGE,
+        )
 
     val maru =
       MaruApp(
@@ -83,6 +112,9 @@ class MaruAppFactory {
         finalizationProvider = finalizationProvider,
         metricsFacade = metricsFacade,
         vertx = vertx,
+        metricsSystem = metricsSystem,
+        beaconChain = beaconChain,
+        metricsServer = metricsServer,
       )
 
     return maru
@@ -130,6 +162,7 @@ class MaruAppFactory {
       privateKey: ByteArray,
       chainId: UInt,
       metricsFacade: MetricsFacade,
+      metricsSystem: MetricsSystem,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -138,6 +171,7 @@ class MaruAppFactory {
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
           metricsFacade = metricsFacade,
+          metricsSystem = metricsSystem,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

@@ -10,7 +10,6 @@ package maru.app
 
 import io.vertx.core.Vertx
 import java.time.Clock
-import java.util.Optional
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
@@ -31,18 +30,16 @@ import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
-import maru.database.kv.KvDatabaseFactory
+import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.linea.vertx.ObservabilityServer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
-import org.hyperledger.besu.plugin.services.metrics.MetricCategory
+import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
@@ -55,6 +52,9 @@ class MaruApp(
   private val finalizationProvider: FinalizationProvider,
   private val vertx: Vertx,
   private val metricsFacade: MetricsFacade,
+  private val metricsSystem: MetricsSystem,
+  private val metricsServer: MetricsServer,
+  private val beaconChain: BeaconChain,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -98,19 +98,7 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val metricsSystem = NoOpMetricsSystem()
-  private val beaconChain =
-    KvDatabaseFactory
-      .createRocksDbDatabase(
-        databasePath = config.persistence.dataPath,
-        metricsSystem = metricsSystem,
-        metricCategory =
-          object : MetricCategory {
-            override fun getName(): String = "STORAGE"
 
-            override fun getApplicationPrefix(): Optional<String> = Optional.empty()
-          },
-      )
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
   @Suppress("UNCHECKED_CAST")
@@ -123,14 +111,9 @@ class MaruApp(
 
   fun start() {
     try {
-      vertx
-        .deployVerticle(
-          ObservabilityServer(
-            ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
-          ),
-        ).get()
+      metricsServer.start()
     } catch (th: Throwable) {
-      log.error("Error while trying to start the observability server", th)
+      log.error("Error while trying to start the metrics server", th)
       throw th
     }
     try {
@@ -145,11 +128,10 @@ class MaruApp(
 
   fun stop() {
     try {
-      vertx.deploymentIDs().forEach {
-        vertx.undeploy(it).get()
-      }
+      metricsServer
+        .stop()
     } catch (th: Throwable) {
-      log.warn("Error while trying to stop the vertx verticles", th)
+      log.warn("Error while trying to stop the metrics server", th)
     }
     try {
       p2pNetwork.stop().get()

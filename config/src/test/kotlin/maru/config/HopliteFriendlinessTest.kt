@@ -42,6 +42,7 @@ class HopliteFriendlinessTest {
 
     [observability-options]
     port = 8080
+    metrics-system-port = 8081
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -120,7 +121,7 @@ class HopliteFriendlinessTest {
         p2pConfig = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 8080u, metricsSystemPort = 8081u),
       ),
     )
   }
@@ -135,7 +136,7 @@ class HopliteFriendlinessTest {
         p2pConfig = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = null,
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 8080u, metricsSystemPort = 8081u),
       ),
     )
   }
@@ -154,7 +155,7 @@ class HopliteFriendlinessTest {
           ),
         qbftOptions = qbftOptions,
         followers = followersConfig,
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 8080u, metricsSystemPort = 8081u),
       ),
     )
   }
@@ -173,7 +174,7 @@ class HopliteFriendlinessTest {
             ethApiEndpoint = ethApiEndpoint,
           ),
         followers = emptyFollowersConfig,
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 8080u, metricsSystemPort = 8081u),
       ),
     )
   }

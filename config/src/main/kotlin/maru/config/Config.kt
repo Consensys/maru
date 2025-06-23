@@ -115,8 +115,7 @@ data class QbftOptions(
 
 data class ObservabilityOptions(
   val port: UInt,
-  val prometheusMetricsEnabled: Boolean = true,
-  val jvmMetricsEnabled: Boolean = true,
+  val metricsSystemPort: UInt,
 )
 
 data class LineaConfig(
