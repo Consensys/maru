@@ -174,7 +174,7 @@ class P2PNetworkImpl(
     }
   }
 
-  override fun getPeer(nodeId: NodeId): Peer = p2pNetwork.getPeer(nodeId).get()
+  override fun getPeer(nodeId: NodeId): Optional<Peer> = p2pNetwork.getPeer(nodeId)
 
   private fun maintainPersistentConnection(peerAddress: MultiaddrPeerAddress): SafeFuture<Unit> =
     p2pNetwork
