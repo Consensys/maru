@@ -100,7 +100,7 @@ class Libp2pNetworkFactory(
       PeerManager(
         metricsSystem,
         ReputationManager.NOOP,
-        listOf<PeerHandler>(MaruPeerHandler()),
+        listOf<PeerHandler>(MaruPeerManager()),
         rpcHandlers,
         { _ -> 50.0 }, // TODO: I guess we need a scoring function here
       )

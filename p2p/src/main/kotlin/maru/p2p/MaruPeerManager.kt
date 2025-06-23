@@ -11,7 +11,7 @@ package maru.p2p
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
-class MaruPeerHandler : PeerHandler {
+class MaruPeerManager : PeerHandler {
   override fun onConnect(peer: Peer) {
     // TODO("Not yet implemented1")
   }
