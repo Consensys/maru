@@ -20,5 +20,4 @@ eth-api-endpoint = { endpoint = "http://localhost:8545" }
 
 [observability-options]
 port = 8080
-jvm-metrics-enabled = true
-prometheus-metrics-enabled = true
+metrics-system-port = 8081
