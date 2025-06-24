@@ -67,7 +67,7 @@ class P2PNetworkImpl(
       port = p2pConfig.port,
       sealedBlocksTopicHandler = sealedBlocksTopicHandler,
       sealedBlocksTopicId = sealedBlocksTopicId,
-      rpcMethods = rpcMethods.values.map { r -> r.rpcMethod }.toList(),
+      rpcMethods = rpcMethods.values.toList(),
     )
   }
 
@@ -122,18 +122,22 @@ class P2PNetworkImpl(
     }
   }
 
-  fun <TRequest : Message<*, RpcMessageType>> sendRpcMessage(
+  fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
     message: TRequest,
     peer: Peer,
-  ): SafeFuture<*> {
-    val rpcMethodRecord =
+  ): SafeFuture<TResponse> {
+    val rpcMethod =
       rpcMethods[message.type] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
     val peerId = peer.id.toString()
-    val responseHandler = MaruRpcResponseHandler()
-    return sendRequest(peerId, rpcMethodRecord.rpcMethod as MaruRpcMethod<TRequest, *>, message, responseHandler)
-      .thenCompose {
-        responseHandler.response()
-      }.thenApply { bytes -> rpcMethodRecord.serDe.deserialize(bytes.toArrayUnsafe()) }
+    val responseHandler = MaruRpcResponseHandler<TResponse>()
+    return sendRequest(
+      peerId,
+      rpcMethod as MaruRpcMethod<TRequest, TResponse>,
+      message,
+      responseHandler,
+    ).thenCompose {
+      responseHandler.response()
+    }
   }
 
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
@@ -253,12 +257,12 @@ class P2PNetworkImpl(
   }
 
   // TODO: This is pretty much WIP. This should be addressed with the syncing
-  internal fun <TRequest : Message<*, RpcMessageType>> sendRequest(
+  internal fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRequest(
     peer: String,
-    rpcMethod: MaruRpcMethod<TRequest, *>,
+    rpcMethod: MaruRpcMethod<TRequest, TResponse>,
     request: TRequest,
-    responseHandler: MaruRpcResponseHandler,
-  ): SafeFuture<RpcStreamController<MaruOutgoingRpcRequestHandler>> {
+    responseHandler: MaruRpcResponseHandler<TResponse>,
+  ): SafeFuture<RpcStreamController<MaruOutgoingRpcRequestHandler<TResponse>>> {
     val maybePeer = getPeer(peer)
     return if (maybePeer == null) {
       SafeFuture.failedFuture(IllegalStateException("Peer $peer is not connected!"))

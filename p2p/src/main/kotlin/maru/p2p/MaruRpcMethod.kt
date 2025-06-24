@@ -21,7 +21,7 @@ class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*
   private val peerLookup: PeerLookup,
   private val version: Version,
   protocolIdGenerator: MessageIdGenerator,
-) : RpcMethod<MaruOutgoingRpcRequestHandler, TRequest, MaruRpcResponseHandler> {
+) : RpcMethod<MaruOutgoingRpcRequestHandler<TResponse>, TRequest, MaruRpcResponseHandler<TResponse>> {
   private val protocolId = protocolIdGenerator.id(messageType.name, version)
 
   override fun getIds(): MutableList<String> = mutableListOf(protocolId)
@@ -37,8 +37,8 @@ class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*
   override fun createOutgoingRequestHandler(
     protocolId: String,
     request: TRequest,
-    responseHandler: MaruRpcResponseHandler,
-  ): MaruOutgoingRpcRequestHandler = MaruOutgoingRpcRequestHandler(responseHandler)
+    responseHandler: MaruRpcResponseHandler<TResponse>,
+  ): MaruOutgoingRpcRequestHandler<TResponse> = MaruOutgoingRpcRequestHandler(responseHandler, responseMessageSerDe)
 
   override fun encodeRequest(request: TRequest): Bytes = Bytes.wrap(requestMessageSerDe.serialize(request))
 
