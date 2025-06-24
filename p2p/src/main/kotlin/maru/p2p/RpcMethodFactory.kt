@@ -13,7 +13,6 @@ import maru.database.BeaconChain
 import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusMessageSerDe
 import maru.p2p.messages.StatusSerDe
-import maru.serialization.SerDe
 
 class RpcMethodFactory(
   private val beaconChain: BeaconChain,
@@ -22,12 +21,7 @@ class RpcMethodFactory(
 ) {
   private val protocolIdGenerator = LineaRpcProtocolIdGenerator(chainId = chainId)
 
-  data class RpcMethodRecord(
-    val rpcMethod: MaruRpcMethod<*, *>,
-    val serDe: SerDe<Message<*, RpcMessageType>>,
-  )
-
-  fun createRpcMethods(peerLookup: PeerLookup): Map<RpcMessageType, RpcMethodRecord> {
+  fun createRpcMethods(peerLookup: PeerLookup): Map<RpcMessageType, MaruRpcMethod<*, *>> {
     val statusMessageSerDe = StatusMessageSerDe(StatusSerDe())
     val statusRpcMethod =
       MaruRpcMethod(
@@ -37,13 +31,9 @@ class RpcMethodFactory(
         responseMessageSerDe = statusMessageSerDe,
         peerLookup = peerLookup,
         protocolIdGenerator = protocolIdGenerator,
-      )
-    val statusRpcMethodRecord =
-      RpcMethodRecord(
-        rpcMethod = statusRpcMethod,
-        serDe = statusMessageSerDe as SerDe<Message<*, RpcMessageType>>,
+        version = Version.V1,
       )
 
-    return mapOf(RpcMessageType.STATUS to statusRpcMethodRecord)
+    return mapOf(RpcMessageType.STATUS to statusRpcMethod)
   }
 }

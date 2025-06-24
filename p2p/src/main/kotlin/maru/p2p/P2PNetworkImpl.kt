@@ -43,7 +43,7 @@ class P2PNetworkImpl(
 ) : P2PNetwork,
   PeerLookup {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
-  private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK, Version.V1)
+  private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
@@ -67,7 +67,7 @@ class P2PNetworkImpl(
       port = p2pConfig.port,
       sealedBlocksTopicHandler = sealedBlocksTopicHandler,
       sealedBlocksTopicId = sealedBlocksTopicId,
-      rpcMethods = rpcMethods.values.map { r -> r.rpcMethod }.toList(),
+      rpcMethods = rpcMethods.values.toList(),
     )
   }
 
@@ -108,32 +108,36 @@ class P2PNetworkImpl(
     broadcastMessageCounterFactory
       .create(
         listOf(
-          Tag("message.type", message.type.type()),
+          Tag("message.type", message.type.name),
           Tag("message.version", message.version.name),
         ),
       ).increment()
-    return when (message.type.toEnum()) {
+    return when (message.type) {
       GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload as SealedBeaconBlock))
-        p2pNetwork.gossip(topicIdGenerator.id(message.type, message.version), serializedSealedBeaconBlock)
+        p2pNetwork.gossip(topicIdGenerator.id(message.type.name, message.version), serializedSealedBeaconBlock)
       }
     }
   }
 
-  override fun sendRpcMessage(
-    message: Message<*, RpcMessageType>,
-    peerId: String,
-  ): SafeFuture<*> {
-    val rpcMethodRecord =
-      rpcMethods[message.type.toEnum()] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
-    val request: Bytes = Bytes.wrap(rpcMethodRecord.serDe.serialize(message))
-    val responseHandler = MaruRpcResponseHandler()
-    return sendRequest(peerId, rpcMethodRecord.rpcMethod, request, responseHandler)
-      .thenCompose {
-        responseHandler.response()
-      }.thenApply { bytes -> rpcMethodRecord.serDe.deserialize(bytes.toArrayUnsafe()) }
+  fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
+    message: TRequest,
+    peer: Peer,
+  ): SafeFuture<TResponse> {
+    val rpcMethod =
+      rpcMethods[message.type] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
+    val peerId = peer.id.toString()
+    val responseHandler = MaruRpcResponseHandler<TResponse>()
+    return sendRequest(
+      peerId,
+      rpcMethod as MaruRpcMethod<TRequest, TResponse>,
+      message,
+      responseHandler,
+    ).thenCompose {
+      responseHandler.response()
+    }
   }
 
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
@@ -253,12 +257,12 @@ class P2PNetworkImpl(
   }
 
   // TODO: This is pretty much WIP. This should be addressed with the syncing
-  internal fun sendRequest(
+  internal fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRequest(
     peer: String,
-    rpcMethod: MaruRpcMethod<*, *>,
-    request: Bytes,
-    responseHandler: MaruRpcResponseHandler,
-  ): SafeFuture<RpcStreamController<MaruOutgoingRpcRequestHandler>> {
+    rpcMethod: MaruRpcMethod<TRequest, TResponse>,
+    request: TRequest,
+    responseHandler: MaruRpcResponseHandler<TResponse>,
+  ): SafeFuture<RpcStreamController<MaruOutgoingRpcRequestHandler<TResponse>>> {
     val maybePeer = getPeer(peer)
     return if (maybePeer == null) {
       SafeFuture.failedFuture(IllegalStateException("Peer $peer is not connected!"))

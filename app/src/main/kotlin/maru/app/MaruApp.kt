@@ -28,7 +28,6 @@ import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationProvider
-import maru.consensus.state.InstantFinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.BeaconChain
@@ -49,9 +48,9 @@ class MaruApp(
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
-  private var p2pNetwork: P2PNetwork,
+  private val p2pNetwork: P2PNetwork,
   private val privateKeyProvider: () -> ByteArray,
-  private val finalizationProvider: FinalizationProvider = InstantFinalizationProvider,
+  private val finalizationProvider: FinalizationProvider,
   private val vertx: Vertx,
   private val metricsFacade: MetricsFacade,
   private val beaconChain: BeaconChain,
