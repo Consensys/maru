@@ -16,6 +16,10 @@ data class ForkId(
   val forkSpec: ForkSpec,
   val genesisRootHash: ByteArray,
 ) {
+  companion object {
+    const val FORK_ID_FIELD_NAME = "mfid"
+  }
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
