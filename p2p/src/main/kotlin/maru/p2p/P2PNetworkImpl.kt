@@ -122,16 +122,15 @@ class P2PNetworkImpl(
     }
   }
 
-  fun sendRpcMessage(
-    message: Message<*, RpcMessageType>,
+  fun <TRequest : Message<*, RpcMessageType>> sendRpcMessage(
+    message: TRequest,
     peer: Peer,
   ): SafeFuture<*> {
     val rpcMethodRecord =
       rpcMethods[message.type] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
     val peerId = peer.id.toString()
-    val request: Bytes = Bytes.wrap(rpcMethodRecord.serDe.serialize(message))
     val responseHandler = MaruRpcResponseHandler()
-    return sendRequest(peerId, rpcMethodRecord.rpcMethod, request, responseHandler)
+    return sendRequest(peerId, rpcMethodRecord.rpcMethod as MaruRpcMethod<TRequest, *>, message, responseHandler)
       .thenCompose {
         responseHandler.response()
       }.thenApply { bytes -> rpcMethodRecord.serDe.deserialize(bytes.toArrayUnsafe()) }
@@ -254,10 +253,10 @@ class P2PNetworkImpl(
   }
 
   // TODO: This is pretty much WIP. This should be addressed with the syncing
-  internal fun sendRequest(
+  internal fun <TRequest : Message<*, RpcMessageType>> sendRequest(
     peer: String,
-    rpcMethod: MaruRpcMethod<*, *>,
-    request: Bytes,
+    rpcMethod: MaruRpcMethod<TRequest, *>,
+    request: TRequest,
     responseHandler: MaruRpcResponseHandler,
   ): SafeFuture<RpcStreamController<MaruOutgoingRpcRequestHandler>> {
     val maybePeer = getPeer(peer)
