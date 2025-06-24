@@ -31,6 +31,7 @@ data class FollowersConfig(
 data class P2P(
   val ipAddress: String,
   val port: UInt,
+  val discoveryEnabled: Boolean = true,
   val discoveryPort: UInt,
   val bootnodes: List<String> = emptyList(),
   val staticPeers: List<String> = emptyList(),

@@ -32,9 +32,12 @@ class HopliteFriendlinessTest {
 
     [p2p-config]
     port = 3322
+    discovery-enabled = true
+    discovery-port = 3324
     ip-address = "127.0.0.1"
     static-peers = []
     reconnect-delay = 500m
+    enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
@@ -58,7 +61,8 @@ class HopliteFriendlinessTest {
     P2P(
       ipAddress = "127.0.0.1",
       port = 3322u,
-      discoveryPort = 3323u,
+      discoveryEnabled = true,
+      discoveryPort = 3324u,
       staticPeers = emptyList(),
       reconnectDelay = 500.milliseconds,
     )

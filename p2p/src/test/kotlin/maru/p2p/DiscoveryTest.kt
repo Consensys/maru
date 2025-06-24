@@ -87,58 +87,32 @@ class DiscoveryTest {
       discoveryService2.start()
       discoveryService3.start()
 
-      Awaitility
-        .await()
-        .timeout(10, TimeUnit.SECONDS)
-        .untilAsserted {
-          val get = discoveryService2.searchForPeers().get()
-          assertThat(
-            get
-              .stream()
-              .filter { it.nodeIdBytes == discoveryService3.getLocalNodeRecord().nodeId }
-              .count(),
-          ).isGreaterThan(0L)
-        }
-      Awaitility
-        .await()
-        .timeout(10, TimeUnit.SECONDS)
-        .untilAsserted {
-          val get = discoveryService3.searchForPeers().get()
-          assertThat(
-            get
-              .stream()
-              .filter { it.nodeIdBytes == discoveryService2.getLocalNodeRecord().nodeId }
-              .count(),
-          ).isGreaterThan(0L)
-        }
-      Awaitility
-        .await()
-        .timeout(10, TimeUnit.SECONDS)
-        .untilAsserted {
-          val get = bootnode.searchForPeers().get()
-          assertThat(
-            get
-              .stream()
-              .filter { it.nodeIdBytes == discoveryService2.getLocalNodeRecord().nodeId }
-              .count(),
-          ).isGreaterThan(0L)
-        }
-      Awaitility
-        .await()
-        .timeout(10, TimeUnit.SECONDS)
-        .untilAsserted {
-          val get = bootnode.searchForPeers().get()
-          assertThat(
-            get
-              .stream()
-              .filter { it.nodeIdBytes == discoveryService3.getLocalNodeRecord().nodeId }
-              .count(),
-          ).isGreaterThan(0L)
-        }
+      awaitPeerFound(discoveryService2, discoveryService3.getLocalNodeRecord().nodeId)
+      awaitPeerFound(discoveryService3, discoveryService2.getLocalNodeRecord().nodeId)
+      awaitPeerFound(bootnode, discoveryService2.getLocalNodeRecord().nodeId)
+      awaitPeerFound(bootnode, discoveryService3.getLocalNodeRecord().nodeId)
     } finally {
       bootnode.stop()
       discoveryService2.stop()
       discoveryService3.stop()
     }
+  }
+
+  private fun awaitPeerFound(
+    discoveryService: MaruDiscoveryService,
+    expectedNodeId: Bytes,
+  ) {
+    Awaitility
+      .await()
+      .timeout(10, TimeUnit.SECONDS)
+      .untilAsserted {
+        val get = discoveryService.searchForPeers().get()
+        assertThat(
+          get
+            .stream()
+            .filter { it.nodeIdBytes == expectedNodeId }
+            .count(),
+        ).isGreaterThan(0L)
+      }
   }
 }

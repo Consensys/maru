@@ -33,12 +33,12 @@ class MaruPeerManagerService(
   private val currentlySearching = AtomicBoolean(false)
   private val connectionInProgress = mutableListOf<Bytes>()
 
-  private lateinit var discoveryService: MaruDiscoveryService
+  private var discoveryService: MaruDiscoveryService? = null
   private lateinit var p2pNetwork: P2PNetwork<Peer>
   private var stopCalled = false
 
   fun start(
-    discoveryService: MaruDiscoveryService,
+    discoveryService: MaruDiscoveryService?,
     p2pNetwork: P2PNetwork<Peer>,
   ) {
     this.discoveryService = discoveryService
@@ -53,30 +53,32 @@ class MaruPeerManagerService(
 
   private fun searchForPeersUntilMaxReached() {
     if (!stopCalled && currentlySearching.compareAndSet(false, true)) {
-      discoveryService
-        .searchForPeers()
-        .orTimeout(Duration.ofSeconds(30L))
-        .whenComplete { availablePeers, throwable ->
-          log.debug("Finished searching for peers. Found {} peers.", availablePeers.size)
-          if (!stopCalled) {
-            if (throwable != null) {
-              log.trace("Failed to discover peers: {}\n{}", throwable.message, throwable.stackTraceToString())
-              discoveryService.getKnownPeers().forEach { peer ->
-                tryToConnectIfNotFull(peer)
-              }
-            } else {
-              availablePeers.forEach { peer ->
-                tryToConnectIfNotFull(peer)
+      discoveryService?.let { discoveryService ->
+        discoveryService
+          .searchForPeers()
+          .orTimeout(Duration.ofSeconds(30L))
+          .whenComplete { availablePeers, throwable ->
+            log.debug("Finished searching for peers. Found {} peers.", availablePeers.size)
+            if (!stopCalled) {
+              if (throwable != null) {
+                log.trace("Failed to discover peers: {}\n{}", throwable.message, throwable.stackTraceToString())
+                discoveryService.getKnownPeers().forEach { peer ->
+                  tryToConnectIfNotFull(peer)
+                }
+              } else {
+                availablePeers.forEach { peer ->
+                  tryToConnectIfNotFull(peer)
+                }
               }
             }
+          }.whenComplete { _, _ ->
+            currentlySearching.set(false)
+            log.debug("Peer count: {}. Max Peers: {}", p2pNetwork.peerCount, maxPeers)
+            if (!stopCalled && p2pNetwork.peerCount < maxPeers) {
+              CompletableFuture.runAsync { searchForPeersUntilMaxReached() }
+            }
           }
-        }.whenComplete { _, _ ->
-          currentlySearching.set(false)
-          log.debug("Peer count: {}. Max Peers: {}", p2pNetwork.peerCount, maxPeers)
-          if (!stopCalled && p2pNetwork.peerCount < maxPeers) {
-            CompletableFuture.runAsync { searchForPeersUntilMaxReached() }
-          }
-        }
+      }
     }
   }
 
@@ -105,7 +107,7 @@ class MaruPeerManagerService(
         connectionInProgress.add(peer.nodeIdBytes)
       }
 
-      log.debug("Peer {} Connecting to peer {}...", discoveryService.getLocalNodeRecord().nodeId, peer.nodeIdBytes)
+      log.debug("Peer {} Connecting to peer {}...", discoveryService?.getLocalNodeRecord()?.nodeId, peer.nodeIdBytes)
       p2pNetwork
         .connect(p2pNetwork.createPeerAddress(peer))
         .orTimeout(30, TimeUnit.SECONDS)

@@ -9,8 +9,14 @@
 package maru.p2p.discovery
 
 import java.time.Duration
+import java.util.Optional
 import java.util.function.Consumer
 import maru.config.P2P
+import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkId
+import maru.consensus.ForkSpec
+import maru.serialization.ForkIdDeSer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -46,6 +52,12 @@ class MaruDiscoveryService(
   // add the fork id here as a custom field
   private val localNodeRecord = localNodeRecord(privateKey = privateKey, p2pConfig = p2pConfig)
 
+  private val bootnodes =
+    p2pConfig.bootnodes
+      .stream()
+      .map { NodeRecordFactory.DEFAULT.fromEnr(it) }
+      .toList()
+
   val delayedExecutor =
     ScheduledExecutorAsyncRunner.create(
       "DiscoveryService",
@@ -54,16 +66,10 @@ class MaruDiscoveryService(
       5,
       MetricTrackingExecutorFactory(NoOpMetricsSystem()),
     )
-  var bootnodeRefreshTask: Cancellable? = null
+  private lateinit var bootnodeRefreshTask: Cancellable
 
-  fun start() {
+  init {
     val discoveryNetworkBuilder = DiscoverySystemBuilder()
-
-    val bootnodes =
-      p2pConfig.bootnodes
-        .stream()
-        .map { NodeRecordFactory.DEFAULT.fromEnr(it) }
-        .toList()
 
     discoveryNetworkBuilder.listen(p2pConfig.ipAddress, p2pConfig.discoveryPort.toInt())
     discoveryNetworkBuilder.secretKey(privateKey)
@@ -71,17 +77,17 @@ class MaruDiscoveryService(
     discoveryNetworkBuilder.bootnodes(bootnodes)
 
     discoverySystem = discoveryNetworkBuilder.build()
+  }
 
+  fun start() {
     discoverySystem
       .start()
       .thenRun {
-        // discoverySystem.updateCustomFieldValue(MaruForkId.MARU_FORK_ID_FIELD_NAME, maruForkId.encode())
-        // TODO: do we want another custom field to identify topics/role/something else?
         this.bootnodeRefreshTask =
           delayedExecutor.runWithFixedDelay(
             { this.pingBootnodes(bootnodes) },
             BOOTNODE_REFRESH_DELAY,
-            { error: Throwable? ->
+            { error: Throwable ->
               log.error(
                 "Failed to contact discovery bootnodes",
                 error,
@@ -92,7 +98,7 @@ class MaruDiscoveryService(
   }
 
   fun stop() {
-    bootnodeRefreshTask?.cancel()
+    bootnodeRefreshTask.cancel()
     discoverySystem.stop()
   }
 
@@ -112,13 +118,19 @@ class MaruDiscoveryService(
 
   fun getLocalNodeRecord(): NodeRecord = localNodeRecord
 
-  private fun convertNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer =
-    MaruDiscoveryPeer(
+  private fun convertNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
+    val forkIdBytes = node.get(ForkId.FORK_ID_FIELD_NAME)
+    val forkId =
+      (forkIdBytes as? Bytes)?.toArray()?.let {
+        Optional.of(ForkIdDeSer.ForkIdDeserializer.deserialize(it))
+      } ?: Optional.empty<ForkId>()
+    return MaruDiscoveryPeer(
       (node.get(EnrField.PKEY_SECP256K1) as Bytes),
       node.nodeId,
       node.tcpAddress.get(),
-      MaruForkId.fromNodeRecord(node),
+      forkId,
     )
+  }
 
   private fun pingBootnodes(bootnodeRecords: List<NodeRecord>) {
     bootnodeRecords.forEach(
@@ -137,6 +149,22 @@ class MaruDiscoveryService(
     privateKey: SecretKey,
     p2pConfig: P2P,
   ): NodeRecord {
+    val qbftConsensusConfig =
+      QbftConsensusConfig(
+        validatorSet = emptySet(),
+        ElFork.Prague,
+      )
+    val forkId =
+      ForkId(
+        chainId = 1L.toUInt(),
+        forkSpec =
+          ForkSpec(
+            blockTimeSeconds = 15,
+            timestampSeconds = 0L,
+            configuration = qbftConsensusConfig,
+          ),
+        genesisRootHash = ByteArray(32),
+      )
     val nodeRecordBuilder: NodeRecordBuilder =
       NodeRecordBuilder()
         .secretKey(privateKey)
@@ -145,7 +173,9 @@ class MaruDiscoveryService(
           p2pConfig.ipAddress,
           p2pConfig.discoveryPort.toInt(),
           p2pConfig.port.toInt(),
-        ).customField(MaruForkId.MARU_FORK_ID_FIELD_NAME, MaruForkId.MARU_INITIAL_FORK_ID.encode())
+        ).customField(ForkId.FORK_ID_FIELD_NAME, Bytes.wrap(ForkIdDeSer.ForkIdSerializer.serialize(forkId)))
+    // TODO: do we want more custom fields to identify topics/role/something else?
+
     return nodeRecordBuilder.build()
   }
 

@@ -72,15 +72,19 @@ class P2PNetworkImpl(
 
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
   private val p2pNetwork = builtNetwork.p2PNetwork
-  private val discoveryService =
-    MaruDiscoveryService(
-      privateKeyBytes =
-        privateKeyBytes
-          .slice(
-            (privateKeyBytes.size - 32).rangeTo(privateKeyBytes.size - 1),
-          ).toByteArray(),
-      p2pConfig = p2pConfig,
-    )
+  private val discoveryService: MaruDiscoveryService? =
+    if (p2pConfig.discoveryEnabled) {
+      MaruDiscoveryService(
+        privateKeyBytes =
+          privateKeyBytes
+            .slice(
+              (privateKeyBytes.size - 32).rangeTo(privateKeyBytes.size - 1),
+            ).toByteArray(),
+        p2pConfig = p2pConfig,
+      )
+    } else {
+      null
+    }
 
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val delayedExecutor =
@@ -102,7 +106,7 @@ class P2PNetworkImpl(
             ?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
       }.thenPeek {
-        discoveryService.start()
+        discoveryService?.start()
       }.thenPeek {
         maruPeerManagerService.start(discoveryService, p2pNetwork)
       }.thenPeek {
@@ -116,7 +120,7 @@ class P2PNetworkImpl(
 
   override fun stop(): SafeFuture<Unit> {
     val pmStop = maruPeerManagerService.stop()
-    discoveryService.stop()
+    discoveryService?.stop()
     val p2pStop = p2pNetwork.stop()
     return SafeFuture.allOf(p2pStop, pmStop).thenApply {}
   }

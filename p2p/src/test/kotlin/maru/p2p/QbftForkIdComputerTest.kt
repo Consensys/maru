@@ -16,13 +16,13 @@ import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdDeSer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 
 class QbftForkIdComputerTest {
   private val dummyChainId: UInt = 1u
-  private val forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash)
+  private val forkIdHasher = ForkIdHasher(ForkIdDeSer.ForkIdSerializer, Hashing::shortShaHash)
 
   @Test
   fun `serialization is deterministic for separate instances with the same values`() {

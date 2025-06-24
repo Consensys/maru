@@ -363,7 +363,8 @@ class P2PTest {
         privateKeyBytes = key1,
         p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = PORT2, staticPeers = emptyList(), maxPeers = 2),
         chainId = chainId,
-        serializer = RLPSerializers.SealedBeaconBlockSerializer,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
       )
 
     val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
@@ -388,7 +389,8 @@ class P2PTest {
             maxPeers = 2,
           ),
         chainId = chainId,
-        serializer = RLPSerializers.SealedBeaconBlockSerializer,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
       )
 
     val p2pNetworkImpl3 =
@@ -404,7 +406,8 @@ class P2PTest {
             maxPeers = 2,
           ),
         chainId = chainId,
-        serializer = RLPSerializers.SealedBeaconBlockSerializer,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
       )
 
     try {
@@ -431,7 +434,6 @@ class P2PTest {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_1)
       }
 
-      println("Network is connected to all peers, disconnecting one peer")
       p2pNetworkImpl2.dropPeer(PEER_ID_NODE_1, DisconnectReason.TOO_MANY_PEERS)
       p2pNetworkImpl2.dropPeer(PEER_ID_NODE_3, DisconnectReason.TOO_MANY_PEERS)
 
@@ -453,7 +455,6 @@ class P2PTest {
       awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_1)
       }
-      println("Network is connected to all peers again")
     } finally {
       p2pNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
