@@ -158,13 +158,19 @@ dependencyManagement {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
     }
 
-    def lineaPackagesVersion = "0.0.1-v20250610200556"
+    def lineaPackagesVersion = System.getenv("LINEA_LIBS_VERSION") ?: "0.0.1-v20250623134044"
 
     dependency "build.linea.internal:metrics:$lineaPackagesVersion"
     dependency "build.linea.internal:micrometer:$lineaPackagesVersion"
     dependency "build.linea.internal:vertx-helper:$lineaPackagesVersion"
     dependency "build.linea.internal:json-rpc:$lineaPackagesVersion"
     dependency "build.linea.internal:futures:$lineaPackagesVersion"
-
+    dependency "build.linea.internal:core:$lineaPackagesVersion"
+    dependency "build.linea.internal:kotlin:$lineaPackagesVersion"
+    dependency "build.linea.internal:domain-models:$lineaPackagesVersion"
+    dependency "build.linea.internal:interfaces:$lineaPackagesVersion"
+    dependency "build.linea.internal:linea-contract-clients:$lineaPackagesVersion"
+    dependency "build.linea.internal:web3j-extensions:$lineaPackagesVersion"
+    dependency "build.linea.internal:linea-contract-clients$lineaPackagesVersion:test-fixtures"
   }
 }
