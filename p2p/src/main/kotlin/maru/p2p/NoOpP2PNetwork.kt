@@ -31,14 +31,6 @@ object NoOpP2PNetwork : P2PNetwork {
     return SafeFuture.completedFuture(Unit)
   }
 
-  override fun sendRpcMessage(
-    message: Message<*, RpcMessageType>,
-    peerId: String,
-  ): SafeFuture<*> {
-    log.debug("Doing nothing for message={}", message)
-    return SafeFuture.completedFuture(Unit)
-  }
-
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
     log.debug("Subscription called for subscriber={}", subscriber)
     return 0

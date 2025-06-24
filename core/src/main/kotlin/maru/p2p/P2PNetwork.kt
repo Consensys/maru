@@ -84,18 +84,6 @@ interface P2PNetwork {
 
   fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*>
 
-/**
-   * Send an RPC message to a specific peer.
-   *
-   * @param message The message to send.
-   * @param peerId The ID of the peer to send the message to.
-   * @return A future that completes when the message is sent.
-   */
-  fun sendRpcMessage(
-    message: Message<*, RpcMessageType>,
-    peerId: String,
-  ): SafeFuture<*>
-
   /**
    * @return subscription id
    */
