@@ -43,7 +43,7 @@ class P2PNetworkImpl(
 ) : P2PNetwork,
   PeerLookup {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
-  private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK, Version.V1)
+  private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
@@ -108,16 +108,16 @@ class P2PNetworkImpl(
     broadcastMessageCounterFactory
       .create(
         listOf(
-          Tag("message.type", message.type.type()),
+          Tag("message.type", message.type.name),
           Tag("message.version", message.version.name),
         ),
       ).increment()
-    return when (message.type.toEnum()) {
+    return when (message.type) {
       GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload as SealedBeaconBlock))
-        p2pNetwork.gossip(topicIdGenerator.id(message.type, message.version), serializedSealedBeaconBlock)
+        p2pNetwork.gossip(topicIdGenerator.id(message.type.name, message.version), serializedSealedBeaconBlock)
       }
     }
   }
@@ -127,7 +127,7 @@ class P2PNetworkImpl(
     peer: Peer,
   ): SafeFuture<*> {
     val rpcMethodRecord =
-      rpcMethods[message.type.toEnum()] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
+      rpcMethods[message.type] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
     val peerId = peer.id.toString()
     val request: Bytes = Bytes.wrap(rpcMethodRecord.serDe.serialize(message))
     val responseHandler = MaruRpcResponseHandler()

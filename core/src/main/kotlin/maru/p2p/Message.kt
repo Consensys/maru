@@ -12,48 +12,26 @@ enum class Version : Comparable<Version> {
   V1,
 }
 
-enum class GossipMessageType : BaseMessageType<GossipMessageType> {
+enum class GossipMessageType : MessageType {
   QBFT,
   BEACON_BLOCK,
-  ;
-
-  override fun type(): String = name
 }
 
-enum class RpcMessageType : BaseMessageType<RpcMessageType> {
+enum class RpcMessageType : MessageType {
   STATUS(),
-  ;
-
-  override fun type(): String = name
 }
 
-interface BaseMessageType<TMessageType> {
-  fun type(): String
-}
+sealed interface MessageType
 
-data class Message<TPayload, TMessageType>(
-  val type: BaseMessageType<TMessageType>,
+data class Message<TPayload, TMessageType : MessageType>(
+  val type: TMessageType,
   val version: Version = Version.V1,
   val payload: TPayload,
 )
 
-fun BaseMessageType<GossipMessageType>.toEnum(): GossipMessageType =
-  when (type()) {
-    GossipMessageType.BEACON_BLOCK.name -> GossipMessageType.BEACON_BLOCK
-    GossipMessageType.QBFT.name -> GossipMessageType.QBFT
-    else -> throw IllegalArgumentException("Unsupported message type: ${type()}")
-  }
-
-fun BaseMessageType<RpcMessageType>.toEnum(): RpcMessageType =
-  if (type() == RpcMessageType.STATUS.name) {
-    RpcMessageType.STATUS
-  } else {
-    throw IllegalArgumentException("Unsupported message type: ${type()}")
-  }
-
 interface MessageIdGenerator {
   fun id(
-    messageType: BaseMessageType<*>,
+    messageName: String,
     version: Version,
   ): String
 }
@@ -62,16 +40,16 @@ class LineaMessageIdGenerator(
   private val chainId: UInt,
 ) : MessageIdGenerator {
   override fun id(
-    messageType: BaseMessageType<*>,
+    messageName: String,
     version: Version,
-  ): String = "/linea/$chainId/${messageType.type().lowercase()}/$version"
+  ): String = "/linea/$chainId/${messageName.lowercase()}/$version"
 }
 
 class LineaRpcProtocolIdGenerator(
   private val chainId: UInt,
 ) : MessageIdGenerator {
   override fun id(
-    messageType: BaseMessageType<*>,
+    messageName: String,
     version: Version,
-  ): String = "/linea/req/$chainId/${messageType.type().lowercase()}/$version"
+  ): String = "/linea/req/$chainId/${messageName.lowercase()}/$version"
 }
