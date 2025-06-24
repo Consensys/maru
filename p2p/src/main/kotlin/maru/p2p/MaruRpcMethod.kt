@@ -19,9 +19,10 @@ class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*
   private val requestMessageSerDe: SerDe<TRequest>,
   private val responseMessageSerDe: SerDe<TResponse>,
   private val peerLookup: PeerLookup,
+  private val version: Version,
   protocolIdGenerator: MessageIdGenerator,
 ) : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
-  private val protocolId = protocolIdGenerator.id(messageType.name, version = Version.V1)
+  private val protocolId = protocolIdGenerator.id(messageType.name, version)
 
   override fun getIds(): MutableList<String> = mutableListOf(protocolId)
 
@@ -47,6 +48,7 @@ class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*
 
     if (messageType != other.messageType) return false
     if (protocolId != other.protocolId) return false
+    if (version != other.version) return false
 
     return true
   }
@@ -54,6 +56,7 @@ class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*
   override fun hashCode(): Int {
     var result = messageType.hashCode()
     result = 31 * result + protocolId.hashCode()
+    result = 31 * result + version.hashCode()
     return result
   }
 }

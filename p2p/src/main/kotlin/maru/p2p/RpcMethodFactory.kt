@@ -37,6 +37,7 @@ class RpcMethodFactory(
         responseMessageSerDe = statusMessageSerDe,
         peerLookup = peerLookup,
         protocolIdGenerator = protocolIdGenerator,
+        version = Version.V1,
       )
     val statusRpcMethodRecord =
       RpcMethodRecord(
