@@ -25,10 +25,10 @@ import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
-import maru.crypto.Hashing
-import maru.database.kv.KvDatabaseFactory
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
+import maru.crypto.Hashing
+import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
