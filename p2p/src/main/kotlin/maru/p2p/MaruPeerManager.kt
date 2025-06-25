@@ -42,7 +42,7 @@ class MaruPeerManager(
     connectedPeers.remove(peer.id)
   }
 
-  override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers.get(nodeId)
+  override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers[nodeId]
 
   fun getRpcMethods() = rpcMethods.all()
 }
