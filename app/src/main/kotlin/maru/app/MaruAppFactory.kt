@@ -22,11 +22,11 @@ import linea.web3j.ethapi.createEthApiClient
 import maru.config.MaruConfig
 import maru.config.P2P
 import maru.consensus.ForksSchedule
+import maru.consensus.LatestBlockMetadataCache
+import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.finalization.LineaFinalizationProvider
-import maru.consensus.LatestBlockMetadataCache
-import maru.consensus.Web3jMetadataProvider
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
@@ -61,7 +61,6 @@ class MaruAppFactory {
         "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
       )
-
 
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
