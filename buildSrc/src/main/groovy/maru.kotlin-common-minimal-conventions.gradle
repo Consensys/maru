@@ -11,7 +11,6 @@ java {
 }
 
 repositories {
-  mavenLocal()
   mavenCentral()
   maven {
     url 'https://artifacts.consensys.net/public/teku/maven/'
@@ -37,6 +36,7 @@ repositories {
     url "https://jitpack.io"
     content { includeGroup('com.github.multiformats')}
   }
+  mavenLocal()
 }
 
 dependencies {
@@ -50,7 +50,6 @@ dependencies {
   // check later on if this may raise incompatibilities
   testImplementation 'org.mockito.kotlin:mockito-kotlin'
   testImplementation 'org.awaitility:awaitility-kotlin'
-  testImplementation 'build.linea.internal:micrometer'
   //</testing>
 }
 

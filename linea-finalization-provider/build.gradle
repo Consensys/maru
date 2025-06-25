@@ -15,10 +15,14 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
+  id 'java-test-fixtures'
 }
 
 dependencies {
-  implementation "build.linea.internal:metrics"
-  implementation "build.linea.internal:futures"
-  implementation "tech.pegasys.teku.internal:executionclient"
+  implementation(project(":jvm-libs:extensions"))
+  api(project(":core"))
+  api("build.linea.internal:linea-contract-clients"){
+    exclude group: "build.linea", module: "besu-libs"
+  }
+  api("build.linea.internal:interfaces")
 }
