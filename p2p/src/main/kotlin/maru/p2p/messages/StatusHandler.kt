@@ -22,7 +22,8 @@ class StatusHandler(
     message: Message<Status, RpcMessageType>,
     callback: ResponseCallback<Message<Status, RpcMessageType>>,
   ) {
-    val statusMessage = statusMessageFactory.createStatusMessage()
-    callback.respondAndCompleteSuccessfully(statusMessage)
+    peer.updateStatus(message.payload)
+    val localStatusMessage = statusMessageFactory.createStatusMessage()
+    callback.respondAndCompleteSuccessfully(localStatusMessage)
   }
 }
