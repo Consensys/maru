@@ -9,10 +9,7 @@
 package maru.p2p.messages
 
 import kotlin.random.Random
-import kotlin.random.nextULong
-import maru.consensus.ForkIdHashProvider
 import maru.core.ext.DataGenerators
-import maru.database.BeaconChain
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
@@ -26,25 +23,10 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 class StatusHandlerTest {
   @Test
   fun `responds with current status`() {
-    val beaconChain = mock<BeaconChain>()
-    val forkIdHashProvider = mock<ForkIdHashProvider>()
+    val statusMessageFactory = mock<StatusMessageFactory>()
     val latestBeaconState = DataGenerators.randomBeaconState(0U)
     val forkIdHash = Random.nextBytes(32)
-    whenever(beaconChain.getLatestBeaconState()).thenReturn(latestBeaconState)
-    whenever(forkIdHashProvider.currentForkIdHash()).thenReturn(forkIdHash)
-
-    val peer = mock<Peer>()
-    val message =
-      Message(
-        RpcMessageType.STATUS,
-        Version.V1,
-        Status(Random.nextBytes(32), Random.nextBytes(32), Random.nextULong()),
-      )
-    val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
-    val statusHandler = StatusHandler(beaconChain, forkIdHashProvider)
-    statusHandler.handleIncomingMessage(peer, message, callback)
-
-    val expectedMessage =
+    val statusMessage =
       Message(
         RpcMessageType.STATUS,
         Version.V1,
@@ -54,6 +36,12 @@ class StatusHandlerTest {
           latestBeaconState.latestBeaconBlockHeader.number,
         ),
       )
-    verify(callback).respondAndCompleteSuccessfully(expectedMessage)
+    whenever(statusMessageFactory.createStatusMessage()).thenReturn(statusMessage)
+
+    val peer = mock<Peer>()
+    val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
+    val statusHandler = StatusHandler(statusMessageFactory)
+    statusHandler.handleIncomingMessage(peer, statusMessage, callback)
+    verify(callback).respondAndCompleteSuccessfully(statusMessage)
   }
 }

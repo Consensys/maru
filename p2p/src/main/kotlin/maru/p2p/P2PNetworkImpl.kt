@@ -16,6 +16,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
+import maru.p2p.messages.StatusMessageFactory
 import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.SerDe
 import net.consensys.linea.metrics.MetricsFacade
@@ -35,13 +36,12 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 
 class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
-  chainId: UInt,
-  rpcMethodFactory: RpcMethodFactory,
+  private val chainId: UInt,
   private val p2pConfig: P2P,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
-) : P2PNetwork,
-  PeerLookup {
+  private val statusMessageFactory: StatusMessageFactory,
+) : P2PNetwork {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
@@ -53,7 +53,6 @@ class P2PNetworkImpl(
       name = "message.broadcast.counter",
       description = "Count of messages broadcasted over the P2P network",
     )
-  private val rpcMethods = rpcMethodFactory.createRpcMethods(this)
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
@@ -61,13 +60,17 @@ class P2PNetworkImpl(
   ): TekuLibP2PNetwork {
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
 
+    val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
+    val maruPeerManager = MaruPeerManager(statusMessageFactory, rpcIdGenerator)
+
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
       privateKey = privateKey,
       ipAddress = p2pConfig.ipAddress,
       port = p2pConfig.port,
       sealedBlocksTopicHandler = sealedBlocksTopicHandler,
       sealedBlocksTopicId = sealedBlocksTopicId,
-      rpcMethods = rpcMethods.values.toList(),
+      rpcMethods = maruPeerManager.getRpcMethods(),
+      maruPeerManager = maruPeerManager,
     )
   }
 
@@ -122,24 +125,6 @@ class P2PNetworkImpl(
     }
   }
 
-  fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
-    message: TRequest,
-    peer: Peer,
-  ): SafeFuture<TResponse> {
-    val rpcMethod =
-      rpcMethods[message.type] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
-    val peerId = peer.id.toString()
-    val responseHandler = MaruRpcResponseHandler<TResponse>()
-    return sendRequest(
-      peerId,
-      rpcMethod as MaruRpcMethod<TRequest, TResponse>,
-      message,
-      responseHandler,
-    ).thenCompose {
-      responseHandler.response()
-    }
-  }
-
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
     val subscriptionManagerHadSubscriptions = sealedBlocksSubscriptionManager.hasSubscriptions()
 
@@ -176,8 +161,6 @@ class P2PNetworkImpl(
       p2pNetwork.getPeer(peerAddress.id).ifPresent { peer -> peer.disconnectImmediately(Optional.empty(), true) }
     }
   }
-
-  override fun getPeer(nodeId: NodeId): Optional<Peer> = p2pNetwork.getPeer(nodeId)
 
   private fun maintainPersistentConnection(peerAddress: MultiaddrPeerAddress): SafeFuture<Unit> =
     p2pNetwork

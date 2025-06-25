@@ -8,10 +8,8 @@
  */
 package maru.p2p
 
-import java.util.Optional
 import tech.pegasys.teku.networking.p2p.peer.NodeId
-import tech.pegasys.teku.networking.p2p.peer.Peer
 
 interface PeerLookup {
-  fun getPeer(nodeId: NodeId): Optional<Peer>
+  fun getPeer(nodeId: NodeId): MaruPeer?
 }
