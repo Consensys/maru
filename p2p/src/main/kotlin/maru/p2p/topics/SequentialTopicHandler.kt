@@ -95,16 +95,35 @@ class SequentialTopicHandler<T>(
           futureToReturn
         }
 
-        sequenceNumber > nextExpectedSequenceNumber && pendingEvents.size < maxQueueSize -> {
+        sequenceNumber > nextExpectedSequenceNumber -> {
+          if (pendingEvents.size < maxQueueSize) {
+            log.debug(
+              "enqueuing message with sequenceNumber={} next expectedSequenceNumber={}",
+              sequenceNumber,
+              nextExpectedSequenceNumber,
+            )
+            val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
+            pendingEvents.add(deserializedMessage to delayedHandlingFuture)
+            // Note that it will be completed only when it's handled
+            delayedHandlingFuture
+          } else {
+            log.warn(
+              "ignoring message with sequenceNumber={} next expectedSequenceNumber={} because queue is full size={}",
+              sequenceNumber,
+              nextExpectedSequenceNumber,
+              pendingEvents.size,
+            )
+            SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
+          }
+        }
+
+        sequenceNumber < nextExpectedSequenceNumber -> {
           log.debug(
-            "Adding message with sequenceNumber={} to the queue, expectedSequenceNumber={}",
+            "ignoring outdated message with sequenceNumber={} next expectedSequenceNumber={}",
             sequenceNumber,
             nextExpectedSequenceNumber,
           )
-          val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
-          pendingEvents.add(deserializedMessage to delayedHandlingFuture)
-          // Note that it will be completed only when it's handled
-          delayedHandlingFuture
+          SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
         }
 
         else -> {
