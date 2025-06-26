@@ -32,7 +32,6 @@ import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
-import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 
 class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
@@ -59,9 +58,11 @@ class P2PNetworkImpl(
     p2pConfig: P2P,
   ): TekuLibP2PNetwork {
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
-
     val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
-    val maruPeerManager = MaruPeerManager(statusMessageFactory, rpcIdGenerator)
+
+    lateinit var maruPeerManager: MaruPeerManager
+    val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator) { maruPeerManager }
+    maruPeerManager = MaruPeerManager(statusMessageFactory, rpcMethods)
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
       privateKey = privateKey,
@@ -69,7 +70,7 @@ class P2PNetworkImpl(
       port = p2pConfig.port,
       sealedBlocksTopicHandler = sealedBlocksTopicHandler,
       sealedBlocksTopicId = sealedBlocksTopicId,
-      rpcMethods = maruPeerManager.getRpcMethods(),
+      rpcMethods = rpcMethods.all(),
       maruPeerManager = maruPeerManager,
     )
   }
@@ -236,21 +237,6 @@ class P2PNetworkImpl(
       SafeFuture.completedFuture(Unit)
     } else {
       maybePeer.disconnectCleanly(reason).thenApply { }
-    }
-  }
-
-  // TODO: This is pretty much WIP. This should be addressed with the syncing
-  internal fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRequest(
-    peer: String,
-    rpcMethod: MaruRpcMethod<TRequest, TResponse>,
-    request: TRequest,
-    responseHandler: MaruRpcResponseHandler<TResponse>,
-  ): SafeFuture<RpcStreamController<MaruOutgoingRpcRequestHandler<TResponse>>> {
-    val maybePeer = getPeer(peer)
-    return if (maybePeer == null) {
-      SafeFuture.failedFuture(IllegalStateException("Peer $peer is not connected!"))
-    } else {
-      maybePeer.sendRequest(rpcMethod, request, responseHandler)
     }
   }
 

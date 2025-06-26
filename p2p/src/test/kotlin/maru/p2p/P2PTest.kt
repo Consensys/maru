@@ -72,16 +72,15 @@ class P2PTest {
     private val forkIdHashProvider =
       createForkIdHashProvider()
     private val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
-    private val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
-    private val rpcMethods =
-      RpcMethods(
-        statusMessageFactory,
-        rpcProtocolIdGenerator,
-        MaruPeerManager(
-          statusMessageFactory = statusMessageFactory,
-          rpcProtocolIdGenerator = rpcProtocolIdGenerator,
-        ),
-      )
+    private val rpcMethods = createRpcMethods()
+
+    fun createRpcMethods(): RpcMethods {
+      val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
+      lateinit var maruPeerManager: MaruPeerManager
+      val rpcMethods = RpcMethods(statusMessageFactory, rpcProtocolIdGenerator) { maruPeerManager }
+      maruPeerManager = MaruPeerManager(statusMessageFactory, rpcMethods)
+      return rpcMethods
+    }
 
     fun createForkIdHashProvider(): ForkIdHashProvider {
       val consensusConfig: ConsensusConfig =

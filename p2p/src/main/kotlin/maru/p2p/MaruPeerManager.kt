@@ -16,12 +16,10 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class MaruPeerManager(
   private val statusMessageFactory: StatusMessageFactory,
-  rpcProtocolIdGenerator: LineaRpcProtocolIdGenerator,
+  private val rpcMethods: RpcMethods,
 ) : PeerHandler,
   PeerLookup {
   private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
-  private val rpcMethods =
-    RpcMethods(statusMessageFactory, rpcProtocolIdGenerator, this)
 
   override fun onConnect(peer: Peer) {
     val maruPeer =
@@ -43,6 +41,4 @@ class MaruPeerManager(
   }
 
   override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers[nodeId]
-
-  fun getRpcMethods() = rpcMethods.all()
 }

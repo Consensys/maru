@@ -16,19 +16,20 @@ import maru.p2p.messages.StatusSerDe
 class RpcMethods(
   statusMessageFactory: StatusMessageFactory,
   lineaRpcProtocolIdGenerator: LineaRpcProtocolIdGenerator,
-  private val peerLookup: PeerLookup,
+  private val peerLookup: () -> PeerLookup,
 ) {
   val statusMessageSerDe = StatusMessageSerDe(StatusSerDe())
-  val statusRpcMethod =
+  val statusRpcMethod by lazy {
     MaruRpcMethod(
       messageType = RpcMessageType.STATUS,
       rpcMessageHandler = StatusHandler(statusMessageFactory),
       requestMessageSerDe = statusMessageSerDe,
       responseMessageSerDe = statusMessageSerDe,
-      peerLookup = peerLookup,
+      peerLookup = peerLookup.invoke(),
       protocolIdGenerator = lineaRpcProtocolIdGenerator,
       version = Version.V1,
     )
+  }
 
   fun status() = statusRpcMethod
 
