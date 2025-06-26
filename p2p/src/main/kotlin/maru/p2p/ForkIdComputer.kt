@@ -10,11 +10,11 @@ package maru.p2p
 
 import maru.consensus.ForkIdHasher
 import maru.crypto.Hashing
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdDeSer
 
 val ForkIdComputer: ForkIdHasher =
   ForkIdHasher(
-    ForkIdSerializers
+    ForkIdDeSer
       .ForkIdSerializer,
     Hashing::shortShaHash,
   )

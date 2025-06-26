@@ -42,8 +42,8 @@ class ForkSpecSerializerTest {
         timestampSeconds = 123456789L,
         configuration = config2,
       )
-    val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
-    val bytes2 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec2)
+    val bytes1 = ForkIdDeSer.ForkSpecSerializer.serialize(forkSpec1)
+    val bytes2 = ForkIdDeSer.ForkSpecSerializer.serialize(forkSpec2)
     assertThat(bytes1).isEqualTo(bytes2)
   }
 
@@ -63,8 +63,8 @@ class ForkSpecSerializerTest {
       )
     val forkSpec2 =
       forkSpec1.copy(blockTimeSeconds = 10)
-    val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
-    val bytes2 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec2)
+    val bytes1 = ForkIdDeSer.ForkSpecSerializer.serialize(forkSpec1)
+    val bytes2 = ForkIdDeSer.ForkSpecSerializer.serialize(forkSpec2)
     assertThat(bytes1).isNotEqualTo(bytes2)
   }
 
@@ -83,8 +83,8 @@ class ForkSpecSerializerTest {
         configuration = config,
       )
     val forkSpec2 = forkSpec1.copy(timestampSeconds = 3123L)
-    val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
-    val bytes2 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec2)
+    val bytes1 = ForkIdDeSer.ForkSpecSerializer.serialize(forkSpec1)
+    val bytes2 = ForkIdDeSer.ForkSpecSerializer.serialize(forkSpec2)
     assertThat(bytes1).isNotEqualTo(bytes2)
   }
 
@@ -114,8 +114,8 @@ class ForkSpecSerializerTest {
         timestampSeconds = 123456789L,
         configuration = config2,
       )
-    val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
-    val bytes2 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec2)
+    val bytes1 = ForkIdDeSer.ForkSpecSerializer.serialize(forkSpec1)
+    val bytes2 = ForkIdDeSer.ForkSpecSerializer.serialize(forkSpec2)
     assertThat(bytes1).isNotEqualTo(bytes2)
   }
 }

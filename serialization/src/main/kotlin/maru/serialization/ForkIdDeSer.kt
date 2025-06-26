@@ -9,12 +9,14 @@
 package maru.serialization
 
 import java.nio.ByteBuffer
+import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkId
 import maru.consensus.ForkSpec
+import maru.core.Validator
 import maru.extensions.encodeHex
 
-object ForkIdSerializers {
+object ForkIdDeSer {
   object QbftConsensusConfigSerializer : Serializer<QbftConsensusConfig> {
     override fun serialize(value: QbftConsensusConfig): ByteArray {
       // Sort validators deterministically by address hex
@@ -59,6 +61,41 @@ object ForkIdSerializers {
           .put(value.genesisRootHash)
 
       return buffer.array()
+    }
+  }
+
+  object ForkIdDeserializer : Deserializer<ForkId> {
+    override fun deserialize(bytes: ByteArray): ForkId {
+      val buffer = ByteBuffer.wrap(bytes)
+      val chainId = buffer.int.toUInt() // Read chainId as 8 bytes, convert to UInt
+      // ForkSpec deserialization
+      val blockTimeSeconds = buffer.int
+      val timestampSeconds = buffer.long
+      // QbftConsensusConfig deserialization
+      // Read validator addresses
+      val validatorsCount = (buffer.remaining() - 32 - 4) / 20 // 32 for genesisRootHash, 4 for elFork.ordinal
+      val validators = mutableListOf<Validator>()
+      repeat(validatorsCount) {
+        val addressBytes = ByteArray(20)
+        buffer.get(addressBytes)
+        validators.add(Validator(addressBytes))
+      }
+      val elForkOrdinal = buffer.int
+      val elFork = ElFork.entries.getOrNull(elForkOrdinal)
+      val consensusConfig =
+        QbftConsensusConfig(
+          validators.toSet(),
+          elFork ?: throw IllegalArgumentException("Invalid elFork ordinal: $elForkOrdinal"),
+        )
+      val forkSpec =
+        ForkSpec(
+          timestampSeconds = timestampSeconds,
+          blockTimeSeconds = blockTimeSeconds,
+          configuration = consensusConfig,
+        )
+      val genesisRootHash = ByteArray(32)
+      buffer.get(genesisRootHash)
+      return ForkId(chainId, forkSpec, genesisRootHash)
     }
   }
 }
