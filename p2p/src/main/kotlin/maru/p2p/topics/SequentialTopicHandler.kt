@@ -32,7 +32,7 @@ fun interface SequenceNumberExtractor<T> {
 /**
  * Topic handler which triggers event handling only in case there's a "next" event, defined by its sequence number
  *
- * When there's a P2P message that is from the future, it will ba passed to subscriptionManager later, when all the
+ * When there's a P2P message that is from the future, it will be passed to subscriptionManager later, when all the
  * previous events are handled
  * Messages behind the current expected sequence number are not validated and ignored.
  *
@@ -136,10 +136,31 @@ class SequentialTopicHandler<T>(
   }
 
   private fun handleEvent(event: T): SafeFuture<Libp2pValidationResult> =
-    subscriptionManager.handleEvent(event).thenApply {
-      nextExpectedSequenceNumber.incrementAndGet()
-      it.code.toLibP2P()
-    }
+    runCatching {
+      subscriptionManager
+        .handleEvent(event)
+        .thenApply {
+          nextExpectedSequenceNumber.incrementAndGet()
+          it.code.toLibP2P()
+        }.exceptionally {
+          log.warn(
+            "error handling message with sequenceNumber={} errorMessage={}",
+            sequenceNumberExtractor.extractSequenceNumber(event),
+            it.message,
+          )
+          nextExpectedSequenceNumber.incrementAndGet()
+          Libp2pValidationResult.Invalid
+        }
+    }.getOrElse(
+      { th ->
+        log.warn(
+          "error handling message sequenceNumber={} errorMessage={}",
+          sequenceNumberExtractor.extractSequenceNumber(event),
+          th.message,
+        )
+        SafeFuture.completedFuture(Libp2pValidationResult.Invalid)
+      },
+    )
 
   override fun getMaxMessageSize(): Int = 10485760
 }

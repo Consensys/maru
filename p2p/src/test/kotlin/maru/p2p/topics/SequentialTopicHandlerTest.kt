@@ -24,10 +24,11 @@ import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 class SequentialTopicHandlerTest {
   private fun makeHandler(
     initialSeq: ULong = 1uL,
-    onEvent: (ULong) -> ValidationResult = { ValidationResult.Companion.Valid },
+    maxQueueSize: Int = 10,
+    onEvent: (ULong) -> SafeFuture<ValidationResult> = { SafeFuture.completedFuture(ValidationResult.Companion.Valid) },
   ): SequentialTopicHandler<ULong> {
     val subscriptionManager = SubscriptionManager<ULong>()
-    subscriptionManager.subscribeToBlocks { event -> SafeFuture.completedFuture(onEvent(event)) }
+    subscriptionManager.subscribeToBlocks(onEvent)
     val deserializer =
       object : Deserializer<ULong> {
         override fun deserialize(bytes: ByteArray): ULong = Bytes.wrap(bytes).toLong().toULong()
@@ -40,7 +41,7 @@ class SequentialTopicHandlerTest {
       deserializer = deserializer,
       sequenceNumberExtractor = extractor,
       topicId = "test-topic",
-      maxQueueSize = 10,
+      maxQueueSize = maxQueueSize,
     )
   }
 
@@ -71,7 +72,7 @@ class SequentialTopicHandlerTest {
     val handler =
       makeHandler(initialSeq = 1uL) {
         processed.add(it)
-        ValidationResult.Companion.Valid
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
     val msg2 = makeMessage(2uL)
     val msg1 = makeMessage(1uL)
@@ -85,10 +86,16 @@ class SequentialTopicHandlerTest {
 
   @Test
   fun `ignores duplicate or old messages`() {
-    val handler = makeHandler(initialSeq = 2uL)
-    val msg1 = makeMessage(1uL)
+    val processed = mutableListOf<ULong>()
+    val handler =
+      makeHandler(initialSeq = 10uL) {
+        processed.add(it)
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid)
+      }
+    val msg1 = makeMessage(9uL)
     val result = handler.handleMessage(msg1).join()
     assertThat(result).isEqualTo(Libp2pValidationResult.Ignore)
+    assertThat(processed).isEmpty()
   }
 
   @Test
@@ -130,17 +137,19 @@ class SequentialTopicHandlerTest {
     val handler =
       makeHandler(initialSeq = 1uL) {
         processed.add(it)
-        ValidationResult.Companion.Valid
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
     // Fill the queue
-    for (i in 2uL..5uL) {
-      handler.handleMessage(makeMessage(i))
-    }
+    val futures =
+      (2uL..5uL)
+        .map { msgNumber -> handler.handleMessage(makeMessage(msgNumber)) }
     // Now process the first message to drain the queue
     handler.handleMessage(makeMessage(1uL)).join()
     // Try to add another out-of-order message after draining
     val result2 = handler.handleMessage(makeMessage(6uL)).join()
     assertThat(result2).isEqualTo(Libp2pValidationResult.Valid)
+    assertThat(processed).containsExactly(1uL, 2uL, 3uL, 4uL, 5uL, 6uL)
+    assertThat(futures.map { it.get() }).allMatch { it == Libp2pValidationResult.Valid }
   }
 
   @Test
@@ -149,5 +158,61 @@ class SequentialTopicHandlerTest {
     val msg = makeMessage(ULong.MIN_VALUE) // 0uL, which is less than initial expected 1uL
     val result = handler.handleMessage(msg).join()
     assertThat(result).isEqualTo(Libp2pValidationResult.Ignore)
+  }
+
+  @Test
+  fun `should be resilient to failures - subscriber throws`() {
+    val processed = mutableListOf<ULong>()
+    val handler =
+      makeHandler(initialSeq = 1uL) {
+        processed.add(it)
+        when {
+          it.toInt() % 2 == 1 -> throw RuntimeException("Subscriber failure")
+          else -> SafeFuture.completedFuture(ValidationResult.Companion.Valid)
+        }
+      }
+    val futures =
+      listOf(2uL, 4uL, 3uL, 5uL, 1uL)
+        .map { seq -> seq to handler.handleMessage(makeMessage(seq)) }
+        .map { (messageId, future) -> messageId to future.join() }
+    assertThat(futures).isEqualTo(
+      listOf(
+        2uL to Libp2pValidationResult.Valid,
+        4uL to Libp2pValidationResult.Valid,
+        3uL to Libp2pValidationResult.Invalid,
+        5uL to Libp2pValidationResult.Invalid,
+        1uL to Libp2pValidationResult.Invalid,
+      ),
+    )
+    assertThat(processed).containsExactly(1uL, 2uL, 3uL, 4uL, 5uL)
+  }
+
+  @Test
+  fun `should be resilient to failures - subscriber rejects promise`() {
+    val processed = mutableListOf<ULong>()
+    val handler =
+      makeHandler(initialSeq = 1uL) {
+        processed.add(it)
+        when {
+          it.toInt() % 2 == 1 -> SafeFuture.failedFuture(RuntimeException("Subscriber failure"))
+          else -> SafeFuture.completedFuture(ValidationResult.Companion.Valid)
+        }
+      }
+    // add 1ul at to test out of order message handling
+    val futures =
+      listOf(2uL, 4uL, 3uL, 5uL, 1uL)
+        .map { seq -> seq to handler.handleMessage(makeMessage(seq)) }
+        .map { (messageId, future) -> messageId to future.join() }
+
+    assertThat(futures).isEqualTo(
+      listOf(
+        2uL to Libp2pValidationResult.Valid,
+        4uL to Libp2pValidationResult.Valid,
+        3uL to Libp2pValidationResult.Invalid,
+        5uL to Libp2pValidationResult.Invalid,
+        1uL to Libp2pValidationResult.Invalid,
+      ),
+    )
+    assertThat(processed).containsExactly(1uL, 2uL, 3uL, 4uL, 5uL)
   }
 }
