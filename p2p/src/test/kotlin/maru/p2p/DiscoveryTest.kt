@@ -10,6 +10,10 @@ package maru.p2p
 
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
+import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkId
+import maru.consensus.ForkSpec
 import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
@@ -40,6 +44,23 @@ class DiscoveryTest {
     private val key1 = Bytes.fromHexString(PRIVATE_KEY1).toArray()
     private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
     private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
+
+    private val forkIdProvider = {
+      ForkId(
+        chainId = 1L.toUInt(),
+        forkSpec =
+          ForkSpec(
+            blockTimeSeconds = 15,
+            timestampSeconds = 0L,
+            configuration =
+              QbftConsensusConfig(
+                validatorSet = emptySet(),
+                ElFork.Prague,
+              ),
+          ),
+        genesisRootHash = ByteArray(32),
+      )
+    }
   }
 
   @Test
@@ -54,6 +75,7 @@ class DiscoveryTest {
             discoveryPort = PORT2,
             bootnodes = emptyList(),
           ),
+        forkIdProvider = forkIdProvider,
       )
 
     val enrString = getBootnodeEnrString(key1, IPV4, PORT2.toInt(), PORT1.toInt())
@@ -68,6 +90,7 @@ class DiscoveryTest {
             discoveryPort = PORT4,
             bootnodes = listOf(enrString),
           ),
+        forkIdProvider = forkIdProvider,
       )
 
     val discoveryService3 =
@@ -80,6 +103,7 @@ class DiscoveryTest {
             discoveryPort = PORT6,
             bootnodes = listOf(enrString),
           ),
+        forkIdProvider = forkIdProvider,
       )
 
     try {

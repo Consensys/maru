@@ -14,6 +14,10 @@ import java.util.Optional
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
+import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkId
+import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.discovery.MaruDiscoveryService
@@ -81,10 +85,28 @@ class P2PNetworkImpl(
               (privateKeyBytes.size - 32).rangeTo(privateKeyBytes.size - 1),
             ).toByteArray(),
         p2pConfig = p2pConfig,
+        forkIdProvider = {
+          // TODO: where do we get that from?
+          ForkId(
+            chainId = 1L.toUInt(),
+            forkSpec =
+              ForkSpec(
+                blockTimeSeconds = 15,
+                timestampSeconds = 0L,
+                configuration =
+                  QbftConsensusConfig(
+                    validatorSet = emptySet(),
+                    ElFork.Prague,
+                  ),
+              ),
+            genesisRootHash = ByteArray(32),
+          )
+        },
       )
     } else {
       null
     }
+  // TODO: We need to call the updateForkId method on the discovery service when the forkId changes
 
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val delayedExecutor =
@@ -186,7 +208,6 @@ class P2PNetworkImpl(
       .whenComplete { peer: Peer?, t: Throwable? ->
         if (t != null) {
           if (t is PeerAlreadyConnectedException) {
-            log.info("Already connected to peer $peerAddress. Error: ${t.message}")
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
             log.trace(
@@ -199,7 +220,7 @@ class P2PNetworkImpl(
               .runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
           }
         } else {
-          log.info("Created persistent connection to {}", peerAddress)
+          log.debug("Created persistent connection to {}", peerAddress)
           reconnectWhenDisconnected(peer!!, peerAddress)
         }
       }.thenApply {}
