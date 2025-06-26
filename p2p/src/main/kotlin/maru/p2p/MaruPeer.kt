@@ -24,7 +24,7 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 
 interface MaruPeer : Peer {
-  fun getStatus(): Status
+  fun getStatus(): Status?
 
   fun sendStatus(): SafeFuture<Status>
 
@@ -36,35 +36,33 @@ class MaruPeerImpl(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
 ) : MaruPeer {
-  private var status: Optional<Status> = Optional.empty()
+  private var status: Status? = null
 
-  override fun getStatus(): Status = status.get()
+  override fun getStatus(): Status? = status
 
   override fun sendStatus(): SafeFuture<Status> {
     val statusMessage = statusMessageFactory.createStatusMessage()
     val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
-      sendRpcMessage(statusMessage, rpcMethods.status(), delegatePeer)
+      sendRpcMessage(statusMessage, rpcMethods.status())
     return sendRpcMessage.thenApply { message -> message.payload }
   }
 
   override fun updateStatus(status: Status) {
-    this.status = Optional.of(status)
+    this.status = status
   }
 
   fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
     message: TRequest,
     rpcMethod: MaruRpcMethod<TRequest, TResponse>,
-    peer: Peer,
   ): SafeFuture<TResponse> {
     val responseHandler = MaruRpcResponseHandler<TResponse>()
-    return peer
-      .sendRequest<MaruOutgoingRpcRequestHandler<TResponse>, TRequest, MaruRpcResponseHandler<TResponse>>(
-        rpcMethod,
-        message,
-        responseHandler,
-      ).thenCompose {
-        responseHandler.response()
-      }
+    return sendRequest<MaruOutgoingRpcRequestHandler<TResponse>, TRequest, MaruRpcResponseHandler<TResponse>>(
+      rpcMethod,
+      message,
+      responseHandler,
+    ).thenCompose {
+      responseHandler.response()
+    }
   }
 
   override fun getAddress(): PeerAddress = delegatePeer.address
