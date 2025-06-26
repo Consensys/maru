@@ -16,7 +16,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
-import maru.p2p.topics.SequentialTopicHandler
+import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -47,7 +47,7 @@ class P2PNetworkImpl(
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
-    SequentialTopicHandler(
+    TopicHandlerWithInOrderDelivering(
       initialExpectedSequenceNumber = nextExpectedBlockNumber,
       subscriptionManager = sealedBlocksSubscriptionManager,
       sequenceNumberExtractor = { it.beaconBlock.beaconBlockHeader.number },

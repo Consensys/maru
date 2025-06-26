@@ -26,7 +26,7 @@ class SequentialTopicHandlerTest {
     initialSeq: ULong = 1uL,
     maxQueueSize: Int = 10,
     onEvent: (ULong) -> SafeFuture<ValidationResult> = { SafeFuture.completedFuture(ValidationResult.Companion.Valid) },
-  ): SequentialTopicHandler<ULong> {
+  ): TopicHandlerWithInOrderDelivering<ULong> {
     val subscriptionManager = SubscriptionManager<ULong>()
     subscriptionManager.subscribeToBlocks(onEvent)
     val deserializer =
@@ -35,7 +35,7 @@ class SequentialTopicHandlerTest {
       }
 
     val extractor = SequenceNumberExtractor<ULong> { it }
-    return SequentialTopicHandler(
+    return TopicHandlerWithInOrderDelivering(
       initialExpectedSequenceNumber = initialSeq,
       subscriptionManager = subscriptionManager,
       deserializer = deserializer,
@@ -120,7 +120,7 @@ class SequentialTopicHandlerTest {
       }
     val extractor = SequenceNumberExtractor<ULong> { it }
     val handler =
-      SequentialTopicHandler(
+      TopicHandlerWithInOrderDelivering(
         initialExpectedSequenceNumber = 1uL,
         subscriptionManager = subscriptionManager,
         deserializer = deserializer,

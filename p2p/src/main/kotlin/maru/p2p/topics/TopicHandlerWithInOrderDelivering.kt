@@ -40,7 +40,7 @@ fun interface SequenceNumberExtractor<T> {
  * handled
  * @param sequenceNumberExtractor definition of sequentiality for T
  */
-class SequentialTopicHandler<T>(
+class TopicHandlerWithInOrderDelivering<T>(
   initialExpectedSequenceNumber: ULong,
   private val subscriptionManager: SubscriptionManager<T>,
   private val deserializer: Deserializer<T>,
