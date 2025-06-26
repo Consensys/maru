@@ -40,7 +40,7 @@ class P2PNetworkImpl(
   private val p2pConfig: P2P,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
-  nextExpectedBlockNumber: ULong,
+  nextExpectedBeaconBlockNumber: ULong,
 ) : P2PNetwork,
   PeerLookup {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
@@ -48,7 +48,7 @@ class P2PNetworkImpl(
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     TopicHandlerWithInOrderDelivering(
-      initialExpectedSequenceNumber = nextExpectedBlockNumber,
+      initialExpectedSequenceNumber = nextExpectedBeaconBlockNumber,
       subscriptionManager = sealedBlocksSubscriptionManager,
       sequenceNumberExtractor = { it.beaconBlock.beaconBlockHeader.number },
       deserializer = serDe,

@@ -118,7 +118,7 @@ class MaruAppFactory {
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
         rpcMethodFactory = rpcMaruAppFactory,
-        nextExpectedBlockNumber = lastBlockMetadataCache.getLatestBlockMetadata().blockNumber + 1UL,
+        nextExpectedBeaconBlockNumber = lastBlockMetadataCache.getLatestBlockMetadata().blockNumber + 1UL,
       )
     val finalizationProvider =
       overridingFinalizationProvider
@@ -184,7 +184,7 @@ class MaruAppFactory {
       p2pConfig: P2P?,
       privateKey: ByteArray,
       chainId: UInt,
-      nextExpectedBlockNumber: ULong = 0UL,
+      nextExpectedBeaconBlockNumber: ULong = 1UL,
       metricsFacade: MetricsFacade,
       rpcMethodFactory: RpcMethodFactory,
     ): P2PNetwork =
@@ -194,7 +194,7 @@ class MaruAppFactory {
           p2pConfig = p2pConfig,
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
-          nextExpectedBlockNumber = nextExpectedBlockNumber,
+          nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsFacade = metricsFacade,
           rpcMethodFactory = rpcMethodFactory,
         )

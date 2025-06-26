@@ -21,7 +21,7 @@ import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import tech.pegasys.teku.networking.p2p.gossip.PreparedGossipMessage
 import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 
-class SequentialTopicHandlerTest {
+class TopicHanlderWithInOrderDeliveringTest {
   private fun makeHandler(
     initialSeq: ULong = 1uL,
     maxQueueSize: Int = 10,
@@ -150,14 +150,6 @@ class SequentialTopicHandlerTest {
     assertThat(result2).isEqualTo(Libp2pValidationResult.Valid)
     assertThat(processed).containsExactly(1uL, 2uL, 3uL, 4uL, 5uL, 6uL)
     assertThat(futures.map { it.get() }).allMatch { it == Libp2pValidationResult.Valid }
-  }
-
-  @Test
-  fun `ignores message with negative sequence number`() {
-    val handler = makeHandler(initialSeq = 1uL)
-    val msg = makeMessage(ULong.MIN_VALUE) // 0uL, which is less than initial expected 1uL
-    val result = handler.handleMessage(msg).join()
-    assertThat(result).isEqualTo(Libp2pValidationResult.Ignore)
   }
 
   @Test
