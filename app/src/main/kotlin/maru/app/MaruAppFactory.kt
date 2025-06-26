@@ -14,6 +14,7 @@ import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Path
 import java.time.Clock
+import java.util.Optional
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.kotlin.encodeHex
@@ -21,21 +22,29 @@ import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.config.MaruConfig
 import maru.config.P2P
+import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestBlockMetadataCache
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
+import maru.crypto.Hashing
+import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
+import maru.p2p.RpcMethodFactory
+import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruAppFactory {
@@ -61,7 +70,40 @@ class MaruAppFactory {
         "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
       )
+    val besuMetricsSystem = NoOpMetricsSystem()
 
+    val beaconChain =
+      KvDatabaseFactory
+        .createRocksDbDatabase(
+          databasePath = config.persistence.dataPath,
+          metricsSystem = besuMetricsSystem,
+          metricCategory =
+            object : MetricCategory {
+              override fun getName(): String = "STORAGE"
+
+              override fun getApplicationPrefix(): Optional<String> = Optional.empty()
+            },
+        )
+
+    val forkIdHasher =
+      ForkIdHasher(
+        ForkIdSerializers
+          .ForkIdSerializer,
+        Hashing::shortShaHash,
+      )
+    val forkIdHashProvider =
+      ForkIdHashProvider(
+        chainId = beaconGenesisConfig.chainId,
+        beaconChain = beaconChain,
+        forksSchedule = beaconGenesisConfig,
+        forkIdHasher = forkIdHasher,
+      )
+    val rpcMaruAppFactory =
+      RpcMethodFactory(
+        beaconChain = beaconChain,
+        forkIdHashProvider = forkIdHashProvider,
+        chainId = beaconGenesisConfig.chainId,
+      )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
         config.validatorElNode.ethApiEndpoint,
@@ -75,6 +117,7 @@ class MaruAppFactory {
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
+        rpcMethodFactory = rpcMaruAppFactory,
         nextExpectedBlockNumber = lastBlockMetadataCache.getLatestBlockMetadata().blockNumber + 1UL,
       )
     val finalizationProvider =
@@ -91,6 +134,8 @@ class MaruAppFactory {
         finalizationProvider = finalizationProvider,
         metricsFacade = metricsFacade,
         vertx = vertx,
+        beaconChain = beaconChain,
+        metricsSystem = besuMetricsSystem,
         lastBlockMetadataCache = lastBlockMetadataCache,
         ethereumJsonRpcClient = ethereumJsonRpcClient,
       )
@@ -141,6 +186,7 @@ class MaruAppFactory {
       chainId: UInt,
       nextExpectedBlockNumber: ULong = 0UL,
       metricsFacade: MetricsFacade,
+      rpcMethodFactory: RpcMethodFactory,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -150,6 +196,7 @@ class MaruAppFactory {
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
           nextExpectedBlockNumber = nextExpectedBlockNumber,
           metricsFacade = metricsFacade,
+          rpcMethodFactory = rpcMethodFactory,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
