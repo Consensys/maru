@@ -38,7 +38,6 @@ class MaruIncomingRpcRequestHandler<TRequest : Message<*, RpcMessageType>, TResp
     val bytes = ByteBufUtil.getBytes(byteBuffer)
     val maybePeer = peerLookup.getPeer(nodeId)
     val message = requestMessageSerDe.deserialize(bytes)
-
     maybePeer?.let { peer ->
       rpcMessageHandler.handleIncomingMessage(
         peer = peer,
@@ -49,7 +48,7 @@ class MaruIncomingRpcRequestHandler<TRequest : Message<*, RpcMessageType>, TResp
             messageSerializer = responseMessageSerDe,
           ),
       )
-    } ?: log.trace("Ignoring message of type {} because peer has been disconnected", message.type)
+    } ?: { log.trace("Ignoring message of type {} because peer has been disconnected", message.type) }
   }
 
   override fun readComplete(
