@@ -111,6 +111,12 @@ class MaruAppFactory {
     val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
     val lastBlockMetadataCache =
       LatestBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
+    val beaconChainLastBlockNumber =
+      if (beaconChain.isInitialized()) {
+        beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+      } else {
+        0UL // If the chain is not initialized, we start from block number 1
+      }
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
         p2pConfig = config.p2pConfig,
@@ -118,7 +124,7 @@ class MaruAppFactory {
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
         rpcMethodFactory = rpcMaruAppFactory,
-        nextExpectedBeaconBlockNumber = lastBlockMetadataCache.getLatestBlockMetadata().blockNumber + 1UL,
+        nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
       )
     val finalizationProvider =
       overridingFinalizationProvider
