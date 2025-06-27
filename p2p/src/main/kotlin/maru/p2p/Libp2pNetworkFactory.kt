@@ -45,6 +45,7 @@ import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
+import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 
 data class TekuLibP2PNetwork(
   val p2PNetwork: P2PNetwork<Peer>,
@@ -60,10 +61,10 @@ class Libp2pNetworkFactory(
     ipAddress: String,
     sealedBlocksTopicHandler: SealedBlocksTopicHandler,
     sealedBlocksTopicId: String,
+    rpcMethods: List<RpcMethod<*, *, *>>,
     maruPeerManagerService: MaruPeerManagerService,
   ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
-    val rpcMethod = MaruRpcMethod()
     val gossipTopicHandlers = GossipTopicHandlers()
 
     gossipTopicHandlers.add(
@@ -91,22 +92,26 @@ class Libp2pNetworkFactory(
 
     val metricTrackingExecutorFactory = MetricTrackingExecutorFactory(metricsSystem)
     val asyncRunner = AsyncRunnerFactory.createDefault(metricTrackingExecutorFactory).create("maru", 2)
-    val rpcHandler = RpcHandler(asyncRunner, rpcMethod)
+    val rpcHandlers =
+      rpcMethods.map { rpcMethod ->
+        RpcHandler(asyncRunner, rpcMethod)
+      }
 
     val peerManager =
       PeerManager(
         metricsSystem,
         ReputationManager.NOOP,
         listOf<PeerHandler>(maruPeerManagerService),
-        listOf(rpcHandler),
-      ) { _ -> 50.0 } // TODO: I guess we need a scoring function here
+        rpcHandlers,
+        { _ -> 50.0 }, // TODO: I guess we need a scoring function here
+      )
 
     val host =
       createHost(
         privateKey = privateKey,
         connectionHandlers = listOf(gossip, peerManager),
         gossip = gossip,
-        rpcHandler = rpcHandler,
+        rpcHandlers = rpcHandlers,
         ipv4Address = ipv4Address,
       )
 
@@ -153,13 +158,13 @@ class Libp2pNetworkFactory(
     privateKey: PrivKey,
     connectionHandlers: List<ConnectionHandler>,
     gossip: Gossip,
-    rpcHandler: RpcHandler<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler>,
+    rpcHandlers: List<RpcHandler<*, *, *>>,
     ipv4Address: Multiaddr,
   ): Host =
     host {
       protocols {
         +gossip
-        +rpcHandler
+        rpcHandlers.forEach { rpcHandler -> add(rpcHandler) }
       }
       network {
         listen(ipv4Address.toString())

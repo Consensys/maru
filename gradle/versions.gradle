@@ -134,6 +134,7 @@ dependencyManagement {
       entry 'ssz'
       entry 'storage'
       entry 'p2p'
+      entry 'eth2'
     }
 
     // discovery includes tuweni libraries under a different name so version resolution doesn't work
