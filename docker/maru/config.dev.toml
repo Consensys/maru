@@ -24,5 +24,5 @@ port = 9090
 jvm-metrics-enabled = true
 prometheus-metrics-enabled = true
 
-[api-confg]
+[api-config]
 port = 8080
