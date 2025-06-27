@@ -24,10 +24,10 @@ build-local-image:
 	docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./app/build/libs/ -t consensys/maru:local
 
 run-local-image:
-	docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d
+	CREATE_EMPTY_BLOCKS=true docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d
 
 run-local-image-partial:
-	docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d maru
+	CREATE_EMPTY_BLOCKS=true docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d maru
 
 docker-clean-environment:
 	docker compose -f docker/compose.yaml -f docker/compose.dev.yaml down || true

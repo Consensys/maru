@@ -13,6 +13,8 @@ services:
   initialization:
     image: busybox:latest
     container_name: intialization_using_busybox
+    environment:
+      CREATE_EMPTY_BLOCKS: ${CREATE_EMPTY_BLOCKS:-false}
     entrypoint: [ "sh","/initialization/init.sh" ]
     volumes:
       - ./initialization/:/initialization:rw
