@@ -43,7 +43,7 @@ import org.junit.jupiter.api.Test
 class ApiServerTest {
   private val defaultObjectMapper = jacksonObjectMapper()
 
-  private lateinit var apiServer: ApiServer
+  private lateinit var apiServer: ApiServerImpl
   private lateinit var client: OkHttpClient
   private lateinit var apiServerUrl: String
 
@@ -79,8 +79,8 @@ class ApiServerTest {
   @BeforeEach
   fun beforeEach() {
     apiServer =
-      ApiServer(
-        config = ApiServer.Config(port = 0u),
+      ApiServerImpl(
+        config = ApiServerImpl.Config(port = 0u),
         networkDataProvider = fakeNetworkDataProvider,
         versionProvider = fakeVersionProvider,
       )

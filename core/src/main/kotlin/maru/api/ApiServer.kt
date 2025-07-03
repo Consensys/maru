@@ -8,12 +8,10 @@
  */
 package maru.api
 
-data class ApiExceptionResponse(
-  val code: Int,
-  val message: String,
-)
+interface ApiServer {
+  fun start()
 
-class HandlerException(
-  val code: Int,
-  override val message: String,
-) : Exception(message)
+  fun stop()
+
+  fun port(): Int
+}
