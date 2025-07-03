@@ -8,6 +8,7 @@
  */
 package maru.p2p
 
+import io.libp2p.core.PeerId
 import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 
@@ -419,7 +421,7 @@ class P2PTest {
       val responseFuture: SafeFuture<Message<Status, RpcMessageType>> =
         p2pManagerImpl2.sendRpcMessage(
           statusMessage,
-          p2pManagerImpl2.getPeer(PEER_ID_NODE_1)!!,
+          p2pManagerImpl2.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))!!,
         )
 
       assertThatNoException().isThrownBy { responseFuture.get(500L, TimeUnit.MILLISECONDS) }
