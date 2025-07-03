@@ -78,7 +78,10 @@ data class QbftOptions(
   val feeRecipient: ByteArray,
 ) {
   init {
-    feeRecipient.assertIs20Bytes("feeRecipient")
+    require(feeRecipient.size == 20) {
+      "feeRecipient address must be 20 bytes long, " +
+        "but it's ${feeRecipient.size} bytes long!"
+    }
   }
 
   override fun equals(other: Any?): Boolean {
