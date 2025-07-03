@@ -18,18 +18,18 @@ import maru.api.node.GetPeers
 import maru.api.node.GetSyncingStatus
 import maru.api.node.GetVersion
 
-class ApiServer(
+class ApiServerImpl(
   val config: Config,
   val networkDataProvider: NetworkDataProvider,
   val versionProvider: VersionProvider,
-) {
+) : ApiServer {
   data class Config(
     val port: UInt,
   )
 
   var app: Javalin? = null
 
-  fun start() {
+  override fun start() {
     if (app != null) {
       app!!.start(config.port.toInt())
     } else {
@@ -38,8 +38,9 @@ class ApiServer(
       app =
         Javalin
           .create()
-          .exception(HandlerException::class.java, HandlerException::handle)
-          .exception(Exception::class.java) { e, ctx ->
+          .exception(HandlerException::class.java) { e, ctx ->
+            ctx.status(e.code).json(ApiExceptionResponse(e.code, e.message))
+          }.exception(Exception::class.java) { e, ctx ->
             ctx.status(500).json(ApiExceptionResponse(500, "Internal Server Error"))
           }.get(GetNetworkIdentity.ROUTE, GetNetworkIdentity(networkDataProvider))
           .get(GetPeers.ROUTE, GetPeers(networkDataProvider))
@@ -52,10 +53,10 @@ class ApiServer(
     }
   }
 
-  fun stop() {
+  override fun stop() {
     app?.stop()
     app = null
   }
 
-  fun port(): Int = app!!.port()
+  override fun port(): Int = app!!.port()
 }
