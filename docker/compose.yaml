@@ -39,13 +39,13 @@ services:
       - -c
       - |
         /opt/besu/bin/besu --config-file=/var/lib/besu/config.toml \
-        --genesis-file=/initialization/genesis-besu.json \
+        --genesis-file=/var/lib/besu/genesis.json \
         --node-private-key-file="/var/lib/besu/key"
     volumes:
       - ./sequencer/config.toml:/var/lib/besu/config.toml:ro
       - ./sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./sequencer/key:/var/lib/besu/key:ro
-      - ./initialization/:/initialization/:ro
+      - ./initialization/local-dev/genesis-besu.json/:/var/lib/besu/genesis.json:ro
     ports:
       - "8545:8545"
       - "8550:8550"
