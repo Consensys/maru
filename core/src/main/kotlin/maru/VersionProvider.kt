@@ -6,11 +6,8 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.p2p
+package maru
 
-import tech.pegasys.teku.networking.p2p.peer.NodeId
-import tech.pegasys.teku.networking.p2p.peer.Peer as TekuPeer
-
-interface PeerLookup {
-  fun getPeer(nodeId: NodeId): TekuPeer?
+interface VersionProvider {
+  fun getVersion(): String
 }

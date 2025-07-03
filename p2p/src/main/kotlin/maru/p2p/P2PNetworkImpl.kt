@@ -31,8 +31,8 @@ import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
-import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
+import tech.pegasys.teku.networking.p2p.peer.Peer as TekuPeer
 
 class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
@@ -136,7 +136,7 @@ class P2PNetworkImpl(
 
   fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
     message: TRequest,
-    peer: Peer,
+    peer: TekuPeer,
   ): SafeFuture<TResponse> {
     val rpcMethod =
       rpcMethods[message.type] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
@@ -189,12 +189,23 @@ class P2PNetworkImpl(
     }
   }
 
-  override fun getPeer(nodeId: NodeId): Peer? = p2pNetwork.getPeer(nodeId).getOrNull()
+  override fun getPeer(nodeId: NodeId): TekuPeer? = p2pNetwork.getPeer(nodeId).getOrNull()
+
+  override fun getPeers(): List<Peer> =
+    p2pNetwork
+      .streamPeers()
+      .map { it.toMaruPeer() }
+      .toList()
+
+  override fun getPeer(peerId: String): Peer? {
+    val libP2PNodeId = LibP2PNodeId(PeerId.fromBase58(peerId))
+    return getPeer(libP2PNodeId)?.let { it.toMaruPeer() }
+  }
 
   private fun maintainPersistentConnection(peerAddress: MultiaddrPeerAddress): SafeFuture<Unit> =
     p2pNetwork
       .connect(peerAddress)
-      .whenComplete { peer: Peer?, t: Throwable? ->
+      .whenComplete { peer: TekuPeer?, t: Throwable? ->
         if (t != null) {
           if (t is PeerAlreadyConnectedException) {
             log.info("Already connected to peer $peerAddress. Error: ${t.message}")
@@ -216,7 +227,7 @@ class P2PNetworkImpl(
       }.thenApply {}
 
   private fun reconnectWhenDisconnected(
-    peer: Peer,
+    peer: TekuPeer,
     peerAddress: MultiaddrPeerAddress,
   ) {
     peer.subscribeDisconnect { _: Optional<DisconnectReason>, _: Boolean ->
@@ -275,16 +286,11 @@ class P2PNetworkImpl(
     request: TRequest,
     responseHandler: MaruRpcResponseHandler<TResponse>,
   ): SafeFuture<RpcStreamController<MaruOutgoingRpcRequestHandler<TResponse>>> {
-    val maybePeer = getPeer(peer)
+    val maybePeer = getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
     return if (maybePeer == null) {
       SafeFuture.failedFuture(IllegalStateException("Peer $peer is not connected!"))
     } else {
       maybePeer.sendRequest(rpcMethod, request, responseHandler)
     }
   }
-
-  internal fun getPeer(peer: String) =
-    p2pNetwork
-      .getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
-      .getOrNull()
 }

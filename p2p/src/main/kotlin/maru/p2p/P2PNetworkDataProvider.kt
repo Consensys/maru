@@ -20,4 +20,8 @@ class P2PNetworkDataProvider(
   override fun getNodeAddresses(): List<String> = p2PNetwork.nodeAddresses
 
   override fun getDiscoveryAddresses(): List<String> = p2PNetwork.discoveryAddresses
+
+  override fun getPeers(): List<Peer> = p2PNetwork.getPeers()
+
+  override fun getPeer(peerId: String): Peer? = p2PNetwork.getPeer(peerId)
 }
