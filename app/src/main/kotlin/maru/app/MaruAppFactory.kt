@@ -137,6 +137,7 @@ class MaruAppFactory {
             port = config.apiConfig.port,
           ),
         networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
+        versionProvider = MaruVersionProvider(),
       )
 
     val maru =

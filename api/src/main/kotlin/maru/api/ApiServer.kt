@@ -9,10 +9,19 @@
 package maru.api
 
 import io.javalin.Javalin
+import maru.VersionProvider
+import maru.api.node.GetHealth
+import maru.api.node.GetNetworkIdentity
+import maru.api.node.GetPeer
+import maru.api.node.GetPeerCount
+import maru.api.node.GetPeers
+import maru.api.node.GetSyncingStatus
+import maru.api.node.GetVersion
 
 class ApiServer(
   val config: Config,
   val networkDataProvider: NetworkDataProvider,
+  val versionProvider: VersionProvider,
 ) {
   data class Config(
     val port: UInt,
@@ -29,7 +38,16 @@ class ApiServer(
       app =
         Javalin
           .create()
-          .get(NodeGetNetworkIdentity.ROUTE, NodeGetNetworkIdentity(networkDataProvider))
+          .exception(HandlerException::class.java, HandlerException::handle)
+          .exception(Exception::class.java) { e, ctx ->
+            ctx.status(500).json(ApiExceptionResponse(500, "Internal Server Error"))
+          }.get(GetNetworkIdentity.ROUTE, GetNetworkIdentity(networkDataProvider))
+          .get(GetPeers.ROUTE, GetPeers(networkDataProvider))
+          .get(GetPeer.ROUTE, GetPeer(networkDataProvider))
+          .get(GetPeerCount.ROUTE, GetPeerCount(networkDataProvider))
+          .get(GetVersion.ROUTE, GetVersion(versionProvider))
+          .get(GetSyncingStatus.ROUTE, GetSyncingStatus())
+          .get(GetHealth.ROUTE, GetHealth())
           .start(config.port.toInt())
     }
   }

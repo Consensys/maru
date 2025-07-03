@@ -8,6 +8,8 @@
  */
 package maru.api
 
+import maru.p2p.Peer
+
 interface NetworkDataProvider {
   fun getNodeId(): String
 
@@ -16,4 +18,8 @@ interface NetworkDataProvider {
   fun getNodeAddresses(): List<String>
 
   fun getDiscoveryAddresses(): List<String>
+
+  fun getPeers(): List<Peer>
+
+  fun getPeer(peerId: String): Peer?
 }
