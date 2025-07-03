@@ -22,7 +22,7 @@ import kotlin.reflect.full.createType
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import linea.kotlin.decodeHex
+import maru.extensions.fromHexToByteArray
 
 data class PayloadValidatorDto(
   val engineApiEndpoint: ApiEndpointDto,
@@ -73,7 +73,7 @@ object QbftOptionsDecoder : Decoder<QbftOptions> {
     val tomlFriendlyPartTyped = tomlFriendlyPart as ConfigResult<QbftOptionsDtoToml>
     val feeRecipient =
       try {
-        node.getString("feerecipient").decodeHex()
+        node.getString("feerecipient").fromHexToByteArray()
       } catch (throwable: Throwable) {
         return ConfigFailure.ResolverException("Unable to convert feeRecipient to byteArray!", throwable).invalid()
       }
