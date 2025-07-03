@@ -17,7 +17,7 @@ services:
     volumes:
       - ./maru/config.dev.toml:/opt/consensys/maru/configs/config.dev.toml:ro
       - ./maru/log4j.xml:/opt/consensys/maru/configs/log4j.xml:ro
-      - ./initialization/genesis-maru.json:/opt/consensys/maru/configs/genesis.json:ro
+      - ./initialization/local-dev/genesis-maru.json:/opt/consensys/maru/configs/genesis.json:ro
       - ./maru/0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0.key:/tmp/maru-db/private-key
       - ./jwt:/opt/consensys/docker/jwt:ro
     ports:
