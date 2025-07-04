@@ -30,7 +30,7 @@ fun getBootnodeEnrString(
       .address(ipv4, discPort, tcpPort)
       .build()
   val enr = bootnodeNR.serialize()
-  val encode = Base64.getUrlEncoder().encode(enr.toArray())
-  val enrString = "enr:${String(encode)}"
+  val encoded = Base64.getUrlEncoder().encode(enr.toArray())
+  val enrString = "enr:${String(encoded)}"
   return enrString
 }

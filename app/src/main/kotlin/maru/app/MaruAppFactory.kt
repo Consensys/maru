@@ -22,19 +22,16 @@ import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.config.MaruConfig
 import maru.config.P2P
-import maru.consensus.ForkIdHashProvider
-import maru.consensus.ForkIdHasher
+import maru.consensus.ForkId
 import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
-import maru.crypto.Hashing
 import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.RpcMethodFactory
-import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -84,24 +81,15 @@ class MaruAppFactory {
               override fun getApplicationPrefix(): Optional<String> = Optional.empty()
             },
         )
-
-    val forkIdHasher =
-      ForkIdHasher(
-        ForkIdSerializers
-          .ForkIdSerializer,
-        Hashing::shortShaHash,
-      )
-    val forkIdHashProvider =
-      ForkIdHashProvider(
-        chainId = beaconGenesisConfig.chainId,
-        beaconChain = beaconChain,
-        forksSchedule = beaconGenesisConfig,
-        forkIdHasher = forkIdHasher,
+    val forkId =
+      ForkId(
+        chainId = 1L.toUInt(),
+        genesisRootHash = ByteArray(32),
       )
     val rpcMaruAppFactory =
       RpcMethodFactory(
         beaconChain = beaconChain,
-        forkIdHashProvider = forkIdHashProvider,
+        forkIdBytesProvider = { forkId.bytes },
         chainId = beaconGenesisConfig.chainId,
       )
     val p2pNetwork =

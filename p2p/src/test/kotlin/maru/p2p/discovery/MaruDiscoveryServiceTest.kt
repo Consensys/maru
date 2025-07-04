@@ -11,12 +11,8 @@ package maru.p2p.discovery
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
-import maru.config.consensus.ElFork
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkId
 import maru.consensus.ForkId.Companion.FORK_ID_FIELD_NAME
-import maru.consensus.ForkSpec
-import maru.serialization.ForkIdDeSer
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.ethereum.beacon.discovery.schema.EnrField
@@ -33,12 +29,6 @@ class MaruDiscoveryServiceTest {
   private val dummyForkId =
     ForkId(
       chainId = 1.toUInt(),
-      forkSpec =
-        ForkSpec(
-          timestampSeconds = 1L,
-          blockTimeSeconds = 1,
-          configuration = QbftConsensusConfig(emptySet(), ElFork.Prague),
-        ),
       genesisRootHash =
         ByteArray(32) {
           0
@@ -47,12 +37,6 @@ class MaruDiscoveryServiceTest {
   private val dummyForkId2 =
     ForkId(
       chainId = 2.toUInt(),
-      forkSpec =
-        ForkSpec(
-          timestampSeconds = 1L,
-          blockTimeSeconds = 1,
-          configuration = QbftConsensusConfig(emptySet(), ElFork.Prague),
-        ),
       genesisRootHash =
         ByteArray(32) {
           0
@@ -76,9 +60,8 @@ class MaruDiscoveryServiceTest {
   fun `converts node record with valid forkId`() {
     val node = mock(NodeRecord::class.java)
     val pubKey = Bytes.of(9, 9, 9)
-    val forkIdBytes = Bytes.wrap(ForkIdDeSer.ForkIdSerializer.serialize(dummyForkId))
     `when`(node.get(EnrField.PKEY_SECP256K1)).thenReturn(pubKey)
-    `when`(node.get(FORK_ID_FIELD_NAME)).thenReturn(forkIdBytes)
+    `when`(node.get(FORK_ID_FIELD_NAME)).thenReturn(Bytes.wrap(dummyForkId.bytes))
     `when`(node.nodeId).thenReturn(dummyNodeId)
     `when`(node.tcpAddress).thenReturn(dummyAddr)
 
@@ -92,8 +75,8 @@ class MaruDiscoveryServiceTest {
     assertEquals(pubKey, peer.publicKey)
     assertEquals(dummyNodeId, peer.nodeId)
     assertEquals(dummyAddr.get(), peer.addr)
-    assertTrue(peer.forkId.isPresent)
-    assertEquals(dummyForkId, peer.forkId.get())
+    assertTrue(peer.forkIdBytes.isPresent)
+    assertEquals(Bytes.wrap(dummyForkId.bytes), Bytes.wrap(peer.forkIdBytes.get()))
   }
 
   @Test
@@ -111,7 +94,7 @@ class MaruDiscoveryServiceTest {
         method.invoke(this, node) as MaruDiscoveryPeer
       }
 
-    assertTrue(peer.forkId.isEmpty)
+    assertTrue(peer.forkIdBytes.isEmpty)
   }
 
   @Test
@@ -129,40 +112,19 @@ class MaruDiscoveryServiceTest {
         method.invoke(this, node) as MaruDiscoveryPeer
       }
 
-    assertTrue(peer.forkId.isEmpty)
+    assertTrue(peer.forkIdBytes.isEmpty)
   }
 
   @Test
-  fun `returns empty forkId if deserialization throws`() {
-    val node = mock(NodeRecord::class.java)
-    val badBytes = Bytes.of(0, 0, 0)
-    `when`(node.get(FORK_ID_FIELD_NAME)).thenReturn(badBytes)
-    `when`(node.get(EnrField.PKEY_SECP256K1)).thenReturn(null)
-    `when`(node.nodeId).thenReturn(dummyNodeId)
-    `when`(node.tcpAddress).thenReturn(dummyAddr)
-
-    val peer =
-      service.run {
-        val method = this::class.java.getDeclaredMethod("convertNodeRecordToDiscoveryPeer", NodeRecord::class.java)
-        method.isAccessible = true
-        method.invoke(this, node) as MaruDiscoveryPeer
-      }
-
-    assertTrue(peer.forkId.isEmpty)
-  }
-
-  @Test
-  fun `updateForkId calls updateCustomFieldValue with correct arguments`() {
+  fun `updateForkId updates local `() {
     val localNodeRecordBefore = service.getLocalNodeRecord()
-    assertThat(
-      ForkIdDeSer.ForkIdDeserializer.deserialize((localNodeRecordBefore.get(FORK_ID_FIELD_NAME) as Bytes).toArray()),
-    ).isEqualTo(dummyForkId)
 
     service.updateForkId(dummyForkId2)
 
     val localNodeRecordAfter = service.getLocalNodeRecord()
-    assertThat(
-      ForkIdDeSer.ForkIdDeserializer.deserialize((localNodeRecordAfter.get(FORK_ID_FIELD_NAME) as Bytes).toArray()),
-    ).isEqualTo(dummyForkId2)
+    val actual = localNodeRecordAfter.get(FORK_ID_FIELD_NAME)
+    assertThat(actual).isNotEqualTo(localNodeRecordBefore.get(FORK_ID_FIELD_NAME))
+    assertThat(actual)
+      .isEqualTo(Bytes.wrap(dummyForkId2.bytes))
   }
 }

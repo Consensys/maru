@@ -14,10 +14,7 @@ import java.util.Optional
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
-import maru.config.consensus.ElFork
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkId
-import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.discovery.MaruDiscoveryService
@@ -45,7 +42,8 @@ class P2PNetworkImpl(
   private val p2pConfig: P2P,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
-) : P2PNetwork, PeerLookup {
+) : P2PNetwork,
+  PeerLookup {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
@@ -91,17 +89,7 @@ class P2PNetworkImpl(
         forkIdProvider = {
           // TODO: where do we get that from?
           ForkId(
-            chainId = 1L.toUInt(),
-            forkSpec =
-              ForkSpec(
-                blockTimeSeconds = 15,
-                timestampSeconds = 0L,
-                configuration =
-                  QbftConsensusConfig(
-                    validatorSet = emptySet(),
-                    ElFork.Prague,
-                  ),
-              ),
+            chainId = chainId,
             genesisRootHash = ByteArray(32),
           )
         },

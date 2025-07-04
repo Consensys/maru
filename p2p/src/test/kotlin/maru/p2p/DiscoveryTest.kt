@@ -10,10 +10,7 @@ package maru.p2p
 
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
-import maru.config.consensus.ElFork
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkId
-import maru.consensus.ForkSpec
 import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
@@ -48,16 +45,6 @@ class DiscoveryTest {
     private val forkIdProvider = {
       ForkId(
         chainId = 1L.toUInt(),
-        forkSpec =
-          ForkSpec(
-            blockTimeSeconds = 15,
-            timestampSeconds = 0L,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = emptySet(),
-                ElFork.Prague,
-              ),
-          ),
         genesisRootHash = ByteArray(32),
       )
     }

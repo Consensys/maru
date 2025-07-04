@@ -14,7 +14,6 @@ import java.util.function.Consumer
 import maru.config.P2P
 import maru.consensus.ForkId
 import maru.consensus.ForkId.Companion.FORK_ID_FIELD_NAME
-import maru.serialization.ForkIdDeSer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -102,7 +101,7 @@ class MaruDiscoveryService(
   fun updateForkId(forkId: ForkId) { // TODO: Need to call this when the fork id changes
     discoverySystem.updateCustomFieldValue(
       FORK_ID_FIELD_NAME,
-      Bytes.wrap(ForkIdDeSer.ForkIdSerializer.serialize(forkId)),
+      forkId.bytes,
     )
   }
 
@@ -123,25 +122,12 @@ class MaruDiscoveryService(
   fun getLocalNodeRecord(): NodeRecord = discoverySystem.localNodeRecord
 
   private fun convertNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
-    val forkIdBytes = node.get(FORK_ID_FIELD_NAME)
-    val forkId =
-      try {
-        (forkIdBytes as? Bytes)?.toArray()?.let {
-          Optional.of(ForkIdDeSer.ForkIdDeserializer.deserialize(it))
-        } ?: Optional.empty<ForkId>()
-      } catch (e: Exception) {
-        log.debug(
-          "Failed to convert node record to MaruDiscoveryPeer: {}. Node record: {}",
-          e.message,
-          node,
-        )
-        Optional.empty<ForkId>()
-      }
+    val forkIdBytes = node.get(FORK_ID_FIELD_NAME) as? Bytes?
     return MaruDiscoveryPeer(
       (node.get(EnrField.PKEY_SECP256K1) as? Bytes),
       node.nodeId,
       node.tcpAddress.orElse(null),
-      forkId,
+      Optional.ofNullable(forkIdBytes),
     )
   }
 
@@ -168,21 +154,26 @@ class MaruDiscoveryService(
           p2pConfig.ipAddress,
           p2pConfig.discoveryPort.toInt(),
           p2pConfig.port.toInt(),
-        ).customField(FORK_ID_FIELD_NAME, Bytes.wrap(ForkIdDeSer.ForkIdSerializer.serialize(forkIdProvider.invoke())))
+        ).customField(FORK_ID_FIELD_NAME, forkIdProvider.invoke().bytes)
     // TODO: do we want more custom fields to identify version/topics/role/something else?
 
     return nodeRecordBuilder.build()
   }
 
   private fun checkPeer(peer: MaruDiscoveryPeer): Boolean {
-    if (peer.nodeIdBytes == null || peer.publicKey == null || peer.addr == null || peer.forkId.isEmpty) return false
-    val peerForkId = peer.forkId.get()
-    if (peerForkId != forkIdProvider.invoke()) {
+    if (peer.nodeIdBytes == null ||
+      peer.publicKey == null ||
+      peer.addr == null ||
+      peer.forkIdBytes.isEmpty
+    ) {
+      return false
+    }
+    if (peer.forkIdBytes.get() != forkIdProvider.invoke().bytes) {
       log.debug(
         "Peer {} is on a different chain. Expected: {}, Found: {}",
         peer.nodeId,
-        forkIdProvider.invoke(),
-        peerForkId,
+        forkIdProvider.invoke().bytes,
+        peer.forkIdBytes.get(),
       )
       return false
     } else {

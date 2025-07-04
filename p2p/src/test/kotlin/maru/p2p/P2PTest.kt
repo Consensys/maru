@@ -13,29 +13,21 @@ import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 import kotlin.random.nextULong
 import maru.config.P2P
-import maru.config.consensus.ElFork
-import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ConsensusConfig
-import maru.consensus.ForkIdHashProvider
-import maru.consensus.ForkIdHasher
-import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
+import maru.consensus.ForkId
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
-import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
 import maru.p2p.messages.Status
-import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
-import org.mockito.kotlin.timeout
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
@@ -74,30 +66,9 @@ class P2PTest {
     private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
     private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
-    private val forkIdHashProvider =
-      createForkIdHashProvider()
+    private val forkIdBytesProvider = { ForkId(chainId, ByteArray(32)).bytes }
     private val rpcMethodFactory =
-      RpcMethodFactory(beaconChain = beaconChain, forkIdHashProvider = forkIdHashProvider, chainId = chainId)
-
-    fun createForkIdHashProvider(): ForkIdHashProvider {
-      val consensusConfig: ConsensusConfig =
-        QbftConsensusConfig(
-          validatorSet =
-            setOf(
-              DataGenerators.randomValidator(),
-              DataGenerators.randomValidator(),
-            ),
-          elFork = ElFork.Prague,
-        )
-      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0L, 1, consensusConfig)))
-
-      return ForkIdHashProvider(
-        chainId = chainId,
-        beaconChain = beaconChain,
-        forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
-      )
-    }
+      RpcMethodFactory(beaconChain = beaconChain, forkIdBytesProvider = forkIdBytesProvider, chainId = chainId)
   }
 
   @Test
@@ -396,7 +367,7 @@ class P2PTest {
         Message(
           RpcMessageType.STATUS,
           Version.V1,
-          Status(Random.nextBytes(32), Random.nextBytes(32), Random.nextULong()),
+          Status(Bytes32.random(), Random.nextBytes(32), Random.nextULong()),
         )
       val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
       val expectedStatusMessage =
@@ -404,7 +375,7 @@ class P2PTest {
           RpcMessageType.STATUS,
           Version.V1,
           Status(
-            forkIdHash = forkIdHashProvider.currentForkIdHash(),
+            forkIdBytes = forkIdBytesProvider.invoke(),
             latestStateRoot = latestBeaconBlockHeader.hash,
             latestBlockNumber = latestBeaconBlockHeader.number,
           ),
@@ -435,6 +406,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        rpcMethodFactory = rpcMethodFactory,
       )
 
     val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
@@ -461,6 +433,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        rpcMethodFactory = rpcMethodFactory,
       )
 
     val p2pNetworkImpl3 =
@@ -478,6 +451,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        rpcMethodFactory = rpcMethodFactory,
       )
 
     try {

@@ -61,7 +61,7 @@ class MaruPeerManagerService(
             log.debug("Finished searching for peers. Found {} peers.", availablePeers.size)
             if (!stopCalled) {
               if (throwable != null) {
-                log.trace("Failed to discover peers: {}\n{}", throwable.message, throwable.stackTraceToString())
+                log.debug("Failed to discover peers: {}\n{}", throwable.message, throwable.stackTraceToString())
                 discoveryService.getKnownPeers().forEach { peer ->
                   tryToConnectIfNotFull(peer)
                 }
