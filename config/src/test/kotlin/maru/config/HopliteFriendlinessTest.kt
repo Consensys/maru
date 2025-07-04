@@ -15,7 +15,7 @@ import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import maru.extensions.fromHexToByteArray
+import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -44,6 +44,9 @@ class HopliteFriendlinessTest {
     eth-api-endpoint = { endpoint = "http://localhost:8545" }
 
     [observability-options]
+    port = 9090
+
+    [api-config]
     port = 8080
     """.trimIndent()
   private val rawConfigToml =
@@ -112,7 +115,7 @@ class HopliteFriendlinessTest {
       duplicateMessageLimit = 100,
       futureMessageMaxDistance = 10L,
       futureMessagesLimit = 1000L,
-      feeRecipient = "0xdead000000000000000000000000000000000000".fromHexToByteArray(),
+      feeRecipient = "0xdead000000000000000000000000000000000000".decodeHex(),
     )
 
   @Test
@@ -125,7 +128,8 @@ class HopliteFriendlinessTest {
         p2pConfig = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 9090u),
+        apiConfig = ApiConfig(port = 8080u),
       ),
     )
   }
@@ -140,7 +144,8 @@ class HopliteFriendlinessTest {
         p2pConfig = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = null,
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 9090u),
+        apiConfig = ApiConfig(port = 8080u),
       ),
     )
   }
@@ -159,7 +164,8 @@ class HopliteFriendlinessTest {
           ),
         qbftOptions = qbftOptions,
         followers = followersConfig,
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 9090u),
+        apiConfig = ApiConfig(port = 8080u),
       ),
     )
   }
@@ -178,7 +184,8 @@ class HopliteFriendlinessTest {
             ethApiEndpoint = ethApiEndpoint,
           ),
         followers = emptyFollowersConfig,
-        observabilityOptions = ObservabilityOptions(port = 8080u),
+        observabilityOptions = ObservabilityOptions(port = 9090u),
+        apiConfig = ApiConfig(port = 8080u),
       ),
     )
   }
@@ -205,7 +212,7 @@ class HopliteFriendlinessTest {
         duplicateMessageLimit = 99,
         futureMessageMaxDistance = 11,
         futureMessagesLimit = 100,
-        feeRecipient = "0x0000000000000000000000000000000000000001".fromHexToByteArray(),
+        feeRecipient = "0x0000000000000000000000000000000000000001".decodeHex(),
       ),
     )
   }

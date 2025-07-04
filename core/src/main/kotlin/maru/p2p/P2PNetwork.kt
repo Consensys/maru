@@ -20,7 +20,6 @@ enum class ValidationResultCode {
   ACCEPT,
   REJECT,
   IGNORE,
-  KEEP_FOR_THE_FUTURE,
 }
 
 sealed interface ValidationResult {
@@ -92,4 +91,12 @@ interface P2PNetwork {
   fun unsubscribeFromBlocks(subscriptionId: Int)
 
   val port: UInt
+
+  val nodeId: String
+
+  val nodeAddresses: List<String>
+
+  val discoveryAddresses: List<String>
+
+  val enr: String?
 }

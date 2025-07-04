@@ -10,6 +10,7 @@ package maru.app
 
 import io.vertx.core.Vertx
 import java.time.Clock
+import maru.api.ApiServer
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
@@ -23,7 +24,6 @@ import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.ProtocolStarterBlockHandler
 import maru.consensus.SealedBeaconBlockHandlerAdapter
-import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.delegated.ElDelegatedConsensusFactory
@@ -41,6 +41,7 @@ import net.consensys.linea.vertx.ObservabilityServer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
@@ -55,6 +56,9 @@ class MaruApp(
   private val metricsFacade: MetricsFacade,
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
+  private val lastBlockMetadataCache: LatestBlockMetadataCache,
+  private val ethereumJsonRpcClient: Web3JClient,
+  private val apiServer: ApiServer,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -79,14 +83,6 @@ class MaruApp(
 
   fun p2pPort(): UInt = p2pNetwork.port
 
-  private val ethereumJsonRpcClient =
-    Helpers.createWeb3jClient(
-      config.validatorElNode.ethApiEndpoint,
-    )
-
-  private val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
-  private val lastBlockMetadataCache: LatestBlockMetadataCache =
-    LatestBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
   private val metadataProviderCacheUpdater =
     NewBlockHandler<Unit> { beaconBlock ->
       val blockMetadata = BlockMetadata.fromBeaconBlock(beaconBlock)
@@ -126,7 +122,13 @@ class MaruApp(
       log.error("Error while trying to start the P2P network", th)
       throw th
     }
-    protocolStarter.start()
+    try {
+      protocolStarter.start()
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the protocol starter", th)
+      throw th
+    }
+    apiServer.start()
     log.info("Maru is up")
   }
 
@@ -144,6 +146,7 @@ class MaruApp(
       log.warn("Error while trying to stop the P2P network", th)
     }
     protocolStarter.stop()
+    apiServer.stop()
     log.info("Maru is down")
   }
 
