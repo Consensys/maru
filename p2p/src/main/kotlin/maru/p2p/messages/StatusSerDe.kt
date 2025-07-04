@@ -20,7 +20,7 @@ class StatusSerDe : RLPSerDe<Status> {
   ) {
     rlpOutput.startList()
 
-    rlpOutput.writeBytes(Bytes.wrap(value.forkIdHash))
+    rlpOutput.writeBytes(value.forkIdBytes)
     rlpOutput.writeBytes(Bytes.wrap(value.latestStateRoot))
     rlpOutput.writeLong(value.latestBlockNumber.toLong())
 
@@ -30,12 +30,12 @@ class StatusSerDe : RLPSerDe<Status> {
   override fun readFrom(rlpInput: RLPInput): Status {
     rlpInput.enterList()
 
-    val forkId = rlpInput.readBytes().toArray()
+    val forkId = rlpInput.readBytes()
     val headStateRoot = rlpInput.readBytes().toArray()
     val headBlockNumber = rlpInput.readLong().toULong()
 
     rlpInput.leaveList()
 
-    return Status(forkIdHash = forkId, latestStateRoot = headStateRoot, latestBlockNumber = headBlockNumber)
+    return Status(forkIdBytes = forkId, latestStateRoot = headStateRoot, latestBlockNumber = headBlockNumber)
   }
 }

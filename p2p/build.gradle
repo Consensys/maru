@@ -33,6 +33,13 @@ dependencies {
   implementation("org.hyperledger.besu:plugin-api")
   implementation("org.hyperledger.besu.internal:core")
   implementation("org.hyperledger.besu.internal:metrics-core")
+  implementation("org.hyperledger.besu.internal:algorithms")
+
+  implementation "io.tmio:tuweni-crypto"
+  implementation "io.tmio:tuweni-rlp"
+
+  implementation 'tech.pegasys.discovery:discovery'
+
   implementation "build.linea.internal:metrics"
   implementation "org.hyperledger.besu.internal:rlp"
 

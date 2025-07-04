@@ -40,7 +40,7 @@ object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
   ): ConfigResult<JsonFriendlyForksSchedule> {
     val chainId = node.getString("chainid").toUInt()
     val config = node["config"]
-    val forkSpecs =
+    val forkSpecs: List<ConfigResult<ForkSpec>> =
       (config as MapNode).map.map { (k, v) ->
         val type = v.getString("type")
         val blockTimeSeconds = v.getString("blocktimeseconds").toInt()
