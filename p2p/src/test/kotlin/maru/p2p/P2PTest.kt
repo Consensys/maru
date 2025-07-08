@@ -77,7 +77,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -87,7 +94,14 @@ class P2PTest {
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT2,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -114,7 +128,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -124,7 +145,14 @@ class P2PTest {
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT2,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -156,7 +184,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -166,7 +201,14 @@ class P2PTest {
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = listOf(PEER_ADDRESS_NODE_1)),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT2,
+            discoveryPort = 0u,
+            staticPeers = listOf(PEER_ADDRESS_NODE_1),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -191,7 +233,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -201,7 +250,14 @@ class P2PTest {
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = listOf(PEER_ADDRESS_NODE_1)),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT2,
+            discoveryPort = 0u,
+            staticPeers = listOf(PEER_ADDRESS_NODE_1),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -231,7 +287,14 @@ class P2PTest {
     val p2pNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -241,7 +304,14 @@ class P2PTest {
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = listOf(PEER_ADDRESS_NODE_1)),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT2,
+            discoveryPort = 0u,
+            staticPeers = listOf(PEER_ADDRESS_NODE_1),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -280,7 +350,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -296,6 +373,7 @@ class P2PTest {
             port = PORT2,
             discoveryPort = 0u,
             staticPeers = listOf(PEER_ADDRESS_NODE_1, PEER_ADDRESS_NODE_3),
+            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -306,7 +384,14 @@ class P2PTest {
     val p2PNetworkImpl3 =
       P2PNetworkImpl(
         privateKeyBytes = key3,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT3, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT3,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -354,7 +439,14 @@ class P2PTest {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = 0u, staticPeers = emptyList()),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            discoveryPort = 0u,
+            staticPeers = emptyList(),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -364,7 +456,14 @@ class P2PTest {
     val p2pManagerImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, discoveryPort = 0u, staticPeers = listOf(PEER_ADDRESS_NODE_1)),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT2,
+            discoveryPort = 0u,
+            staticPeers = listOf(PEER_ADDRESS_NODE_1),
+            discoveryEnabled = false,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -418,7 +517,15 @@ class P2PTest {
     val p2pNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
-        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, discoveryPort = PORT2, staticPeers = emptyList(), maxPeers = 2),
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            discoveryPort = PORT2,
+            staticPeers = emptyList(),
+            maxPeers = 2,
+            discoveryEnabled = true,
+          ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
@@ -446,6 +553,7 @@ class P2PTest {
             staticPeers = emptyList(),
             bootnodes = listOf(bootnodeEnrString),
             maxPeers = 2,
+            discoveryEnabled = true,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -465,6 +573,7 @@ class P2PTest {
             staticPeers = emptyList(),
             bootnodes = listOf(bootnodeEnrString),
             maxPeers = 2,
+            discoveryEnabled = true,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
