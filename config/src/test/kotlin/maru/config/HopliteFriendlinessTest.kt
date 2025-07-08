@@ -68,6 +68,10 @@ class HopliteFriendlinessTest {
       discoveryPort = 3324u,
       staticPeers = emptyList(),
       reconnectDelay = 500.milliseconds,
+      bootnodes =
+        listOf(
+          "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
+        ),
     )
   private val ethApiEndpoint =
     ApiEndpointConfig(
