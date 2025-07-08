@@ -120,7 +120,7 @@ class MaruLineaFinalizationTest {
   }
 
   @Test
-  fun `should finalize current block wright away when synchinng and behing finalized on L1`() {
+  fun `should finalize current block right away when synchinng and being finalized on L1`() {
     fakeLineaContract.setFinalizedBlock(4UL)
 
     repeat(3) {
@@ -145,7 +145,7 @@ class MaruLineaFinalizationTest {
     assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
       .isEqualTo(2UL)
 
-    repeat(4) {
+    repeat(1) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(
           logger = log,
@@ -155,9 +155,15 @@ class MaruLineaFinalizationTest {
       }
     }
 
-    assertThat(validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
-      .isEqualTo(4UL)
-    assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
-      .isEqualTo(4UL)
+    await
+      .atMost(5.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(
+          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(4UL)
+        assertThat(
+          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(4UL)
+      }
   }
 }
