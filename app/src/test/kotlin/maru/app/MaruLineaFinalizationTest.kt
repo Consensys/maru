@@ -120,7 +120,7 @@ class MaruLineaFinalizationTest {
   }
 
   @Test
-  fun `should finalize current block right away when syncing and being finalized on L1`() {
+  fun `should finalize current block right away when syncing and behind finalized on L1`() {
     fakeLineaContract.setFinalizedBlock(4UL)
 
     repeat(3) {
