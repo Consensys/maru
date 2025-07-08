@@ -17,9 +17,8 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
-import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.p2p.messages.StatusMessageFactory
-import maru.p2p.topics.SealedBlocksTopicHandler
+import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag

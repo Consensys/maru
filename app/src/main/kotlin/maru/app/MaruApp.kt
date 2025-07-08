@@ -42,7 +42,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(

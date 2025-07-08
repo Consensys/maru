@@ -10,8 +10,6 @@ package maru.p2p
 
 import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
-import kotlin.random.nextULong
 import maru.config.P2P
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -23,10 +21,6 @@ import maru.consensus.ForksSchedule
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
-import maru.crypto.Hashing
-import maru.database.InMemoryBeaconChain
-import maru.p2p.messages.Status
-import maru.serialization.ForkIdSerializers
 import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
 import maru.p2p.messages.Status

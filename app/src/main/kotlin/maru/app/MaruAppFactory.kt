@@ -38,7 +38,6 @@ import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.RpcMethodFactory
-import maru.serialization.ForkIdSerializers
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
