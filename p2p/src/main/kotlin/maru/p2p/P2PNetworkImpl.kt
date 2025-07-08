@@ -62,7 +62,7 @@ class P2PNetworkImpl(
 
     lateinit var maruPeerManager: MaruPeerManager
     val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator) { maruPeerManager }
-    maruPeerManager = MaruPeerManager(statusMessageFactory, rpcMethods)
+    maruPeerManager = MaruPeerManager(maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory))
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
       privateKey = privateKey,

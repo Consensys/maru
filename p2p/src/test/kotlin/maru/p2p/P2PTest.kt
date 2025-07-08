@@ -78,7 +78,8 @@ class P2PTest {
       val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
       lateinit var maruPeerManager: MaruPeerManager
       val rpcMethods = RpcMethods(statusMessageFactory, rpcProtocolIdGenerator) { maruPeerManager }
-      maruPeerManager = MaruPeerManager(statusMessageFactory, rpcMethods)
+      val maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory)
+      maruPeerManager = MaruPeerManager(maruPeerFactory = maruPeerFactory)
       return rpcMethods
     }
 
@@ -399,7 +400,7 @@ class P2PTest {
       val peer1 =
         p2pManagerImpl2.getPeer(PEER_ID_NODE_1)
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_2 not found in p2pManagerImpl2")
-      val maruPeer1 = MaruPeerImpl(peer1, rpcMethods, statusMessageFactory)
+      val maruPeer1 = DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory)
 
       val responseFuture = maruPeer1.sendStatus()
 

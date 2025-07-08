@@ -31,7 +31,23 @@ interface MaruPeer : Peer {
   fun updateStatus(status: Status)
 }
 
-class MaruPeerImpl(
+interface MaruPeerFactory {
+  fun createMaruPeer(delegatePeer: Peer): MaruPeer
+}
+
+class DefaultMaruPeerFactory(
+  private val rpcMethods: RpcMethods,
+  private val statusMessageFactory: StatusMessageFactory,
+) : MaruPeerFactory {
+  override fun createMaruPeer(delegatePeer: Peer): MaruPeer =
+    DefaultMaruPeer(
+      delegatePeer = delegatePeer,
+      rpcMethods = rpcMethods,
+      statusMessageFactory = statusMessageFactory,
+    )
+}
+
+class DefaultMaruPeer(
   private val delegatePeer: Peer,
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,

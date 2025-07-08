@@ -8,31 +8,40 @@
  */
 package maru.p2p
 
+import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
-import maru.p2p.messages.StatusMessageFactory
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
+import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
+private const val STATUS_TIMEOUT_SECONDS = 10L
+
 class MaruPeerManager(
-  private val statusMessageFactory: StatusMessageFactory,
-  private val rpcMethods: RpcMethods,
+  private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(),
+  private val maruPeerFactory: MaruPeerFactory,
 ) : PeerHandler,
   PeerLookup {
   private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
 
   override fun onConnect(peer: Peer) {
-    val maruPeer =
-      MaruPeerImpl(
-        delegatePeer = peer,
-        rpcMethods = rpcMethods,
-        statusMessageFactory = statusMessageFactory,
-      )
+    val maruPeer = maruPeerFactory.createMaruPeer(peer)
     connectedPeers.put(peer.id, maruPeer)
     if (maruPeer.connectionInitiatedLocally()) {
       maruPeer.sendStatus()
     } else {
-      // TODO ensure that we have a status message from the peer
+      scheduler.schedule({
+        val currentPeer = connectedPeers[peer.id]
+        if (currentPeer != null && currentPeer.getStatus() == null) {
+          currentPeer.disconnectImmediately(
+            Optional.of(DisconnectReason.REMOTE_FAULT),
+            false,
+          )
+        }
+      }, STATUS_TIMEOUT_SECONDS, TimeUnit.SECONDS)
     }
   }
 
