@@ -145,23 +145,26 @@ class MaruLineaFinalizationTest {
     assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
       .isEqualTo(2UL)
 
-    transactionsHelper.run {
-      validatorStack.besuNode.sendTransactionAndAssertExecution(
-        logger = log,
-        recipient = createAccount("another account"),
-        amount = Amount.ether(1),
-      )
+    repeat(4) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(1),
+        )
+      }
     }
 
     await
       .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
-        assertThat(
-          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-        ).isEqualTo(4UL)
-        assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-        ).isEqualTo(4UL)
+        assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number)
+          .isGreaterThan(4UL)
       }
+
+    assertThat(validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
+      .isEqualTo(4UL)
+    assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
+      .isEqualTo(4UL)
   }
 }
