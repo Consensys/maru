@@ -145,14 +145,12 @@ class MaruLineaFinalizationTest {
     assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
       .isEqualTo(2UL)
 
-    repeat(1) {
-      transactionsHelper.run {
-        validatorStack.besuNode.sendTransactionAndAssertExecution(
-          logger = log,
-          recipient = createAccount("another account"),
-          amount = Amount.ether(1),
-        )
-      }
+    transactionsHelper.run {
+      validatorStack.besuNode.sendTransactionAndAssertExecution(
+        logger = log,
+        recipient = createAccount("another account"),
+        amount = Amount.ether(1),
+      )
     }
 
     await
