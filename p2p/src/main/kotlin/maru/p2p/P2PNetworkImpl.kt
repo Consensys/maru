@@ -42,8 +42,7 @@ class P2PNetworkImpl(
   private val metricsFacade: MetricsFacade,
   private val statusMessageFactory: StatusMessageFactory,
   nextExpectedBeaconBlockNumber: ULong,
-) : P2PNetwork,
-  PeerLookup {
+) : P2PNetwork {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
@@ -61,7 +60,6 @@ class P2PNetworkImpl(
       name = "message.broadcast.counter",
       description = "Count of messages broadcasted over the P2P network",
     )
-  private val rpcMethods = rpcMethodFactory.createRpcMethods(this)
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
@@ -140,24 +138,6 @@ class P2PNetworkImpl(
     }
   }
 
-  fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
-    message: TRequest,
-    peer: Peer,
-  ): SafeFuture<TResponse> {
-    val rpcMethod =
-      rpcMethods[message.type] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
-    val peerId = peer.id.toString()
-    val responseHandler = MaruRpcResponseHandler<TResponse>()
-    return sendRequest(
-      peerId,
-      rpcMethod as MaruRpcMethod<TRequest, TResponse>,
-      message,
-      responseHandler,
-    ).thenCompose {
-      responseHandler.response()
-    }
-  }
-
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
     val subscriptionManagerHadSubscriptions = sealedBlocksSubscriptionManager.hasSubscriptions()
 
@@ -194,8 +174,6 @@ class P2PNetworkImpl(
       p2pNetwork.getPeer(peerAddress.id).ifPresent { peer -> peer.disconnectImmediately(Optional.empty(), true) }
     }
   }
-
-  override fun getPeer(nodeId: NodeId): Peer? = p2pNetwork.getPeer(nodeId).getOrNull()
 
   private fun maintainPersistentConnection(peerAddress: MultiaddrPeerAddress): SafeFuture<Unit> =
     p2pNetwork

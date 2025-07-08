@@ -37,7 +37,6 @@ import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
-import maru.p2p.RpcMethodFactory
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
@@ -101,12 +100,6 @@ class MaruAppFactory {
         forksSchedule = beaconGenesisConfig,
         forkIdHasher = forkIdHasher,
       )
-    val rpcMaruAppFactory =
-      RpcMethodFactory(
-        beaconChain = beaconChain,
-        forkIdHashProvider = forkIdHashProvider,
-        chainId = beaconGenesisConfig.chainId,
-      )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
         config.validatorElNode.ethApiEndpoint,
@@ -127,7 +120,6 @@ class MaruAppFactory {
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
-        rpcMethodFactory = rpcMaruAppFactory,
         nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
         statusMessageFactory = statusMessageFactory,
       )
