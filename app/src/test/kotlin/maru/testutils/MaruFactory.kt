@@ -155,6 +155,7 @@ class MaruFactory {
       staticPeers = staticPeers,
       discoveryPort = 0u,
       reconnectDelay = defaultReconnectDelay,
+      discoveryEnabled = false,
     )
   }
 
