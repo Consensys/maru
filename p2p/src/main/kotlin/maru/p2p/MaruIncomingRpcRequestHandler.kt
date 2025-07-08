@@ -38,7 +38,6 @@ class MaruIncomingRpcRequestHandler<TRequest : Message<*, RpcMessageType>, TResp
     val bytes = ByteBufUtil.getBytes(byteBuffer)
     val maybePeer = peerLookup.getPeer(nodeId)
     val message = requestMessageSerDe.deserialize(bytes)
-
     maybePeer?.let { peer ->
       rpcMessageHandler.handleIncomingMessage(
         peer = peer,

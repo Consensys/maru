@@ -1,6 +1,13 @@
 name: Testing CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      consensus-client-changed:
+        required: true
+        type: string
+        default: 'true'
+        description: 'when false, skips the job'
   workflow_call:
     inputs:
       #      commit-tag:
@@ -45,7 +52,9 @@ jobs:
         uses: gradle/actions/setup-gradle@8379f6a1328ee0e06e2bb424dadb7b159856a326 # 4.4.0
       - name: Build consensus and Unit tests
         run: |
-          make build
+          # force tests to run even if the code is not changed
+          # this is to debug flaky tests
+          ./gradlew build --rerun
       - name: Run Jacoco
         run: |
           ./gradlew jacocoAggregatedReport

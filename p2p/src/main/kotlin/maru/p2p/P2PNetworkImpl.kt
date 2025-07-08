@@ -12,10 +12,12 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.util.Optional
 import java.util.concurrent.TimeUnit
+import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
+import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.p2p.messages.StatusMessageFactory
 import maru.p2p.topics.SealedBlocksTopicHandler
 import maru.serialization.SerDe
@@ -35,23 +37,32 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
-  private val chainId: UInt,
   private val p2pConfig: P2P,
+  private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
   private val statusMessageFactory: StatusMessageFactory,
-) : P2PNetwork {
+  nextExpectedBeaconBlockNumber: ULong,
+) : P2PNetwork,
+  PeerLookup {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
-    SealedBlocksTopicHandler(sealedBlocksSubscriptionManager, serDe, sealedBlocksTopicId)
+    TopicHandlerWithInOrderDelivering(
+      initialExpectedSequenceNumber = nextExpectedBeaconBlockNumber,
+      subscriptionManager = sealedBlocksSubscriptionManager,
+      sequenceNumberExtractor = { it.beaconBlock.beaconBlockHeader.number },
+      deserializer = serDe,
+      topicId = sealedBlocksTopicId,
+    )
   private val broadcastMessageCounterFactory =
     metricsFacade.createCounterFactory(
       category = MaruMetricsCategory.P2P_NETWORK,
       name = "message.broadcast.counter",
       description = "Count of messages broadcasted over the P2P network",
     )
+  private val rpcMethods = rpcMethodFactory.createRpcMethods(this)
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
@@ -76,12 +87,16 @@ class P2PNetworkImpl(
   }
 
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
-  private val p2pNetwork = builtNetwork.p2PNetwork
-
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  internal val p2pNetwork = builtNetwork.p2PNetwork
+  private val log: Logger = LogManager.getLogger(this::javaClass)
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
   private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()
+
+  override val nodeId: String = p2pNetwork.nodeId.toBase58()
+  override val discoveryAddresses: List<String> = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
+  override val enr: String? = p2pNetwork.enr.getOrNull()
+  override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 
   override fun start(): SafeFuture<Unit> =
     p2pNetwork
@@ -126,6 +141,24 @@ class P2PNetworkImpl(
     }
   }
 
+  fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
+    message: TRequest,
+    peer: Peer,
+  ): SafeFuture<TResponse> {
+    val rpcMethod =
+      rpcMethods[message.type] ?: throw IllegalArgumentException("Unsupported message type: ${message.type}")
+    val peerId = peer.id.toString()
+    val responseHandler = MaruRpcResponseHandler<TResponse>()
+    return sendRequest(
+      peerId,
+      rpcMethod as MaruRpcMethod<TRequest, TResponse>,
+      message,
+      responseHandler,
+    ).thenCompose {
+      responseHandler.response()
+    }
+  }
+
   override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
     val subscriptionManagerHadSubscriptions = sealedBlocksSubscriptionManager.hasSubscriptions()
 
@@ -162,6 +195,8 @@ class P2PNetworkImpl(
       p2pNetwork.getPeer(peerAddress.id).ifPresent { peer -> peer.disconnectImmediately(Optional.empty(), true) }
     }
   }
+
+  override fun getPeer(nodeId: NodeId): Peer? = p2pNetwork.getPeer(nodeId).getOrNull()
 
   private fun maintainPersistentConnection(peerAddress: MultiaddrPeerAddress): SafeFuture<Unit> =
     p2pNetwork
