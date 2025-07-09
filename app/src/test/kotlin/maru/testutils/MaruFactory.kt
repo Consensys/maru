@@ -255,6 +255,7 @@ class MaruFactory {
     dataDir: Path,
     switchTimestamp: Long,
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+    allowEmptyBlocks: Boolean = false,
   ): MaruApp {
     val config =
       buildMaruConfig(
@@ -262,6 +263,7 @@ class MaruFactory {
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
         qbftOptions = validatorQbftOptions,
+        allowEmptyBlocks = allowEmptyBlocks,
       )
     writeValidatorPrivateKey(config)
     val genesisContent =
