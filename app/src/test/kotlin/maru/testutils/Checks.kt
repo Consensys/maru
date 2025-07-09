@@ -38,7 +38,7 @@ object Checks {
       Assertions
         .assertThat(actualBlockTime)
         .withFailMessage(
-          "expectedBlockTime=${BesuFactory.MIN_BLOCK_TIME} actualBlockTime=$actualBlockTime blocks timestamps=$timestampsSeconds",
+          "invalid block time: expected=${BesuFactory.MIN_BLOCK_TIME} actual=$actualBlockTime blocks timestamps=$timestampsSeconds",
         ).isEqualTo(BesuFactory.MIN_BLOCK_TIME)
       timestamp
     }
