@@ -108,7 +108,7 @@ class DefaultMaruPeer(
 
   override fun connectionInitiatedLocally(): Boolean = delegatePeer.connectionInitiatedLocally()
 
-  override fun connectionInitiatedRemotely(): Boolean = delegatePeer.connectionInitiatedLocally()
+  override fun connectionInitiatedRemotely(): Boolean = delegatePeer.connectionInitiatedRemotely()
 
   override fun adjustReputation(adjustment: ReputationAdjustment) = delegatePeer.adjustReputation(adjustment)
 }
