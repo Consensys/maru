@@ -20,6 +20,7 @@ import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
+import org.awaitility.kotlin.untilAsserted
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
@@ -139,11 +140,16 @@ class MaruLineaFinalizationTest {
         followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number == 3UL
       }
 
-    // FIXME: it should be 3, but it seems that only calls FCU.finalized with parent block?
-    assertThat(validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
-      .isEqualTo(2UL)
-    assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
-      .isEqualTo(2UL)
+    await
+      .atMost(5.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(
+          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(2UL)
+        assertThat(
+          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(2UL)
+      }
 
     // Propagating the Head of the chain further than the Finalization height
     repeat(4) {
