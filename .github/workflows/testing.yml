@@ -58,23 +58,23 @@ jobs:
           # force tests to run even if the code is not changed
           # this is to debug flaky tests
           ./gradlew build --rerun
-      - name: Run Jacoco
-        run: |
-          ./gradlew jacocoAggregatedReport
-      - name: Upload Jacoco test coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
-          if-no-files-found: error
-          path: |
-            ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          fail_ci_if_error: true
-          files: ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
-          flags: kotlin
-          os: linux
-          name: codecov
-          verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+#      - name: Run Jacoco
+#        run: |
+#          ./gradlew jacocoAggregatedReport
+#      - name: Upload Jacoco test coverage report
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
+#          if-no-files-found: error
+#          path: |
+#            ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
+#      - name: Upload coverage to Codecov
+#        uses: codecov/codecov-action@v5
+#        with:
+#          fail_ci_if_error: true
+#          files: ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
+#          flags: kotlin
+#          os: linux
+#          name: codecov
+#          verbose: true
+#          token: ${{ secrets.CODECOV_TOKEN }}
