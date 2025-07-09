@@ -145,6 +145,7 @@ class MaruLineaFinalizationTest {
     assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
       .isEqualTo(2UL)
 
+    // Propagating the Head of the chain further than the Finalization height
     repeat(4) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(
