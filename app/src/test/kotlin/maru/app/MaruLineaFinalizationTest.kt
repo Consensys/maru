@@ -17,6 +17,7 @@ import linea.web3j.ethapi.createEthApiClient
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
+import maru.testutils.besu.ethGetBlockByNumber
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -29,7 +30,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.web3j.protocol.core.DefaultBlockParameter
 
 class MaruLineaFinalizationTest {
   private lateinit var cluster: Cluster
@@ -77,24 +77,9 @@ class MaruLineaFinalizationTest {
       }
     followerStack.maruApp.start()
 
-    val validatorGenesis =
-      validatorStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
-    val followerGenesis =
-      followerStack.besuNode
-        .nodeRequests()
-        .eth()
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          false,
-        ).send()
-        .block
+    val validatorGenesis = validatorStack.besuNode.ethGetBlockByNumber("earliest", false)
+    val followerGenesis = followerStack.besuNode.ethGetBlockByNumber("earliest", false)
+
     assertThat(validatorGenesis).isEqualTo(followerGenesis)
 
     validatorEthApiClient =
