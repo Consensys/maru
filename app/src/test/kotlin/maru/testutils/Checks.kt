@@ -37,8 +37,9 @@ object Checks {
       val actualBlockTime = timestamp - prevTimestamp
       Assertions
         .assertThat(actualBlockTime)
-        .withFailMessage("Timestamps: $timestampsSeconds")
-        .isEqualTo(BesuFactory.MIN_BLOCK_TIME)
+        .withFailMessage(
+          "expectedBlockTime=${BesuFactory.MIN_BLOCK_TIME} actualBlockTime=$actualBlockTime blocks timestamps=$timestampsSeconds",
+        ).isEqualTo(BesuFactory.MIN_BLOCK_TIME)
       timestamp
     }
   }
