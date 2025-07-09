@@ -9,18 +9,14 @@
 package maru.app
 
 import java.io.File
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.Checks.verifyBlockTimeWithAGapOn
 import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.ethGetBlockByNumber
-import maru.testutils.besu.latestBlock
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
@@ -99,20 +95,15 @@ class MaruConsensusSwitchTest {
     maruNode.start()
 
     log.info("Sending transactions")
-    await()
-      .atMost(30.seconds.toJavaDuration())
-      .pollInterval(1.seconds.toJavaDuration())
-      .ignoreExceptions()
-      .until {
-        transactionsHelper.run {
-          besuNode.sendTransaction(
-            logger = log,
-            recipient = createAccount("pre-switch account"),
-            amount = Amount.ether(1),
-          )
-        }
-        besuNode.latestBlock().number.toLong() > totalBlocksToProduce
+    repeat(totalBlocksToProduce) {
+      transactionsHelper.run {
+        besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("pre-switch account"),
+          amount = Amount.ether(100),
+        )
       }
+    }
 
     currentTimestamp = System.currentTimeMillis() / 1000
     log.info("Current timestamp: $currentTimestamp, switch timestamp: $switchTimestamp")
