@@ -35,8 +35,9 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-med ]
     name: Consensus client tests
-    matrix:
-      iterations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    strategy:
+      matrix:
+        iterations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
