@@ -151,13 +151,14 @@ allprojects {
       events 'passed', 'skipped', 'failed'
       showStandardStreams = true
     }
-  }
 
-  tasks.withType(Test).configureEach {
     systemProperties["junit.jupiter.execution.parallel.enabled"] = true
     systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
     systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
-    maxParallelForks = 1
+    systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
+    systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"] =
+      Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+    maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
   }
 }
 
