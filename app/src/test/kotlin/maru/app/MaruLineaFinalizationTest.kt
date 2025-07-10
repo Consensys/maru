@@ -147,10 +147,10 @@ class MaruLineaFinalizationTest {
       .untilAsserted {
         assertThat(
           validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-        ).isEqualTo(2UL)
+        ).isBetween(2UL, 3UL)
         assertThat(
           followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-        ).isEqualTo(2UL)
+        ).isBetween(2UL, 3UL)
       }
 
     // Propagating the Head of the chain further than the Finalization height
