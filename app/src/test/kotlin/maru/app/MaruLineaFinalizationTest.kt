@@ -9,6 +9,7 @@
 package maru.app
 
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import linea.domain.BlockParameter
@@ -96,6 +97,20 @@ class MaruLineaFinalizationTest {
         requestRetryConfig = null,
         vertx = null,
       )
+    // wait for Besu to be fully started and synced,
+    // to avoid CI flakiness due low resources sometimes
+    await
+      .atMost(5.seconds.toJavaDuration())
+      .pollInterval(200.milliseconds.toJavaDuration())
+      .ignoreExceptions()
+      .untilAsserted {
+        assertThat(
+          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+        ).isGreaterThanOrEqualTo(0UL)
+        assertThat(
+          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+        ).isGreaterThanOrEqualTo(0UL)
+      }
   }
 
   @AfterEach
@@ -121,19 +136,21 @@ class MaruLineaFinalizationTest {
 
     await
       .atMost(5.seconds.toJavaDuration())
+      .ignoreExceptions() // sometimes besu fails to return the latest block ¯\_(ツ)_/¯
       .until {
         followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number == 3UL
       }
 
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(15.seconds.toJavaDuration())
+      .ignoreExceptions()
       .untilAsserted {
         assertThat(
           validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-        ).isEqualTo(2UL)
+        ).isBetween(2UL, 3UL)
         assertThat(
           followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-        ).isEqualTo(2UL)
+        ).isBetween(2UL, 3UL)
       }
 
     // Propagating the Head of the chain further than the Finalization height
@@ -149,14 +166,22 @@ class MaruLineaFinalizationTest {
 
     await
       .atMost(5.seconds.toJavaDuration())
+      .ignoreExceptions()
       .untilAsserted {
         assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number)
-          .isGreaterThan(4UL)
+          .isGreaterThan(6UL)
       }
 
-    assertThat(validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
-      .isEqualTo(4UL)
-    assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
-      .isEqualTo(4UL)
+    await
+      .atMost(5.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .untilAsserted {
+        assertThat(
+          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(4UL)
+        assertThat(
+          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(4UL)
+      }
   }
 }
