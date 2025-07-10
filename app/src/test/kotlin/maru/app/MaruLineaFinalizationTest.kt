@@ -101,6 +101,7 @@ class MaruLineaFinalizationTest {
     await
       .atMost(5.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
+      .ignoreExceptions()
       .untilAsserted {
         assertThat(
           validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
