@@ -11,7 +11,6 @@ package maru.app
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.MaruFactory
