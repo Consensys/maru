@@ -151,13 +151,13 @@ allprojects {
       events 'passed', 'skipped', 'failed'
       showStandardStreams = true
     }
+  }
 
-    systemProperties["junit.jupiter.execution.parallel.enabled"] =  true
+  tasks.withType(Test).configureEach {
+    systemProperties["junit.jupiter.execution.parallel.enabled"] = true
     systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
     systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
-    systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
-    systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"] =
-      Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+    maxParallelForks = 1
   }
 }
 
@@ -190,7 +190,6 @@ subprojects {
   }
 }
 
-
 task jacocoAggregatedReport(type: JacocoReport) {
   group = "verification"
 
@@ -204,7 +203,6 @@ task jacocoAggregatedReport(type: JacocoReport) {
     html.destination file("build/reports/jacocoHtml")
   }
 }
-
 
 apply plugin: 'application'
 
