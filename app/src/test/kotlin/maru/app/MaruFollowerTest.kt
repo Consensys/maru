@@ -10,6 +10,7 @@ package maru.app
 
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.testutils.Checks.getMinedBlocks
@@ -216,7 +217,8 @@ class MaruFollowerTest {
   private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
     await
       .pollDelay(100.milliseconds.toJavaDuration())
-      .timeout(10.seconds.toJavaDuration())
+      // we need big timeout due to CI resources sometimes being slow
+      .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
         val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
         val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)
