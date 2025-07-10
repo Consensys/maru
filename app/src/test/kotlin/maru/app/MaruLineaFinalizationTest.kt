@@ -9,6 +9,7 @@
 package maru.app
 
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import linea.domain.BlockParameter
@@ -96,6 +97,18 @@ class MaruLineaFinalizationTest {
         requestRetryConfig = null,
         vertx = null,
       )
+    // wait for Besu to be fully started and synced, to avoid CI flakiness due low resources some times
+    await
+      .atMost(5.seconds.toJavaDuration())
+      .pollInterval(200.milliseconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(
+          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+        ).isGreaterThanOrEqualTo(0UL)
+        assertThat(
+          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+        ).isGreaterThanOrEqualTo(0UL)
+      }
   }
 
   @AfterEach
