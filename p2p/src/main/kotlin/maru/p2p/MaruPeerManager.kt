@@ -33,16 +33,19 @@ class MaruPeerManager(
     if (maruPeer.connectionInitiatedLocally()) {
       maruPeer.sendStatus()
     } else {
-      scheduler.schedule({
-        val currentPeer = connectedPeers[peer.id]
-        if (currentPeer != null && currentPeer.getStatus() == null) {
-          currentPeer.disconnectImmediately(
-            Optional.of(DisconnectReason.REMOTE_FAULT),
-            false,
-          )
-        }
-      }, STATUS_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+      ensureStatusReceived(maruPeer)
     }
+  }
+
+  private fun ensureStatusReceived(peer: MaruPeer) {
+    scheduler.schedule({
+      if (peer.getStatus() == null) {
+        peer.disconnectImmediately(
+          Optional.of(DisconnectReason.REMOTE_FAULT),
+          false,
+        )
+      }
+    }, STATUS_TIMEOUT_SECONDS, TimeUnit.SECONDS)
   }
 
   override fun onDisconnect(peer: Peer) {
