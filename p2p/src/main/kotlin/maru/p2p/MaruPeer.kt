@@ -9,6 +9,7 @@
 package maru.p2p
 
 import java.util.Optional
+import java.util.concurrent.atomic.AtomicReference
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -52,9 +53,9 @@ class DefaultMaruPeer(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
 ) : MaruPeer {
-  private var status: Status? = null
+  private val status = AtomicReference<Status?>(null)
 
-  override fun getStatus(): Status? = status
+  override fun getStatus(): Status? = status.get()
 
   override fun sendStatus(): SafeFuture<Status> {
     val statusMessage = statusMessageFactory.createStatusMessage()
@@ -64,7 +65,7 @@ class DefaultMaruPeer(
   }
 
   override fun updateStatus(status: Status) {
-    this.status = status
+    this.status.set(status)
   }
 
   fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
