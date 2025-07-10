@@ -27,6 +27,7 @@ data class SyncingStatusData(
 class GetSyncingStatus : Handler {
   override fun handle(ctx: Context) {
     // This is a placeholder implementation. Replace it with actual logic to retrieve syncing status.
+    // TODO(Implement actual syncing status retrieval logic when we have syncing in place)
     ctx.status(200).json(
       GetSyncingStatusResponse(
         data =

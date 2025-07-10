@@ -11,5 +11,6 @@ package maru.app
 import maru.VersionProvider
 
 class MaruVersionProvider : VersionProvider {
+  // TODO: Get the version from a build file or environment variable
   override fun getVersion(): String = "maru/v0.1.0"
 }
