@@ -170,9 +170,16 @@ class MaruLineaFinalizationTest {
           .isGreaterThan(6UL)
       }
 
-    assertThat(validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
-      .isEqualTo(4UL)
-    assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number)
-      .isEqualTo(4UL)
+    await
+      .atMost(5.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .untilAsserted {
+        assertThat(
+          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(4UL)
+        assertThat(
+          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(4UL)
+      }
   }
 }
