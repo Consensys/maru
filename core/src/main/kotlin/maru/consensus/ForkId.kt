@@ -16,10 +16,6 @@ data class ForkId(
   val chainId: UInt,
   val genesisRootHash: ByteArray,
 ) {
-  companion object {
-    const val FORK_ID_FIELD_NAME = "mfid"
-  }
-
   val bytes = computeBytes()
 
   override fun equals(other: Any?): Boolean {

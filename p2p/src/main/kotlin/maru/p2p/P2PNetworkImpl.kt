@@ -26,6 +26,7 @@ import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
@@ -43,6 +44,7 @@ class P2PNetworkImpl(
   private val p2pConfig: P2P,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
+  private val metricsSystem: MetricsSystem,
   nextExpectedBeaconBlockNumber: ULong,
 ) : P2PNetwork,
   PeerLookup {
@@ -80,6 +82,7 @@ class P2PNetworkImpl(
       sealedBlocksTopicId = sealedBlocksTopicId,
       rpcMethods = rpcMethods.values.toList(),
       maruPeerManagerService = maruPeerManagerService,
+      metricsSystem = metricsSystem,
     )
   }
 
@@ -101,6 +104,7 @@ class P2PNetworkImpl(
             genesisRootHash = ByteArray(32),
           )
         },
+        metricsSystem = metricsSystem,
       )
     } else {
       null
@@ -133,9 +137,7 @@ class P2PNetworkImpl(
         }
       }.thenPeek {
         discoveryService?.start()
-      }.thenPeek {
         maruPeerManagerService.start(discoveryService, p2pNetwork)
-      }.thenPeek {
         metricsFacade.createGauge(
           category = MaruMetricsCategory.P2P_NETWORK,
           name = "peer.count",

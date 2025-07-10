@@ -15,7 +15,6 @@ import maru.database.BeaconChain
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
-import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
@@ -28,11 +27,10 @@ class StatusHandlerTest {
   @Test
   fun `responds with current status`() {
     val beaconChain = mock<BeaconChain>()
-    val forkIdBytesProvider = mock<() -> Bytes>()
-    val latestBeaconState = DataGenerators.randomBeaconState(0U)
     val forkIdHash = Bytes32.random()
+    val forkIdBytesProvider = { forkIdHash }
+    val latestBeaconState = DataGenerators.randomBeaconState(0U)
     whenever(beaconChain.getLatestBeaconState()).thenReturn(latestBeaconState)
-    whenever(forkIdBytesProvider.invoke()).thenReturn(forkIdHash)
 
     val peer = mock<Peer>()
     val message =

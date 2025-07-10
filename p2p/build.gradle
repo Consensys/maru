@@ -44,6 +44,7 @@ dependencies {
   implementation "org.hyperledger.besu.internal:rlp"
 
   implementation "io.libp2p:jvm-libp2p"
+  implementation "build.linea.internal:futures"
 
   implementation(project(":core"))
 

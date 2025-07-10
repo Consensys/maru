@@ -203,6 +203,7 @@ class MaruAppFactory {
           nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsFacade = metricsFacade,
           rpcMethodFactory = rpcMethodFactory,
+          metricsSystem = NoOpMetricsSystem(),
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

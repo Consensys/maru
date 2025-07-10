@@ -13,7 +13,7 @@ import java.util.Optional
 import java.util.function.Consumer
 import maru.config.P2P
 import maru.consensus.ForkId
-import maru.consensus.ForkId.Companion.FORK_ID_FIELD_NAME
+import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -24,7 +24,7 @@ import org.ethereum.beacon.discovery.schema.EnrField
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.infrastructure.async.AsyncRunner
 import tech.pegasys.teku.infrastructure.async.Cancellable
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
@@ -36,14 +36,14 @@ class MaruDiscoveryService(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
   private val forkIdProvider: () -> ForkId, // returns the ForkId of the tip of the chain
+  metricsSystem: MetricsSystem,
 ) {
   companion object {
     val BOOTNODE_REFRESH_DELAY: Duration = Duration.ofMinutes(2L)
+    const val FORK_ID_FIELD_NAME = "mfid"
   }
 
   private val log: Logger = LogManager.getLogger(this::javaClass)
-
-  private var discoverySystem: DiscoverySystem
 
   private val privateKey = SecretKeyParser.fromLibP2pPrivKey(Bytes.wrap(privateKeyBytes))
 
@@ -53,16 +53,26 @@ class MaruDiscoveryService(
       .map { NodeRecordFactory.DEFAULT.fromEnr(it) }
       .toList()
 
-  val delayedExecutor: AsyncRunner =
+  private val discoverySystem: DiscoverySystem =
+    DiscoverySystemBuilder()
+      .listen(p2pConfig.ipAddress, p2pConfig.discoveryPort.toInt())
+      .secretKey(privateKey)
+      .localNodeRecord(localNodeRecord())
+      .bootnodes(bootnodes)
+      .build()
+
+  private val delayedExecutor: AsyncRunner =
     ScheduledExecutorAsyncRunner.create(
       "DiscoveryService",
       1,
       1,
       5,
-      MetricTrackingExecutorFactory(NoOpMetricsSystem()),
+      MetricTrackingExecutorFactory(metricsSystem),
     )
 
   private lateinit var bootnodeRefreshTask: Cancellable
+
+  val localNodeRecord: NodeRecord = discoverySystem.localNodeRecord
 
   init {
     val discoveryNetworkBuilder = DiscoverySystemBuilder()
@@ -71,8 +81,6 @@ class MaruDiscoveryService(
     discoveryNetworkBuilder.secretKey(privateKey)
     discoveryNetworkBuilder.localNodeRecord(localNodeRecord())
     discoveryNetworkBuilder.bootnodes(bootnodes)
-
-    discoverySystem = discoveryNetworkBuilder.build()
   }
 
   fun start() {
@@ -90,7 +98,8 @@ class MaruDiscoveryService(
               )
             },
           )
-      }
+      }.get(30, java.util.concurrent.TimeUnit.SECONDS)
+    return
   }
 
   fun stop() {
@@ -106,9 +115,10 @@ class MaruDiscoveryService(
   }
 
   fun searchForPeers(): SafeFuture<Collection<MaruDiscoveryPeer>> =
-    SafeFuture
-      .of(discoverySystem.searchForNewPeers())
+    discoverySystem
+      .searchForNewPeers()
       // The current version of discovery doesn't return the found peers but next version will
+      .toSafeFuture()
       .thenApply { getKnownPeers() }
 
   fun getKnownPeers(): Collection<MaruDiscoveryPeer> =
@@ -118,8 +128,6 @@ class MaruDiscoveryService(
         convertNodeRecordToDiscoveryPeer(node)
       }.filter { checkPeer(it) }
       .toList()
-
-  fun getLocalNodeRecord(): NodeRecord = discoverySystem.localNodeRecord
 
   private fun convertNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
     val forkIdBytes = node.get(FORK_ID_FIELD_NAME) as? Bytes?
