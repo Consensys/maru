@@ -97,7 +97,8 @@ class MaruLineaFinalizationTest {
         requestRetryConfig = null,
         vertx = null,
       )
-    // wait for Besu to be fully started and synced, to avoid CI flakiness due low resources some times
+    // wait for Besu to be fully started and synced,
+    // to avoid CI flakiness due low resources sometimes
     await
       .atMost(5.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
