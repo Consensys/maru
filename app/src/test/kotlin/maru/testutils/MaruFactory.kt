@@ -151,7 +151,14 @@ class MaruFactory {
       } else {
         emptyList()
       }
-    return P2P("127.0.0.1", port = p2pPort, staticPeers = staticPeers, reconnectDelay = defaultReconnectDelay)
+    return P2P(
+      "127.0.0.1",
+      port = p2pPort,
+      staticPeers = staticPeers,
+      discoveryPort = 0u,
+      reconnectDelay = defaultReconnectDelay,
+      discoveryEnabled = false,
+    )
   }
 
   private fun buildFollowersConfig(engineApiRpc: String): FollowersConfig =

@@ -39,29 +39,13 @@ data class FollowersConfig(
 data class P2P(
   val ipAddress: String,
   val port: UInt,
+  val discoveryEnabled: Boolean = true,
+  val discoveryPort: UInt,
+  val bootnodes: List<String> = emptyList(),
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
-) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as P2P
-
-    if (ipAddress != other.ipAddress) return false
-    if (port != other.port) return false
-    if (staticPeers != other.staticPeers) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = ipAddress.hashCode()
-    result = 31 * result + port.hashCode()
-    result = 31 * result + staticPeers.hashCode()
-    return result
-  }
-}
+  val maxPeers: Int = 25,
+)
 
 data class ValidatorElNode(
   val ethApiEndpoint: ApiEndpointConfig,

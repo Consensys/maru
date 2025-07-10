@@ -10,6 +10,7 @@ package maru.p2p.messages
 
 import kotlin.random.Random
 import kotlin.random.nextULong
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -18,7 +19,7 @@ class StatusSerDeTest {
 
   @Test
   fun `can serialize and deserialize same value`() {
-    val testValue = Status(Random.nextBytes(32), Random.nextBytes(32), Random.nextULong())
+    val testValue = Status(Bytes32.random(), Random.nextBytes(32), Random.nextULong())
 
     val serializedData = serDe.serialize(testValue)
     val deserializedValue = serDe.deserialize(serializedData)

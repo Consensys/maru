@@ -30,7 +30,7 @@ import kotlin.random.Random
 import maru.core.SealedBeaconBlock
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import org.hyperledger.besu.plugin.services.MetricsSystem
 import pubsub.pb.Rpc
 import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
@@ -63,6 +63,8 @@ class Libp2pNetworkFactory(
     sealedBlocksTopicHandler: TopicHandlerWithInOrderDelivering<SealedBeaconBlock>,
     sealedBlocksTopicId: String,
     rpcMethods: List<RpcMethod<*, *, *>>,
+    maruPeerManagerService: MaruPeerManagerService,
+    metricsSystem: MetricsSystem,
   ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val gossipTopicHandlers = GossipTopicHandlers()
@@ -83,7 +85,6 @@ class Libp2pNetworkFactory(
     val pubsubApiImpl = PubsubApiImpl(gossipRouter)
     val gossip = Gossip(gossipRouter, pubsubApiImpl)
 
-    val metricsSystem = NoOpMetricsSystem()
     val publisherApi = gossip.createPublisher(privateKey, Random.nextLong())
     val gossipNetwork = LibP2PGossipNetwork(metricsSystem, gossip, publisherApi, gossipTopicHandlers)
 
@@ -101,7 +102,7 @@ class Libp2pNetworkFactory(
       PeerManager(
         metricsSystem,
         ReputationManager.NOOP,
-        listOf<PeerHandler>(MaruPeerHandler()),
+        listOf<PeerHandler>(maruPeerManagerService),
         rpcHandlers,
         { _ -> 50.0 }, // TODO: I guess we need a scoring function here
       )

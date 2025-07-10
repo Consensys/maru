@@ -10,11 +10,10 @@ package maru.serialization
 
 import java.nio.ByteBuffer
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ForkId
 import maru.consensus.ForkSpec
 import maru.extensions.encodeHex
 
-object ForkIdSerializers {
+object ForkSpecSerializer {
   object QbftConsensusConfigSerializer : Serializer<QbftConsensusConfig> {
     override fun serialize(value: QbftConsensusConfig): ByteArray {
       // Sort validators deterministically by address hex
@@ -45,20 +44,5 @@ object ForkIdSerializers {
 
         else -> throw IllegalArgumentException("${value.configuration.javaClass.simpleName} is not supported!")
       }
-  }
-
-  object ForkIdSerializer : Serializer<ForkId> {
-    override fun serialize(value: ForkId): ByteArray {
-      val serializedForkSpec = ForkSpecSerializer.serialize(value.forkSpec)
-
-      val buffer =
-        ByteBuffer
-          .allocate(4 + serializedForkSpec.size + 32)
-          .putInt(value.chainId.toInt())
-          .put(serializedForkSpec)
-          .put(value.genesisRootHash)
-
-      return buffer.array()
-    }
   }
 }
