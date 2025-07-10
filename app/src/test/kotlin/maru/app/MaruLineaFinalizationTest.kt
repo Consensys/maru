@@ -134,12 +134,14 @@ class MaruLineaFinalizationTest {
 
     await
       .atMost(5.seconds.toJavaDuration())
+      .ignoreExceptions() // sometimes besu fails to return the latest block ¯\_(ツ)_/¯
       .until {
         followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number == 3UL
       }
 
     await
       .atMost(5.seconds.toJavaDuration())
+      .ignoreExceptions()
       .untilAsserted {
         assertThat(
           validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
@@ -162,6 +164,7 @@ class MaruLineaFinalizationTest {
 
     await
       .atMost(5.seconds.toJavaDuration())
+      .ignoreExceptions()
       .untilAsserted {
         assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number)
           .isGreaterThan(6UL)
