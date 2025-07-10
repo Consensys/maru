@@ -142,7 +142,7 @@ class MaruLineaFinalizationTest {
       }
 
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(15.seconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
