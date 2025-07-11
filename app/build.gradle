@@ -104,7 +104,12 @@ task integrationTest(type: Test) {
 
   maxHeapSize = "4096m"
   // To make room for Besu threads
-  systemProperties["junit.jupiter.execution.parallel.config.dynamic.factor"] = 0.5
+  systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
+  int maxThreads = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"]
+    = maxThreads
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"]
+    = maxThreads
 
   testLogging {
     events TestLogEvent.FAILED,
