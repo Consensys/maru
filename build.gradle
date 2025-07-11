@@ -209,3 +209,15 @@ apply plugin: 'application'
 run {
   // TODO: Fill
 }
+
+project(':app') {
+  afterEvaluate {
+    tasks.named('integrationTest') {
+      dependsOn rootProject.subprojects.collect {
+        it.tasks.matching {
+          it.name == 'test'
+        }
+      }.flatten()
+    }
+  }
+}

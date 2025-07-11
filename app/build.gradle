@@ -124,8 +124,6 @@ task integrationTest(type: Test) {
     // set showStandardStreams if you need to see test logs
     showStandardStreams false
   }
-
-  dependsOn(test)
 }
 
 check.dependsOn(integrationTest)
