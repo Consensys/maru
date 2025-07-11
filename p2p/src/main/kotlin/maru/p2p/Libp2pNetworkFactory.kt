@@ -51,6 +51,7 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 data class TekuLibP2PNetwork(
   val p2PNetwork: P2PNetwork<Peer>,
   val host: Host,
+  val peerLookup: PeerLookup,
 )
 
 class Libp2pNetworkFactory(
@@ -63,6 +64,7 @@ class Libp2pNetworkFactory(
     sealedBlocksTopicHandler: TopicHandlerWithInOrderDelivering<SealedBeaconBlock>,
     sealedBlocksTopicId: String,
     rpcMethods: List<RpcMethod<*, *, *>>,
+    maruPeerManager: MaruPeerManager,
   ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val gossipTopicHandlers = GossipTopicHandlers()
@@ -101,7 +103,7 @@ class Libp2pNetworkFactory(
       PeerManager(
         metricsSystem,
         ReputationManager.NOOP,
-        listOf<PeerHandler>(MaruPeerHandler()),
+        listOf<PeerHandler>(maruPeerManager),
         rpcHandlers,
         { _ -> 50.0 }, // TODO: I guess we need a scoring function here
       )
@@ -127,7 +129,7 @@ class Libp2pNetworkFactory(
         /* gossipNetwork = */ gossipNetwork,
         /* listenPorts = */ listOf(port.toInt()),
       )
-    return TekuLibP2PNetwork(p2pNetwork, host)
+    return TekuLibP2PNetwork(p2pNetwork, host, maruPeerManager)
   }
 
   private fun getMessageFactory(
