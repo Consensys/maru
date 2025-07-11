@@ -54,12 +54,15 @@ jobs:
           java-version: 21
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@8379f6a1328ee0e06e2bb424dadb7b159856a326 # 4.4.0
-      - name: Build consensus and Unit tests
+      - name: Build consensus
+        run: |
+          # ./gradlew build --rerun-tasks --parallel --max-workers `nproc --all`
+          ./gradlew --rerun-tasks build -x test --parallel --max-workers `nproc --all`
+      - name: Run tests
         run: |
           # force tests to run even if the code is not changed
           # this is to debug flaky tests
-          # ./gradlew build --rerun-tasks --parallel --max-workers `nproc --all`
-          ./gradlew build --rerun-tasks --parallel --max-workers 2
+          ./gradlew --rerun-tasks test --parallel --max-workers 2
       - name: Run Jacoco
         run: |
           ./gradlew jacocoAggregatedReport
