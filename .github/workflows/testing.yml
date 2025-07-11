@@ -33,7 +33,7 @@ jobs:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-large ]
+    runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-med ]
     name: Consensus client tests
     #   useful for debugging flaky tests. Comment out Jacoco and Codecov steps because they override the test results.
     strategy:
