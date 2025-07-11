@@ -107,16 +107,16 @@ task integrationTest(type: Test) {
   systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
   int maxThreads = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
   systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"]
-    = maxThreads
+  = maxThreads
   systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"]
-    = maxThreads
+  = maxThreads
 
   testLogging {
     events TestLogEvent.FAILED,
-      TestLogEvent.SKIPPED,
-      TestLogEvent.STANDARD_ERROR,
-      TestLogEvent.STARTED,
-      TestLogEvent.PASSED
+    TestLogEvent.SKIPPED,
+    TestLogEvent.STANDARD_ERROR,
+    TestLogEvent.STARTED,
+    TestLogEvent.PASSED
     exceptionFormat TestExceptionFormat.FULL
     showCauses true
     showExceptions true
