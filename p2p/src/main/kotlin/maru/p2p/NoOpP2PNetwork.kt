@@ -49,7 +49,7 @@ object NoOpP2PNetwork : P2PNetwork {
   override val discoveryAddresses: List<String> = emptyList()
   override val enr: String? = null
 
-  override fun getPeers(): List<Peer> = emptyList()
+  override fun getPeers(): List<PeerInfo> = emptyList()
 
-  override fun getPeer(peerId: String): Peer? = null
+  override fun getPeer(peerId: String): PeerInfo? = null
 }

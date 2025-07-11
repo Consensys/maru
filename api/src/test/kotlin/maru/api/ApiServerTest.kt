@@ -31,7 +31,7 @@ import maru.api.node.PeerData
 import maru.api.node.PeerMetaData
 import maru.api.node.SyncingStatusData
 import maru.api.node.VersionData
-import maru.p2p.Peer
+import maru.p2p.PeerInfo
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -57,18 +57,18 @@ class ApiServerTest {
 
       override fun getDiscoveryAddresses(): List<String> = listOf("TEST_DISCOVERY_ADDRESS")
 
-      override fun getPeers(): List<Peer> =
+      override fun getPeers(): List<PeerInfo> =
         listOf(
-          Peer(
+          PeerInfo(
             nodeId = "TEST_PEER_ID",
             enr = "TEST_PEER_ENR",
             address = "TEST_PEER_ADDRESS",
-            status = Peer.PeerStatus.CONNECTED,
-            direction = Peer.PeerDirection.OUTBOUND,
+            status = PeerInfo.PeerStatus.CONNECTED,
+            direction = PeerInfo.PeerDirection.OUTBOUND,
           ),
         )
 
-      override fun getPeer(peerId: String): Peer? = getPeers().firstOrNull { it.nodeId == peerId }
+      override fun getPeer(peerId: String): PeerInfo? = getPeers().firstOrNull { it.nodeId == peerId }
     }
 
   private val fakeVersionProvider =

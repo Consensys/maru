@@ -8,7 +8,7 @@
  */
 package maru.api
 
-import maru.p2p.Peer
+import maru.p2p.PeerInfo
 
 interface NetworkDataProvider {
   fun getNodeId(): String
@@ -19,7 +19,11 @@ interface NetworkDataProvider {
 
   fun getDiscoveryAddresses(): List<String>
 
-  fun getPeers(): List<Peer>
+  fun getPeers(): List<PeerInfo>
 
-  fun getPeer(peerId: String): Peer?
+  fun getPeer(peerId: String): PeerInfo?
 }
+
+class InvalidPeerIdException(
+  peerId: String,
+) : Exception("Invalid peer ID: $peerId")

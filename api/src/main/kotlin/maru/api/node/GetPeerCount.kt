@@ -11,7 +11,7 @@ package maru.api.node
 import io.javalin.http.Context
 import io.javalin.http.Handler
 import maru.api.NetworkDataProvider
-import maru.p2p.Peer
+import maru.p2p.PeerInfo
 
 data class GetPeerCountResponse(
   val data: PeerCountData,
@@ -38,10 +38,10 @@ class GetPeerCount(
       GetPeerCountResponse(
         data =
           PeerCountData(
-            disconnected = peerCountMap.getOrDefault(Peer.PeerStatus.DISCONNECTED, 0).toString(),
-            connected = peerCountMap.getOrDefault(Peer.PeerStatus.CONNECTED, 0).toString(),
-            connecting = peerCountMap.getOrDefault(Peer.PeerStatus.CONNECTING, 0).toString(),
-            disconnecting = peerCountMap.getOrDefault(Peer.PeerStatus.DISCONNECTING, 0).toString(),
+            disconnected = peerCountMap.getOrDefault(PeerInfo.PeerStatus.DISCONNECTED, 0).toString(),
+            connected = peerCountMap.getOrDefault(PeerInfo.PeerStatus.CONNECTED, 0).toString(),
+            connecting = peerCountMap.getOrDefault(PeerInfo.PeerStatus.CONNECTING, 0).toString(),
+            disconnecting = peerCountMap.getOrDefault(PeerInfo.PeerStatus.DISCONNECTING, 0).toString(),
           ),
       ),
     )

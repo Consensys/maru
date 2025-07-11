@@ -12,6 +12,7 @@ import io.javalin.http.Context
 import io.javalin.http.Handler
 import io.javalin.http.HttpStatus
 import maru.api.HandlerException
+import maru.api.InvalidPeerIdException
 import maru.api.NetworkDataProvider
 
 data class GetPeerResponse(
@@ -26,23 +27,13 @@ class GetPeer(
     val peer =
       try {
         networkDataProvider.getPeer(peerId)
-      } catch (e: Exception) {
-        if (e.message?.contains("invalid base58 encoded form") == true) {
-          throw HandlerException(400, "Invalid peer ID: $peerId")
-        }
-        throw e
+      } catch (e: InvalidPeerIdException) {
+        throw HandlerException(400, "Invalid peer ID: $peerId")
       }
     if (peer == null) {
       throw HandlerException(404, "Peer not found")
     }
-    val peerData =
-      PeerData(
-        peerId = peer.nodeId,
-        enr = peer.enr,
-        lastSeenP2PAddress = peer.address,
-        state = peer.status.toString().lowercase(),
-        direction = peer.direction.toString().lowercase(),
-      )
+    val peerData = peer.toPeerData()
     ctx.status(HttpStatus.OK).json(GetPeerResponse(data = peerData))
   }
 

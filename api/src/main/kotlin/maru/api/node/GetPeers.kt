@@ -35,16 +35,7 @@ class GetPeers(
   val networkDataProvider: NetworkDataProvider,
 ) : Handler {
   override fun handle(ctx: Context) {
-    val peers =
-      networkDataProvider.getPeers().map {
-        PeerData(
-          peerId = it.nodeId,
-          enr = it.enr,
-          lastSeenP2PAddress = it.address,
-          state = it.status.toString().lowercase(),
-          direction = it.direction.toString().lowercase(),
-        )
-      }
+    val peers = networkDataProvider.getPeers().map { it.toPeerData() }
     ctx.json(GetPeersResponse(data = peers, meta = PeerMetaData(count = peers.count())))
     ctx.status(HttpStatus.OK)
   }

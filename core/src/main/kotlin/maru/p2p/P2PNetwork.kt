@@ -100,12 +100,12 @@ interface P2PNetwork {
 
   val enr: String?
 
-  fun getPeers(): List<Peer>
+  fun getPeers(): List<PeerInfo>
 
-  fun getPeer(peerId: String): Peer?
+  fun getPeer(peerId: String): PeerInfo?
 }
 
-data class Peer(
+data class PeerInfo(
   val nodeId: String,
   val enr: String?,
   val address: String,

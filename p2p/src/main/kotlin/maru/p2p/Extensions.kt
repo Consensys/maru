@@ -8,18 +8,16 @@
  */
 package maru.p2p
 
-import tech.pegasys.teku.networking.p2p.peer.Peer as TekuPeer
-
-fun TekuPeer.toMaruPeer(): Peer =
-  Peer(
+fun MaruPeer.toPeerInfo(): PeerInfo =
+  PeerInfo(
     nodeId = id.toBase58(),
     enr = null,
     address = address.toExternalForm(),
-    status = if (isConnected) Peer.PeerStatus.CONNECTED else Peer.PeerStatus.DISCONNECTED,
+    status = if (isConnected) PeerInfo.PeerStatus.CONNECTED else PeerInfo.PeerStatus.DISCONNECTED,
     direction =
       if (connectionInitiatedLocally()) {
-        Peer.PeerDirection.OUTBOUND
+        PeerInfo.PeerDirection.OUTBOUND
       } else {
-        Peer.PeerDirection.INBOUND
+        PeerInfo.PeerDirection.INBOUND
       },
   )
