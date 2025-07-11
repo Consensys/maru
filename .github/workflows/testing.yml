@@ -58,7 +58,8 @@ jobs:
         run: |
           # force tests to run even if the code is not changed
           # this is to debug flaky tests
-          ./gradlew build --rerun-tasks --parallel --max-workers `nproc --all`
+          # ./gradlew build --rerun-tasks --parallel --max-workers `nproc --all`
+          ./gradlew build --rerun-tasks --parallel --max-workers 2
       - name: Run Jacoco
         run: |
           ./gradlew jacocoAggregatedReport
