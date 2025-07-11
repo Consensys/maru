@@ -37,7 +37,6 @@ import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.linea.vertx.ObservabilityServer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
@@ -54,8 +53,9 @@ class MaruApp(
   private val finalizationProvider: FinalizationProvider,
   private val vertx: Vertx,
   private val metricsFacade: MetricsFacade,
-  private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
+  private val metricsServer: MetricsServer,
+  private val beaconChain: BeaconChain,
   private val lastBlockMetadataCache: LatestBlockMetadataCache,
   private val ethereumJsonRpcClient: Web3JClient,
   private val apiServer: ApiServer,
@@ -106,14 +106,9 @@ class MaruApp(
 
   fun start() {
     try {
-      vertx
-        .deployVerticle(
-          ObservabilityServer(
-            ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
-          ),
-        ).get()
+      metricsServer.start()
     } catch (th: Throwable) {
-      log.error("Error while trying to start the observability server", th)
+      log.error("Error while trying to start the metrics server", th)
       throw th
     }
     try {
@@ -134,11 +129,10 @@ class MaruApp(
 
   fun stop() {
     try {
-      vertx.deploymentIDs().forEach {
-        vertx.undeploy(it).get()
-      }
+      metricsServer
+        .stop()
     } catch (th: Throwable) {
-      log.warn("Error while trying to stop the vertx verticles", th)
+      log.warn("Error while trying to stop the metrics server", th)
     }
     try {
       p2pNetwork.stop().get()

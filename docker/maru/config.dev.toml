@@ -21,8 +21,7 @@ eth-api-endpoint = { endpoint = "http://sequencer:8545" }
 
 [observability-options]
 port = 9090
-jvm-metrics-enabled = true
-prometheus-metrics-enabled = true
+metrics-system-port = 9091
 
 [api-config]
 port = 8080

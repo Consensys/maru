@@ -31,6 +31,7 @@ import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
 import org.awaitility.Awaitility.await
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -114,6 +115,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -124,6 +126,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -151,6 +154,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -161,6 +165,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -193,6 +198,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -203,6 +209,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -228,6 +235,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -238,6 +246,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -268,6 +277,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -278,6 +288,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -317,6 +328,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -327,6 +339,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -337,6 +350,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -385,6 +399,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
@@ -395,6 +410,7 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsSystem = NoOpMetricsSystem(),
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
       )
