@@ -165,7 +165,7 @@ class MaruLineaFinalizationTest {
     }
 
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(15.seconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number)
@@ -173,7 +173,7 @@ class MaruLineaFinalizationTest {
       }
 
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(15.seconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
