@@ -105,31 +105,7 @@ class MaruApp(
       }
 
   fun start() {
-    try {
-      vertx
-        .deployVerticle(
-          ObservabilityServer(
-            ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
-          ),
-        ).get()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the observability server", th)
-      throw th
-    }
-    try {
-      p2pNetwork.start().get()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the P2P network", th)
-      throw th
-    }
-    try {
-      protocolStarter.start()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the protocol starter", th)
-      throw th
-    }
-    apiServer.start()
-    log.info("Maru is up")
+    try {цo("Maru is up")
   }
 
   fun stop() {
