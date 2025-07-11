@@ -10,6 +10,7 @@ package maru.testutils.besu
 
 import java.math.BigInteger
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
+import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 
@@ -46,3 +47,12 @@ fun BesuNode.latestBlock(returnFullTransactionObjects: Boolean = true): EthBlock
     DefaultBlockParameter.valueOf("latest"),
     returnFullTransactionObjects,
   )
+
+fun Cluster.startWithRetry(besu: BesuNode) {
+  try {
+    this.start(besu)
+  } catch (_: IllegalStateException) {
+    // This is only for the port conflicts, which are fairly rare, thus only 1 retry
+    this.start(besu)
+  }
+}
