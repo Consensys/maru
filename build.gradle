@@ -154,10 +154,7 @@ allprojects {
   }
 
   tasks.withType(Test).configureEach {
-    systemProperties["junit.jupiter.execution.parallel.enabled"] = true
-    systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
-    systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
-    maxParallelForks = 1
+    maxParallelForks = Runtime.runtime.availableProcessors()
   }
 }
 
