@@ -126,4 +126,15 @@ task integrationTest(type: Test) {
   }
 }
 
+afterEvaluate {
+  // Integration tests are getting unstable when running concurrently with other tests
+  tasks.named('integrationTest') {
+    dependsOn rootProject.subprojects.collect {
+      it.tasks.matching {
+        it.name == 'test'
+      }
+    }.flatten()
+  }
+}
+
 check.dependsOn(integrationTest)
