@@ -49,10 +49,18 @@ fun BesuNode.latestBlock(returnFullTransactionObjects: Boolean = true): EthBlock
   )
 
 fun Cluster.startWithRetry(besu: BesuNode) {
-  try {
-    this.start(besu)
-  } catch (_: IllegalStateException) {
-    // This is only for the port conflicts, which are fairly rare, thus only 1 retry
-    this.start(besu)
+  val maxAttempts = 10
+  var lastException: IllegalStateException? = null
+  repeat(maxAttempts) { attempt ->
+    try {
+      this.start(besu)
+      return
+    } catch (e: IllegalStateException) {
+      lastException = e
+      if (attempt < maxAttempts - 1) {
+        Thread.sleep(1000)
+      }
+    }
   }
+  throw lastException ?: IllegalStateException("Failed to start BesuNode after $maxAttempts attempts.")
 }
