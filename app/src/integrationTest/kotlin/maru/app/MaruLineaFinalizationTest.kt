@@ -135,27 +135,23 @@ class MaruLineaFinalizationTest {
     }
 
     await
-      .atMost(15.seconds.toJavaDuration())
+      .atMost(5.seconds.toJavaDuration())
       .ignoreExceptions() // sometimes besu fails to return the latest block ¯\_(ツ)_/¯
       .until {
         followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number == 3UL
       }
 
-    try {
-      await
-        .atMost(15.seconds.toJavaDuration())
-        .ignoreExceptions()
-        .untilAsserted {
-          assertThat(
-            validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-          ).isBetween(2UL, 3UL)
-          assertThat(
-            followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-          ).isBetween(2UL, 3UL)
-        }
-    } catch (th: Throwable) {
-      val a = 1
-    }
+    await
+      .atMost(15.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .untilAsserted {
+        assertThat(
+          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isBetween(2UL, 3UL)
+        assertThat(
+          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isBetween(2UL, 3UL)
+      }
 
     // Propagating the Head of the chain further than the Finalization height
     repeat(4) {
@@ -168,33 +164,24 @@ class MaruLineaFinalizationTest {
       }
     }
 
-    try {
-      await
-        .atMost(30.seconds.toJavaDuration())
-        .ignoreExceptions()
-        .untilAsserted {
-          assertThat(
-            followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
-          ).isGreaterThan(6UL)
-        }
-    } catch (th: Throwable) {
-      val a = 1
-    }
+    await
+      .atMost(5.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .untilAsserted {
+        assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number)
+          .isGreaterThan(6UL)
+      }
 
-    try {
-      await
-        .atMost(15.seconds.toJavaDuration())
-        .ignoreExceptions()
-        .untilAsserted {
-          assertThat(
-            validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-          ).isEqualTo(4UL)
-          assertThat(
-            followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
-          ).isEqualTo(4UL)
-        }
-    } catch (th: Throwable) {
-      val a = 1
-    }
+    await
+      .atMost(5.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .untilAsserted {
+        assertThat(
+          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(4UL)
+        assertThat(
+          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+        ).isEqualTo(4UL)
+      }
   }
 }
