@@ -212,6 +212,7 @@ run {
 
 project(':app') {
   afterEvaluate {
+    // Integration tests are getting unstable when running concurrently with other tests
     tasks.named('integrationTest') {
       dependsOn rootProject.subprojects.collect {
         it.tasks.matching {
