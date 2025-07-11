@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "besu.fullname" . }}
+  labels:
+    app: {{ include "besu.name" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.ethApiPort }}
+      targetPort: {{ .Values.service.ethApiPort }}
+      protocol: TCP
+      name: eth-api
+    - port: {{ .Values.service.engineApiPort }}
+      targetPort: {{ .Values.service.engineApiPort }}
+      protocol: TCP
+      name: engine-api
+    - port: {{ .Values.service.metricsPort }}
+      targetPort: {{ .Values.service.metricsPort }}
+      protocol: TCP
+      name: metrics
+  selector:
+    app: {{ include "besu.name" . }}
