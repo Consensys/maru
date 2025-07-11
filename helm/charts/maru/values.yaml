@@ -1,0 +1,73 @@
+replicaCount: 1
+image:
+  repository: consensys/maru
+  tag:  8f30e45
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 80
+  observabilityPort: 9545
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  storageClass: ""
+configFiles:
+  privateKey: |
+    0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae
+  configsToml: |
+    allow-empty-blocks = true
+    [persistence]
+    data-path="/opt/consensys/maru/data/db"
+    private-key-path="/opt/consensys/maru/configs/private-key.txt"
+
+    [qbft-options]
+    fee-recipient = "0x0000000000000000000000000000000000000000"
+
+    [payload-validator]
+    engine-api-endpoint = { endpoint = "http://besu-1.default.svc.cluster.local:8550" }
+    eth-api-endpoint = { endpoint = "http://besu-1.default.svc.cluster.local:8545" }
+
+    [follower-engine-apis]
+    "follower-besu" = { endpoint = "http://besu-1.default.svc.cluster.local:8550" }
+
+    [p2p-config]
+    port = 3322
+    ip-address = "127.0.0.1"
+
+    [observability-options]
+    port = 9545
+
+    [api-config]
+    port = 8080
+  genesisJson: |
+    {
+      "chainId": 1337,
+      "config": {
+        "1683325137": {
+          "type": "qbft",
+          "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
+          "blockTimeSeconds": 1,
+          "feeRecipient": "0x0000000000000000000000000000000000000000",
+          "elFork": "Prague"
+        }
+      }
+    }
+  log4j: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Configuration status="INFO" monitorInterval="2">
+    <Appenders>
+      <Console name="Console" target="SYSTEM_OUT">
+        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSSZZZ} | %t | %-5level | %c{1} | %msg %throwable%n" />
+      </Console>
+    </Appenders>
+    <Loggers>
+      <Logger name="org.hyperledger.besu" level="TRACE"/>
+      <Logger name="tech.pegasys.teku" level="TRACE"/>
+      <Logger name="maru" level="TRACE"/>
+      <Logger name="clients" level="TRACE"/>
+      <Root level="INFO">
+        <AppenderRef ref="Console"/>
+      </Root>
+    </Loggers>
+    </Configuration>

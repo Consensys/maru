@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maru.fullname" . }}
+  labels:
+    app: {{ include "maru.name" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 80
+      protocol: TCP
+      name: http
+    - port: {{ .Values.service.observabilityPort }}
+      targetPort: {{ .Values.service.observabilityPort }}
+      protocol: TCP
+      name: obervability
+  selector:
+    app: {{ include "maru.name" . }}

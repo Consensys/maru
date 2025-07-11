@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maru.fullname" . }}
+  labels:
+    app: {{ include "maru.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "maru.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "maru.name" . }}
+    spec:
+      containers:
+        - name: {{ include "maru.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - java
+            - -Dlog4j2.configurationFile=configs/log4j.xml
+            - -jar
+            - maru.jar
+            - --besu-genesis-file
+            - /opt/consensys/maru/configs/genesis.json
+            - --config
+            - /opt/consensys/maru/configs/configs.toml
+          volumeMounts:
+            - name: data
+              mountPath: /opt/consensys/maru/data
+            - name: configs
+              mountPath: /opt/consensys/maru/configs
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "maru.fullname" . }}-data-pvc
+        - name: configs
+          configMap:
+            name: {{ include "maru.fullname" . }}-configs
