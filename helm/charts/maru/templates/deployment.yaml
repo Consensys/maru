@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: {{ include "maru.name" . }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.name }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - java

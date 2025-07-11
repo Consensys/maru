@@ -9,7 +9,7 @@ redeploy-maru:
 	@echo "Redeploying Maru"
 	-@helm uninstall maru
 	@sleep 2 # Wait for a second to ensure the previous release is fully uninstalled
-	@helm upgrade --install maru ./charts/maru --force
+	@helm upgrade --install maru ./charts/maru --force -f ./values/maru-local-dev.yaml
 
 redeploy:
 	@echo "Redeploying Besu and Maru"
