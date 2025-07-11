@@ -31,9 +31,9 @@ allprojects {
     kotlin {
       // by default the target is every '.kt' and '.kts` file in the java sourcesets
       ktlint()
-        .setEditorConfigPath("$rootDir/.editorconfig")
+      .setEditorConfigPath("$rootDir/.editorconfig")
       licenseHeaderFile("${rootDir}/gradle/spotless/java-kotlin.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*." +
-        "*ConsenSys AG\\.)")
+      "*ConsenSys AG\\.)")
     }
     java {
       // This path needs to be relative to each project
@@ -45,7 +45,7 @@ allprojects {
       endWithNewline()
       // apply appropriate license header files.
       licenseHeaderFile("${rootDir}/gradle/spotless/java-kotlin.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*." +
-        "*ConsenSys AG\\.)")
+      "*ConsenSys AG\\.)")
     }
     // spotless check applied to build.gradle (groovy) files
     groovyGradle {
@@ -99,7 +99,9 @@ allprojects {
   // IntelliJ workaround to allow repeated debugging of unchanged code
   tasks.withType(JavaExec).configureEach {
     if (it.name.contains(".")) {
-      outputs.upToDateWhen { false }
+      outputs.upToDateWhen {
+        false
+      }
     }
   }
 
@@ -154,6 +156,12 @@ allprojects {
   }
 
   tasks.withType(Test).configureEach {
+    systemProperties["junit.jupiter.execution.parallel.enabled"] = true
+    systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
+    systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
+    systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
+    systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"]
+    = Runtime.runtime.availableProcessors()
     maxParallelForks = Runtime.runtime.availableProcessors()
   }
 }
@@ -173,7 +181,8 @@ subprojects {
   }
 
   // making sure assemble task invokes integration test compile
-  afterEvaluate { subproject ->
+  afterEvaluate {
+    subproject ->
     project.tasks.jacocoTestReport {
       if (project.tasks.findByName('acceptanceTest')) {
         executionData(tasks.named("acceptanceTest").get())
