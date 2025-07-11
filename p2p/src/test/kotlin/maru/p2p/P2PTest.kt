@@ -80,7 +80,7 @@ class P2PTest {
     fun createRpcMethods(): RpcMethods {
       val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
       lateinit var maruPeerManager: MaruPeerManager
-      val rpcMethods = RpcMethods(statusMessageFactory, rpcProtocolIdGenerator) { maruPeerManager }
+      val rpcMethods = RpcMethods(statusMessageFactory, rpcProtocolIdGenerator, { maruPeerManager }, beaconChain)
       val maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory)
       maruPeerManager = MaruPeerManager(maruPeerFactory = maruPeerFactory)
       return rpcMethods
@@ -116,8 +116,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -126,8 +127,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     try {
       p2PNetworkImpl1.start()
@@ -153,8 +155,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -163,8 +166,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     try {
       p2PNetworkImpl1.start()
@@ -195,8 +199,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -205,8 +210,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     try {
       p2PNetworkImpl1.start()
@@ -230,8 +236,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -240,8 +247,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     try {
       p2PNetworkImpl1.start()
@@ -270,8 +278,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -280,8 +289,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     try {
       p2pNetworkImpl1.start()
@@ -319,8 +329,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     val p2PNetworkImpl2 =
       P2PNetworkImpl(
@@ -329,8 +340,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     val p2PNetworkImpl3 =
       P2PNetworkImpl(
@@ -339,8 +351,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     try {
       p2PNetworkImpl1.start()
@@ -387,8 +400,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     val p2pManagerImpl2 =
       P2PNetworkImpl(
@@ -397,8 +411,9 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
       )
     try {
       p2PNetworkImpl1.start()
