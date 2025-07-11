@@ -1,0 +1,17 @@
+{{- if true }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "besu.fullname" . }}-data-pvc
+  labels:
+    app: {{ include "besu.name" . }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+  {{- if .Values.persistence.storageClass }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  {{- end }}
+{{- end }}
