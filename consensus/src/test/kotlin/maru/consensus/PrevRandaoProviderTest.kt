@@ -22,7 +22,7 @@ class PrevRandaoProviderTest {
     val signedSlotId = Hashing.keccak(signatureByteArray)
     val prevRandaoProvider =
       PrevRandaoProviderImpl(
-        signerNodeKey = { signatureByteArray },
+        signingFunc = { signatureByteArray },
       )
     val prevRandao = Random.nextBytes(32)
 
