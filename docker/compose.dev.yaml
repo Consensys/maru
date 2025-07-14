@@ -23,6 +23,7 @@ services:
     ports:
       # Attach the IDE's remote java debugger to localhost:5005 to debug maru
       - "5005:5005"
+      - "8080:8080"
     networks:
       - linea
 
