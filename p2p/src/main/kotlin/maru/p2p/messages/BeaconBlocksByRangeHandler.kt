@@ -21,6 +21,11 @@ class BeaconBlocksByRangeHandler(
     Message<BeaconBlocksByRangeRequest, RpcMessageType>,
     Message<BeaconBlocksByRangeResponse, RpcMessageType>,
   > {
+  companion object {
+    // Maximum number of blocks to return in a single request
+    // This matches the typical limit in Ethereum consensus specs
+    const val MAX_BLOCKS_PER_REQUEST = 64UL
+  }
 
   override fun handleIncomingMessage(
     peer: MaruPeer,
@@ -29,10 +34,13 @@ class BeaconBlocksByRangeHandler(
   ) {
     val request = message.payload
 
+    // Limit the number of blocks to prevent excessive memory usage
+    val maxBlocks = minOf(request.count, MAX_BLOCKS_PER_REQUEST)
+
     // Fetch blocks from the beacon chain
     val blocks = beaconChain.getSealedBlocks(
       startBlockNumber = request.startBlockNumber,
-      count = request.count,
+      count = maxBlocks,
     )
 
     val response = BeaconBlocksByRangeResponse(blocks = blocks)

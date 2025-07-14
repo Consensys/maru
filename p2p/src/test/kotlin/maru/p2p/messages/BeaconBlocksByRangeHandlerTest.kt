@@ -131,8 +131,8 @@ class BeaconBlocksByRangeHandlerTest {
         DataGenerators.randomSealedBeaconBlock(number = i)
       }
 
-    // Mock blocks returned
-    whenever(beaconChain.getSealedBlocks(0UL, 1000UL)).thenReturn(limitedBlocks)
+    // Mock blocks returned - handler should limit to 64
+    whenever(beaconChain.getSealedBlocks(0UL, 64UL)).thenReturn(limitedBlocks)
 
     handler.handleIncomingMessage(peer, message, callback)
 
@@ -141,6 +141,9 @@ class BeaconBlocksByRangeHandlerTest {
 
     val response = responseCaptor.firstValue
     assertThat(response.payload.blocks).hasSize(64)
+    
+    // Verify that the handler limited the request to 64 blocks
+    verify(beaconChain).getSealedBlocks(0UL, 64UL)
   }
 
   @Test

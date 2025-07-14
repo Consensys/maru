@@ -43,11 +43,8 @@ class InMemoryBeaconChain(
     startBlockNumber: ULong,
     count: ULong,
   ): List<SealedBeaconBlock> {
-    // Limit the number of blocks to prevent excessive memory usage
-    val maxBlocks = minOf(count, 64UL)
-
     return generateSequence(startBlockNumber) { it + 1UL }
-      .take(maxBlocks.toInt())
+      .take(count.toInt())
       .map { blockNumber -> getSealedBeaconBlock(blockNumber) }
       .takeWhile { it != null }
       .filterNotNull()
