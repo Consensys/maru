@@ -21,21 +21,26 @@ import linea.kotlin.encodeHex
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.api.ApiServer
+import maru.api.ApiServerImpl
+import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2P
-import maru.consensus.ForkId
+import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestBlockMetadataCache
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
+import maru.crypto.Hashing
 import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
-import maru.p2p.RpcMethodFactory
+import maru.p2p.messages.StatusMessageFactory
+import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -56,6 +61,7 @@ class MaruAppFactory {
     overridingP2PNetwork: P2PNetwork? = null,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    overridingApiServer: ApiServer? = null,
   ): MaruApp {
     log.info("configs: {}", config)
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
@@ -86,16 +92,20 @@ class MaruAppFactory {
               override fun getApplicationPrefix(): Optional<String> = Optional.empty()
             },
         )
-    val forkId =
-      ForkId(
-        chainId = 1L.toUInt(),
-        genesisRootHash = ByteArray(32),
+
+    val forkIdHasher =
+      ForkIdHasher(
+        ForkIdSerializers
+          .ForkIdSerializer,
+        Hashing::shortShaHash,
       )
-    val rpcMaruAppFactory =
-      RpcMethodFactory(
-        beaconChain = beaconChain,
-        forkIdBytesProvider = { forkId.bytes },
+
+    val forkIdHashProvider =
+      ForkIdHashProvider(
         chainId = beaconGenesisConfig.chainId,
+        beaconChain = beaconChain,
+        forksSchedule = beaconGenesisConfig,
+        forkIdHasher = forkIdHasher,
       )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
@@ -110,27 +120,32 @@ class MaruAppFactory {
       } else {
         0UL // If the chain is not initialized, we start from block number 1
       }
+    val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
         p2pConfig = config.p2pConfig,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         metricsFacade = metricsFacade,
-        rpcMethodFactory = rpcMaruAppFactory,
         nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
+        statusMessageFactory = statusMessageFactory,
+        forkIdHashProvider = forkIdHashProvider,
       )
     val finalizationProvider =
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
 
     val apiServer =
-      ApiServer(
-        config =
-          ApiServer.Config(
-            port = config.apiConfig.port,
-          ),
-        networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
-      )
+      overridingApiServer
+        ?: ApiServerImpl(
+          config =
+            ApiServerImpl.Config(
+              port = config.apiConfig.port,
+            ),
+          networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
+          versionProvider = MaruVersionProvider(),
+          chainDataProvider = ChainDataProviderImpl(beaconChain),
+        )
 
     val maru =
       MaruApp(
@@ -195,7 +210,8 @@ class MaruAppFactory {
       chainId: UInt,
       nextExpectedBeaconBlockNumber: ULong = 1UL,
       metricsFacade: MetricsFacade,
-      rpcMethodFactory: RpcMethodFactory,
+      statusMessageFactory: StatusMessageFactory,
+      forkIdHashProvider: ForkIdHashProvider,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -205,8 +221,9 @@ class MaruAppFactory {
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
           nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsFacade = metricsFacade,
-          rpcMethodFactory = rpcMethodFactory,
+          statusMessageFactory = statusMessageFactory,
           metricsSystem = NoOpMetricsSystem(),
+          forkIdHashProvider = forkIdHashProvider,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

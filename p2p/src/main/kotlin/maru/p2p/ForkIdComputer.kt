@@ -8,10 +8,13 @@
  */
 package maru.p2p
 
-import tech.pegasys.teku.networking.p2p.peer.NodeId
+import maru.consensus.ForkIdHasher
+import maru.crypto.Hashing
+import maru.serialization.ForkIdSerializers
 
-interface PeerLookup {
-  fun getPeer(nodeId: NodeId): MaruPeer?
-
-  fun getPeers(): List<MaruPeer>
-}
+val ForkIdComputer: ForkIdHasher =
+  ForkIdHasher(
+    ForkIdSerializers
+      .ForkIdSerializer,
+    Hashing::shortShaHash,
+  )

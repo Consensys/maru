@@ -8,16 +8,15 @@
  */
 package maru.consensus
 
-import java.nio.ByteBuffer
-import java.util.zip.CRC32
-import org.apache.tuweni.bytes.Bytes
+import maru.core.Hasher
+import maru.database.BeaconChain
+import maru.serialization.Serializer
 
 data class ForkId(
   val chainId: UInt,
+  val forkSpec: ForkSpec,
   val genesisRootHash: ByteArray,
 ) {
-  val bytes = computeBytes()
-
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -25,6 +24,7 @@ data class ForkId(
     other as ForkId
 
     if (chainId != other.chainId) return false
+    if (forkSpec != other.forkSpec) return false
     if (!genesisRootHash.contentEquals(other.genesisRootHash)) return false
 
     return true
@@ -32,20 +32,40 @@ data class ForkId(
 
   override fun hashCode(): Int {
     var result = chainId.hashCode()
+    result = 31 * result + forkSpec.hashCode()
     result = 31 * result + genesisRootHash.contentHashCode()
     return result
   }
+}
 
-  private fun computeBytes(): Bytes {
-    val array =
-      ByteBuffer
-        .allocate(36)
-        .putInt(chainId.toInt())
-        .put(genesisRootHash)
-        .array()
-    val crc32 = CRC32()
-    crc32.update(array)
-    val bytesArray = ByteBuffer.allocate(8).putLong(crc32.value).array()
-    return Bytes.wrap(bytesArray)
+class ForkIdHasher(
+  val forkIdSerializer: Serializer<ForkId>,
+  val hasher: Hasher,
+) {
+  fun hash(forkId: ForkId): ByteArray = hasher.hash(forkIdSerializer.serialize(forkId)).takeLast(4).toByteArray()
+}
+
+class ForkIdHashProvider(
+  private val chainId: UInt,
+  private val beaconChain: BeaconChain,
+  private val forksSchedule: ForksSchedule,
+  private val forkIdHasher: ForkIdHasher,
+) {
+  fun currentForkIdHash(): ByteArray {
+    val forkId =
+      ForkId(
+        chainId = chainId,
+        forkSpec =
+          forksSchedule.getForkByTimestamp(
+            beaconChain
+              .getLatestBeaconState()
+              .latestBeaconBlockHeader.timestamp
+              .toLong(),
+          ),
+        genesisRootHash =
+          beaconChain.getBeaconState(0u)?.latestBeaconBlockHeader?.hash
+            ?: throw IllegalStateException("Genesis state not found"),
+      )
+    return forkIdHasher.hash(forkId)
   }
 }

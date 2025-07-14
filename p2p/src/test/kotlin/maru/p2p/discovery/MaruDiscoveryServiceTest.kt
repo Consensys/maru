@@ -13,9 +13,20 @@ import java.net.InetSocketAddress
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 import maru.config.P2P
+import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ConsensusConfig
 import maru.consensus.ForkId
-import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_FIELD_NAME
+import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHasher
+import maru.consensus.ForkSpec
+import maru.consensus.ForksSchedule
+import maru.core.ext.DataGenerators
+import maru.crypto.Hashing
+import maru.database.InMemoryBeaconChain
+import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.getBootnodeEnrString
+import maru.serialization.ForkIdSerializers
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
@@ -51,31 +62,48 @@ class MaruDiscoveryServiceTest {
     private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
     private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
 
-    private val forkIdProvider = {
+    private val chainId = 1337u
+    private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
+    val consensusConfig: ConsensusConfig =
+      QbftConsensusConfig(
+        validatorSet =
+          setOf(
+            DataGenerators.randomValidator(),
+            DataGenerators.randomValidator(),
+          ),
+        elFork = ElFork.Prague,
+      )
+    val forkSpec = ForkSpec(0L, 1, consensusConfig)
+    val forksSchedule = ForksSchedule(chainId = chainId, forks = listOf(forkSpec))
+
+    private val forkIdHashProvider =
+      ForkIdHashProvider(
+        chainId = chainId,
+        beaconChain = beaconChain,
+        forksSchedule = forksSchedule,
+        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+      )
+
+    private val forkIdHashProvider2 =
+      ForkIdHashProvider(
+        chainId = chainId + 1u,
+        beaconChain = beaconChain,
+        forksSchedule = forksSchedule,
+        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+      )
+
+    val otherForkSpec = ForkSpec(1L, 1, consensusConfig)
+
+    val forkId =
       ForkId(
-        chainId = 1L.toUInt(),
+        chainId = chainId + 2u,
+        forkSpec = otherForkSpec,
         genesisRootHash = ByteArray(32),
       )
-    }
   }
 
   private lateinit var service: MaruDiscoveryService
-  private val dummyForkId =
-    ForkId(
-      chainId = 1.toUInt(),
-      genesisRootHash =
-        ByteArray(32) {
-          0
-        },
-    )
-  private val dummyForkId2 =
-    ForkId(
-      chainId = 2.toUInt(),
-      genesisRootHash =
-        ByteArray(32) {
-          0
-        },
-    )
+
   private val dummyPrivKey = ByteArray(32) { 1 }
   private val dummyNodeId = Bytes.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
   private val dummyAddr = Optional.of(InetSocketAddress(InetAddress.getByName("1.1.1.1"), 1234))
@@ -87,7 +115,7 @@ class MaruDiscoveryServiceTest {
     whenever(p2pConfig.discoveryPort).thenReturn(9000.toUInt())
     whenever(p2pConfig.port).thenReturn(9001.toUInt())
     whenever(p2pConfig.bootnodes).thenReturn(listOf())
-    service = MaruDiscoveryService(dummyPrivKey, p2pConfig, { dummyForkId }, NoOpMetricsSystem())
+    service = MaruDiscoveryService(dummyPrivKey, p2pConfig, forkIdHashProvider, NoOpMetricsSystem())
   }
 
   @Test
@@ -95,7 +123,7 @@ class MaruDiscoveryServiceTest {
     val node = mock(NodeRecord::class.java)
     val pubKey = Bytes.of(9, 9, 9)
     whenever(node.get(EnrField.PKEY_SECP256K1)).thenReturn(pubKey)
-    whenever(node.get(FORK_ID_FIELD_NAME)).thenReturn(Bytes.wrap(dummyForkId.bytes))
+    whenever(node.get(FORK_ID_HASH_FIELD_NAME)).thenReturn(Bytes.wrap(forkIdHashProvider.currentForkIdHash()))
     whenever(node.nodeId).thenReturn(dummyNodeId)
     whenever(node.tcpAddress).thenReturn(dummyAddr)
 
@@ -110,13 +138,13 @@ class MaruDiscoveryServiceTest {
     assertEquals(dummyNodeId, peer.nodeId)
     assertEquals(dummyAddr.get(), peer.addr)
     assertTrue(peer.forkIdBytes.isPresent)
-    assertEquals(Bytes.wrap(dummyForkId.bytes), Bytes.wrap(peer.forkIdBytes.get()))
+    assertEquals(Bytes.wrap(forkIdHashProvider.currentForkIdHash()), Bytes.wrap(peer.forkIdBytes.get()))
   }
 
   @Test
   fun `returns empty forkId if forkId field is missing`() {
     val node = mock(NodeRecord::class.java)
-    whenever(node.get(FORK_ID_FIELD_NAME)).thenReturn(null)
+    whenever(node.get(FORK_ID_HASH_FIELD_NAME)).thenReturn(null)
     whenever(node.get(EnrField.PKEY_SECP256K1)).thenReturn(null)
     whenever(node.nodeId).thenReturn(dummyNodeId)
     whenever(node.tcpAddress).thenReturn(dummyAddr)
@@ -134,7 +162,7 @@ class MaruDiscoveryServiceTest {
   @Test
   fun `returns empty forkId if forkId field is not Bytes`() {
     val node = mock(NodeRecord::class.java)
-    whenever(node.get(FORK_ID_FIELD_NAME)).thenReturn("notBytes")
+    whenever(node.get(FORK_ID_HASH_FIELD_NAME)).thenReturn("notBytes")
     whenever(node.get(EnrField.PKEY_SECP256K1)).thenReturn(null)
     whenever(node.nodeId).thenReturn(dummyNodeId)
     whenever(node.tcpAddress).thenReturn(dummyAddr)
@@ -151,15 +179,16 @@ class MaruDiscoveryServiceTest {
 
   @Test
   fun `updateForkId updates local `() {
-    val localNodeRecordBefore = service.localNodeRecord
+    val localNodeRecordBefore = service.getLocalNodeRecord()
 
-    service.updateForkId(dummyForkId2)
+    service.updateForkId(forkId)
 
-    val localNodeRecordAfter = service.localNodeRecord
-    val actual = localNodeRecordAfter.get(FORK_ID_FIELD_NAME)
-    assertThat(actual).isNotEqualTo(localNodeRecordBefore.get(FORK_ID_FIELD_NAME))
-    assertThat(actual)
-      .isEqualTo(Bytes.wrap(dummyForkId2.bytes))
+    val localNodeRecordAfter = service.getLocalNodeRecord()
+    val actual = localNodeRecordAfter.get(FORK_ID_HASH_FIELD_NAME)
+    assertThat(actual).isNotEqualTo(localNodeRecordBefore.get(FORK_ID_HASH_FIELD_NAME))
+    assertThat(
+      actual,
+    ).isEqualTo(Bytes.wrap(ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash).hash(forkId)))
   }
 
   @Test
@@ -174,7 +203,7 @@ class MaruDiscoveryServiceTest {
             discoveryPort = PORT2,
             bootnodes = emptyList(),
           ),
-        forkIdProvider = forkIdProvider,
+        forkIdHashProvider = forkIdHashProvider,
         metricsSystem = NoOpMetricsSystem(),
       )
 
@@ -196,7 +225,7 @@ class MaruDiscoveryServiceTest {
             discoveryPort = PORT4,
             bootnodes = listOf(enrString),
           ),
-        forkIdProvider = forkIdProvider,
+        forkIdHashProvider = forkIdHashProvider,
         metricsSystem = NoOpMetricsSystem(),
       )
 
@@ -210,7 +239,7 @@ class MaruDiscoveryServiceTest {
             discoveryPort = PORT6,
             bootnodes = listOf(enrString),
           ),
-        forkIdProvider = forkIdProvider,
+        forkIdHashProvider = forkIdHashProvider,
         metricsSystem = NoOpMetricsSystem(),
       )
 
@@ -219,10 +248,10 @@ class MaruDiscoveryServiceTest {
       discoveryService2.start()
       discoveryService3.start()
 
-      awaitPeerFound(discoveryService2, discoveryService3.localNodeRecord.nodeId)
-      awaitPeerFound(discoveryService3, discoveryService2.localNodeRecord.nodeId)
-      awaitPeerFound(bootnode, discoveryService2.localNodeRecord.nodeId)
-      awaitPeerFound(bootnode, discoveryService3.localNodeRecord.nodeId)
+      awaitPeerFound(bootnode, discoveryService2.getLocalNodeRecord().nodeId)
+      awaitPeerFound(discoveryService2, discoveryService3.getLocalNodeRecord().nodeId)
+      awaitPeerFound(discoveryService3, discoveryService2.getLocalNodeRecord().nodeId)
+      awaitPeerFound(bootnode, discoveryService3.getLocalNodeRecord().nodeId)
     } finally {
       bootnode.stop()
       discoveryService2.stop()

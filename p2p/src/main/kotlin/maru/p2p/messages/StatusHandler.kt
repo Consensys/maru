@@ -8,32 +8,22 @@
  */
 package maru.p2p.messages
 
-import maru.database.BeaconChain
+import maru.p2p.MaruPeer
 import maru.p2p.Message
 import maru.p2p.RpcMessageHandler
 import maru.p2p.RpcMessageType
-import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
-import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class StatusHandler(
-  private val beaconChain: BeaconChain,
-  private val forkIdBytesProvider: () -> Bytes,
+  private val statusMessageFactory: StatusMessageFactory,
 ) : RpcMessageHandler<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>> {
   override fun handleIncomingMessage(
-    peer: Peer,
+    peer: MaruPeer,
     message: Message<Status, RpcMessageType>,
     callback: ResponseCallback<Message<Status, RpcMessageType>>,
   ) {
-    val forkIdBytes = forkIdBytesProvider.invoke()
-    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
-    val statusPayload = Status(forkIdBytes = forkIdBytes, latestBeaconBlockHeader.hash, latestBeaconBlockHeader.number)
-    val statusMessage =
-      Message(
-        type = RpcMessageType.STATUS,
-        version = message.version,
-        payload = statusPayload,
-      )
-    callback.respondAndCompleteSuccessfully(statusMessage)
+    peer.updateStatus(message.payload)
+    val localStatusMessage = statusMessageFactory.createStatusMessage()
+    callback.respondAndCompleteSuccessfully(localStatusMessage)
   }
 }
