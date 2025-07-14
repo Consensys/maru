@@ -7,6 +7,7 @@
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.extensions
+
 /*
    Copyright 2025 Consensys Software Inc.
 
@@ -22,20 +23,21 @@ package maru.extensions
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-import java.util.HexFormat
+fun ULong.toBytes32(): ByteArray {
+  // Create a 32-byte array initialized with zeros
+  val bytes = ByteArray(32)
 
-fun ByteArray.encodeHex(prefix: Boolean = true): String {
-  val hexStr = HexFormat.of().formatHex(this)
-  return if (prefix) {
-    "0x$hexStr"
-  } else {
-    hexStr
+  // Convert ULong to ByteArray (8 bytes)
+  val longBytes = this.toByteArray()
+
+  // Copy the 8 bytes of ULong into the last 8 bytes of the 32-byte array
+  longBytes.copyInto(destination = bytes, destinationOffset = 24) // 32 - 8 = 24
+
+  return bytes
+}
+
+// Helper function to convert ULong to ByteArray (big-endian)
+fun ULong.toByteArray(): ByteArray =
+  ByteArray(ULong.SIZE_BYTES) { i ->
+    ((this shr ((ULong.SIZE_BYTES - 1 - i) * Byte.SIZE_BYTES)) and 0xFFu).toByte()
   }
-}
-
-fun String.fromHexToByteArray(): ByteArray = HexFormat.of().parseHex(removePrefix("0x"))
-
-fun ByteArray.xor(other: ByteArray): ByteArray {
-  require(this.size == other.size) { "ByteArrays must have the same length" }
-  return ByteArray(this.size) { i -> (this[i].toInt() xor other[i].toInt()).toByte() }
-}
