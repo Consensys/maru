@@ -1,15 +1,15 @@
 
 redeploy-besu:
 		@echo "Redeploying Besu"
-		-@helm uninstall besu
+		-@helm --kubeconfig $KUBECONFIG uninstall besu
 		@sleep 3 # Wait for a second to ensure the previous release is fully uninstalled
-		@helm upgrade --install besu ./charts/besu --force
+		@helm --kubeconfig $KUBECONFIG upgrade --install besu ./charts/besu --force
 
 redeploy-maru:
 	@echo "Redeploying Maru"
-	-@helm uninstall maru
+	-@helm --kubeconfig $KUBECONFIG uninstall maru
 	@sleep 2 # Wait for a second to ensure the previous release is fully uninstalled
-	@helm upgrade --install maru ./charts/maru --force -f ./values/maru-local-dev.yaml
+	@helm --kubeconfig $KUBECONFIG --install maru ./charts/maru --force -f ./values/maru-local-dev.yaml
 
 redeploy:
 	@echo "Redeploying Besu and Maru"
