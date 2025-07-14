@@ -12,13 +12,39 @@ import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.serialization.SerDe
+import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.ethereum.rlp.RLP
+import org.hyperledger.besu.ethereum.rlp.RLPInput
+import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class BeaconBlocksByRangeRequestMessageSerDe(
-  private val requestSerDe: SerDe<BeaconBlocksByRangeRequest>,
-) : SerDe<Message<BeaconBlocksByRangeRequest, RpcMessageType>> {
+class BeaconBlocksByRangeRequestMessageSerDe : SerDe<Message<BeaconBlocksByRangeRequest, RpcMessageType>> {
   override fun serialize(value: Message<BeaconBlocksByRangeRequest, RpcMessageType>): ByteArray =
-    requestSerDe.serialize(value.payload)
+    RLP.encode { rlpOutput ->
+      writeTo(value.payload, rlpOutput)
+    }.toArray()
 
   override fun deserialize(bytes: ByteArray): Message<BeaconBlocksByRangeRequest, RpcMessageType> =
-    Message(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, requestSerDe.deserialize(bytes))
+    Message(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, readFrom(RLP.input(Bytes.wrap(bytes))))
+
+  private fun writeTo(
+    value: BeaconBlocksByRangeRequest,
+    rlpOutput: RLPOutput,
+  ) {
+    rlpOutput.startList()
+    rlpOutput.writeLong(value.startBlockNumber.toLong())
+    rlpOutput.writeLong(value.count.toLong())
+    rlpOutput.endList()
+  }
+
+  private fun readFrom(rlpInput: RLPInput): BeaconBlocksByRangeRequest {
+    rlpInput.enterList()
+    val startBlockNumber = rlpInput.readLong().toULong()
+    val count = rlpInput.readLong().toULong()
+    rlpInput.leaveList()
+
+    return BeaconBlocksByRangeRequest(
+      startBlockNumber = startBlockNumber,
+      count = count,
+    )
+  }
 }

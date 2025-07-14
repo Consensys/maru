@@ -11,9 +11,7 @@ package maru.p2p
 import maru.database.BeaconChain
 import maru.p2p.messages.BeaconBlocksByRangeHandler
 import maru.p2p.messages.BeaconBlocksByRangeRequestMessageSerDe
-import maru.p2p.messages.BeaconBlocksByRangeRequestSerDe
 import maru.p2p.messages.BeaconBlocksByRangeResponseMessageSerDe
-import maru.p2p.messages.BeaconBlocksByRangeResponseSerDe
 import maru.p2p.messages.BeaconChainBlockProvider
 import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusMessageFactory
@@ -41,11 +39,9 @@ class RpcMethods(
   }
 
   // BeaconBlocksByRange RPC method
-  val beaconBlocksByRangeRequestSerDe = BeaconBlocksByRangeRequestSerDe()
-  val beaconBlocksByRangeResponseSerDe = BeaconBlocksByRangeResponseSerDe(RLPSerializers.SealedBeaconBlockSerializer)
-  val beaconBlocksByRangeRequestMessageSerDe = BeaconBlocksByRangeRequestMessageSerDe(beaconBlocksByRangeRequestSerDe)
+  val beaconBlocksByRangeRequestMessageSerDe = BeaconBlocksByRangeRequestMessageSerDe()
   val beaconBlocksByRangeResponseMessageSerDe =
-    BeaconBlocksByRangeResponseMessageSerDe(beaconBlocksByRangeResponseSerDe)
+    BeaconBlocksByRangeResponseMessageSerDe(RLPSerializers.SealedBeaconBlockSerializer)
 
   val beaconBlocksByRangeRpcMethod by lazy {
     val blockProvider = BeaconChainBlockProvider(beaconChain)
