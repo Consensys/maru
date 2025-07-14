@@ -7,13 +7,21 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: 80
+    - port: {{ .Values.service.apiPort }}
+      targetPort: {{ .Values.service.apiPort }}
       protocol: TCP
       name: http
+    - port: {{ .Values.service.p2pPort }}
+      targetPort: {{ .Values.service.p2pPort }}
+      protocol: TCP
+      name: observability
     - port: {{ .Values.service.observabilityPort }}
       targetPort: {{ .Values.service.observabilityPort }}
       protocol: TCP
-      name: obervability
+      name: p2p
+    - port: {{ .Values.service.discoveryPort }}
+      targetPort: {{ .Values.service.discoveryPort }}
+      protocol: TCP
+      name: discovery
   selector:
     app: {{ include "maru.name" . }}

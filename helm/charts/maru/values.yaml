@@ -4,8 +4,10 @@ image:
   pullPolicy: Always
 service:
   type: ClusterIP
-  port: 80
+  apiPort: 8080
   observabilityPort: 9545
+  p2pPort: 3322
+  discoveryPort: 3323
 persistence:
   enabled: true
   accessMode: ReadWriteOnce

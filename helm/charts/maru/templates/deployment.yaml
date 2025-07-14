@@ -32,6 +32,18 @@ spec:
               mountPath: /opt/consensys/maru/data
             - name: configs
               mountPath: /opt/consensys/maru/configs
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.apiPort }}
+              protocol: TCP
+            - name: p2p
+              containerPort: {{ .Values.service.p2pPort }}
+              protocol: TCP
+            {{- if .Values.service.observabilityPort }}
+            - name: observability
+              containerPort: {{ .Values.service.observabilityPort }}
+              protocol: TCP
+            {{- end }}
       volumes:
         - name: data
           persistentVolumeClaim:
