@@ -102,7 +102,6 @@ task integrationTest(type: Test) {
   classpath = sourceSets.integrationTest.runtimeClasspath
   testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-  maxHeapSize = "4096m"
   // To make room for Besu threads
   systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
   int maxThreads = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
@@ -129,7 +128,7 @@ task integrationTest(type: Test) {
 afterEvaluate {
   // Integration tests are getting unstable when running concurrently with other tests
   tasks.named('integrationTest') {
-    dependsOn rootProject.subprojects.collect {
+    mustRunAfter rootProject.subprojects.collect {
       it.tasks.matching {
         it.name == 'test'
       }
