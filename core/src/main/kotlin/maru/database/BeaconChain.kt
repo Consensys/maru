@@ -24,6 +24,11 @@ interface BeaconChain : AutoCloseable {
 
   fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock?
 
+  fun getSealedBlocks(
+    startBlockNumber: ULong,
+    count: ULong,
+  ): List<SealedBeaconBlock>
+
   fun newUpdater(): Updater
 
   interface Updater : AutoCloseable {

@@ -37,7 +37,6 @@ class RpcMethods(
     )
   }
 
-  // BeaconBlocksByRange RPC method
   val beaconBlocksByRangeRequestMessageSerDe = BeaconBlocksByRangeRequestMessageSerDe()
   val beaconBlocksByRangeResponseMessageSerDe =
     BeaconBlocksByRangeResponseMessageSerDe(RLPSerializers.SealedBeaconBlockSerializer)

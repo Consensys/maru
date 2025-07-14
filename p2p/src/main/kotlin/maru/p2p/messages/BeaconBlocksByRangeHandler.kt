@@ -8,7 +8,6 @@
  */
 package maru.p2p.messages
 
-import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.p2p.MaruPeer
 import maru.p2p.Message
@@ -22,11 +21,6 @@ class BeaconBlocksByRangeHandler(
     Message<BeaconBlocksByRangeRequest, RpcMessageType>,
     Message<BeaconBlocksByRangeResponse, RpcMessageType>,
   > {
-  companion object {
-    // Maximum number of blocks to return in a single request
-    // This matches the typical limit in Ethereum consensus specs
-    const val MAX_BLOCKS_PER_REQUEST = 64UL
-  }
 
   override fun handleIncomingMessage(
     peer: MaruPeer,
@@ -36,11 +30,10 @@ class BeaconBlocksByRangeHandler(
     val request = message.payload
 
     // Fetch blocks from the beacon chain
-    val blocks =
-      getBlocksByRange(
-        startBlockNumber = request.startBlockNumber,
-        count = request.count,
-      )
+    val blocks = beaconChain.getSealedBlocks(
+      startBlockNumber = request.startBlockNumber,
+      count = request.count,
+    )
 
     val response = BeaconBlocksByRangeResponse(blocks = blocks)
     val responseMessage =
@@ -50,20 +43,5 @@ class BeaconBlocksByRangeHandler(
       )
 
     callback.respondAndCompleteSuccessfully(responseMessage)
-  }
-
-  private fun getBlocksByRange(
-    startBlockNumber: ULong,
-    count: ULong,
-  ): List<SealedBeaconBlock> {
-    // Limit the number of blocks to prevent excessive memory usage
-    val maxBlocks = minOf(count, MAX_BLOCKS_PER_REQUEST)
-
-    return generateSequence(startBlockNumber) { it + 1UL }
-      .take(maxBlocks.toInt())
-      .map { blockNumber -> beaconChain.getSealedBeaconBlock(blockNumber) }
-      .takeWhile { it != null }
-      .filterNotNull()
-      .toList()
   }
 }

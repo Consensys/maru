@@ -39,6 +39,21 @@ class InMemoryBeaconChain(
   override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
     sealedBeaconBlockByBlockNumber[beaconBlockNumber]
 
+  override fun getSealedBlocks(
+    startBlockNumber: ULong,
+    count: ULong,
+  ): List<SealedBeaconBlock> {
+    // Limit the number of blocks to prevent excessive memory usage
+    val maxBlocks = minOf(count, 64UL)
+
+    return generateSequence(startBlockNumber) { it + 1UL }
+      .take(maxBlocks.toInt())
+      .map { blockNumber -> getSealedBeaconBlock(blockNumber) }
+      .takeWhile { it != null }
+      .filterNotNull()
+      .toList()
+  }
+
   override fun newUpdater(): BeaconChain.Updater = InMemoryUpdater(this)
 
   override fun close() {

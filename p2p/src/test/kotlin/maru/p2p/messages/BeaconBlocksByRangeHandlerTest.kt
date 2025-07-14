@@ -49,7 +49,7 @@ class BeaconBlocksByRangeHandlerTest {
       )
 
     // Mock no blocks found
-    whenever(beaconChain.getSealedBeaconBlock(any<ULong>())).thenReturn(null)
+    whenever(beaconChain.getSealedBlocks(100UL, 10UL)).thenReturn(emptyList())
 
     handler.handleIncomingMessage(peer, message, callback)
 
@@ -79,10 +79,7 @@ class BeaconBlocksByRangeHandlerTest {
       )
 
     // Mock blocks found
-    whenever(beaconChain.getSealedBeaconBlock(100UL)).thenReturn(blocks[0])
-    whenever(beaconChain.getSealedBeaconBlock(101UL)).thenReturn(blocks[1])
-    whenever(beaconChain.getSealedBeaconBlock(102UL)).thenReturn(blocks[2])
-    whenever(beaconChain.getSealedBeaconBlock(103UL)).thenReturn(null)
+    whenever(beaconChain.getSealedBlocks(100UL, 3UL)).thenReturn(blocks)
 
     handler.handleIncomingMessage(peer, message, callback)
 
@@ -108,16 +105,14 @@ class BeaconBlocksByRangeHandlerTest {
     // Mock blocks found
     val block500 = DataGenerators.randomSealedBeaconBlock(number = 500UL)
     val block501 = DataGenerators.randomSealedBeaconBlock(number = 501UL)
-    whenever(beaconChain.getSealedBeaconBlock(500UL)).thenReturn(block500)
-    whenever(beaconChain.getSealedBeaconBlock(501UL)).thenReturn(block501)
-    whenever(beaconChain.getSealedBeaconBlock(502UL)).thenReturn(null)
+    val blocks = listOf(block500, block501)
+    
+    whenever(beaconChain.getSealedBlocks(500UL, 3UL)).thenReturn(blocks)
 
     handler.handleIncomingMessage(peer, message, callback)
 
     // Verify the handler asked for the correct blocks
-    verify(beaconChain).getSealedBeaconBlock(500UL)
-    verify(beaconChain).getSealedBeaconBlock(501UL)
-    verify(beaconChain).getSealedBeaconBlock(502UL)
+    verify(beaconChain).getSealedBlocks(500UL, 3UL)
   }
 
   @Test
@@ -136,11 +131,8 @@ class BeaconBlocksByRangeHandlerTest {
         DataGenerators.randomSealedBeaconBlock(number = i)
       }
 
-    // Mock first 64 blocks found, then null
-    limitedBlocks.forEachIndexed { index, block ->
-      whenever(beaconChain.getSealedBeaconBlock(index.toULong())).thenReturn(block)
-    }
-    whenever(beaconChain.getSealedBeaconBlock(64UL)).thenReturn(null)
+    // Mock blocks returned
+    whenever(beaconChain.getSealedBlocks(0UL, 1000UL)).thenReturn(limitedBlocks)
 
     handler.handleIncomingMessage(peer, message, callback)
 
@@ -162,6 +154,7 @@ class BeaconBlocksByRangeHandlerTest {
       )
 
     // With count = 0, no blocks should be fetched
+    whenever(beaconChain.getSealedBlocks(100UL, 0UL)).thenReturn(emptyList())
 
     handler.handleIncomingMessage(peer, message, callback)
 
@@ -184,12 +177,10 @@ class BeaconBlocksByRangeHandlerTest {
 
     val block100 = DataGenerators.randomSealedBeaconBlock(number = 100UL)
     val block101 = DataGenerators.randomSealedBeaconBlock(number = 101UL)
-    val block103 = DataGenerators.randomSealedBeaconBlock(number = 103UL)
+    // Simulate gap at block 102
+    val blocks = listOf(block100, block101)
 
-    whenever(beaconChain.getSealedBeaconBlock(100UL)).thenReturn(block100)
-    whenever(beaconChain.getSealedBeaconBlock(101UL)).thenReturn(block101)
-    whenever(beaconChain.getSealedBeaconBlock(102UL)).thenReturn(null) // Gap
-    whenever(beaconChain.getSealedBeaconBlock(103UL)).thenReturn(block103)
+    whenever(beaconChain.getSealedBlocks(100UL, 10UL)).thenReturn(blocks)
 
     handler.handleIncomingMessage(peer, message, callback)
 

@@ -20,31 +20,6 @@ class BeaconBlocksByRangeResponseMessageSerDeTest {
   private val messageSerDe = BeaconBlocksByRangeResponseMessageSerDe(RLPSerializers.SealedBeaconBlockSerializer)
 
   @Test
-  fun `response message serDe wraps and unwraps correctly`() {
-    val blocks =
-      listOf(
-        DataGenerators.randomSealedBeaconBlock(number = 10UL),
-        DataGenerators.randomSealedBeaconBlock(number = 11UL),
-      )
-    val response = BeaconBlocksByRangeResponse(blocks = blocks)
-    val message =
-      Message(
-        type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
-        version = Version.V1,
-        payload = response,
-      )
-
-    val serialized = messageSerDe.serialize(message)
-    val deserialized = messageSerDe.deserialize(serialized)
-
-    assertThat(deserialized.type).isEqualTo(RpcMessageType.BEACON_BLOCKS_BY_RANGE)
-    assertThat(deserialized.version).isEqualTo(Version.V1)
-    assertThat(deserialized.payload.blocks).hasSize(2)
-    assertThat(deserialized.payload.blocks[0]).isEqualTo(blocks[0])
-    assertThat(deserialized.payload.blocks[1]).isEqualTo(blocks[1])
-  }
-
-  @Test
   fun `response message serDe serializes and deserializes correctly`() {
     val response =
       BeaconBlocksByRangeResponse(
