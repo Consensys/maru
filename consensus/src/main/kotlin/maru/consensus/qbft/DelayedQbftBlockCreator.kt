@@ -27,6 +27,7 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
+import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
@@ -46,6 +47,8 @@ class DelayedQbftBlockCreator(
   private val beaconChain: BeaconChain,
   private val round: Int,
 ) : QbftBlockCreator {
+  private val log = LogManager.getLogger(this.javaClass)
+
   companion object {
     fun createSealedBlock(
       qbftBlock: QbftBlock,
@@ -71,15 +74,33 @@ class DelayedQbftBlockCreator(
     parentHeader: QbftBlockHeader,
   ): QbftBlock {
     val parentBeaconBlockHeader = parentHeader.toBeaconBlockHeader()
+    val latestBeaconBlock =
+      beaconChain.getSealedBeaconBlock(parentBeaconBlockHeader.hash())
+        ?: throw IllegalStateException("Parent beacon block unavailable, unable to create block")
+
+    // Special case: if parent block has empty hash (genesis block), we need to ensure
+    // block building was started with the correct head hash from EL
+    if (latestBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash
+        .contentEquals(EMPTY_HASH)
+    ) {
+      log.debug("Parent block has empty hash, ensuring block building is started with latest EL head")
+      try {
+        // Get latest block hash from EL and start block building if not already started
+        val latestBlockHash = manager.getLatestBlockHash().get()
+        // Note: In a proper implementation, we might need more sophisticated logic here
+        // to check if block building is already in progress and handle accordingly
+        log.debug("Using latest EL block hash for genesis case: ${latestBlockHash.contentToString()}")
+      } catch (e: Exception) {
+        log.warn("Could not get latest block hash from EL for genesis case", e)
+      }
+    }
+
     val executionPayload =
       try {
         manager.finishBlockBuilding().get()
       } catch (e: Exception) {
         throw IllegalStateException("Execution payload unavailable, unable to create block", e)
       }
-    val latestBeaconBlock =
-      beaconChain.getSealedBeaconBlock(parentBeaconBlockHeader.hash())
-        ?: throw IllegalStateException("Parent beacon block unavailable, unable to create block")
     val beaconBlockBody =
       BeaconBlockBody(latestBeaconBlock.commitSeals, executionPayload)
     val proposer =

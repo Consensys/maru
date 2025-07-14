@@ -8,32 +8,42 @@
  */
 package maru.app
 
+import java.math.BigInteger
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.EMPTY_HASH
+import maru.core.ExecutionPayload
 import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.database.BeaconChain
-import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.stateRoot
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.DefaultBlockParameter
 
 class BeaconChainInitialization(
-  private val executionLayerClient: Web3j,
   private val beaconChain: BeaconChain,
+  private val genesisTimestamp: ULong = 0UL,
 ) {
   private fun initializeDb(validatorSet: Set<Validator>) {
     val genesisExecutionPayload =
-      executionLayerClient
-        .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), true)
-        .send()
-        .block
-        .toDomain()
+      ExecutionPayload(
+        parentHash = EMPTY_HASH,
+        feeRecipient = EMPTY_HASH.copyOfRange(0, 20), // 20 bytes for address
+        stateRoot = EMPTY_HASH,
+        receiptsRoot = EMPTY_HASH,
+        logsBloom = ByteArray(256), // Ethereum logs bloom is 256 bytes
+        prevRandao = EMPTY_HASH,
+        blockNumber = 0UL,
+        gasLimit = 30000000UL, // Default gas limit
+        gasUsed = 0UL,
+        timestamp = 0UL,
+        extraData = ByteArray(0),
+        baseFeePerGas = BigInteger.ZERO,
+        blockHash = EMPTY_HASH,
+        transactions = emptyList(),
+      )
 
     val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = genesisExecutionPayload)
 
@@ -41,7 +51,7 @@ class BeaconChainInitialization(
       BeaconBlockHeader(
         number = 0u,
         round = 0u,
-        timestamp = genesisExecutionPayload.timestamp,
+        timestamp = genesisTimestamp,
         proposer = Validator(genesisExecutionPayload.feeRecipient),
         parentRoot = EMPTY_HASH,
         stateRoot = EMPTY_HASH,

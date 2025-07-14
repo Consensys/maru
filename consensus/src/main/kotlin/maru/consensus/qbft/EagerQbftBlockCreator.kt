@@ -11,6 +11,7 @@ package maru.consensus.qbft
 import kotlin.time.Duration
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationProvider
+import maru.core.EMPTY_HASH
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -52,10 +53,20 @@ class EagerQbftBlockCreator(
         ?.beaconBlockBody
         ?: throw IllegalStateException("Parent block not found in the database")
     val finalizedState = finalizationStateProvider(parentBeaconBlockBody)
+
+    // Special case: if parent block has empty hash (genesis block), use latest block hash from EL
+    val headHash =
+      if (parentBeaconBlockBody.executionPayload.blockHash.contentEquals(EMPTY_HASH)) {
+        log.debug("Parent block has empty hash, getting latest block hash from EL")
+        manager.getLatestBlockHash().get()
+      } else {
+        parentBeaconBlockBody.executionPayload.blockHash
+      }
+
     val blockBuildingTriggerResult =
       manager
         .setHeadAndStartBlockBuilding(
-          headHash = parentBeaconBlockBody.executionPayload.blockHash,
+          headHash = headHash,
           safeHash = finalizedState.safeBlockHash,
           finalizedHash = finalizedState.finalizedBlockHash,
           nextBlockTimestamp = headerTimeStampSeconds,

@@ -14,6 +14,7 @@ import maru.api.ApiServer
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.BlockMetadata
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestBlockMetadataCache
@@ -168,10 +169,18 @@ class MaruApp(
       NewBlockHandlerMultiplexer(followerBlockHandlers)
     val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
 
+    val firstQbftForkTimestamp =
+      beaconGenesisConfig
+        .getAllForks()
+        .filter { it.configuration is QbftConsensusConfig }
+        .minByOrNull { it.timestampSeconds }
+        ?.timestampSeconds
+        ?.toULong() ?: 0UL
+
     val beaconChainInitialization =
       BeaconChainInitialization(
-        executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
         beaconChain = beaconChain,
+        genesisTimestamp = firstQbftForkTimestamp,
       )
 
     val qbftFactory =
