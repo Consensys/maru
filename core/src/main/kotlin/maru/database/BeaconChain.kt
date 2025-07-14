@@ -27,7 +27,13 @@ interface BeaconChain : AutoCloseable {
   fun getSealedBlocks(
     startBlockNumber: ULong,
     count: ULong,
-  ): List<SealedBeaconBlock>
+  ): List<SealedBeaconBlock> =
+    generateSequence(startBlockNumber) { it + 1UL }
+      .take(count.toInt())
+      .map { blockNumber -> getSealedBeaconBlock(blockNumber) }
+      .takeWhile { it != null }
+      .filterNotNull()
+      .toList()
 
   fun newUpdater(): Updater
 

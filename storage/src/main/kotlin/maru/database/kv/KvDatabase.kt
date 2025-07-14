@@ -73,17 +73,6 @@ class KvDatabase(
       .flatMap { blockRoot -> kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, blockRoot) }
       .getOrNull()
 
-  override fun getSealedBlocks(
-    startBlockNumber: ULong,
-    count: ULong,
-  ): List<SealedBeaconBlock> =
-    generateSequence(startBlockNumber) { it + 1UL }
-      .take(count.toInt())
-      .map { blockNumber -> getSealedBeaconBlock(blockNumber) }
-      .takeWhile { it != null }
-      .filterNotNull()
-      .toList()
-
   override fun newUpdater(): BeaconChain.Updater = KvUpdater(this.kvStoreAccessor)
 
   override fun close() {

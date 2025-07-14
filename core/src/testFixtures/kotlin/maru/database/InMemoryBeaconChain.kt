@@ -39,17 +39,6 @@ class InMemoryBeaconChain(
   override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
     sealedBeaconBlockByBlockNumber[beaconBlockNumber]
 
-  override fun getSealedBlocks(
-    startBlockNumber: ULong,
-    count: ULong,
-  ): List<SealedBeaconBlock> =
-    generateSequence(startBlockNumber) { it + 1UL }
-      .take(count.toInt())
-      .map { blockNumber -> getSealedBeaconBlock(blockNumber) }
-      .takeWhile { it != null }
-      .filterNotNull()
-      .toList()
-
   override fun newUpdater(): BeaconChain.Updater = InMemoryUpdater(this)
 
   override fun close() {
