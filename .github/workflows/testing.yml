@@ -36,9 +36,9 @@ jobs:
     runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-med ]
     name: Consensus client tests
     #   useful for debugging flaky tests. Comment out Jacoco and Codecov steps because they override the test results.
-    strategy:
-      matrix:
-        iterations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+#    strategy:
+#      matrix:
+#        iterations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,30 +52,30 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-#      - name: Setup Gradle
-#        uses: gradle/actions/setup-gradle@8379f6a1328ee0e06e2bb424dadb7b159856a326 # 4.4.0
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@8379f6a1328ee0e06e2bb424dadb7b159856a326 # 4.4.0
       - name: Build consensus and Unit tests
         run: |
           # force tests to run even if the code is not changed
           # this is to debug flaky tests
           ./gradlew build --rerun-tasks --no-build-cache --no-daemon
-#      - name: Run Jacoco
-#        run: |
-#          ./gradlew jacocoAggregatedReport
-#      - name: Upload Jacoco test coverage report
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
-#          if-no-files-found: error
-#          path: |
-#            ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
-#      - name: Upload coverage to Codecov
-#        uses: codecov/codecov-action@v5
-#        with:
-#          fail_ci_if_error: true
-#          files: ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
-#          flags: kotlin
-#          os: linux
-#          name: codecov
-#          verbose: true
-#          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Run Jacoco
+        run: |
+          ./gradlew jacocoAggregatedReport
+      - name: Upload Jacoco test coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
+          if-no-files-found: error
+          path: |
+            ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          files: ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
+          flags: kotlin
+          os: linux
+          name: codecov
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
