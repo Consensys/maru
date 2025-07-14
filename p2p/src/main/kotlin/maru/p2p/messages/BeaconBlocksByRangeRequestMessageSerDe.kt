@@ -19,9 +19,10 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class BeaconBlocksByRangeRequestMessageSerDe : SerDe<Message<BeaconBlocksByRangeRequest, RpcMessageType>> {
   override fun serialize(value: Message<BeaconBlocksByRangeRequest, RpcMessageType>): ByteArray =
-    RLP.encode { rlpOutput ->
-      writeTo(value.payload, rlpOutput)
-    }.toArray()
+    RLP
+      .encode { rlpOutput ->
+        writeTo(value.payload, rlpOutput)
+      }.toArray()
 
   override fun deserialize(bytes: ByteArray): Message<BeaconBlocksByRangeRequest, RpcMessageType> =
     Message(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, readFrom(RLP.input(Bytes.wrap(bytes))))
