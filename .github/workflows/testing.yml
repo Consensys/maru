@@ -58,7 +58,7 @@ jobs:
         run: |
           # force tests to run even if the code is not changed
           # this is to debug flaky tests
-          ./gradlew build --rerun-tasks --no-build-cache --no-daemon
+          ./gradlew build --rerun-tasks
       - name: Run Jacoco
         run: |
           ./gradlew jacocoAggregatedReport
