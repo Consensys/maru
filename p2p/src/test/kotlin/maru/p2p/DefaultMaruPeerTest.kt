@@ -9,10 +9,16 @@
 package maru.p2p
 
 import java.util.Optional
+import maru.core.SealedBeaconBlock
+import maru.core.ext.DataGenerators
+import maru.p2p.messages.BeaconBlocksByRangeRequest
+import maru.p2p.messages.BeaconBlocksByRangeResponse
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -167,5 +173,38 @@ class DefaultMaruPeerTest {
     maruPeer.adjustReputation(adjustment)
 
     verify(delegatePeer).adjustReputation(adjustment)
+  }
+
+  @Test
+  fun `sendBeaconBlocksByRange sends request and returns response`() {
+    val startBlockNumber = 100UL
+    val count = 10UL
+    val blocks = listOf(
+      DataGenerators.randomSealedBeaconBlock(number = 100UL),
+      DataGenerators.randomSealedBeaconBlock(number = 101UL),
+      DataGenerators.randomSealedBeaconBlock(number = 102UL)
+    )
+    val expectedResponse = BeaconBlocksByRangeResponse(blocks)
+    
+    val beaconBlocksByRangeMethod = mock<MaruRpcMethod<Message<BeaconBlocksByRangeRequest, RpcMessageType>, Message<BeaconBlocksByRangeResponse, RpcMessageType>>>()
+    val streamController = mock<RpcStreamController<MaruOutgoingRpcRequestHandler<Message<BeaconBlocksByRangeResponse, RpcMessageType>>>>()
+    
+    whenever(rpcMethods.beaconBlocksByRange()).thenReturn(beaconBlocksByRangeMethod)
+    whenever(delegatePeer.sendRequest(eq(beaconBlocksByRangeMethod), any(), any<MaruRpcResponseHandler<Message<BeaconBlocksByRangeResponse, RpcMessageType>>>()))
+      .thenAnswer { invocation ->
+        val responseHandler = invocation.getArgument<MaruRpcResponseHandler<Message<BeaconBlocksByRangeResponse, RpcMessageType>>>(2)
+        // Simulate receiving a response
+        responseHandler.onResponse(Message(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, expectedResponse))
+        SafeFuture.completedFuture(streamController)
+      }
+    
+    val result = maruPeer.sendBeaconBlocksByRange(startBlockNumber, count)
+    
+    assertThat(result.get()).isEqualTo(expectedResponse)
+    assertThat(result.get().blocks).hasSize(3)
+    assertThat(result.get().blocks[0].beaconBlock.beaconBlockHeader.number).isEqualTo(100UL)
+    assertThat(result.get().blocks[1].beaconBlock.beaconBlockHeader.number).isEqualTo(101UL)
+    assertThat(result.get().blocks[2].beaconBlock.beaconBlockHeader.number).isEqualTo(102UL)
+    verify(rpcMethods).beaconBlocksByRange()
   }
 }
