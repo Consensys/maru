@@ -38,10 +38,11 @@ class BeaconBlocksByRangeHandler(
     val maxBlocks = minOf(request.count, MAX_BLOCKS_PER_REQUEST)
 
     // Fetch blocks from the beacon chain
-    val blocks = beaconChain.getSealedBlocks(
-      startBlockNumber = request.startBlockNumber,
-      count = maxBlocks,
-    )
+    val blocks =
+      beaconChain.getSealedBlocks(
+        startBlockNumber = request.startBlockNumber,
+        count = maxBlocks,
+      )
 
     val response = BeaconBlocksByRangeResponse(blocks = blocks)
     val responseMessage =

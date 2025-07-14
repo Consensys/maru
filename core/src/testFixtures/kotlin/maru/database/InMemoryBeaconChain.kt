@@ -42,14 +42,13 @@ class InMemoryBeaconChain(
   override fun getSealedBlocks(
     startBlockNumber: ULong,
     count: ULong,
-  ): List<SealedBeaconBlock> {
-    return generateSequence(startBlockNumber) { it + 1UL }
+  ): List<SealedBeaconBlock> =
+    generateSequence(startBlockNumber) { it + 1UL }
       .take(count.toInt())
       .map { blockNumber -> getSealedBeaconBlock(blockNumber) }
       .takeWhile { it != null }
       .filterNotNull()
       .toList()
-  }
 
   override fun newUpdater(): BeaconChain.Updater = InMemoryUpdater(this)
 

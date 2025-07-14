@@ -179,4 +179,100 @@ class KvDatabaseTest {
       assertThat(db.getSealedBeaconBlock(testBeaconBlock2Number)).isNull()
     }
   }
+
+  @Test
+  fun `test getSealedBlocks returns consecutive blocks`(
+    @TempDir databasePath: Path,
+  ) {
+    val testBlocks = (1uL..5uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+
+    createDatabase(databasePath).use { db ->
+      // Store blocks
+      testBlocks.forEach { block ->
+        db.newUpdater().use {
+          it.putSealedBeaconBlock(block).commit()
+        }
+      }
+
+      // Get blocks 2-4
+      val blocks = db.getSealedBlocks(startBlockNumber = 2uL, count = 3uL)
+      assertThat(blocks).hasSize(3)
+      assertThat(blocks[0]).isEqualTo(testBlocks[1]) // block 2
+      assertThat(blocks[1]).isEqualTo(testBlocks[2]) // block 3
+      assertThat(blocks[2]).isEqualTo(testBlocks[3]) // block 4
+    }
+  }
+
+  @Test
+  fun `test getSealedBlocks returns empty list when start block does not exist`(
+    @TempDir databasePath: Path,
+  ) {
+    createDatabase(databasePath).use { db ->
+      val blocks = db.getSealedBlocks(startBlockNumber = 100uL, count = 5uL)
+      assertThat(blocks).isEmpty()
+    }
+  }
+
+  @Test
+  fun `test getSealedBlocks returns empty list when count is zero`(
+    @TempDir databasePath: Path,
+  ) {
+    val testBlock = DataGenerators.randomSealedBeaconBlock(1uL)
+
+    createDatabase(databasePath).use { db ->
+      db.newUpdater().use {
+        it.putSealedBeaconBlock(testBlock).commit()
+      }
+
+      val blocks = db.getSealedBlocks(startBlockNumber = 1uL, count = 0uL)
+      assertThat(blocks).isEmpty()
+    }
+  }
+
+  @Test
+  fun `test getSealedBlocks stops at gap in sequence`(
+    @TempDir databasePath: Path,
+  ) {
+    val block1 = DataGenerators.randomSealedBeaconBlock(1uL)
+    val block2 = DataGenerators.randomSealedBeaconBlock(2uL)
+    // Skip block 3
+    val block4 = DataGenerators.randomSealedBeaconBlock(4uL)
+
+    createDatabase(databasePath).use { db ->
+      db.newUpdater().use {
+        it
+          .putSealedBeaconBlock(block1)
+          .putSealedBeaconBlock(block2)
+          .putSealedBeaconBlock(block4)
+          .commit()
+      }
+
+      // Request 5 blocks starting from 1, but should stop at gap
+      val blocks = db.getSealedBlocks(startBlockNumber = 1uL, count = 5uL)
+      assertThat(blocks).hasSize(2)
+      assertThat(blocks[0]).isEqualTo(block1)
+      assertThat(blocks[1]).isEqualTo(block2)
+      // Should not include block4 due to gap at block 3
+    }
+  }
+
+  @Test
+  fun `test getSealedBlocks returns available blocks when count exceeds available`(
+    @TempDir databasePath: Path,
+  ) {
+    val testBlocks = (1uL..3uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+
+    createDatabase(databasePath).use { db ->
+      testBlocks.forEach { block ->
+        db.newUpdater().use {
+          it.putSealedBeaconBlock(block).commit()
+        }
+      }
+
+      // Request 10 blocks but only 3 exist
+      val blocks = db.getSealedBlocks(startBlockNumber = 1uL, count = 10uL)
+      assertThat(blocks).hasSize(3)
+      assertThat(blocks).isEqualTo(testBlocks)
+    }
+  }
 }

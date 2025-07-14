@@ -139,4 +139,72 @@ class InMemoryBeaconChainTest {
       inMemoryBeaconChain.getBeaconState(initialBeaconState.latestBeaconBlockHeader.number)
     assertThat(initialBeaconStateByNumber).isEqualTo(initialBeaconState)
   }
+
+  @Test
+  fun `getSealedBlocks returns consecutive blocks`() {
+    val testBlocks = (1uL..5uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+
+    val updater = inMemoryBeaconChain.newUpdater()
+    testBlocks.forEach { block ->
+      updater.putSealedBeaconBlock(block)
+    }
+    updater.commit()
+
+    val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 2uL, count = 3uL)
+    assertThat(blocks).hasSize(3)
+    assertThat(blocks[0]).isEqualTo(testBlocks[1]) // block 2
+    assertThat(blocks[1]).isEqualTo(testBlocks[2]) // block 3
+    assertThat(blocks[2]).isEqualTo(testBlocks[3]) // block 4
+  }
+
+  @Test
+  fun `getSealedBlocks returns empty list when start block does not exist`() {
+    val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 100uL, count = 5uL)
+    assertThat(blocks).isEmpty()
+  }
+
+  @Test
+  fun `getSealedBlocks returns empty list when count is zero`() {
+    val testBlock = DataGenerators.randomSealedBeaconBlock(1uL)
+
+    val updater = inMemoryBeaconChain.newUpdater()
+    updater.putSealedBeaconBlock(testBlock).commit()
+
+    val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 1uL, count = 0uL)
+    assertThat(blocks).isEmpty()
+  }
+
+  @Test
+  fun `getSealedBlocks stops at gap in sequence`() {
+    val block1 = DataGenerators.randomSealedBeaconBlock(1uL)
+    val block2 = DataGenerators.randomSealedBeaconBlock(2uL)
+    val block4 = DataGenerators.randomSealedBeaconBlock(4uL)
+
+    val updater = inMemoryBeaconChain.newUpdater()
+    updater
+      .putSealedBeaconBlock(block1)
+      .putSealedBeaconBlock(block2)
+      .putSealedBeaconBlock(block4)
+      .commit()
+
+    val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 1uL, count = 5uL)
+    assertThat(blocks).hasSize(2)
+    assertThat(blocks[0]).isEqualTo(block1)
+    assertThat(blocks[1]).isEqualTo(block2)
+  }
+
+  @Test
+  fun `getSealedBlocks returns available blocks when count exceeds available`() {
+    val testBlocks = (1uL..3uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+
+    val updater = inMemoryBeaconChain.newUpdater()
+    testBlocks.forEach { block ->
+      updater.putSealedBeaconBlock(block)
+    }
+    updater.commit()
+
+    val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 1uL, count = 10uL)
+    assertThat(blocks).hasSize(3)
+    assertThat(blocks).isEqualTo(testBlocks)
+  }
 }
