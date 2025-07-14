@@ -14,6 +14,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
+import maru.consensus.PrevRandaoProvider
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
@@ -38,6 +39,7 @@ import maru.serialization.rlp.stateRoot
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
@@ -53,6 +55,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
+import org.mockito.kotlin.any
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -70,6 +73,7 @@ class EagerQbftBlockCreatorTest {
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
   private val clock = Mockito.mock(Clock::class.java)
   private val validator = Validator(Random.nextBytes(20))
+  private val prevRandaoProvider = Mockito.mock(PrevRandaoProvider::class.java)
   private lateinit var executionLayerManager: ExecutionLayerManager
   private val validatorSet = DataGenerators.randomValidators() + validator
 
@@ -123,6 +127,9 @@ class EagerQbftBlockCreatorTest {
     whenever(
       validatorProvider.getValidatorsAfterBlock(0u),
     ).thenReturn(completedFuture(validatorSet))
+    whenever(
+      prevRandaoProvider.calculateNextPrevRandao(any(), any()),
+    ).thenReturn(Bytes32.random().toArray())
 
     val mainBlockCreator =
       DelayedQbftBlockCreator(
@@ -143,6 +150,7 @@ class EagerQbftBlockCreatorTest {
             genesisBlockHash,
           )
         },
+        prevRandaoProvider = prevRandaoProvider,
         blockBuilderIdentity = validator,
         config =
           EagerQbftBlockCreator.Config(

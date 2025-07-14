@@ -10,6 +10,7 @@ package maru.consensus.blockimport
 
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
+import maru.consensus.PrevRandaoProvider
 import maru.consensus.state.FinalizationProvider
 import maru.core.BeaconBlock
 import maru.core.BeaconState
@@ -55,6 +56,7 @@ class FollowerBeaconBlockImporter(
 
   override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ValidationResult> {
     val executionPayload = beaconBlock.beaconBlockBody.executionPayload
+    log.info("Calling newPayload=${executionPayload.blockNumber}")
     return executionLayerManager
       .newPayload(executionPayload)
       .handleException { e ->
@@ -80,6 +82,7 @@ class BlockBuildingBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
+  private val prevRandaoProvider: PrevRandaoProvider,
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
 ) : BeaconBlockImporter {
@@ -103,6 +106,7 @@ class BlockBuildingBeaconBlockImporter(
         "Importing blockHeader={} with timestamp={} and starting building of next block with timestamp={}",
         beaconBlockHeader,
         beaconBlock.beaconBlockBody.executionPayload.timestamp,
+        beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         nextBlockTimestamp,
       )
       executionLayerManager.setHeadAndStartBlockBuilding(
@@ -111,6 +115,13 @@ class BlockBuildingBeaconBlockImporter(
         finalizedHash = finalizationState.finalizedBlockHash,
         nextBlockTimestamp = nextBlockTimestamp,
         feeRecipient = blockBuilderIdentity.address,
+        prevRandao =
+          prevRandaoProvider.calculateNextPrevRandao(
+            nextSlotId =
+              beaconBlock.beaconBlockBody.executionPayload.blockNumber
+                .inc(),
+            prevRandao = beaconBlock.beaconBlockBody.executionPayload.prevRandao,
+          ),
       )
     } else {
       log.debug("Importing blockHeader={}", beaconBlockHeader)

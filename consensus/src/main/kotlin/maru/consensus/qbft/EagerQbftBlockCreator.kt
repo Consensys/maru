@@ -9,6 +9,7 @@
 package maru.consensus.qbft
 
 import kotlin.time.Duration
+import maru.consensus.PrevRandaoProvider
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationProvider
 import maru.core.Validator
@@ -30,6 +31,7 @@ class EagerQbftBlockCreator(
   private val manager: ExecutionLayerManager,
   private val delegate: QbftBlockCreator,
   private val finalizationStateProvider: FinalizationProvider,
+  private val prevRandaoProvider: PrevRandaoProvider,
   private val blockBuilderIdentity: Validator,
   private val beaconChain: BeaconChain,
   private val config: Config,
@@ -60,6 +62,11 @@ class EagerQbftBlockCreator(
           finalizedHash = finalizedState.finalizedBlockHash,
           nextBlockTimestamp = headerTimeStampSeconds,
           feeRecipient = blockBuilderIdentity.address,
+          prevRandao =
+            prevRandaoProvider.calculateNextPrevRandao(
+              nextSlotId = parentBeaconBlockBody.executionPayload.blockNumber.inc(),
+              prevRandao = parentBeaconBlockBody.executionPayload.prevRandao,
+            ),
         ).get()
     log.debug(
       "Building new block, FCU result={}",

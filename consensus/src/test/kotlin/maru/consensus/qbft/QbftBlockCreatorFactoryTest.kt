@@ -8,6 +8,7 @@
  */
 package maru.consensus.qbft
 
+import maru.consensus.PrevRandaoProvider
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationState
 import maru.core.Validator
@@ -27,6 +28,7 @@ class QbftBlockCreatorFactoryTest {
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
   private val finalizationState = Mockito.mock(FinalizationState::class.java)
   private val blockBuilderIdentity = Mockito.mock(Validator::class.java)
+  private val prevRandaoProvider = Mockito.mock(PrevRandaoProvider::class.java)
   private val eagerQbftBlockCreatorConfig = Mockito.mock(EagerQbftBlockCreator.Config::class.java)
 
   @Test
@@ -42,6 +44,7 @@ class QbftBlockCreatorFactoryTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         finalizationStateProvider = { (_) -> finalizationState },
+        prevRandaoProvider = prevRandaoProvider,
         blockBuilderIdentity = blockBuilderIdentity,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )
@@ -63,6 +66,7 @@ class QbftBlockCreatorFactoryTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         finalizationStateProvider = { (_) -> finalizationState },
+        prevRandaoProvider = prevRandaoProvider,
         blockBuilderIdentity = blockBuilderIdentity,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )
@@ -84,6 +88,7 @@ class QbftBlockCreatorFactoryTest {
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         finalizationStateProvider = { (_) -> finalizationState },
+        prevRandaoProvider = prevRandaoProvider,
         blockBuilderIdentity = blockBuilderIdentity,
         eagerQbftBlockCreatorConfig = eagerQbftBlockCreatorConfig,
       )

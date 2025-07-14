@@ -34,3 +34,30 @@ fun ByteArray.encodeHex(prefix: Boolean = true): String {
 }
 
 fun String.fromHexToByteArray(): ByteArray = HexFormat.of().parseHex(removePrefix("0x"))
+
+fun ByteArray.xor(other: ByteArray): ByteArray {
+  require(this.size == other.size) { "ByteArrays must have the same length" }
+  return ByteArray(this.size) { i -> (this[i].toInt() xor other[i].toInt()).toByte() }
+}
+
+fun ULong.toBytes32(): ByteArray {
+  // Create a 32-byte array initialized with zeros
+  val bytes = ByteArray(32)
+
+  // Convert ULong to ByteArray (8 bytes)
+  val longBytes = this.toByteArray()
+
+  // Copy the 8 bytes of ULong into the last 8 bytes of the 32-byte array
+  longBytes.copyInto(bytes, destinationOffset = 24) // 32 - 8 = 24
+
+  return bytes
+}
+
+// Helper function to convert ULong to ByteArray (big-endian)
+private fun ULong.toByteArray(): ByteArray {
+  val result = ByteArray(8)
+  for (i in 0 until 8) {
+    result[7 - i] = (this shr (i * 8)).toByte()
+  }
+  return result
+}
