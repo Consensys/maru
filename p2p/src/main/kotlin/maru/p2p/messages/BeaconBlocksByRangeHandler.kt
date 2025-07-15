@@ -36,7 +36,7 @@ class BeaconBlocksByRangeHandler(
     val maxBlocks = minOf(request.count, MAX_BLOCKS_PER_REQUEST)
 
     val blocks =
-      beaconChain.getSealedBlocks(
+      beaconChain.getSealedBeaconBlocks(
         startBlockNumber = request.startBlockNumber,
         count = maxBlocks,
       )

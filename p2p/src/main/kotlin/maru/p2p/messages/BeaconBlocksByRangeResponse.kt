@@ -11,7 +11,7 @@ package maru.p2p.messages
 import maru.core.SealedBeaconBlock
 
 /**
- * Response message containing beacon blocks.
+ * Response message containing sealed beacon blocks.
  *
  * @param blocks The list of sealed beacon blocks matching the requested range
  */

@@ -18,8 +18,8 @@ enum class GossipMessageType : MessageType {
 }
 
 enum class RpcMessageType : MessageType {
-  STATUS(),
-  BEACON_BLOCKS_BY_RANGE(),
+  STATUS,
+  BEACON_BLOCKS_BY_RANGE,
 }
 
 sealed interface MessageType

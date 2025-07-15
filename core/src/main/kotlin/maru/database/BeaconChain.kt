@@ -25,7 +25,14 @@ interface BeaconChain : AutoCloseable {
 
   fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock?
 
-  fun getSealedBlocks(
+  /**
+   * Returns a list of sealed beacon blocks inclusively starting from the given block number.
+   * The list will contain at most `count` blocks, or fewer if there are not enough blocks available.
+   *
+   * @param startBlockNumber The block number to start from (inclusive).
+   * @param count The maximum number of blocks to return.
+   */
+  fun getSealedBeaconBlocks(
     startBlockNumber: ULong,
     count: ULong,
   ): List<SealedBeaconBlock> =

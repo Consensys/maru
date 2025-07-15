@@ -48,7 +48,7 @@ class BeaconBlocksByRangeHandlerTest {
         payload = request,
       )
 
-    whenever(beaconChain.getSealedBlocks(100UL, 10UL)).thenReturn(emptyList())
+    whenever(beaconChain.getSealedBeaconBlocks(100UL, 10UL)).thenReturn(emptyList())
 
     handler.handleIncomingMessage(peer, message, callback)
 
@@ -77,7 +77,7 @@ class BeaconBlocksByRangeHandlerTest {
         DataGenerators.randomSealedBeaconBlock(number = 102UL),
       )
 
-    whenever(beaconChain.getSealedBlocks(100UL, 3UL)).thenReturn(blocks)
+    whenever(beaconChain.getSealedBeaconBlocks(100UL, 3UL)).thenReturn(blocks)
 
     handler.handleIncomingMessage(peer, message, callback)
 
@@ -107,7 +107,7 @@ class BeaconBlocksByRangeHandlerTest {
       }
 
     // handler should limit to MAX_BLOCKS_PER_REQUEST
-    whenever(beaconChain.getSealedBlocks(0UL, MAX_BLOCKS_PER_REQUEST)).thenReturn(limitedBlocks)
+    whenever(beaconChain.getSealedBeaconBlocks(0UL, MAX_BLOCKS_PER_REQUEST)).thenReturn(limitedBlocks)
 
     handler.handleIncomingMessage(peer, message, callback)
 
@@ -118,6 +118,6 @@ class BeaconBlocksByRangeHandlerTest {
     assertThat(response.payload.blocks).hasSize(256)
 
     // Verify that the handler limited the request to 64 blocks
-    verify(beaconChain).getSealedBlocks(0UL, MAX_BLOCKS_PER_REQUEST)
+    verify(beaconChain).getSealedBeaconBlocks(0UL, MAX_BLOCKS_PER_REQUEST)
   }
 }

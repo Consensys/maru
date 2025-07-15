@@ -12,8 +12,8 @@ package maru.p2p.messages
  * Request message for fetching beacon blocks by range.
  * Similar to BeaconBlocksByRange in Ethereum consensus specs but adapted for Maru.
  *
- * @param startBlockNumber The block number to start fetching from
- * @param count The number of blocks to fetch (maximum)
+ * @param startBlockNumber The block number to start fetching from (inclusive).
+ * @param count The maximum number of blocks to fetch (maybe less than requested if not enough blocks are available).
  */
 data class BeaconBlocksByRangeRequest(
   val startBlockNumber: ULong,
