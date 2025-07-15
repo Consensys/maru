@@ -23,6 +23,7 @@ import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
 import maru.crypto.Hashing
+import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
@@ -82,6 +83,19 @@ class P2PTest {
       lateinit var maruPeerManager: MaruPeerManager
       val rpcMethods = RpcMethods(statusMessageFactory, rpcProtocolIdGenerator, { maruPeerManager }, beaconChain)
       val maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory)
+      maruPeerManager = MaruPeerManager(maruPeerFactory = maruPeerFactory)
+      return rpcMethods
+    }
+
+    fun createRpcMethods(
+      testBeaconChain: BeaconChain,
+      testStatusMessageFactory: StatusMessageFactory,
+    ): RpcMethods {
+      val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
+      lateinit var maruPeerManager: MaruPeerManager
+      val rpcMethods =
+        RpcMethods(testStatusMessageFactory, rpcProtocolIdGenerator, { maruPeerManager }, testBeaconChain)
+      val maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, testStatusMessageFactory)
       maruPeerManager = MaruPeerManager(maruPeerFactory = maruPeerFactory)
       return rpcMethods
     }
@@ -441,6 +455,71 @@ class P2PTest {
       assertThat(
         responseFuture.get(500L, TimeUnit.MILLISECONDS),
       ).isEqualTo(expectedStatus)
+    } finally {
+      p2PNetworkImpl1.stop()
+      p2pManagerImpl2.stop()
+    }
+  }
+
+  @Test
+  fun `peer can send beacon blocks by range request`() {
+    // Set up beacon chain with some blocks
+    val testBeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
+    val storedBlocks =
+      (0UL..10UL).map { blockNumber ->
+        DataGenerators.randomSealedBeaconBlock(number = blockNumber)
+      }
+
+    testBeaconChain.newUpdater().use { updater ->
+      storedBlocks.forEach { block ->
+        updater.putSealedBeaconBlock(block)
+      }
+      updater.commit()
+    }
+
+    val p2PNetworkImpl1 =
+      P2PNetworkImpl(
+        privateKeyBytes = key1,
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT1, staticPeers = emptyList()),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory = statusMessageFactory,
+        beaconChain = testBeaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
+      )
+    val p2pManagerImpl2 =
+      P2PNetworkImpl(
+        privateKeyBytes = key2,
+        p2pConfig = P2P(ipAddress = IPV4, port = PORT2, staticPeers = listOf(PEER_ADDRESS_NODE_1)),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
+      )
+    try {
+      p2PNetworkImpl1.start()
+      p2pManagerImpl2.start()
+
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) }
+
+      val peer1 =
+        p2pManagerImpl2.peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
+          ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
+      val maruPeer1 = DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory)
+
+      val startBlockNumber = 3UL
+      val count = 5UL
+      val responseFuture = maruPeer1.sendBeaconBlocksByRange(startBlockNumber, count)
+
+      val response = responseFuture.get(5, TimeUnit.SECONDS)
+
+      val expectedBlocks = storedBlocks.subList(startBlockNumber.toInt(), startBlockNumber.toInt() + count.toInt())
+      assertThat(response.blocks).hasSize(5)
+      assertThat(response.blocks).isEqualTo(expectedBlocks)
     } finally {
       p2PNetworkImpl1.stop()
       p2pManagerImpl2.stop()
