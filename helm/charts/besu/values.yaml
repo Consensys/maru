@@ -4,6 +4,7 @@ image:
   pullPolicy: IfNotPresent
 service:
   name: besu
+  headless: false
   ethApiPort: 8545
   engineApiPort: 8550
   p2pPort: 30303

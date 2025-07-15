@@ -15,11 +15,11 @@ configFiles:
     fee-recipient = "0x0000000000000000000000000000000000000000"
 
     [payload-validator]
-    engine-api-endpoint = { endpoint = "http://besu-sequencer.default.svc.cluster.local:8550" }
-    eth-api-endpoint = { endpoint = "http://besu-sequencer.default.svc.cluster.local:8545" }
+    engine-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8550" }
+    eth-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8545" }
 
     [follower-engine-apis]
-    "follower-besu" = { endpoint = "http://besu-sequencer.default.svc.cluster.local:8550" }
+    "follower-besu" = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8550" }
 
     [p2p-config]
     port = 3322
