@@ -239,7 +239,7 @@ class BesuMetricsSystemAdapterTest {
     await
       .pollInterval(1.seconds.toJavaDuration())
       .timeout(10.seconds.toJavaDuration())
-      .untilAsserted { createdCounter!!.count() >= 8.0 }
+      .untilAsserted { assertThat(createdCounter!!.count()).isGreaterThanOrEqualTo(8.0) }
 
     assertThat(
       createdCounter!!.id.tags,
