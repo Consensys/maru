@@ -407,7 +407,7 @@ class P2PTest {
   }
 
   @Test
-  fun `peer can send a request`() {
+  fun `peer can send a status request`() {
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
@@ -448,9 +448,8 @@ class P2PTest {
       val peer1 =
         p2pManagerImpl2.peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
-      val maruPeer1 = DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory)
 
-      val responseFuture = maruPeer1.sendStatus()
+      val responseFuture = peer1.sendStatus()
 
       assertThatNoException().isThrownBy { responseFuture.get(500L, TimeUnit.MILLISECONDS) }
       assertThat(
@@ -516,11 +515,10 @@ class P2PTest {
       val peer1 =
         p2pManagerImpl2.peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
-      val maruPeer1 = DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory)
 
       val startBlockNumber = 3UL
       val count = 5UL
-      val responseFuture = maruPeer1.sendBeaconBlocksByRange(startBlockNumber, count)
+      val responseFuture = peer1.sendBeaconBlocksByRange(startBlockNumber, count)
 
       val response = responseFuture.get(5, TimeUnit.SECONDS)
 
