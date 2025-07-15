@@ -56,7 +56,6 @@ class FollowerBeaconBlockImporter(
 
   override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ValidationResult> {
     val executionPayload = beaconBlock.beaconBlockBody.executionPayload
-    log.info("Calling newPayload=${executionPayload.blockNumber}")
     return executionLayerManager
       .newPayload(executionPayload)
       .handleException { e ->
@@ -103,7 +102,7 @@ class BlockBuildingBeaconBlockImporter(
             .toLong(),
         )
       log.debug(
-        "Importing blockHeader={} with timestamp={} and starting building of next block with timestamp={}",
+        "Importing blockHeader={} with timestamp={} blockNumber={} and starting building of next block with timestamp={}",
         beaconBlockHeader,
         beaconBlock.beaconBlockBody.executionPayload.timestamp,
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
