@@ -26,13 +26,10 @@ package maru.extensions
 fun ULong.toBytes32(): ByteArray {
   // Create a 32-byte array initialized with zeros
   val bytes = ByteArray(32)
-
   // Convert ULong to ByteArray (8 bytes)
   val longBytes = this.toByteArray()
-
   // Copy the 8 bytes of ULong into the last 8 bytes of the 32-byte array
   longBytes.copyInto(destination = bytes, destinationOffset = 24) // 32 - 8 = 24
-
   return bytes
 }
 
