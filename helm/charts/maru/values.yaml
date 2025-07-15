@@ -4,10 +4,15 @@ image:
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
-  apiPort: 8080
-  observabilityPort: 9545
-  p2pPort: 3322
-  discoveryPort: 3323
+  ports:
+    - name: api
+      port: 8080
+    - name: p2p
+      port: 3322
+    - name: discovery
+      port: 3323
+    - name: metrics
+      port: 9545
 persistence:
   enabled: true
   accessMode: ReadWriteOnce

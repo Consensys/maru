@@ -12,19 +12,9 @@ spec:
   selector:
     {{- include "maru.selectorLabels" . | nindent 4 }}
   ports:
-    - port: {{ .Values.service.apiPort }}
-      targetPort: {{ .Values.service.apiPort }}
+    {{- range .Values.service.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ default .port .targetPort }}
       protocol: TCP
-      name: http
-    - port: {{ .Values.service.p2pPort }}
-      targetPort: {{ .Values.service.p2pPort }}
-      protocol: TCP
-      name: observability
-    - port: {{ .Values.service.observabilityPort }}
-      targetPort: {{ .Values.service.observabilityPort }}
-      protocol: TCP
-      name: p2p
-    - port: {{ .Values.service.discoveryPort }}
-      targetPort: {{ .Values.service.discoveryPort }}
-      protocol: TCP
-      name: discovery
+    {{- end }}
