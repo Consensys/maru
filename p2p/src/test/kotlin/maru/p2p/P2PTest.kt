@@ -19,6 +19,7 @@ import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
@@ -474,6 +475,12 @@ class P2PTest {
       storedBlocks.forEach { block ->
         updater.putSealedBeaconBlock(block)
       }
+      updater.putBeaconState(
+        BeaconState(
+          latestBeaconBlockHeader = storedBlocks.last().beaconBlock.beaconBlockHeader,
+          validators = DataGenerators.randomValidators(),
+        ),
+      )
       updater.commit()
     }
 

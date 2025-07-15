@@ -11,9 +11,11 @@ package maru.database.kv
 import java.nio.file.Path
 import java.util.Optional
 import kotlin.random.Random
+import maru.core.BeaconState
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import org.junit.jupiter.api.Test
@@ -193,6 +195,15 @@ class KvDatabaseTest {
           it.putSealedBeaconBlock(block).commit()
         }
       }
+      db.newUpdater().use {
+        it
+          .putBeaconState(
+            BeaconState(
+              latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+              validators = DataGenerators.randomValidators(),
+            ),
+          ).commit()
+      }
 
       // Get blocks 2-4
       val startBlockNumber = 2uL
@@ -208,6 +219,17 @@ class KvDatabaseTest {
     @TempDir databasePath: Path,
   ) {
     createDatabase(databasePath).use { db ->
+      val testBlock = DataGenerators.randomSealedBeaconBlock(1uL)
+      db.newUpdater().use {
+        it
+          .putBeaconState(
+            BeaconState(
+              latestBeaconBlockHeader = testBlock.beaconBlock.beaconBlockHeader,
+              validators = DataGenerators.randomValidators(),
+            ),
+          ).commit()
+      }
+
       val blocks = db.getSealedBlocks(startBlockNumber = 100uL, count = 5uL)
       assertThat(blocks).isEmpty()
     }
@@ -222,6 +244,15 @@ class KvDatabaseTest {
     createDatabase(databasePath).use { db ->
       db.newUpdater().use {
         it.putSealedBeaconBlock(testBlock).commit()
+      }
+      db.newUpdater().use {
+        it
+          .putBeaconState(
+            BeaconState(
+              latestBeaconBlockHeader = testBlock.beaconBlock.beaconBlockHeader,
+              validators = DataGenerators.randomValidators(),
+            ),
+          ).commit()
       }
 
       val blocks = db.getSealedBlocks(startBlockNumber = 1uL, count = 0uL)
@@ -246,13 +277,21 @@ class KvDatabaseTest {
           .putSealedBeaconBlock(block4)
           .commit()
       }
+      db.newUpdater().use {
+        it
+          .putBeaconState(
+            BeaconState(
+              latestBeaconBlockHeader = block4.beaconBlock.beaconBlockHeader,
+              validators = DataGenerators.randomValidators(),
+            ),
+          ).commit()
+      }
 
-      // Request 5 blocks starting from 1, but should stop at gap
-      val blocks = db.getSealedBlocks(startBlockNumber = 1uL, count = 5uL)
-      assertThat(blocks).hasSize(2)
-      assertThat(blocks[0]).isEqualTo(block1)
-      assertThat(blocks[1]).isEqualTo(block2)
-      // Should not include block4 due to gap at block 3
+      // Request 5 blocks starting from 1, should throw exception at gap
+      assertThatThrownBy {
+        db.getSealedBlocks(startBlockNumber = 1uL, count = 5uL)
+      }.isInstanceOf(IllegalStateException::class.java)
+        .hasMessage("Missing block at number 3, expected to be present in the database.")
     }
   }
 
@@ -267,6 +306,15 @@ class KvDatabaseTest {
         db.newUpdater().use {
           it.putSealedBeaconBlock(block).commit()
         }
+      }
+      db.newUpdater().use {
+        it
+          .putBeaconState(
+            BeaconState(
+              latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+              validators = DataGenerators.randomValidators(),
+            ),
+          ).commit()
       }
 
       // Request 10 blocks but only 3 exist

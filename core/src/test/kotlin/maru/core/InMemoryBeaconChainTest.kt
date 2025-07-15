@@ -12,6 +12,7 @@ import kotlin.random.Random
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -148,6 +149,12 @@ class InMemoryBeaconChainTest {
     testBlocks.forEach { block ->
       updater.putSealedBeaconBlock(block)
     }
+    updater.putBeaconState(
+      BeaconState(
+        latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+        validators = DataGenerators.randomValidators(),
+      ),
+    )
     updater.commit()
 
     val startBlockNumber = 2uL
@@ -185,12 +192,17 @@ class InMemoryBeaconChainTest {
       .putSealedBeaconBlock(block1)
       .putSealedBeaconBlock(block2)
       .putSealedBeaconBlock(block4)
-      .commit()
+      .putBeaconState(
+        BeaconState(
+          latestBeaconBlockHeader = block4.beaconBlock.beaconBlockHeader,
+          validators = DataGenerators.randomValidators(),
+        ),
+      ).commit()
 
-    val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 1uL, count = 5uL)
-    assertThat(blocks).hasSize(2)
-    assertThat(blocks[0]).isEqualTo(block1)
-    assertThat(blocks[1]).isEqualTo(block2)
+    assertThatThrownBy {
+      inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 1uL, count = 5uL)
+    }.isInstanceOf(IllegalStateException::class.java)
+      .hasMessage("Missing block at number 3, expected to be present in the database.")
   }
 
   @Test
@@ -201,6 +213,12 @@ class InMemoryBeaconChainTest {
     testBlocks.forEach { block ->
       updater.putSealedBeaconBlock(block)
     }
+    updater.putBeaconState(
+      BeaconState(
+        latestBeaconBlockHeader = testBlocks.last().beaconBlock.beaconBlockHeader,
+        validators = DataGenerators.randomValidators(),
+      ),
+    )
     updater.commit()
 
     val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 1uL, count = 10uL)

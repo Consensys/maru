@@ -27,12 +27,25 @@ interface BeaconChain : AutoCloseable {
   fun getSealedBlocks(
     startBlockNumber: ULong,
     count: ULong,
-  ): List<SealedBeaconBlock> =
-    (startBlockNumber..startBlockNumber + count - 1uL)
-      .map { blockNumber -> getSealedBeaconBlock(blockNumber) }
-      .takeWhile { it != null }
-      .filterNotNull()
-      .toList()
+  ): List<SealedBeaconBlock> {
+    if (count == 0uL) return emptyList()
+    val latestBlockNumber = getLatestBeaconState().latestBeaconBlockHeader.number
+
+    // If start block is beyond latest available, return empty
+    if (startBlockNumber > latestBlockNumber) return emptyList()
+
+    // Cap the count to not exceed available blocks
+    val effectiveCount = minOf(count, latestBlockNumber - startBlockNumber + 1uL)
+
+    return (startBlockNumber until startBlockNumber + effectiveCount)
+      .asSequence()
+      .map { blockNumber ->
+        getSealedBeaconBlock(blockNumber)
+          ?: throw IllegalStateException(
+            "Missing block at number $blockNumber, expected to be present in the database.",
+          )
+      }.toList()
+  }
 
   fun newUpdater(): Updater
 
