@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "besu.fullname" . }}-configs
   labels:
-    app: {{ include "besu.name" . }}
+  {{- include "besu.labels" . | nindent 4 }}
 data:
   genesis.json: |-
     {{- .Values.configFiles.genesisJson | nindent 4 }}

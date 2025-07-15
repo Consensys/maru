@@ -3,19 +3,19 @@ kind: StatefulSet
 metadata:
   name: {{ include "besu.fullname" . }}
   labels:
-    app: {{ include "besu.name" . }}
+    {{- include "besu.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "besu.name" . }}
+    {{- include "besu.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: {{ include "besu.name" . }}
+        {{- include "besu.labels" . | nindent 8 }}
     spec:
       containers:
-        - name: {{ include "besu.name" . }}
+        - name: besu
           image: "{{ .Values.image.name }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
