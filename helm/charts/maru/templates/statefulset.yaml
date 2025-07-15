@@ -1,10 +1,11 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "maru.fullname" . }}
   labels:
     app: {{ include "maru.name" . }}
 spec:
+  serviceName: {{ include "maru.fullname" . }}
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
@@ -23,7 +24,7 @@ spec:
             - -Dlog4j2.configurationFile=configs/log4j.xml
             - -jar
             - maru.jar
-            - --besu-genesis-file
+            - --maru-genesis-file
             - /opt/consensys/maru/configs/genesis.json
             - --config
             - /opt/consensys/maru/configs/configs.toml
@@ -45,9 +46,17 @@ spec:
               protocol: TCP
             {{- end }}
       volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: {{ include "maru.fullname" . }}-data-pvc
         - name: configs
           configMap:
             name: {{ include "maru.fullname" . }}-configs
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "{{ $.Values.persistence.accessMode }}" ]
+        resources:
+          requests:
+            storage: {{ $.Values.persistence.size }}
+          {{- if $.Values.persistence.storageClass }}
+        storageClassName: {{ $.Values.persistence.storageClass }}
+          {{- end }}

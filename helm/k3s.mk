@@ -2,7 +2,6 @@
 # Handy to quickly validate Helm charts, run local tests and Chaos experiments
 # without need to setup a full Kubernetes cluster locally.
 
-
 k3s-clean:
 	-@docker stop k3s-server
 	-@docker rm k3s-server

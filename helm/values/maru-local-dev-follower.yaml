@@ -1,0 +1,40 @@
+replicaCount: 3
+fullnameOverride: maru-follower
+image:
+  name: consensys/maru:5c4e7fe
+configFiles:
+  configsToml: |
+    [persistence]
+    data-path="/opt/consensys/maru/data/db"
+    private-key-path="/opt/consensys/maru/configs/private-key.txt"
+
+    [follower-engine-apis]
+    "follower-besu" = { endpoint = "http://besu-follower-{{ .Values.replicaIndex }}.default.svc.cluster.local:8550" }
+
+    [p2p-config]
+    port = 3322
+    ip-address = "127.0.0.1"
+
+    [observability-options]
+    port = 9545
+
+    [api-config]
+    port = 8080
+  log4j: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Configuration status="INFO" monitorInterval="2">
+    <Appenders>
+      <Console name="Console" target="SYSTEM_OUT">
+        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSSZZZ} | %t | %-5level | %c{1} | %msg %throwable%n" />
+      </Console>
+    </Appenders>
+    <Loggers>
+      <Logger name="org.hyperledger.besu" level="TRACE"/>
+      <Logger name="tech.pegasys.teku" level="TRACE"/>
+      <Logger name="maru" level="TRACE"/>
+      <Logger name="clients" level="TRACE"/>
+      <Root level="INFO">
+        <AppenderRef ref="Console"/>
+      </Root>
+    </Loggers>
+    </Configuration>

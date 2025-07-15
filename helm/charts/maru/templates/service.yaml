@@ -5,7 +5,12 @@ metadata:
   labels:
     app: {{ include "maru.name" . }}
 spec:
-  type: {{ .Values.service.type }}
+  type: ClusterIP
+  {{- if .Values.service.headless }}
+  clusterIP: None
+  {{- end }}
+  selector:
+    app: {{ include "maru.name" . }}
   ports:
     - port: {{ .Values.service.apiPort }}
       targetPort: {{ .Values.service.apiPort }}
@@ -23,5 +28,3 @@ spec:
       targetPort: {{ .Values.service.discoveryPort }}
       protocol: TCP
       name: discovery
-  selector:
-    app: {{ include "maru.name" . }}

@@ -1,13 +1,12 @@
-replicaCount: 1
+replicaCount: 3
 image:
-  repository: hyperledger/besu
-  tag:  25.6.0
+  name: hyperledger/besu:25.6.0
   pullPolicy: IfNotPresent
-fullnameOverride: besu-1
 service:
-  type: ClusterIP
+  name: besu
   ethApiPort: 8545
   engineApiPort: 8550
+  p2pPort: 30303
   metricsPort: 9545
 persistence:
   enabled: true

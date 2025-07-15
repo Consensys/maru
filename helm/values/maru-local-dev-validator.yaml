@@ -1,6 +1,7 @@
 replicaCount: 1
+fullnameOverride: maru-validator
 image:
-  name: consensys/maru:5c4e7fe
+  name: consensys/maru:a1716c8
 configFiles:
   privateKey: |
     0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae
@@ -14,11 +15,11 @@ configFiles:
     fee-recipient = "0x0000000000000000000000000000000000000000"
 
     [payload-validator]
-    engine-api-endpoint = { endpoint = "http://besu-1.default.svc.cluster.local:8550" }
-    eth-api-endpoint = { endpoint = "http://besu-1.default.svc.cluster.local:8545" }
+    engine-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer-besu.default.svc.cluster.local:8550" }
+    eth-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer-besu.default.svc.cluster.local:8545" }
 
     [follower-engine-apis]
-    "follower-besu" = { endpoint = "http://besu-1.default.svc.cluster.local:8550" }
+    "follower-besu" = { endpoint = "http://besu-sequencer-0.besu-sequencer-besu.default.svc.cluster.local:8550" }
 
     [p2p-config]
     port = 3322
@@ -29,19 +30,6 @@ configFiles:
 
     [api-config]
     port = 8080
-  genesisJson: |
-    {
-      "chainId": 1337,
-      "config": {
-        "1683325137": {
-          "type": "qbft",
-          "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
-          "blockTimeSeconds": 1,
-          "feeRecipient": "0x0000000000000000000000000000000000000000",
-          "elFork": "Prague"
-        }
-      }
-    }
   log4j: |
     <?xml version="1.0" encoding="UTF-8"?>
     <Configuration status="INFO" monitorInterval="2">
