@@ -4,11 +4,20 @@ image:
   pullPolicy: IfNotPresent
 service:
   name: besu
-  headless: false
-  ethApiPort: 8545
-  engineApiPort: 8550
-  p2pPort: 30303
-  metricsPort: 9545
+  headless: true
+  ports:
+    - name: ethapi
+      port: 8545
+      targetPort: 8545
+    - name: engineapi
+      port: 8550
+      targetPort: 8550
+    - name: p2p
+      port: 30303
+      targetPort: 30303
+    - name: metrics
+      port: 9545
+      targetPort: 9545
 persistence:
   enabled: true
   accessMode: ReadWriteOnce

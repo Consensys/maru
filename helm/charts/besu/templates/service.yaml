@@ -12,19 +12,9 @@ spec:
   selector:
     {{- include "besu.selectorLabels" . | nindent 4 }}
   ports:
-    - port: {{ .Values.service.ethApiPort }}
-      targetPort: {{ .Values.service.ethApiPort }}
+    {{- range .Values.service.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
       protocol: TCP
-      name: eth-api
-    - port: {{ .Values.service.engineApiPort }}
-      targetPort: {{ .Values.service.engineApiPort }}
-      protocol: TCP
-      name: engine-api
-    - port: {{ .Values.service.p2pPort }}
-      targetPort: {{ .Values.service.p2pPort }}
-      protocol: TCP
-      name: p2p
-    - port: {{ .Values.service.metricsPort }}
-      targetPort: {{ .Values.service.metricsPort }}
-      protocol: TCP
-      name: metrics
+    {{- end }}
