@@ -11,6 +11,7 @@ configFiles:
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8550" }
+    eth-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8545" }
 
     [follower-engine-apis]
     "follower-besu" = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8550" }
