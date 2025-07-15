@@ -8,9 +8,7 @@
  */
 package maru.config
 
-import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
-import com.sksamuel.hoplite.toml.TomlPropertySource
 import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
@@ -115,7 +113,7 @@ class HopliteFriendlinessTest {
 
   @Test
   fun appConfigFileIsParseable() {
-    val config = parseTomlConfig<MaruConfigDtoToml>(rawConfigToml)
+    val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
         allowEmptyBlocks = false,
@@ -132,7 +130,7 @@ class HopliteFriendlinessTest {
 
   @Test
   fun supportsEmptyFollowers() {
-    val config = parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
+    val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
         allowEmptyBlocks = false,
@@ -149,7 +147,7 @@ class HopliteFriendlinessTest {
 
   @Test
   fun appConfigFileIsConvertableToDomain() {
-    val config = parseTomlConfig<MaruConfigDtoToml>(rawConfigToml)
+    val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
         allowEmptyBlocks = false,
@@ -170,7 +168,7 @@ class HopliteFriendlinessTest {
 
   @Test
   fun emptyFollowersAreConvertableToDomain() {
-    val config = parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
+    val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
         allowEmptyBlocks = false,
@@ -202,7 +200,7 @@ class HopliteFriendlinessTest {
 
   @Test
   fun validatorDutiesAreParseable() {
-    val config = parseTomlConfig<QbftOptions>(qbftOptionsToml)
+    val config = parseConfig<QbftOptions>(qbftOptionsToml)
     assertThat(config).isEqualTo(
       QbftOptions(
         minBlockBuildTime = 200.milliseconds,
@@ -223,7 +221,7 @@ class HopliteFriendlinessTest {
       allow-empty-blocks = true
       $rawConfigToml
       """.trimIndent()
-    val config = parseTomlConfig<MaruConfigDtoToml>(configToml)
+    val config = parseConfig<MaruConfigDtoToml>(configToml)
 
     assertThat(config)
       .isEqualTo(
@@ -257,13 +255,4 @@ class HopliteFriendlinessTest {
         ),
       )
   }
-
-  inline fun <reified T : Any> parseTomlConfig(toml: String): T =
-    ConfigLoaderBuilder
-      .default()
-      .addDecoder(QbftOptionsDecoder)
-      .withExplicitSealedTypes()
-      .addSource(TomlPropertySource(toml))
-      .build()
-      .loadConfigOrThrow<T>()
 }
