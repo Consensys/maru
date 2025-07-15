@@ -24,7 +24,6 @@ import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
 import maru.crypto.Hashing
-import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
@@ -77,29 +76,6 @@ class P2PTest {
     private val forkIdHashProvider =
       createForkIdHashProvider()
     private val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
-    private val rpcMethods = createRpcMethods()
-
-    fun createRpcMethods(): RpcMethods {
-      val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
-      lateinit var maruPeerManager: MaruPeerManager
-      val rpcMethods = RpcMethods(statusMessageFactory, rpcProtocolIdGenerator, { maruPeerManager }, beaconChain)
-      val maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory)
-      maruPeerManager = MaruPeerManager(maruPeerFactory = maruPeerFactory)
-      return rpcMethods
-    }
-
-    fun createRpcMethods(
-      testBeaconChain: BeaconChain,
-      testStatusMessageFactory: StatusMessageFactory,
-    ): RpcMethods {
-      val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
-      lateinit var maruPeerManager: MaruPeerManager
-      val rpcMethods =
-        RpcMethods(testStatusMessageFactory, rpcProtocolIdGenerator, { maruPeerManager }, testBeaconChain)
-      val maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, testStatusMessageFactory)
-      maruPeerManager = MaruPeerManager(maruPeerFactory = maruPeerFactory)
-      return rpcMethods
-    }
 
     fun createForkIdHashProvider(): ForkIdHashProvider {
       val consensusConfig: ConsensusConfig =
