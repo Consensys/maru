@@ -8,6 +8,7 @@
  */
 package maru.database
 
+import kotlin.math.min
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 
@@ -27,25 +28,13 @@ interface BeaconChain : AutoCloseable {
   fun getSealedBlocks(
     startBlockNumber: ULong,
     count: ULong,
-  ): List<SealedBeaconBlock> {
-    if (count == 0uL) return emptyList()
-    val latestBlockNumber = getLatestBeaconState().latestBeaconBlockHeader.number
-
-    // If start block is beyond latest available, return empty
-    if (startBlockNumber > latestBlockNumber) return emptyList()
-
-    // Cap the count to not exceed available blocks
-    val effectiveCount = minOf(count, latestBlockNumber - startBlockNumber + 1uL)
-
-    return (startBlockNumber until startBlockNumber + effectiveCount)
-      .asSequence()
+  ): List<SealedBeaconBlock> =
+    generateSequence(startBlockNumber) { it + 1UL }
+      .take(min(count, getLatestBeaconState().latestBeaconBlockHeader.number).toInt())
       .map { blockNumber ->
         getSealedBeaconBlock(blockNumber)
-          ?: throw IllegalStateException(
-            "Missing block at number $blockNumber, expected to be present in the database.",
-          )
+          ?: throw IllegalStateException("Missing sealed beacon block $blockNumber")
       }.toList()
-  }
 
   fun newUpdater(): Updater
 

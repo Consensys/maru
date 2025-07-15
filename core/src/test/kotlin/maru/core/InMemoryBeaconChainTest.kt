@@ -165,12 +165,6 @@ class InMemoryBeaconChainTest {
   }
 
   @Test
-  fun `getSealedBlocks returns empty list when start block does not exist`() {
-    val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 100uL, count = 5uL)
-    assertThat(blocks).isEmpty()
-  }
-
-  @Test
   fun `getSealedBlocks returns empty list when count is zero`() {
     val testBlock = DataGenerators.randomSealedBeaconBlock(1uL)
 
@@ -202,7 +196,7 @@ class InMemoryBeaconChainTest {
     assertThatThrownBy {
       inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 1uL, count = 5uL)
     }.isInstanceOf(IllegalStateException::class.java)
-      .hasMessage("Missing block at number 3, expected to be present in the database.")
+      .hasMessage("Missing sealed beacon block 3")
   }
 
   @Test

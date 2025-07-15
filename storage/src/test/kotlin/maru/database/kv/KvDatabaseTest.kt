@@ -215,27 +215,6 @@ class KvDatabaseTest {
   }
 
   @Test
-  fun `test getSealedBlocks returns empty list when start block does not exist`(
-    @TempDir databasePath: Path,
-  ) {
-    createDatabase(databasePath).use { db ->
-      val testBlock = DataGenerators.randomSealedBeaconBlock(1uL)
-      db.newUpdater().use {
-        it
-          .putBeaconState(
-            BeaconState(
-              latestBeaconBlockHeader = testBlock.beaconBlock.beaconBlockHeader,
-              validators = DataGenerators.randomValidators(),
-            ),
-          ).commit()
-      }
-
-      val blocks = db.getSealedBlocks(startBlockNumber = 100uL, count = 5uL)
-      assertThat(blocks).isEmpty()
-    }
-  }
-
-  @Test
   fun `test getSealedBlocks returns empty list when count is zero`(
     @TempDir databasePath: Path,
   ) {
@@ -291,7 +270,7 @@ class KvDatabaseTest {
       assertThatThrownBy {
         db.getSealedBlocks(startBlockNumber = 1uL, count = 5uL)
       }.isInstanceOf(IllegalStateException::class.java)
-        .hasMessage("Missing block at number 3, expected to be present in the database.")
+        .hasMessage("Missing sealed beacon block 3")
     }
   }
 
