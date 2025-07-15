@@ -101,7 +101,7 @@ class HopliteFriendlinessTest {
     )
   private val emptyFollowersConfig = FollowersConfig(emptyMap())
   private val qbftOptions =
-    QbftOptions(
+    QbftOptionsDtoToml(
       minBlockBuildTime = 500.milliseconds,
       messageQueueLimit = 1000,
       roundExpiry = 1.seconds,
@@ -158,7 +158,7 @@ class HopliteFriendlinessTest {
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
           ),
-        qbftOptions = qbftOptions,
+        qbftOptions = qbftOptions.toDomain(),
         followers = followersConfig,
         observabilityOptions = ObservabilityOptions(port = 9090u),
         apiConfig = ApiConfig(port = 8080u),
@@ -173,7 +173,7 @@ class HopliteFriendlinessTest {
       MaruConfig(
         allowEmptyBlocks = false,
         persistence = persistence,
-        qbftOptions = qbftOptions,
+        qbftOptions = qbftOptions.toDomain(),
         p2pConfig = p2pConfig,
         validatorElNode =
           ValidatorElNode(
@@ -248,7 +248,7 @@ class HopliteFriendlinessTest {
               engineApiEndpoint = engineApiEndpoint,
               ethApiEndpoint = ethApiEndpoint,
             ),
-          qbftOptions = qbftOptions,
+          qbftOptions = qbftOptions.toDomain(),
           followers = followersConfig,
           observabilityOptions = ObservabilityOptions(port = 9090u),
           apiConfig = ApiConfig(port = 8080u),

@@ -50,12 +50,40 @@ data class QbftOptionsDtoToml(
       futureMessagesLimit = futureMessagesLimit,
       feeRecipient = feeRecipient,
     )
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as QbftOptionsDtoToml
+
+    if (messageQueueLimit != other.messageQueueLimit) return false
+    if (duplicateMessageLimit != other.duplicateMessageLimit) return false
+    if (futureMessageMaxDistance != other.futureMessageMaxDistance) return false
+    if (futureMessagesLimit != other.futureMessagesLimit) return false
+    if (minBlockBuildTime != other.minBlockBuildTime) return false
+    if (roundExpiry != other.roundExpiry) return false
+    if (!feeRecipient.contentEquals(other.feeRecipient)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = messageQueueLimit
+    result = 31 * result + duplicateMessageLimit
+    result = 31 * result + futureMessageMaxDistance.hashCode()
+    result = 31 * result + futureMessagesLimit.hashCode()
+    result = 31 * result + minBlockBuildTime.hashCode()
+    result = 31 * result + roundExpiry.hashCode()
+    result = 31 * result + feeRecipient.contentHashCode()
+    return result
+  }
 }
 
 data class MaruConfigDtoToml(
   private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
-  private val qbftOptions: QbftOptions?,
+  private val qbftOptions: QbftOptionsDtoToml?,
   private val p2pConfig: P2P?,
   private val payloadValidator: PayloadValidatorDto,
   private val followerEngineApis: Map<String, ApiEndpointDto>?,
@@ -66,7 +94,7 @@ data class MaruConfigDtoToml(
     MaruConfig(
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
-      qbftOptions = qbftOptions,
+      qbftOptions = qbftOptions?.toDomain(),
       p2pConfig = p2pConfig,
       validatorElNode = payloadValidator.domainFriendly(),
       followers =
