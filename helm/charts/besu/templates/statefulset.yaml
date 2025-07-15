@@ -29,10 +29,10 @@ spec:
             - name: configs
               mountPath: /opt/besu/configs
           ports:
-            - name: ethApiPort
+            - name: eth-api
               containerPort: {{ .Values.service.ethApiPort }}
               protocol: TCP
-            - name: engineApiPort
+            - name: engine-api
               containerPort: {{ .Values.service.engineApiPort }}
               protocol: TCP
             - name: p2p
