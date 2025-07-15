@@ -142,7 +142,7 @@ class InMemoryBeaconChainTest {
 
   @Test
   fun `getSealedBlocks returns consecutive blocks`() {
-    val testBlocks = (1uL..5uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+    val testBlocks = (0uL..5uL).map { DataGenerators.randomSealedBeaconBlock(it) }
 
     val updater = inMemoryBeaconChain.newUpdater()
     testBlocks.forEach { block ->
@@ -150,11 +150,11 @@ class InMemoryBeaconChainTest {
     }
     updater.commit()
 
-    val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber = 2uL, count = 3uL)
+    val startBlockNumber = 2uL
+    val count = 3uL
+    val blocks = inMemoryBeaconChain.getSealedBlocks(startBlockNumber, count)
     assertThat(blocks).hasSize(3)
-    assertThat(blocks[0]).isEqualTo(testBlocks[1]) // block 2
-    assertThat(blocks[1]).isEqualTo(testBlocks[2]) // block 3
-    assertThat(blocks[2]).isEqualTo(testBlocks[3]) // block 4
+    assertThat(blocks).isEqualTo(testBlocks.subList(startBlockNumber.toInt(), (startBlockNumber + count).toInt()))
   }
 
   @Test

@@ -184,7 +184,7 @@ class KvDatabaseTest {
   fun `test getSealedBlocks returns consecutive blocks`(
     @TempDir databasePath: Path,
   ) {
-    val testBlocks = (1uL..5uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+    val testBlocks = (0uL..5uL).map { DataGenerators.randomSealedBeaconBlock(it) }
 
     createDatabase(databasePath).use { db ->
       // Store blocks
@@ -195,11 +195,11 @@ class KvDatabaseTest {
       }
 
       // Get blocks 2-4
-      val blocks = db.getSealedBlocks(startBlockNumber = 2uL, count = 3uL)
+      val startBlockNumber = 2uL
+      val count = 3uL
+      val blocks = db.getSealedBlocks(startBlockNumber, count)
       assertThat(blocks).hasSize(3)
-      assertThat(blocks[0]).isEqualTo(testBlocks[1]) // block 2
-      assertThat(blocks[1]).isEqualTo(testBlocks[2]) // block 3
-      assertThat(blocks[2]).isEqualTo(testBlocks[3]) // block 4
+      assertThat(blocks).isEqualTo(testBlocks.subList(startBlockNumber.toInt(), (startBlockNumber + count).toInt()))
     }
   }
 

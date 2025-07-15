@@ -28,7 +28,7 @@ interface BeaconChain : AutoCloseable {
     startBlockNumber: ULong,
     count: ULong,
   ): List<SealedBeaconBlock> =
-    (startBlockNumber..startBlockNumber + count)
+    (startBlockNumber..startBlockNumber + count - 1uL)
       .map { blockNumber -> getSealedBeaconBlock(blockNumber) }
       .takeWhile { it != null }
       .filterNotNull()
