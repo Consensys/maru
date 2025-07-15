@@ -1,15 +1,19 @@
 replicaCount: 3
 fullnameOverride: maru-follower
-image:
-  name: consensys/maru:5c4e7fe
 configFiles:
   configsToml: |
     [persistence]
     data-path="/opt/consensys/maru/data/db"
     private-key-path="/opt/consensys/maru/configs/private-key.txt"
 
+    [qbft-options]
+    fee-recipient = "0x0000000000000000000000000000000000000000"
+
+    [payload-validator]
+    engine-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8550" }
+
     [follower-engine-apis]
-    "follower-besu" = { endpoint = "http://besu-follower-{{ .Values.replicaIndex }}.default.svc.cluster.local:8550" }
+    "follower-besu" = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8550" }
 
     [p2p-config]
     port = 3322

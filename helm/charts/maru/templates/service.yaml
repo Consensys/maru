@@ -3,14 +3,14 @@ kind: Service
 metadata:
   name: {{ include "maru.fullname" . }}
   labels:
-    app: {{ include "maru.name" . }}
+    {{- include "maru.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   {{- if .Values.service.headless }}
   clusterIP: None
   {{- end }}
   selector:
-    app: {{ include "maru.name" . }}
+    {{- include "maru.selectorLabels" . | nindent 4 }}
   ports:
     - port: {{ .Values.service.apiPort }}
       targetPort: {{ .Values.service.apiPort }}

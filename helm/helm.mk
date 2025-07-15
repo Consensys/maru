@@ -10,7 +10,7 @@ redeploy-besu:
 		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-sequencer
 		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower
 		@sleep 3 # Wait for a second to ensure the previous release is fully uninstalled
-		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-sequencer ./charts/besu --debug --force -f ./charts/besu/values.yaml -f ./values/besu-local-dev-sequencer.yaml
+		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-sequencer ./charts/besu --force -f ./charts/besu/values.yaml -f ./values/besu-local-dev-sequencer.yaml
 		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-follower ./charts/besu --force -f ./charts/besu/values.yaml -f ./values/besu-local-dev-follower.yaml
 
 redeploy-maru:

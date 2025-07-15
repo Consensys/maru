@@ -3,20 +3,20 @@ kind: StatefulSet
 metadata:
   name: {{ include "maru.fullname" . }}
   labels:
-    app: {{ include "maru.name" . }}
+    {{- include "maru.labels" . | nindent 4 }}
 spec:
   serviceName: {{ include "maru.fullname" . }}
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "maru.name" . }}
+      {{- include "maru.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: {{ include "maru.name" . }}
+        {{- include "maru.labels" . | nindent 8 }}
     spec:
       containers:
-        - name: {{ include "maru.name" . }}
+        - name: maru
           image: "{{ .Values.image.name }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
@@ -34,15 +34,9 @@ spec:
             - name: configs
               mountPath: /opt/consensys/maru/configs
           ports:
-            - name: http
-              containerPort: {{ .Values.service.apiPort }}
-              protocol: TCP
-            - name: p2p
-              containerPort: {{ .Values.service.p2pPort }}
-              protocol: TCP
-            {{- if .Values.service.observabilityPort }}
-            - name: observability
-              containerPort: {{ .Values.service.observabilityPort }}
+            {{- range .Values.service.ports }}
+            - name: {{ .name }}
+              containerPort: {{ .port }}
               protocol: TCP
             {{- end }}
       volumes:
