@@ -25,33 +25,31 @@ class RpcMethods(
   beaconChain: BeaconChain,
 ) {
   val statusMessageSerDe = StatusMessageSerDe(StatusSerDe())
-  val statusRpcMethod by lazy {
+  val statusRpcMethod =
     MaruRpcMethod(
       messageType = RpcMessageType.STATUS,
       rpcMessageHandler = StatusHandler(statusMessageFactory),
       requestMessageSerDe = statusMessageSerDe,
       responseMessageSerDe = statusMessageSerDe,
-      peerLookup = peerLookup.invoke(),
+      peerLookup = peerLookup,
       protocolIdGenerator = lineaRpcProtocolIdGenerator,
       version = Version.V1,
     )
-  }
 
   val beaconBlocksByRangeRequestMessageSerDe = BeaconBlocksByRangeRequestMessageSerDe()
   val beaconBlocksByRangeResponseMessageSerDe =
     BeaconBlocksByRangeResponseMessageSerDe(RLPSerializers.SealedBeaconBlockSerializer)
 
-  val beaconBlocksByRangeRpcMethod by lazy {
+  val beaconBlocksByRangeRpcMethod =
     MaruRpcMethod(
       messageType = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
       rpcMessageHandler = BeaconBlocksByRangeHandler(beaconChain),
       requestMessageSerDe = beaconBlocksByRangeRequestMessageSerDe,
       responseMessageSerDe = beaconBlocksByRangeResponseMessageSerDe,
-      peerLookup = peerLookup.invoke(),
+      peerLookup = peerLookup,
       protocolIdGenerator = lineaRpcProtocolIdGenerator,
       version = Version.V1,
     )
-  }
 
   fun status() = statusRpcMethod
 
