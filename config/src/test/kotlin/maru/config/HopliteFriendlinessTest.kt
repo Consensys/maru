@@ -31,7 +31,7 @@ class HopliteFriendlinessTest {
     [p2p]
     port = 3322
     ip-address = "127.0.0.1"
-    static-peers = ["/ip4/maru-validator-0.maru-validator.default.svc.cluster.local/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
+    static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
     reconnect-delay = 500m
 
     [payload-validator]
@@ -61,7 +61,7 @@ class HopliteFriendlinessTest {
       port = 3322u,
       staticPeers =
         listOf(
-          "/ip4/maru-validator-0.maru-validator.default.svc.cluster.local/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg",
+          "/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg",
         ),
       reconnectDelay = 500.milliseconds,
     )
