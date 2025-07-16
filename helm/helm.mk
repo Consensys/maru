@@ -20,11 +20,11 @@ redeploy-maru:
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower
 	@sleep 2 # Wait for a second to ensure the previous release is fully uninstalled
-	@echo "Deploying Maru Validator"
-	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-validator ./charts/maru --force -f ./charts/maru/values.yaml -f ./values/maru-local-dev-validator.yaml
 	@echo "Deploying Maru Followers"
 	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-0 ./charts/maru --force -f ./charts/maru/values.yaml -f ./values/maru-local-dev-follower-0.yaml
 	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1 ./charts/maru --force -f ./charts/maru/values.yaml -f ./values/maru-local-dev-follower-1.yaml
+	@echo "Deploying Maru Validator"
+	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-validator ./charts/maru --force -f ./charts/maru/values.yaml -f ./values/maru-local-dev-validator.yaml
 
 redeploy:
 	@echo "Redeploying Besu and Maru"
