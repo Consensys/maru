@@ -108,12 +108,9 @@ class DelayedQbftBlockCreatorTest {
 
   @Test
   fun `fails to create block if execution payload not available`() {
-    val parentBlock = DataGenerators.randomSealedBeaconBlock(10U)
-    val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
+    val parentBlock = DataGenerators.randomBeaconBlock(10U)
+    val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
 
-    whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(
-      parentBlock,
-    )
     whenever(
       executionLayerManager.finishBlockBuilding(),
     ).thenReturn(SafeFuture.failedFuture(IllegalStateException("Execution payload not available")))

@@ -169,18 +169,17 @@ class MaruApp(
       NewBlockHandlerMultiplexer(followerBlockHandlers)
     val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
 
-    val firstQbftForkTimestamp =
+    val qbftForkTimestamp =
       beaconGenesisConfig
         .getAllForks()
-        .filter { it.configuration is QbftConsensusConfig }
-        .minByOrNull { it.timestampSeconds }
+        .find { it.configuration is QbftConsensusConfig }
         ?.timestampSeconds
-        ?.toULong() ?: 0UL
+        ?.toULong() ?: 0uL
 
     val beaconChainInitialization =
       BeaconChainInitialization(
         beaconChain = beaconChain,
-        genesisTimestamp = firstQbftForkTimestamp,
+        genesisTimestamp = qbftForkTimestamp,
       )
 
     val qbftFactory =
