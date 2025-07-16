@@ -30,16 +30,16 @@ class BeaconChainInitialization(
     val genesisExecutionPayload =
       ExecutionPayload(
         parentHash = EMPTY_HASH,
-        feeRecipient = EMPTY_HASH.copyOfRange(0, 20), // 20 bytes for address
+        feeRecipient = EMPTY_HASH.copyOf(20), // 20 bytes for address
         stateRoot = EMPTY_HASH,
         receiptsRoot = EMPTY_HASH,
         logsBloom = ByteArray(256), // Ethereum logs bloom is 256 bytes
         prevRandao = EMPTY_HASH,
         blockNumber = 0UL,
-        gasLimit = 30000000UL, // Default gas limit
+        gasLimit = 0UL,
         gasUsed = 0UL,
         timestamp = 0UL,
-        extraData = ByteArray(0),
+        extraData = EMPTY_HASH,
         baseFeePerGas = BigInteger.ZERO,
         blockHash = EMPTY_HASH,
         transactions = emptyList(),

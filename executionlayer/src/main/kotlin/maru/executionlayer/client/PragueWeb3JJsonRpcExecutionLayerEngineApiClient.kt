@@ -98,11 +98,6 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
   override fun getLatestBlockHash(): SafeFuture<ByteArray> =
     web3jEngineClient.powChainHead.thenApply { powBlock -> powBlock.blockHash.toArray() }
 
-  private fun String.hexStringToByteArray(): ByteArray {
-    val cleanHex = if (this.startsWith("0x")) this.substring(2) else this
-    return cleanHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-  }
-
   private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =
     PayloadAttributesV3(
       this.timestamp,
