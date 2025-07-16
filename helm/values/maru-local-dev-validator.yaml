@@ -7,6 +7,12 @@ configFiles:
     [qbft-options]
     fee-recipient = "0x0000000000000000000000000000000000000000"
 
+    [p2p-config]
+    static-peers = [
+      "/dns4/maru-follower-0-maru.default.svc.cluster.local/tcp/3322/p2p/16Uiu2HAm5t3cGzbzjy5wE8u1siwkeCWtyob1kinEmNrcRsKXX8Z6",
+      "/dns4/maru-follower-1-maru.default.svc.cluster.local/tcp/3322/p2p/16Uiu2HAmLRVrc12TDbFM27MBi4fVvtjbiRKAYcXAMv3q5DpK6TVX"
+    ]
+
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8550" }
     eth-api-endpoint = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8545" }
