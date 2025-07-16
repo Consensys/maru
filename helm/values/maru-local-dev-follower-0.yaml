@@ -20,8 +20,8 @@ configFiles:
     <Loggers>
       <Logger name="org.hyperledger.besu" level="TRACE"/>
       <Logger name="tech.pegasys.teku" level="DEBUG"/>
-      <Logger name="maru" level="TRACE"/>
-      <Logger name="clients" level="TRACE"/>
+      <Logger name="maru" level="DEBUG"/>
+      <Logger name="clients" level="DEBUG"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>
       </Root>
