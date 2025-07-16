@@ -8,7 +8,6 @@
  */
 package maru.app
 
-import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
@@ -17,6 +16,7 @@ import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.ethGetBlockByNumber
+import maru.testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -28,6 +28,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 class MaruFollowerTest {
   private lateinit var cluster: Cluster
@@ -198,7 +199,7 @@ class MaruFollowerTest {
 
     cluster.stop()
     Thread.sleep(3000)
-    cluster.start(followerStack.besuNode)
+    cluster.startWithRetry(followerStack.besuNode)
 
     repeat(blocksToProduce) {
       transactionsHelper.run {
