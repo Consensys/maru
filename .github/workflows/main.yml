@@ -26,6 +26,7 @@ jobs:
           filters: |
             consensus-client:
               - '**'
+              - '!helm/**'
 
       - name: Filter out commit changes
         uses: dorny/paths-filter@v3
