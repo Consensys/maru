@@ -26,7 +26,6 @@ jobs:
           filters: |
             consensus-client:
               - '**'
-              - '!helm/**'
 
       - name: Filter out commit changes
         uses: dorny/paths-filter@v3
@@ -38,6 +37,7 @@ jobs:
             has-changes-requiring-build:
               - '!**/*.md'
               - '!docs/**'
+              - '!helm/**'
 
   testing:
     needs: [ filter-commit-changes ]
