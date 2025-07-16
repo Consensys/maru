@@ -88,27 +88,17 @@ inline fun <reified T : Any> loadConfigsAndLogErrors(
       logErrorIfPresent(it, logger, logLevel)
     }
 
-inline fun <reified T : Any> loadConfigsOrError(
-  configFiles: List<Path>,
-  logger: Logger = LogManager.getLogger("maru.config"),
-  strict: Boolean = false,
-): Result<T, String> {
-  val configs = loadConfigsAndLogErrors<T>(configFiles, logger, strict)
-
-  return configs
-}
-
 inline fun <reified T : Any> loadConfigs(
   configFiles: List<Path>,
   logger: Logger = LogManager.getLogger("maru.config"),
   enforceStrict: Boolean = false,
 ): T =
-  loadConfigsOrError<T>(
+  loadConfigsAndLogErrors<T>(
     configFiles,
     logger,
     strict = true,
   ).recoverIf({ !enforceStrict }, {
-    loadConfigsOrError<T>(
+    loadConfigsAndLogErrors<T>(
       configFiles,
       logger,
       strict = false,
