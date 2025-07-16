@@ -1,16 +1,9 @@
 replicaCount: 1
 fullnameOverride: maru-validator
-image:
-  name: consensys/maru:a1716c8
 configFiles:
   privateKey: |
     0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae
   configsToml: |
-    allow-empty-blocks = true
-    [persistence]
-    data-path="/opt/consensys/maru/data/db"
-    private-key-path="/opt/consensys/maru/configs/private-key.txt"
-
     [qbft-options]
     fee-recipient = "0x0000000000000000000000000000000000000000"
 
@@ -20,16 +13,6 @@ configFiles:
 
     [follower-engine-apis]
     "follower-besu" = { endpoint = "http://besu-sequencer-0.besu-sequencer.default.svc.cluster.local:8550" }
-
-    [p2p-config]
-    port = 3322
-    ip-address = "127.0.0.1"
-
-    [observability-options]
-    port = 9545
-
-    [api-config]
-    port = 8080
   log4j: |
     <?xml version="1.0" encoding="UTF-8"?>
     <Configuration status="INFO" monitorInterval="2">

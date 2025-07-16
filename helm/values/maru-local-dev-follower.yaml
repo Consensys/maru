@@ -2,9 +2,6 @@ replicaCount: 3
 fullnameOverride: maru-follower
 configFiles:
   configsToml: |
-    [persistence]
-    private-key-path="/opt/consensys/maru/configs/private-key.txt"
-
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8550" }
     eth-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8545" }
