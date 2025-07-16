@@ -14,7 +14,6 @@ import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Path
 import java.time.Clock
-import java.util.Optional
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.kotlin.encodeHex
@@ -35,6 +34,9 @@ import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
 import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
+import maru.metrics.BesuMetricsCategoryAdapter
+import maru.metrics.BesuMetricsSystemAdapter
+import maru.metrics.MaruMetricsCategory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
@@ -47,9 +49,8 @@ import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
-import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
+import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MaruAppFactory {
   val log = LogManager.getLogger(MaruAppFactory::class.java)
@@ -78,19 +79,18 @@ class MaruAppFactory {
         "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
       )
-    val besuMetricsSystem = NoOpMetricsSystem()
+    val besuMetricsSystemAdapter =
+      BesuMetricsSystemAdapter(
+        metricsFacade = metricsFacade,
+        vertx = vertx,
+      )
 
     val beaconChain =
       KvDatabaseFactory
         .createRocksDbDatabase(
           databasePath = config.persistence.dataPath,
-          metricsSystem = besuMetricsSystem,
-          metricCategory =
-            object : MetricCategory {
-              override fun getName(): String = "STORAGE"
-
-              override fun getApplicationPrefix(): Optional<String> = Optional.empty()
-            },
+          metricsSystem = besuMetricsSystemAdapter,
+          metricCategory = BesuMetricsCategoryAdapter.from(MaruMetricsCategory.STORAGE),
         )
 
     val forkIdHasher =
@@ -128,6 +128,7 @@ class MaruAppFactory {
         metricsFacade = metricsFacade,
         nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
         statusMessageFactory = statusMessageFactory,
+        besuMetricsSystem = besuMetricsSystemAdapter,
       )
     val finalizationProvider =
       overridingFinalizationProvider
@@ -156,7 +157,7 @@ class MaruAppFactory {
         metricsFacade = metricsFacade,
         vertx = vertx,
         beaconChain = beaconChain,
-        metricsSystem = besuMetricsSystem,
+        metricsSystem = besuMetricsSystemAdapter,
         lastBlockMetadataCache = lastBlockMetadataCache,
         ethereumJsonRpcClient = ethereumJsonRpcClient,
         apiServer = apiServer,
@@ -209,6 +210,7 @@ class MaruAppFactory {
       nextExpectedBeaconBlockNumber: ULong = 1UL,
       metricsFacade: MetricsFacade,
       statusMessageFactory: StatusMessageFactory,
+      besuMetricsSystem: BesuMetricsSystem,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -219,6 +221,7 @@ class MaruAppFactory {
           nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsFacade = metricsFacade,
           statusMessageFactory = statusMessageFactory,
+          metricsSystem = besuMetricsSystem,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

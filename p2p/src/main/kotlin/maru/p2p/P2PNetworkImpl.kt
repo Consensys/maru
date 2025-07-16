@@ -34,6 +34,7 @@ import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
@@ -43,6 +44,7 @@ class P2PNetworkImpl(
   private val metricsFacade: MetricsFacade,
   private val statusMessageFactory: StatusMessageFactory,
   nextExpectedBeaconBlockNumber: ULong,
+  private val metricsSystem: BesuMetricsSystem,
 ) : P2PNetwork {
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
   private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
@@ -65,6 +67,7 @@ class P2PNetworkImpl(
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
     p2pConfig: P2P,
+    besuMetricsSystem: BesuMetricsSystem,
   ): TekuLibP2PNetwork {
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
     val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
@@ -81,10 +84,11 @@ class P2PNetworkImpl(
       sealedBlocksTopicId = sealedBlocksTopicId,
       rpcMethods = rpcMethods.all(),
       maruPeerManager = maruPeerManager,
+      metricsSystem = besuMetricsSystem,
     )
   }
 
-  private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
+  private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig, metricsSystem)
   internal val p2pNetwork = builtNetwork.p2PNetwork
   internal val peerLookup = builtNetwork.peerLookup
   private val log: Logger = LogManager.getLogger(this::javaClass)

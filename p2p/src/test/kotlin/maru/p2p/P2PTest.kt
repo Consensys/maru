@@ -118,6 +118,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -128,6 +129,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     try {
       p2PNetworkImpl1.start()
@@ -155,6 +157,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -165,6 +168,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     try {
       p2PNetworkImpl1.start()
@@ -197,6 +201,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -207,6 +212,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     try {
       p2PNetworkImpl1.start()
@@ -232,6 +238,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -242,6 +249,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     try {
       p2PNetworkImpl1.start()
@@ -272,6 +280,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -282,6 +291,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     try {
       p2pNetworkImpl1.start()
@@ -321,6 +331,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     val p2PNetworkImpl2 =
       P2PNetworkImpl(
@@ -331,6 +342,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     val p2PNetworkImpl3 =
       P2PNetworkImpl(
@@ -341,6 +353,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     try {
       p2PNetworkImpl1.start()
@@ -389,6 +402,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     val p2pManagerImpl2 =
       P2PNetworkImpl(
@@ -399,6 +413,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         statusMessageFactory = statusMessageFactory,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     try {
       p2PNetworkImpl1.start()
