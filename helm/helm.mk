@@ -4,6 +4,8 @@ clean-releases:
 	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-0
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1
 
 redeploy-besu:
 		@echo "Redeploying Besu"
@@ -21,7 +23,8 @@ redeploy-maru:
 	@echo "Deploying Maru Validator"
 	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-validator ./charts/maru --force -f ./charts/maru/values.yaml -f ./values/maru-local-dev-validator.yaml
 	@echo "Deploying Maru Followers"
-	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower ./charts/maru --force -f ./charts/maru/values.yaml -f ./values/maru-local-dev-follower.yaml
+	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-0 ./charts/maru --force -f ./charts/maru/values.yaml -f ./values/maru-local-dev-follower-0.yaml
+	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1 ./charts/maru --force -f ./charts/maru/values.yaml -f ./values/maru-local-dev-follower-1.yaml
 
 redeploy:
 	@echo "Redeploying Besu and Maru"
