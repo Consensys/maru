@@ -7,12 +7,12 @@ services:
     # make build-local-image
     # MARU_TAG=local make docker-run-stack
     # command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/path/to/vertx-options.json', '-Dlog4j2.configurationFile=/path/to/log4j2-dev.xml']
-    image: consensys/maru:${MARU_TAG:-ce6054c}
+    image: consensys/maru:${MARU_TAG:-a1716c8}
     container_name: maru
     depends_on:
       - sequencer
       - follower-geth
-    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--besu-genesis-file', 'configs/genesis.json', '--config', 'configs/config.dev.toml']
+    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--maru-genesis-file', 'configs/genesis.json', '--config', 'configs/config.dev.toml']
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
       - ./maru/config.dev.toml:/opt/consensys/maru/configs/config.dev.toml:ro
@@ -23,6 +23,7 @@ services:
     ports:
       # Attach the IDE's remote java debugger to localhost:5005 to debug maru
       - "5005:5005"
+      - "8080:8080"
     networks:
       - linea
 
