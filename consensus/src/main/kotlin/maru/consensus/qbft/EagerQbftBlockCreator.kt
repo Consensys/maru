@@ -53,7 +53,7 @@ class EagerQbftBlockCreator(
     val finalizedState = finalizationStateProvider(parentBeaconBlock.beaconBlockBody)
 
     val headHash =
-      // If the parent block is genesis, we use the latest block hash as the head hash.
+      // If the parent block is genesis, we use the latest EL block hash as the head hash to start the block building
       if (parentBeaconBlock.beaconBlockHeader.number == 0UL) {
         manager.getLatestBlockHash().get()
       } else {
