@@ -7,6 +7,10 @@ metadata:
 data:
   genesis.json: |-
     {{- .Values.configFiles.genesisJson | nindent 4 }}
+  {{ if .Values.configFiles.configsDefaultsToml }}
+  configs-defaults.toml: |-
+    {{- .Values.configFiles.configsDefaultsToml | nindent 4 }}
+  {{ end }}
   configs.toml: |-
     {{- .Values.configFiles.configsToml | nindent 4 }}
   log4j.xml: |-

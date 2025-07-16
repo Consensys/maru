@@ -27,6 +27,9 @@ spec:
             - --maru-genesis-file
             - /opt/consensys/maru/configs/genesis.json
             - --config
+            {{ if .Values.configFiles.configsDefaultsToml }}
+            - /opt/consensys/maru/configs/configs-defaults.toml
+            {{ end}}
             - /opt/consensys/maru/configs/configs.toml
           volumeMounts:
             - name: data

@@ -1,6 +1,6 @@
 replicaCount: 1
 image:
-  name: consensys/maru:a1716c8
+  name: consensys/maru:1485173
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
@@ -20,6 +20,22 @@ persistence:
   storageClass: ""
 configFiles:
   privateKey: |
+  configsDefaultsToml: |
+    allow-empty-blocks = true
+
+    [persistence]
+    data-path="/opt/consensys/maru/data/db"
+    private-key-path="/opt/consensys/maru/configs/private-key.txt"
+
+    [p2p-config]
+    port = 3322
+    ip-address = "127.0.0.1"
+
+    [observability-options]
+    port = 9545
+
+    [api-config]
+    port = 8080
   configsToml: |
   genesisJson: |
     {
