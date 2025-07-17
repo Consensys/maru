@@ -38,14 +38,17 @@ configFiles:
     port = 8080
   configsToml: |
   genesisJson: |
-    {
-      "chainId": 1337,
+      {
+      "chainId": 59239,
       "config": {
-        "1683325137": {
+        "0": {
+          "type": "delegated",
+          "blockTimeSeconds": 1
+        },
+        "1752596435": {
           "type": "qbft",
           "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
-          "blockTimeSeconds": 1,
-          "feeRecipient": "0x0000000000000000000000000000000000000000",
+          "blockTimeSeconds": 7,
           "elFork": "Prague"
         }
       }
