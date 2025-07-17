@@ -10,6 +10,7 @@ package maru.consensus
 
 import java.util.NavigableSet
 import java.util.TreeSet
+import kotlin.reflect.KClass
 
 data class ForkSpec(
   val timestampSeconds: Long,
@@ -47,7 +48,12 @@ class ForksSchedule(
     )
   }
 
-  fun getAllForks(): Set<ForkSpec> = forks.toSet()
+  fun <T : ConsensusConfig> getForkByConfigType(configClass: KClass<T>): ForkSpec {
+    val fork = forks.find { it.configuration::class == configClass }
+    return fork ?: throw IllegalArgumentException(
+      "No fork found for config type ${configClass.simpleName}",
+    )
+  }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

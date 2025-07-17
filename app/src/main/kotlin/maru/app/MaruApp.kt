@@ -170,12 +170,7 @@ class MaruApp(
     val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
 
     val qbftForkTimestamp =
-      beaconGenesisConfig
-        .getAllForks()
-        .find { it.configuration is QbftConsensusConfig }
-        ?.timestampSeconds
-        ?.toULong() ?: 0uL
-
+      beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class).timestampSeconds.toULong()
     val beaconChainInitialization =
       BeaconChainInitialization(
         beaconChain = beaconChain,
