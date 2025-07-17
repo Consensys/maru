@@ -12,6 +12,9 @@ import maru.database.BeaconChain
 import maru.p2p.messages.BeaconBlocksByRangeHandler
 import maru.p2p.messages.BeaconBlocksByRangeRequestMessageSerDe
 import maru.p2p.messages.BeaconBlocksByRangeResponseMessageSerDe
+import maru.p2p.messages.LatestBeaconStateHandler
+import maru.p2p.messages.LatestBeaconStateRequestMessageSerDe
+import maru.p2p.messages.LatestBeaconStateResponseMessageSerDe
 import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusMessageFactory
 import maru.p2p.messages.StatusMessageSerDe
@@ -51,9 +54,25 @@ class RpcMethods(
       version = Version.V1,
     )
 
+  val latestBeaconStateRequestMessageSerDe = LatestBeaconStateRequestMessageSerDe()
+  val latestBeaconStateResponseMessageSerDe = LatestBeaconStateResponseMessageSerDe()
+
+  val latestBeaconStateRpcMethod =
+    MaruRpcMethod(
+      messageType = RpcMessageType.LATEST_BEACON_STATE,
+      rpcMessageHandler = LatestBeaconStateHandler(),
+      requestMessageSerDe = latestBeaconStateRequestMessageSerDe,
+      responseMessageSerDe = latestBeaconStateResponseMessageSerDe,
+      peerLookup = peerLookup,
+      version = Version.V1,
+      protocolIdGenerator = lineaRpcProtocolIdGenerator,
+    )
+
   fun status() = statusRpcMethod
 
   fun beaconBlocksByRange() = beaconBlocksByRangeRpcMethod
+
+  fun latestBeaconState() = latestBeaconStateRpcMethod
 
   fun all(): List<MaruRpcMethod<*, *>> = listOf(statusRpcMethod, beaconBlocksByRangeRpcMethod)
 }
