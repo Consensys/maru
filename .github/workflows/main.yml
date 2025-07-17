@@ -74,9 +74,10 @@ jobs:
 
   build-and-publish:
     needs: [ maru-image-smoke-test ]
-    if: ${{ always() && !cancelled() && needs.maru-image-smoke-test.result == 'success' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
+    if: ${{ always() && !cancelled() && needs.maru-image-smoke-test.result == 'success' && (github.event_name == 'workflow_dispatch') }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
+      develop_tag: 'test'
       image_name: 'consensys/maru'
       push_image: true
     secrets: inherit
