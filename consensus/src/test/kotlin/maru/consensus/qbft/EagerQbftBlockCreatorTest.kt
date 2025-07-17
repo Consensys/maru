@@ -173,7 +173,7 @@ class EagerQbftBlockCreatorTest {
     val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
 
-    val mainBlockCreator = createDelayedBlockCreator(1)
+    val mainBlockCreator = createDelayedBlockCreator(round = 1)
     val eagerQbftBlockCreator =
       setup(executionLayerManager, sealedGenesisBeaconBlock, mainBlockCreator, sequence = 1, round = 1)
     createProposalToBeRejected(
@@ -248,7 +248,7 @@ class EagerQbftBlockCreatorTest {
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
 
     val spyExecutionLayerManager = Mockito.spy(executionLayerManager)
-    val mainBlockCreator = createDelayedBlockCreator(0, spyExecutionLayerManager)
+    val mainBlockCreator = createDelayedBlockCreator(round = 0, manager = spyExecutionLayerManager)
     val eagerQbftBlockCreator =
       setup(spyExecutionLayerManager, sealedGenesisBeaconBlock, mainBlockCreator, sequence = 1, round = 0)
 
