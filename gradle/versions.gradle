@@ -31,6 +31,8 @@ dependencyManagement {
     // For java code only
     dependency 'com.google.errorprone:error_prone_core:2.29.2'
 
+    dependency 'com.google.guava:guava:33.4.0-jre'
+
     dependency 'com.squareup.okhttp3:okhttp:4.12.0'
 
     dependency 'io.javalin:javalin:6.7.0'
@@ -148,13 +150,13 @@ dependencyManagement {
       entry 'log4j-slf4j2-impl'
     }
 
-    def besuVersion = "25.5.0"
+    def besuVersion = "25.7.0"
 
     imports {
       mavenBom "org.hyperledger.besu:bom:$besuVersion"
     }
 
-    dependency "org.hyperledger.besu.internal:plugins-rocksdb:$besuVersion"
+    dependency "org.hyperledger.besu.internal:besu-plugins-rocksdb:$besuVersion"
 
     dependency "com.michael-bull.kotlin-result:kotlin-result:1.1.16"
 

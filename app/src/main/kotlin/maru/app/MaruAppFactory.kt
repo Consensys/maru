@@ -12,9 +12,11 @@ import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
+import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
 import java.util.Optional
+import kotlin.io.path.exists
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.kotlin.encodeHex
@@ -33,6 +35,7 @@ import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
+import maru.database.BeaconChain
 import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
 import maru.p2p.NoOpP2PNetwork
@@ -52,7 +55,7 @@ import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 
 class MaruAppFactory {
-  val log = LogManager.getLogger(MaruAppFactory::class.java)
+  private val log = LogManager.getLogger(MaruAppFactory::class.java)
 
   fun create(
     config: MaruConfig,
@@ -80,6 +83,7 @@ class MaruAppFactory {
       )
     val besuMetricsSystem = NoOpMetricsSystem()
 
+    ensureDirectoryExists(config.persistence.dataPath)
     val beaconChain =
       KvDatabaseFactory
         .createRocksDbDatabase(
@@ -125,6 +129,7 @@ class MaruAppFactory {
         p2pConfig = config.p2pConfig,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
+        beaconChain = beaconChain,
         metricsFacade = metricsFacade,
         nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
         statusMessageFactory = statusMessageFactory,
@@ -168,7 +173,7 @@ class MaruAppFactory {
   companion object {
     private val log = LogManager.getLogger(MaruApp::class.java)
 
-    fun setupFinalizationProvider(
+    private fun setupFinalizationProvider(
       config: MaruConfig,
       overridingLineaContractClient: LineaRollupSmartContractClientReadOnly?,
       vertx: Vertx,
@@ -202,10 +207,11 @@ class MaruAppFactory {
           )
         } ?: InstantFinalizationProvider
 
-    fun setupP2PNetwork(
+    private fun setupP2PNetwork(
       p2pConfig: P2P?,
       privateKey: ByteArray,
       chainId: UInt,
+      beaconChain: BeaconChain,
       nextExpectedBeaconBlockNumber: ULong = 1UL,
       metricsFacade: MetricsFacade,
       statusMessageFactory: StatusMessageFactory,
@@ -216,16 +222,17 @@ class MaruAppFactory {
           p2pConfig = p2pConfig,
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
-          nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsFacade = metricsFacade,
           statusMessageFactory = statusMessageFactory,
+          beaconChain = beaconChain,
+          nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
         NoOpP2PNetwork
       }
 
-    fun getOrGeneratePrivateKey(privateKeyPath: Path): ByteArray {
+    private fun getOrGeneratePrivateKey(privateKeyPath: Path): ByteArray {
       if (!privateKeyPath
           .toFile()
           .exists()
@@ -240,5 +247,9 @@ class MaruAppFactory {
 
       return GeneratingFilePrivateKeySource(privateKeyPath.toString()).privateKeyBytes.toArray()
     }
+  }
+
+  private fun ensureDirectoryExists(path: Path) {
+    if (!path.exists()) Files.createDirectories(path)
   }
 }
