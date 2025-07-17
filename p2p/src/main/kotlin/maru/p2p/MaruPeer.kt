@@ -12,6 +12,7 @@ import java.util.Optional
 import java.util.concurrent.atomic.AtomicReference
 import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BeaconBlocksByRangeResponse
+import maru.p2p.messages.LatestBeaconStateResponse
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import org.apache.logging.log4j.LogManager
@@ -39,6 +40,8 @@ interface MaruPeer : Peer {
     startBlockNumber: ULong,
     count: ULong,
   ): SafeFuture<BeaconBlocksByRangeResponse>
+
+  fun getLatestBeaconState(): SafeFuture<LatestBeaconStateResponse>
 }
 
 interface MaruPeerFactory {
@@ -91,6 +94,10 @@ class DefaultMaruPeer(
     val message = Message(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, request)
     return sendRpcMessage(message, rpcMethods.beaconBlocksByRange())
       .thenApply { responseMessage -> responseMessage.payload }
+  }
+
+  override fun getLatestBeaconState(): SafeFuture<LatestBeaconStateResponse> {
+    TODO("Not yet implemented")
   }
 
   fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
