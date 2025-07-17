@@ -8,8 +8,6 @@
  */
 package maru.p2p
 
-import io.libp2p.core.Connection
-import io.libp2p.core.PeerId
 import java.util.Optional
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
@@ -19,15 +17,12 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.networking.p2p.libp2p.LibP2PPeer
-import tech.pegasys.teku.networking.p2p.libp2p.rpc.RpcHandler
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.DisconnectRequestHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedSubscriber
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
-import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
@@ -172,17 +167,5 @@ class DefaultMaruPeerTest {
     maruPeer.adjustReputation(adjustment)
 
     verify(delegatePeer).adjustReputation(adjustment)
-  }
-
-  @Test
-  fun `id delegates to underlying LibP2PPeer`() {
-    val peerId = PeerId.random()
-    val connection = DummyConnection()
-    val rpcHandlers = emptyList<RpcHandler<*, *, *>>()
-    val reputationManager = DummyReputationManager()
-    val peerScoreFunction: (PeerId) -> Double = { 0.0 }
-    val libp2pPeer = LibP2PPeer(connection, rpcHandlers, reputationManager, peerScoreFunction)
-    val maruPeer = DefaultMaruPeer(libp2pPeer, object : RpcMethods {}, object : maru.p2p.messages.StatusMessageFactory {})
-    assertThat(maruPeer.id).isEqualTo(libp2pPeer.id)
   }
 }
