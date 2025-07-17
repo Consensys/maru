@@ -13,6 +13,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
@@ -25,6 +27,7 @@ class MaruPeerManager(
   private val maruPeerFactory: MaruPeerFactory,
 ) : PeerHandler,
   PeerLookup {
+  private val log: Logger = LogManager.getLogger(this::javaClass)
   private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
 
   override fun onConnect(peer: Peer) {
@@ -38,8 +41,11 @@ class MaruPeerManager(
   }
 
   private fun ensureStatusReceived(peer: MaruPeer) {
+    log.debug("Waiting for peer {} to send status message to connect to peer ", peer.id)
     scheduler.schedule({
+      log.debug("Timed out waiting for peer {} status message", peer.id)
       if (peer.getStatus() == null) {
+        log.debug("Disconnecting peer {} due to timeout waiting for status message", peer.id)
         peer.disconnectImmediately(
           Optional.of(DisconnectReason.REMOTE_FAULT),
           false,

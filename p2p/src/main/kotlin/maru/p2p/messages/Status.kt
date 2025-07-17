@@ -30,4 +30,7 @@ data class Status(
     result = 31 * result + latestBlockNumber.hashCode()
     return result
   }
+
+  override fun toString(): String =
+    "Status(forkIdHash=${forkIdHash.contentToString()}, latestStateRoot=${latestStateRoot.contentToString()}, latestBlockNumber=$latestBlockNumber)"
 }
