@@ -8,13 +8,12 @@
  */
 package maru.app
 
-import java.math.BigInteger
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.EMPTY_HASH
-import maru.core.ExecutionPayload
+import maru.core.GENESIS_EXECUTION_PAYLOAD
 import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
@@ -27,24 +26,7 @@ class BeaconChainInitialization(
   private val genesisTimestamp: ULong = 0UL,
 ) {
   private fun initializeDb(validatorSet: Set<Validator>) {
-    val genesisExecutionPayload =
-      ExecutionPayload(
-        parentHash = EMPTY_HASH,
-        feeRecipient = EMPTY_HASH.copyOf(20), // 20 bytes for address
-        stateRoot = EMPTY_HASH,
-        receiptsRoot = EMPTY_HASH,
-        logsBloom = ByteArray(256), // Ethereum logs bloom is 256 bytes
-        prevRandao = EMPTY_HASH,
-        blockNumber = 0UL,
-        gasLimit = 0UL,
-        gasUsed = 0UL,
-        timestamp = 0UL,
-        extraData = EMPTY_HASH,
-        baseFeePerGas = BigInteger.ZERO,
-        blockHash = EMPTY_HASH,
-        transactions = emptyList(),
-      )
-
+    val genesisExecutionPayload = GENESIS_EXECUTION_PAYLOAD
     val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = genesisExecutionPayload)
 
     val beaconBlockHeader =
