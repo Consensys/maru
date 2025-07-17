@@ -16,29 +16,30 @@ import org.apache.logging.log4j.Logger
 
 fun interface PrevRandaoProvider {
   fun calculateNextPrevRandao(
-    nextSlotId: ULong,
+    nextL2BlockNumber: ULong,
     prevRandao: ByteArray,
   ): ByteArray
 }
 
 class PrevRandaoProviderImpl(
   private val signingFunc: (ULong) -> ByteArray,
+  private val hashingFunc: (ByteArray) -> ByteArray = Hashing::keccak,
 ) : PrevRandaoProvider {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun calculateNextPrevRandao(
-    nextSlotId: ULong,
+    nextL2BlockNumber: ULong,
     prevRandao: ByteArray,
   ): ByteArray {
-    val signedSlotId = signingFunc(nextSlotId)
-    val signedSlotIdHash = Hashing.keccak(signedSlotId)
-    val nextPrevRandao = prevRandao.xor(signedSlotIdHash)
+    val signedNumber = signingFunc(nextL2BlockNumber)
+    val signedNumberHash = hashingFunc(signedNumber)
+    val nextPrevRandao = prevRandao.xor(signedNumberHash)
 
     log.debug(
-      "calculateNextPrevRandao: nextSlotId=$nextSlotId prevRandao=${prevRandao.encodeHex()}" +
-        " signedSlotId=${signedSlotId.encodeHex()} signedSlotIdHash=${signedSlotIdHash.encodeHex()} nextPrevRandao=${nextPrevRandao.encodeHex()}",
+      "calculateNextPrevRandao: nextL2BlockNumber=$nextL2BlockNumber prevRandao=${prevRandao.encodeHex()} " +
+        "signedNumber=${signedNumber.encodeHex()} signedNumberHash=${signedNumberHash.encodeHex()} " +
+        "nextPrevRandao=${nextPrevRandao.encodeHex()}",
     )
-
     return nextPrevRandao
   }
 }

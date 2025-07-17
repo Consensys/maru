@@ -17,9 +17,9 @@ import org.assertj.core.api.Assertions.assertThat
 
 class PrevRandaoProviderTest {
   @Test
-  fun `calculateNextPrevRandao result XOR the signedSlotId should return prevRandao`() {
+  fun `calculateNextPrevRandao result XOR the signatureHash should return prevRandao`() {
     val signatureByteArray = Random.nextBytes(65)
-    val signedSlotId = Hashing.keccak(signatureByteArray)
+    val signatureHash = Hashing.keccak(signatureByteArray)
     val prevRandaoProvider =
       PrevRandaoProviderImpl(
         signingFunc = { signatureByteArray },
@@ -28,7 +28,7 @@ class PrevRandaoProviderTest {
 
     val result = prevRandaoProvider.calculateNextPrevRandao(100UL, prevRandao)
 
-    assertThat(result.xor(signedSlotId).encodeHex())
+    assertThat(result.xor(signatureHash).encodeHex())
       .isEqualTo(prevRandao.encodeHex())
   }
 }

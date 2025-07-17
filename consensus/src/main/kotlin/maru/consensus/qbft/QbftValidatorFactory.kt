@@ -91,9 +91,9 @@ class QbftValidatorFactory(
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
     val securityModule = KeyPairSecurityModule(keyPair)
     val nodeKey = NodeKey(securityModule)
-    val signingFunc: (ULong) -> ByteArray = { slotId ->
+    val signingFunc: (ULong) -> ByteArray = { l2BlockNumber ->
       nodeKey
-        .sign(Bytes32.wrap(slotId.toBytes32()))
+        .sign(Bytes32.wrap(l2BlockNumber.toBytes32()))
         .encodedBytes()
         .toArray()
     }

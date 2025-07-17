@@ -14,7 +14,6 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
-import maru.consensus.PrevRandaoProvider
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
@@ -55,7 +54,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
-import org.mockito.kotlin.any
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -73,7 +71,7 @@ class EagerQbftBlockCreatorTest {
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
   private val clock = Mockito.mock(Clock::class.java)
   private val validator = Validator(Random.nextBytes(20))
-  private val prevRandaoProvider = Mockito.mock(PrevRandaoProvider::class.java)
+  private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
   private lateinit var executionLayerManager: ExecutionLayerManager
   private val validatorSet = DataGenerators.randomValidators() + validator
 
@@ -127,9 +125,6 @@ class EagerQbftBlockCreatorTest {
     whenever(
       validatorProvider.getValidatorsAfterBlock(0u),
     ).thenReturn(completedFuture(validatorSet))
-    whenever(
-      prevRandaoProvider.calculateNextPrevRandao(any(), any()),
-    ).thenReturn(Bytes32.random().toArray())
 
     val mainBlockCreator =
       DelayedQbftBlockCreator(

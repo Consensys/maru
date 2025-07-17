@@ -11,7 +11,6 @@ package maru.consensus.qbft
 import kotlin.random.Random
 import kotlin.test.assertEquals
 import maru.consensus.NextBlockTimestampProvider
-import maru.consensus.PrevRandaoProvider
 import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconState
@@ -22,7 +21,6 @@ import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
@@ -38,16 +36,12 @@ class FollowerBeaconBlockImporterTest {
   private var blockBuilderIdentity: Validator = Validator(Random.nextBytes(20))
   private lateinit var beaconBlockImporter: BlockBuildingBeaconBlockImporter
   private lateinit var finalizationState: FinalizationState
-  private val prevRandaoProvider = Mockito.mock(PrevRandaoProvider::class.java)
+  private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
 
   @BeforeEach
   fun setUp() {
     executionLayerManager = mock(ExecutionLayerManager::class.java)
     finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
-
-    whenever(
-      prevRandaoProvider.calculateNextPrevRandao(any(), any()),
-    ).thenReturn(Bytes32.random().toArray())
 
     beaconBlockImporter =
       BlockBuildingBeaconBlockImporter(

@@ -116,7 +116,7 @@ class BlockBuildingBeaconBlockImporter(
         feeRecipient = blockBuilderIdentity.address,
         prevRandao =
           prevRandaoProvider.calculateNextPrevRandao(
-            nextSlotId =
+            nextL2BlockNumber =
               beaconBlock.beaconBlockBody.executionPayload.blockNumber
                 .inc(),
             prevRandao = beaconBlock.beaconBlockBody.executionPayload.prevRandao,
