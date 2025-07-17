@@ -17,6 +17,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
 import maru.core.SealedBeaconBlock
+import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.messages.StatusMessageFactory
@@ -45,6 +46,7 @@ class P2PNetworkImpl(
   private val metricsFacade: MetricsFacade,
   private val metricsSystem: MetricsSystem,
   private val statusMessageFactory: StatusMessageFactory,
+  private val beaconChain: BeaconChain,
   private val forkIdHashProvider: ForkIdHashProvider,
   nextExpectedBeaconBlockNumber: ULong,
 ) : P2PNetwork {
@@ -74,7 +76,7 @@ class P2PNetworkImpl(
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
     val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
 
-    val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator) { maruPeerManager }
+    val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
     maruPeerManager =
       MaruPeerManager(
         maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory),

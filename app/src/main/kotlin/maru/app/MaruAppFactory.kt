@@ -33,6 +33,7 @@ import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
+import maru.database.BeaconChain
 import maru.database.kv.KvDatabaseFactory
 import maru.finalization.LineaFinalizationProvider
 import maru.p2p.NoOpP2PNetwork
@@ -99,7 +100,6 @@ class MaruAppFactory {
           .ForkIdSerializer,
         Hashing::shortShaHash,
       )
-
     val forkIdHashProvider =
       ForkIdHashProvider(
         chainId = beaconGenesisConfig.chainId,
@@ -126,6 +126,7 @@ class MaruAppFactory {
         p2pConfig = config.p2pConfig,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
+        beaconChain = beaconChain,
         metricsFacade = metricsFacade,
         nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
         statusMessageFactory = statusMessageFactory,
@@ -208,6 +209,7 @@ class MaruAppFactory {
       p2pConfig: P2P?,
       privateKey: ByteArray,
       chainId: UInt,
+      beaconChain: BeaconChain,
       nextExpectedBeaconBlockNumber: ULong = 1UL,
       metricsFacade: MetricsFacade,
       statusMessageFactory: StatusMessageFactory,
@@ -219,9 +221,10 @@ class MaruAppFactory {
           p2pConfig = p2pConfig,
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
-          nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsFacade = metricsFacade,
           statusMessageFactory = statusMessageFactory,
+          beaconChain = beaconChain,
+          nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
           metricsSystem = NoOpMetricsSystem(),
           forkIdHashProvider = forkIdHashProvider,
         )
