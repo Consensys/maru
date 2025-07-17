@@ -101,9 +101,12 @@ class ForksScheduleTest {
 
   @Test
   fun `getForkByConfigType returns first matching fork`() {
-    val qbftFork1 = ForkSpec(1000L, 10, qbftConsensusConfig)
-    val qbftFork2 = ForkSpec(2000L, 20, qbftConsensusConfig)
-    val forks = listOf(qbftFork1, qbftFork2)
+    val otherFork1 = ForkSpec(1000L, 10, consensusConfig)
+    val qbftFork1 = ForkSpec(2000L, 20, qbftConsensusConfig)
+    val otherFork2 = ForkSpec(3000L, 30, consensusConfig)
+    val qbftFork2 = ForkSpec(4000L, 40, qbftConsensusConfig)
+    val qbftFork3 = ForkSpec(5000L, 50, qbftConsensusConfig)
+    val forks = listOf(otherFork1, qbftFork1, otherFork2, qbftFork2, qbftFork3)
 
     val schedule = ForksSchedule(expectedChainId, forks)
 

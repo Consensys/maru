@@ -49,7 +49,8 @@ class ForksSchedule(
   }
 
   fun <T : ConsensusConfig> getForkByConfigType(configClass: KClass<T>): ForkSpec {
-    val fork = forks.reversed().find { it.configuration::class == configClass }
+    // Uses findLast since the list is reversed to get the first matching fork
+    val fork = forks.findLast { it.configuration::class == configClass }
     return fork ?: throw IllegalArgumentException(
       "No fork found for config type ${configClass.simpleName}",
     )
