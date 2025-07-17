@@ -41,10 +41,11 @@ import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
 import maru.core.BeaconState
 import maru.core.Protocol
 import maru.core.Validator
+import maru.crypto.Hashing
+import maru.crypto.Signing
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
-import maru.extensions.toBytes32
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
@@ -91,12 +92,6 @@ class QbftValidatorFactory(
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
     val securityModule = KeyPairSecurityModule(keyPair)
     val nodeKey = NodeKey(securityModule)
-    val signingFunc: (ULong) -> ByteArray = { l2BlockNumber ->
-      nodeKey
-        .sign(Bytes32.wrap(l2BlockNumber.toBytes32()))
-        .encodedBytes()
-        .toArray()
-    }
     val blockChain = QbftBlockchainAdapter(beaconChain)
 
     val localAddress = Util.publicKeyToAddress(keyPair.publicKey)
@@ -115,7 +110,11 @@ class QbftValidatorFactory(
         localNodeIdentity = localValidator,
         stateTransition = stateTransition,
         finalizationStateProvider = finalizationStateProvider,
-        prevRandaoProvider = PrevRandaoProviderImpl(signingFunc),
+        prevRandaoProvider =
+          PrevRandaoProviderImpl(
+            signer = Signing.ULongSigner(nodeKey),
+            hasher = Hashing::keccak,
+          ),
       )
 
     val qbftBlockCreatorFactory =
@@ -125,7 +124,11 @@ class QbftValidatorFactory(
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         finalizationStateProvider = finalizationStateProvider,
-        prevRandaoProvider = PrevRandaoProviderImpl(signingFunc),
+        prevRandaoProvider =
+          PrevRandaoProviderImpl(
+            signer = Signing.ULongSigner(nodeKey),
+            hasher = Hashing::keccak,
+          ),
         blockBuilderIdentity = Validator(localAddress.toArray()),
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
@@ -254,7 +257,7 @@ class QbftValidatorFactory(
     beaconChain: BeaconChain,
     stateTransition: StateTransition,
     finalizationStateProvider: FinalizationProvider,
-    prevRandaoProvider: PrevRandaoProvider,
+    prevRandaoProvider: PrevRandaoProvider<ULong>,
   ): SealedBeaconBlockImporter<ValidationResult> {
     val shouldBuildNextBlock =
       { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->

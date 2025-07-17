@@ -29,7 +29,7 @@ class QbftBlockCreatorFactory(
   private val validatorProvider: ValidatorProvider,
   private val beaconChain: BeaconChain,
   private val finalizationStateProvider: FinalizationProvider,
-  private val prevRandaoProvider: PrevRandaoProvider,
+  private val prevRandaoProvider: PrevRandaoProvider<ULong>,
   private val blockBuilderIdentity: Validator,
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
 ) : QbftBlockCreatorFactory {

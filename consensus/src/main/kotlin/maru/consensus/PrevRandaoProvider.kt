@@ -8,36 +8,37 @@
  */
 package maru.consensus
 
-import maru.crypto.Hashing
+import maru.core.Hasher
+import maru.core.Signer
 import maru.extensions.encodeHex
 import maru.extensions.xor
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
-fun interface PrevRandaoProvider {
+fun interface PrevRandaoProvider<T> {
   fun calculateNextPrevRandao(
-    nextL2BlockNumber: ULong,
+    signee: T,
     prevRandao: ByteArray,
   ): ByteArray
 }
 
-class PrevRandaoProviderImpl(
-  private val signingFunc: (ULong) -> ByteArray,
-  private val hashingFunc: (ByteArray) -> ByteArray = Hashing::keccak,
-) : PrevRandaoProvider {
+class PrevRandaoProviderImpl<T>(
+  private val signer: Signer<T>,
+  private val hasher: Hasher,
+) : PrevRandaoProvider<T> {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun calculateNextPrevRandao(
-    nextL2BlockNumber: ULong,
+    signee: T,
     prevRandao: ByteArray,
   ): ByteArray {
-    val signedNumber = signingFunc(nextL2BlockNumber)
-    val signedNumberHash = hashingFunc(signedNumber)
-    val nextPrevRandao = prevRandao.xor(signedNumberHash)
+    val signature = signer.sign(signee)
+    val signatureHash = hasher.hash(signature)
+    val nextPrevRandao = prevRandao.xor(signatureHash)
 
     log.debug(
-      "calculateNextPrevRandao: nextL2BlockNumber=$nextL2BlockNumber prevRandao=${prevRandao.encodeHex()} " +
-        "signedNumber=${signedNumber.encodeHex()} signedNumberHash=${signedNumberHash.encodeHex()} " +
+      "calculateNextPrevRandao: signee=$signee prevRandao=${prevRandao.encodeHex()} " +
+        "signature=${signature.encodeHex()} signatureHash=${signatureHash.encodeHex()} " +
         "nextPrevRandao=${nextPrevRandao.encodeHex()}",
     )
     return nextPrevRandao

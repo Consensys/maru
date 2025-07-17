@@ -4,8 +4,10 @@ plugins {
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":jvm-libs:extensions"))
   implementation("org.hyperledger.besu.internal:algorithms")
   implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu.internal:core")
+  implementation("org.hyperledger.besu.internal:services")
   implementation "io.tmio:tuweni-bytes"
 }

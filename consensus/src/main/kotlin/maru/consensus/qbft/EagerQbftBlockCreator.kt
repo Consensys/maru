@@ -31,7 +31,7 @@ class EagerQbftBlockCreator(
   private val manager: ExecutionLayerManager,
   private val delegate: QbftBlockCreator,
   private val finalizationStateProvider: FinalizationProvider,
-  private val prevRandaoProvider: PrevRandaoProvider,
+  private val prevRandaoProvider: PrevRandaoProvider<ULong>,
   private val blockBuilderIdentity: Validator,
   private val beaconChain: BeaconChain,
   private val config: Config,
@@ -64,7 +64,7 @@ class EagerQbftBlockCreator(
           feeRecipient = blockBuilderIdentity.address,
           prevRandao =
             prevRandaoProvider.calculateNextPrevRandao(
-              nextL2BlockNumber = parentBeaconBlockBody.executionPayload.blockNumber.inc(),
+              signee = parentBeaconBlockBody.executionPayload.blockNumber.inc(),
               prevRandao = parentBeaconBlockBody.executionPayload.prevRandao,
             ),
         ).get()

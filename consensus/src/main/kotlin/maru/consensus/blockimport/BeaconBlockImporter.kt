@@ -81,7 +81,7 @@ class BlockBuildingBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val prevRandaoProvider: PrevRandaoProvider,
+  private val prevRandaoProvider: PrevRandaoProvider<ULong>,
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
 ) : BeaconBlockImporter {
@@ -116,7 +116,7 @@ class BlockBuildingBeaconBlockImporter(
         feeRecipient = blockBuilderIdentity.address,
         prevRandao =
           prevRandaoProvider.calculateNextPrevRandao(
-            nextL2BlockNumber =
+            signee =
               beaconBlock.beaconBlockBody.executionPayload.blockNumber
                 .inc(),
             prevRandao = beaconBlock.beaconBlockBody.executionPayload.prevRandao,

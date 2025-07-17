@@ -22,7 +22,8 @@ class PrevRandaoProviderTest {
     val signatureHash = Hashing.keccak(signatureByteArray)
     val prevRandaoProvider =
       PrevRandaoProviderImpl(
-        signingFunc = { signatureByteArray },
+        signer = { _: ULong -> signatureByteArray },
+        hasher = Hashing::keccak,
       )
     val prevRandao = Random.nextBytes(32)
 
