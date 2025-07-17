@@ -19,7 +19,7 @@ fun ULong.toBytes32(): ByteArray {
 }
 
 // Helper function to convert ULong to ByteArray (big-endian)
-fun ULong.toByteArray(): ByteArray =
+private fun ULong.toByteArray(): ByteArray =
   ByteArray(ULong.SIZE_BYTES) { i ->
     ((this shr ((ULong.SIZE_BYTES - 1 - i) * Byte.SIZE_BITS)) and 0xFFu).toByte()
   }
