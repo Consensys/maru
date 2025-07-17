@@ -49,7 +49,7 @@ class ForksSchedule(
   }
 
   fun <T : ConsensusConfig> getForkByConfigType(configClass: KClass<T>): ForkSpec {
-    val fork = forks.find { it.configuration::class == configClass }
+    val fork = forks.reversed().find { it.configuration::class == configClass }
     return fork ?: throw IllegalArgumentException(
       "No fork found for config type ${configClass.simpleName}",
     )

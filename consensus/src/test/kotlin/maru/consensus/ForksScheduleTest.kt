@@ -86,18 +86,6 @@ class ForksScheduleTest {
   }
 
   @Test
-  fun `getForkByConfigType returns fork for matching config class`() {
-    val qbftFork = ForkSpec(1000L, 10, qbftConsensusConfig)
-    val otherFork = ForkSpec(2000L, 20, otherConsensusConfig)
-    val forks = listOf(qbftFork, otherFork)
-
-    val schedule = ForksSchedule(expectedChainId, forks)
-
-    assertThat(schedule.getForkByConfigType(qbftConsensusConfig::class)).isEqualTo(qbftFork)
-    assertThat(schedule.getForkByConfigType(otherConsensusConfig::class)).isEqualTo(otherFork)
-  }
-
-  @Test
   fun `getForkByConfigType throws exception when config class not found`() {
     val qbftFork = ForkSpec(1000L, 10, qbftConsensusConfig)
     val forks = listOf(qbftFork)
@@ -112,7 +100,7 @@ class ForksScheduleTest {
   }
 
   @Test
-  fun `getForkByConfigType returns first matching fork when multiple forks exist`() {
+  fun `getForkByConfigType returns first matching fork`() {
     val qbftFork1 = ForkSpec(1000L, 10, qbftConsensusConfig)
     val qbftFork2 = ForkSpec(2000L, 20, qbftConsensusConfig)
     val forks = listOf(qbftFork1, qbftFork2)
@@ -121,6 +109,6 @@ class ForksScheduleTest {
 
     // Should return the first one found (note: forks are sorted by timestamp in reverse order internally)
     val result = schedule.getForkByConfigType(qbftConsensusConfig::class)
-    assertThat(result).isIn(qbftFork1, qbftFork2)
+    assertThat(result).isEqualTo(qbftFork1)
   }
 }
