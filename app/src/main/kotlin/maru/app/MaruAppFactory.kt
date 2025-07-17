@@ -250,6 +250,6 @@ class MaruAppFactory {
   }
 
   private fun ensureDirectoryExists(path: Path) {
-    if (!path.exists()) Files.createDirectory(path)
+    if (!path.exists()) Files.createDirectories(path)
   }
 }
