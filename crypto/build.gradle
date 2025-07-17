@@ -7,7 +7,7 @@ dependencies {
   implementation(project(":jvm-libs:extensions"))
   implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
+  implementation("org.hyperledger.besu.internal:besu-crypto-services")
   implementation("org.hyperledger.besu.internal:besu-ethereum-core")
-  implementation("org.hyperledger.besu.internal:services")
   implementation "io.tmio:tuweni-bytes"
 }
