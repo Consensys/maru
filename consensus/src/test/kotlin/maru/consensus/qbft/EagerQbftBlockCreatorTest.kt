@@ -108,7 +108,6 @@ class EagerQbftBlockCreatorTest {
   private fun setup(
     sealedGenesisBeaconBlock: SealedBeaconBlock,
     adaptedGenesisBeaconBlock: QbftBlockHeaderAdapter,
-    manager: ExecutionLayerManager = executionLayerManager,
   ): EagerQbftBlockCreator {
     whenever(
       beaconChain.getSealedBeaconBlock(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader.hash()),
@@ -127,7 +126,7 @@ class EagerQbftBlockCreatorTest {
 
     val mainBlockCreator =
       DelayedQbftBlockCreator(
-        manager = manager,
+        manager = executionLayerManager,
         proposerSelector = proposerSelector,
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
@@ -136,7 +135,7 @@ class EagerQbftBlockCreatorTest {
     val genesisBlockHash = sealedGenesisBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash
     val eagerQbftBlockCreator =
       EagerQbftBlockCreator(
-        manager = manager,
+        manager = executionLayerManager,
         delegate = mainBlockCreator,
         finalizationStateProvider = {
           FinalizationState(
@@ -156,7 +155,6 @@ class EagerQbftBlockCreatorTest {
       genesisBlockHash = genesisBlockHash,
       mainBlockCreator = mainBlockCreator,
       parentHeader = adaptedGenesisBeaconBlock,
-      manager = manager,
     )
     return eagerQbftBlockCreator
   }
@@ -248,16 +246,15 @@ class EagerQbftBlockCreatorTest {
     val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
 
-    // Spy on the ExecutionLayerManager to capture calls
-    val spyExecutionLayerManager = Mockito.spy(executionLayerManager)
-    val eagerQbftBlockCreator = setup(sealedGenesisBeaconBlock, parentHeader, spyExecutionLayerManager)
+    val eagerQbftBlockCreator = setup(sealedGenesisBeaconBlock, parentHeader)
 
     setNextSecondMillis(0)
     val acceptedBlockTimestamp = (clock.millis() / 1000)
-    eagerQbftBlockCreator.createBlock(acceptedBlockTimestamp, parentHeader)
+    val acceptedBlock = eagerQbftBlockCreator.createBlock(acceptedBlockTimestamp, parentHeader)
 
-    // Verify that getLatestBlockHash() was called since parent block number is 0 (genesis)
-    Mockito.verify(spyExecutionLayerManager).getLatestBlockHash()
+    assertThat(
+      acceptedBlock.toBeaconBlock().beaconBlockHeader.parentRoot,
+    ).isEqualTo(parentHeader.toBeaconBlockHeader().hash())
   }
 
   private fun createProposalToBeRejected(
@@ -265,10 +262,9 @@ class EagerQbftBlockCreatorTest {
     genesisBlockHash: ByteArray,
     mainBlockCreator: QbftBlockCreator,
     parentHeader: QbftBlockHeader,
-    manager: ExecutionLayerManager = executionLayerManager,
   ) {
     val rejectedBlockTimestamp = (clock.millis() / 1000) + 1
-    manager
+    executionLayerManager
       .setHeadAndStartBlockBuilding(
         headHash = genesisBlockHash,
         safeHash = genesisBlockHash,
