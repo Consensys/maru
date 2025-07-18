@@ -31,10 +31,11 @@ class HopliteFriendlinessTest {
     [p2p]
     port = 3322
     ip-address = "127.0.0.1"
-    discovery-enabled = true
-    discovery-port = 3324
     static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
-    reconnect-delay = 500m
+    reconnect-delay = 500milliseconds
+
+    [p2p.discovery]
+    port = 3324
     bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
 
     [payload-validator]
@@ -62,16 +63,18 @@ class HopliteFriendlinessTest {
     P2P(
       ipAddress = "127.0.0.1",
       port = 3322u,
-      discoveryEnabled = true,
-      discoveryPort = 3324u,
       staticPeers =
         listOf(
           "/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg",
         ),
       reconnectDelay = 500.milliseconds,
-      bootnodes =
-        listOf(
-          "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
+      discovery =
+        P2P.Discovery(
+          port = 3324u,
+          bootnodes =
+            listOf(
+              "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
+            ),
         ),
     )
   private val ethApiEndpoint =

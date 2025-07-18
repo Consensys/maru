@@ -164,9 +164,7 @@ class MaruFactory {
       "127.0.0.1",
       port = p2pPort,
       staticPeers = staticPeers,
-      discoveryPort = 0u,
       reconnectDelay = defaultReconnectDelay,
-      discoveryEnabled = false,
     )
   }
 

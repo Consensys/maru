@@ -110,11 +110,13 @@ class MaruDiscoveryServiceTest {
 
   @BeforeEach
   fun setUp() {
+    val p2pDiscovery = mock(P2P.Discovery::class.java)
+    whenever(p2pDiscovery.port).thenReturn(9000.toUInt())
+    whenever(p2pDiscovery.bootnodes).thenReturn(listOf())
     val p2pConfig = mock(P2P::class.java)
     whenever(p2pConfig.ipAddress).thenReturn("127.0.0.1")
-    whenever(p2pConfig.discoveryPort).thenReturn(9000.toUInt())
     whenever(p2pConfig.port).thenReturn(9001.toUInt())
-    whenever(p2pConfig.bootnodes).thenReturn(listOf())
+    whenever(p2pConfig.discovery).thenReturn(p2pDiscovery)
     service = MaruDiscoveryService(dummyPrivKey, p2pConfig, forkIdHashProvider, NoOpMetricsSystem())
   }
 
@@ -200,8 +202,11 @@ class MaruDiscoveryServiceTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = PORT2,
-            bootnodes = emptyList(),
+            discovery =
+              P2P.Discovery(
+                port = PORT2,
+                bootnodes = emptyList(),
+              ),
           ),
         forkIdHashProvider = forkIdHashProvider,
         metricsSystem = NoOpMetricsSystem(),
@@ -222,8 +227,11 @@ class MaruDiscoveryServiceTest {
           P2P(
             ipAddress = IPV4,
             port = PORT3,
-            discoveryPort = PORT4,
-            bootnodes = listOf(enrString),
+            discovery =
+              P2P.Discovery(
+                port = PORT4,
+                bootnodes = listOf(enrString),
+              ),
           ),
         forkIdHashProvider = forkIdHashProvider,
         metricsSystem = NoOpMetricsSystem(),
@@ -236,8 +244,11 @@ class MaruDiscoveryServiceTest {
           P2P(
             ipAddress = IPV4,
             port = PORT5,
-            discoveryPort = PORT6,
-            bootnodes = listOf(enrString),
+            discovery =
+              P2P.Discovery(
+                port = PORT6,
+                bootnodes = listOf(enrString),
+              ),
           ),
         forkIdHashProvider = forkIdHashProvider,
         metricsSystem = NoOpMetricsSystem(),

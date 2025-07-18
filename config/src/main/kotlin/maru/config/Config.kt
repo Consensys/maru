@@ -39,13 +39,16 @@ data class FollowersConfig(
 data class P2P(
   val ipAddress: String,
   val port: UInt,
-  val discoveryEnabled: Boolean = true,
-  val discoveryPort: UInt,
-  val bootnodes: List<String> = emptyList(),
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
   val maxPeers: Int = 25,
-)
+  val discovery: Discovery? = null,
+) {
+  data class Discovery(
+    val port: UInt,
+    val bootnodes: List<String> = emptyList(),
+  )
+}
 
 data class ValidatorElNode(
   val ethApiEndpoint: ApiEndpointConfig,

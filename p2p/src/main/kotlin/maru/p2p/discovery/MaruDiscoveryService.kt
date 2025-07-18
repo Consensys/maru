@@ -53,14 +53,15 @@ class MaruDiscoveryService(
   private val privateKey = SecretKeyParser.fromLibP2pPrivKey(Bytes.wrap(privateKeyBytes))
 
   private val bootnodes =
-    p2pConfig.bootnodes
+    p2pConfig.discovery!!
+      .bootnodes
       .stream()
       .map { NodeRecordFactory.DEFAULT.fromEnr(it) }
       .toList()
 
   private val discoverySystem: DiscoverySystem =
     DiscoverySystemBuilder()
-      .listen(p2pConfig.ipAddress, p2pConfig.discoveryPort.toInt())
+      .listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
       .secretKey(privateKey)
       .localNodeRecord(localNodeRecord())
       .bootnodes(bootnodes)
@@ -82,7 +83,7 @@ class MaruDiscoveryService(
   init {
     val discoveryNetworkBuilder = DiscoverySystemBuilder()
 
-    discoveryNetworkBuilder.listen(p2pConfig.ipAddress, p2pConfig.discoveryPort.toInt())
+    discoveryNetworkBuilder.listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
     discoveryNetworkBuilder.secretKey(privateKey)
     discoveryNetworkBuilder.localNodeRecord(localNodeRecord())
     discoveryNetworkBuilder.bootnodes(bootnodes)
@@ -166,7 +167,7 @@ class MaruDiscoveryService(
         .seq(UInt64.ONE)
         .address(
           p2pConfig.ipAddress,
-          p2pConfig.discoveryPort.toInt(),
+          p2pConfig.discovery!!.port.toInt(),
           p2pConfig.port.toInt(),
         ).customField(FORK_ID_HASH_FIELD_NAME, Bytes.wrap(forkIdHashProvider.currentForkIdHash()))
     // TODO: do we want more custom fields to identify version/topics/role/something else?

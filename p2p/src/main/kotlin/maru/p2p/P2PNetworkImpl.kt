@@ -98,7 +98,7 @@ class P2PNetworkImpl(
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
   internal val p2pNetwork = builtNetwork.p2PNetwork
   private val discoveryService: MaruDiscoveryService? =
-    if (p2pConfig.discoveryEnabled) {
+    p2pConfig.discovery?.let {
       MaruDiscoveryService(
         privateKeyBytes =
           privateKeyBytes
@@ -109,11 +109,9 @@ class P2PNetworkImpl(
         forkIdHashProvider = forkIdHashProvider,
         metricsSystem = metricsSystem,
       )
-    } else {
-      null
     }
 
-  // TODO: We need to call the updateForkId method on the discovery service when the forkId changesinternal
+  // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
   val peerLookup = builtNetwork.peerLookup
   private val log: Logger = LogManager.getLogger(this::javaClass)
   private val delayedExecutor =

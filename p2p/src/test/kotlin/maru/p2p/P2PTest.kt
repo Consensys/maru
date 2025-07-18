@@ -91,8 +91,6 @@ class P2PTest {
         P2P(
           ipAddress = IPV4,
           port = PORT1,
-          discoveryPort = 0u,
-          discoveryEnabled = false,
         )
       maruPeerManager = MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = p2p)
       return rpcMethods
@@ -128,9 +126,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -148,9 +144,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT2,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -185,9 +179,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -205,9 +197,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT2,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -247,9 +237,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -267,9 +255,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT2,
-            discoveryPort = 0u,
             staticPeers = listOf(PEER_ADDRESS_NODE_1),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -302,9 +288,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -322,9 +306,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT2,
-            discoveryPort = 0u,
             staticPeers = listOf(PEER_ADDRESS_NODE_1),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -362,9 +344,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -382,9 +362,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT2,
-            discoveryPort = 0u,
             staticPeers = listOf(PEER_ADDRESS_NODE_1),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -431,9 +409,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -451,9 +427,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT2,
-            discoveryPort = 0u,
             staticPeers = listOf(PEER_ADDRESS_NODE_1, PEER_ADDRESS_NODE_3),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -471,9 +445,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT3,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -529,9 +501,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -549,9 +519,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT2,
-            discoveryPort = 0u,
             staticPeers = listOf(PEER_ADDRESS_NODE_1),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -623,9 +591,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = 0u,
             staticPeers = emptyList(),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -643,9 +609,7 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT2,
-            discoveryPort = 0u,
             staticPeers = listOf(PEER_ADDRESS_NODE_1),
-            discoveryEnabled = false,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -691,10 +655,12 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT1,
-            discoveryPort = PORT2,
             staticPeers = emptyList(),
             maxPeers = 2,
-            discoveryEnabled = true,
+            discovery =
+              P2P.Discovery(
+                port = PORT2,
+              ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -722,11 +688,13 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT3,
-            discoveryPort = PORT4,
             staticPeers = emptyList(),
-            bootnodes = listOf(bootnodeEnrString),
             maxPeers = 2,
-            discoveryEnabled = true,
+            discovery =
+              P2P.Discovery(
+                port = PORT4,
+                bootnodes = listOf(bootnodeEnrString),
+              ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -745,11 +713,13 @@ class P2PTest {
           P2P(
             ipAddress = IPV4,
             port = PORT5,
-            discoveryPort = PORT6,
             staticPeers = emptyList(),
-            bootnodes = listOf(bootnodeEnrString),
             maxPeers = 2,
-            discoveryEnabled = true,
+            discovery =
+              P2P.Discovery(
+                port = PORT6,
+                bootnodes = listOf(bootnodeEnrString),
+              ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
