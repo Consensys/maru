@@ -267,7 +267,7 @@ class EagerQbftBlockCreatorTest {
       finalizedHash = any(),
       nextBlockTimestamp = any(),
       feeRecipient = any(),
-      prevRandao = any()
+      prevRandao = any(),
     )
   }
 
