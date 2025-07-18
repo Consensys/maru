@@ -27,6 +27,7 @@ import maru.api.ApiServerImpl
 import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2P
+import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
@@ -97,6 +98,16 @@ class MaruAppFactory {
             },
         )
 
+    val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
+    val qbftForkTimestamp = qbftFork.timestampSeconds.toULong()
+    val qbftConfig = qbftFork.configuration as QbftConsensusConfig
+    BeaconChainInitialization(
+      beaconChain = beaconChain,
+      genesisTimestamp = qbftForkTimestamp,
+    ).ensureDbIsInitialized(
+      validatorSet = qbftConfig.validatorSet
+    )
+
     val forkIdHasher =
       ForkIdHasher(
         ForkIdSerializers
@@ -133,6 +144,7 @@ class MaruAppFactory {
         metricsFacade = metricsFacade,
         nextExpectedBeaconBlockNumber = beaconChainLastBlockNumber + 1UL,
         statusMessageFactory = statusMessageFactory,
+        forkIdHashProvider = forkIdHashProvider,
       )
     val finalizationProvider =
       overridingFinalizationProvider
@@ -215,6 +227,7 @@ class MaruAppFactory {
       nextExpectedBeaconBlockNumber: ULong = 1UL,
       metricsFacade: MetricsFacade,
       statusMessageFactory: StatusMessageFactory,
+      forkIdHashProvider: ForkIdHashProvider,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -226,6 +239,8 @@ class MaruAppFactory {
           statusMessageFactory = statusMessageFactory,
           beaconChain = beaconChain,
           nextExpectedBeaconBlockNumber = nextExpectedBeaconBlockNumber,
+          metricsSystem = NoOpMetricsSystem(),
+          forkIdHashProvider = forkIdHashProvider,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
