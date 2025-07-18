@@ -27,6 +27,7 @@ import maru.api.ApiServerImpl
 import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2P
+import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
@@ -96,6 +97,16 @@ class MaruAppFactory {
               override fun getApplicationPrefix(): Optional<String> = Optional.empty()
             },
         )
+
+    val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
+    val qbftForkTimestamp = qbftFork.timestampSeconds.toULong()
+    val qbftConfig = qbftFork.configuration as QbftConsensusConfig
+    BeaconChainInitialization(
+      beaconChain = beaconChain,
+      genesisTimestamp = qbftForkTimestamp,
+    ).ensureDbIsInitialized(
+      validatorSet = qbftConfig.validatorSet
+    )
 
     val forkIdHasher =
       ForkIdHasher(

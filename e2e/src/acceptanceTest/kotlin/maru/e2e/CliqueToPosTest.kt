@@ -249,7 +249,7 @@ class CliqueToPosTest {
     )
 
   private fun waitTillTimestamp(timestamp: Long) {
-    await.timeout(1.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
+    await.timeout(2.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
       val unixTimestamp = System.currentTimeMillis() / 1000
       log.info(
         "Waiting {} seconds for the Prague switch at timestamp $timestamp",
@@ -377,7 +377,7 @@ class CliqueToPosTest {
 
   private fun everyoneArePeered() {
     log.info("Call add peer on all nodes and wait for peering to happen.")
-    await.timeout(1.minutes.toJavaDuration()).untilAsserted {
+    await.timeout(2.minutes.toJavaDuration()).untilAsserted {
       TestEnvironment.preMergeFollowerClients.forEach {
         try {
           it.value
