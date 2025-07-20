@@ -105,7 +105,7 @@ class MaruAppFactory {
       beaconChain = beaconChain,
       genesisTimestamp = qbftForkTimestamp,
     ).ensureDbIsInitialized(
-      validatorSet = qbftConfig.validatorSet
+      validatorSet = qbftConfig.validatorSet,
     )
 
     val forkIdHasher =
