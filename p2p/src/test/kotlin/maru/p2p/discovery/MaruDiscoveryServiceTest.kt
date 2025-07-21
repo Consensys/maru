@@ -12,6 +12,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
 import java.util.concurrent.TimeUnit
+import linea.kotlin.decodeHex
 import maru.config.P2P
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -51,16 +52,9 @@ class MaruDiscoveryServiceTest {
     private const val PORT5 = 9238u
     private const val PORT6 = 9239u
 
-    private const val PRIVATE_KEY1: String =
-      "0x12c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2"
-    private const val PRIVATE_KEY2: String =
-      "0xf3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
-    private const val PRIVATE_KEY3: String =
-      "0x4437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57"
-
-    private val key1 = Bytes.fromHexString(PRIVATE_KEY1).toArray()
-    private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
-    private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
+    private val key1 = "0x12c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".decodeHex()
+    private val key2 = "0xf3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".decodeHex()
+    private val key3 = "0x4437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".decodeHex()
 
     private val chainId = 1337u
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
@@ -79,14 +73,6 @@ class MaruDiscoveryServiceTest {
     private val forkIdHashProvider =
       ForkIdHashProvider(
         chainId = chainId,
-        beaconChain = beaconChain,
-        forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
-      )
-
-    private val forkIdHashProvider2 =
-      ForkIdHashProvider(
-        chainId = chainId + 1u,
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
         forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),

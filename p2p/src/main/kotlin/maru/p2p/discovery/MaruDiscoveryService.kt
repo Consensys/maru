@@ -55,7 +55,6 @@ class MaruDiscoveryService(
   private val bootnodes =
     p2pConfig.discovery!!
       .bootnodes
-      .stream()
       .map { NodeRecordFactory.DEFAULT.fromEnr(it) }
       .toList()
 
