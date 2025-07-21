@@ -28,7 +28,6 @@ import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
@@ -37,6 +36,7 @@ import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class P2PNetworkImpl(
   privateKeyBytes: ByteArray,
@@ -44,7 +44,7 @@ class P2PNetworkImpl(
   private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
-  private val metricsSystem: MetricsSystem,
+  private val metricsSystem: BesuMetricsSystem,
   private val statusMessageFactory: StatusMessageFactory,
   private val beaconChain: BeaconChain,
   private val forkIdHashProvider: ForkIdHashProvider,
@@ -72,6 +72,7 @@ class P2PNetworkImpl(
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
     p2pConfig: P2P,
+    besuMetricsSystem: BesuMetricsSystem,
   ): TekuLibP2PNetwork {
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
     val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
@@ -91,11 +92,11 @@ class P2PNetworkImpl(
       sealedBlocksTopicId = sealedBlocksTopicId,
       rpcMethods = rpcMethods.all(),
       maruPeerManager = maruPeerManager,
-      metricsSystem = metricsSystem,
+      metricsSystem = besuMetricsSystem,
     )
   }
 
-  private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig)
+  private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig, metricsSystem)
   internal val p2pNetwork = builtNetwork.p2PNetwork
   private val discoveryService: MaruDiscoveryService? =
     p2pConfig.discovery?.let {

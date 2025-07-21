@@ -39,7 +39,7 @@ class MaruPeerManager(
   p2pConfig: P2P,
 ) : PeerHandler,
   PeerLookup {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this::javaClass)
   private val maxPeers = p2pConfig.maxPeers
   private val currentlySearching = AtomicBoolean(false)
   private val connectionInProgress = mutableListOf<Bytes>()
@@ -92,6 +92,17 @@ class MaruPeerManager(
   }
 
   private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
+
+  init {
+    scheduler.scheduleAtFixedRate({
+      logConnectedPeers()
+    }, 30, 30, TimeUnit.SECONDS)
+  }
+
+  private fun logConnectedPeers() {
+    val peerIds = connectedPeers.keys.joinToString(", ") { it.toString() }
+    log.info("Currently connected peers: [$peerIds]")
+  }
 
   override fun onConnect(peer: Peer) {
     // TODO: here we could check if we want to be connected to that peer

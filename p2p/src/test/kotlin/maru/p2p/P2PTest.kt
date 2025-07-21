@@ -134,7 +134,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     val p2pNetworkImpl2 =
@@ -152,7 +152,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     try {
@@ -187,7 +187,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     val p2pNetworkImpl2 =
@@ -205,7 +205,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     try {
@@ -245,7 +245,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     val p2pNetworkImpl2 =
@@ -263,7 +263,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     try {
@@ -294,10 +294,10 @@ class P2PTest {
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
-        metricsSystem = NoOpMetricsSystem(),
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -314,7 +314,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     try {
@@ -352,7 +352,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     val p2pNetworkImpl2 =
@@ -370,7 +370,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     try {
@@ -417,7 +417,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     val p2PNetworkImpl2 =
@@ -435,7 +435,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     val p2PNetworkImpl3 =
@@ -453,7 +453,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     try {
@@ -509,7 +509,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     val p2pManagerImpl2 =
@@ -527,7 +527,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     try {
@@ -599,7 +599,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = testBeaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     val p2pManagerImpl2 =
@@ -617,7 +617,7 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = NoOpMetricsSystem(),
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     try {

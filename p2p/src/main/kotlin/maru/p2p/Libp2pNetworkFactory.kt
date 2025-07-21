@@ -30,7 +30,6 @@ import kotlin.random.Random
 import maru.core.SealedBeaconBlock
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.plugin.services.MetricsSystem
 import pubsub.pb.Rpc
 import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
@@ -47,6 +46,7 @@ import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
+import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 data class TekuLibP2PNetwork(
   val p2PNetwork: P2PNetwork<Peer>,
@@ -65,7 +65,7 @@ class Libp2pNetworkFactory(
     sealedBlocksTopicId: String,
     rpcMethods: List<RpcMethod<*, *, *>>,
     maruPeerManager: MaruPeerManager,
-    metricsSystem: MetricsSystem,
+    metricsSystem: BesuMetricsSystem,
   ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val gossipTopicHandlers = GossipTopicHandlers()
