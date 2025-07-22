@@ -31,8 +31,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.methods.response.EthBlock
 
-class
-MaruConsensusSwitchTest {
+class MaruConsensusSwitchTest {
   companion object {
     private const val VANILLA_EXTRA_DATA_LENGTH = 32
   }
