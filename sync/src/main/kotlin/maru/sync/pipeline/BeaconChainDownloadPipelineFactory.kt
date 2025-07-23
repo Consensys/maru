@@ -12,6 +12,7 @@ import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.extensions.clampedAdd
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
+import maru.p2p.messages.BeaconBlocksByRangeHandler.Companion.MAX_BLOCKS_PER_REQUEST
 import org.hyperledger.besu.metrics.BesuMetricCategory
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.services.pipeline.Pipeline
@@ -22,10 +23,11 @@ class BeaconChainDownloadPipelineFactory(
   private val metricsSystem: MetricsSystem,
   private val peerLookup: PeerLookup,
   private val downloaderParallelism: Int,
-  private val requestSize: Int,
+  private val requestSize: UInt,
 ) {
   init {
-    require(requestSize > 0) { "Request size must be greater than 0" }
+    require(requestSize > 0u) { "Request size must be greater than 0" }
+    require(requestSize <= MAX_BLOCKS_PER_REQUEST) { "Request size must not be greater than $MAX_BLOCKS_PER_REQUEST" }
   }
 
   fun createPipeline(
@@ -43,7 +45,7 @@ class BeaconChainDownloadPipelineFactory(
       .createPipelineFrom(
         "blockNumbers",
         syncTargetRangeSequence.iterator(),
-        1,
+        downloaderParallelism,
         metricsSystem.createLabelledCounter(
           BesuMetricCategory.SYNCHRONIZER,
           "chain_download_pipeline_processed_total",

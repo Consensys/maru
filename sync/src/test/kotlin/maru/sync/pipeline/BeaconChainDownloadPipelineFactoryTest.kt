@@ -48,7 +48,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
         downloaderParallelism = 2,
-        requestSize = 10,
+        requestSize = 10u,
       )
   }
 
@@ -120,7 +120,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
         downloaderParallelism = 1,
-        requestSize = 100,
+        requestSize = 100u,
       )
 
     val peer = mock<MaruPeer>()
@@ -189,7 +189,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
         downloaderParallelism = 2,
-        requestSize = 0,
+        requestSize = 0u,
       )
     }.isInstanceOf(IllegalArgumentException::class.java)
       .hasMessageContaining("Request size must be greater than 0")
