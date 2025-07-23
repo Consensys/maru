@@ -130,12 +130,11 @@ class MaruDiscoveryService(
 
   private fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
     // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
-    val forkIdHash = node.get(FORK_ID_HASH_FIELD_NAME) as Bytes
     return MaruDiscoveryPeer(
       (node.get(EnrField.PKEY_SECP256K1) as Bytes),
       node.nodeId,
       node.tcpAddress.get(),
-      forkIdHash,
+      node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
     )
   }
 
@@ -144,7 +143,11 @@ class MaruDiscoveryService(
       log.info("Node record is missing forkId field: {}", node)
       return false
     }
-    val forkId = node.get(FORK_ID_HASH_FIELD_NAME) as Bytes
+    val forkId =
+      (node.get(FORK_ID_HASH_FIELD_NAME) as? Bytes) ?: run {
+        log.info("Failed to cast value for the forkId hash to Bytes")
+        return false
+      }
     if (forkId != Bytes.wrap(forkIdHashProvider.currentForkIdHash())) {
       log.info(
         "Peer {} is on a different chain. Expected: {}, Found: {}",
@@ -154,10 +157,17 @@ class MaruDiscoveryService(
       )
       return false
     }
-    val pkey = node.get(EnrField.PKEY_SECP256K1) as? Bytes
-    if (pkey == null) {
+    if (node.get(EnrField.PKEY_SECP256K1) == null) {
+      log.info("Node record is missing public key field: {}", node)
+      return false
+    }
+    (node.get(EnrField.PKEY_SECP256K1) as? Bytes) ?: run {
+      log.info("Failed to cast value for the public key to Bytes")
+      return false
+    }
+    if (node.tcpAddress.isEmpty) {
       log.info(
-        "node record doesn't have a public key: {}",
+        "node record doesn't have a TCP address: {}",
         node,
       )
       return false

@@ -81,6 +81,13 @@ class MaruDiscoveryServiceTest {
       )
 
     val otherForkSpec = ForkSpec(1L, 1, consensusConfig)
+
+    val forkId =
+      ForkId(
+        chainId = chainId + 2u,
+        forkSpec = otherForkSpec,
+        genesisRootHash = ByteArray(32),
+      )
   }
 
   private lateinit var service: MaruDiscoveryService
@@ -129,8 +136,7 @@ class MaruDiscoveryServiceTest {
             bootnodes = listOf(),
           ),
       )
-    service =
-      MaruDiscoveryService(keyPair.secretKey().bytes().toArray(), p2pConfig, forkIdHashProvider, NoOpMetricsSystem())
+    service = MaruDiscoveryService(keyPair.secretKey().bytesArray(), p2pConfig, forkIdHashProvider, NoOpMetricsSystem())
   }
 
   @Test
@@ -268,7 +274,6 @@ class MaruDiscoveryServiceTest {
 
   @Test
   fun `checkNodeRecord returns true for valid node record`() {
-    val pubKey = Bytes.of(9, 9, 9)
     val node = createValidNodeRecord()
 
     val result =
