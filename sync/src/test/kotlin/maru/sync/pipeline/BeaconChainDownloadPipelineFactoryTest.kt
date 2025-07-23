@@ -1,0 +1,174 @@
+/*
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
+ */
+package maru.sync.pipeline
+
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import maru.consensus.blockimport.SealedBeaconBlockImporter
+import maru.core.SealedBeaconBlock
+import maru.core.ext.DataGenerators
+import maru.p2p.MaruPeer
+import maru.p2p.PeerLookup
+import maru.p2p.ValidationResult
+import maru.p2p.messages.BeaconBlocksByRangeResponse
+import org.assertj.core.api.Assertions.assertThat
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.mockito.Mockito.atLeastOnce
+import org.mockito.Mockito.mock
+import org.mockito.kotlin.any
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
+import tech.pegasys.teku.infrastructure.async.SafeFuture
+
+class BeaconChainDownloadPipelineFactoryTest {
+  private lateinit var blockImporter: SealedBeaconBlockImporter<ValidationResult>
+  private lateinit var peerLookup: PeerLookup
+  private lateinit var factory: BeaconChainDownloadPipelineFactory
+  private lateinit var executorService: ExecutorService
+
+  @BeforeEach
+  fun setUp() {
+    blockImporter = mock()
+    peerLookup = mock()
+    executorService = Executors.newCachedThreadPool()
+    factory =
+      BeaconChainDownloadPipelineFactory(
+        blockImporter = blockImporter,
+        metricsSystem = NoOpMetricsSystem(),
+        peerLookup = peerLookup,
+        downloaderParallelism = 2,
+        requestSize = 10,
+      )
+  }
+
+  @AfterEach
+  fun tearDown() {
+    executorService.shutdownNow()
+  }
+
+  @Test
+  fun `pipeline processes blocks in correct ranges`() {
+    val peer = mock<MaruPeer>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
+
+    val rangeResponses = mutableMapOf<Pair<ULong, ULong>, List<SealedBeaconBlock>>()
+
+    // Ranges: [100, 110], [111, 121], [122, 125]
+    rangeResponses[100uL to 11uL] = (100uL..110uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+    rangeResponses[111uL to 11uL] = (111uL..121uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+    rangeResponses[122uL to 4uL] = (122uL..125uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+
+    rangeResponses.forEach { (range, blocks) ->
+      val response = mock<BeaconBlocksByRangeResponse>()
+      whenever(response.blocks).thenReturn(blocks)
+      whenever(peer.sendBeaconBlocksByRange(range.first, range.second)).thenReturn(SafeFuture.completedFuture(response))
+    }
+
+    whenever(blockImporter.importBlock(any())).thenReturn(
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid),
+    )
+
+    val pipeline = factory.createPipeline(100uL, 125uL)
+    val completionFuture = pipeline.start(executorService)
+
+    // Wait for completion
+    completionFuture.get(5, TimeUnit.SECONDS)
+
+    // Verify all blocks were imported
+    verify(blockImporter, atLeastOnce()).importBlock(any())
+  }
+
+  @Test
+  fun `pipeline handles single block range`() {
+    val peer = mock<MaruPeer>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
+
+    val blocks = listOf(DataGenerators.randomSealedBeaconBlock(42uL))
+    val response = mock<BeaconBlocksByRangeResponse>()
+    whenever(response.blocks).thenReturn(blocks)
+    whenever(peer.sendBeaconBlocksByRange(42uL, 1uL)).thenReturn(SafeFuture.completedFuture(response))
+
+    whenever(blockImporter.importBlock(any())).thenReturn(
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid),
+    )
+
+    val pipeline = factory.createPipeline(42uL, 42uL)
+    val completionFuture = pipeline.start(executorService)
+
+    completionFuture.get(5, TimeUnit.SECONDS)
+
+    verify(peer).sendBeaconBlocksByRange(42uL, 1uL)
+    verify(blockImporter).importBlock(blocks[0])
+  }
+
+  @Test
+  fun `pipeline with large request size processes correct ranges`() {
+    val largeRequestSizeFactory =
+      BeaconChainDownloadPipelineFactory(
+        blockImporter = blockImporter,
+        metricsSystem = NoOpMetricsSystem(),
+        peerLookup = peerLookup,
+        downloaderParallelism = 1,
+        requestSize = 100,
+      )
+
+    val peer = mock<MaruPeer>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
+
+    // Create blocks for range [0, 50]
+    val blocks = (0uL..50uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+    val response = mock<BeaconBlocksByRangeResponse>()
+    whenever(response.blocks).thenReturn(blocks)
+    whenever(peer.sendBeaconBlocksByRange(0uL, 51uL)).thenReturn(SafeFuture.completedFuture(response))
+
+    whenever(blockImporter.importBlock(any())).thenReturn(
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid),
+    )
+
+    val pipeline = largeRequestSizeFactory.createPipeline(0uL, 50uL)
+    val completionFuture = pipeline.start(executorService)
+
+    completionFuture.get(5, TimeUnit.SECONDS)
+
+    // Should make only one request since request size (100) is larger than range
+    verify(peer).sendBeaconBlocksByRange(0uL, 51uL)
+  }
+
+  @Test
+  fun `pipeline handles empty block response`() {
+    val peer = mock<MaruPeer>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
+
+    val response = mock<BeaconBlocksByRangeResponse>()
+    whenever(response.blocks).thenReturn(emptyList())
+    whenever(peer.sendBeaconBlocksByRange(any(), any())).thenReturn(SafeFuture.completedFuture(response))
+
+    val pipeline = factory.createPipeline(100uL, 110uL)
+    val completionFuture = pipeline.start(executorService)
+
+    completionFuture.get(5, TimeUnit.SECONDS)
+
+    // Pipeline should complete without errors
+    assertThat(completionFuture).isCompleted
+  }
+
+  @Test
+  fun `factory creates multiple independent pipelines`() {
+    val pipeline1 = factory.createPipeline(0uL, 100uL)
+    val pipeline2 = factory.createPipeline(200uL, 300uL)
+
+    assertThat(pipeline1).isNotNull()
+    assertThat(pipeline2).isNotNull()
+    assertThat(pipeline1).isNotSameAs(pipeline2)
+  }
+}

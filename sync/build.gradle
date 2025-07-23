@@ -1,0 +1,22 @@
+plugins {
+  id 'maru.kotlin-library-conventions'
+}
+
+dependencies {
+  implementation project(':core')
+  implementation project(':consensus')
+  implementation project(':p2p')
+  implementation project(':storage')
+
+  implementation 'org.hyperledger.besu.internal:besu-services-pipeline'
+  implementation 'org.hyperledger.besu.internal:besu-metrics-core'
+  implementation 'tech.pegasys.teku.internal:async'
+  implementation 'tech.pegasys.teku.internal:p2p'
+  implementation 'org.apache.logging.log4j:log4j-api'
+  implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
+
+  testImplementation(testFixtures(project(":core")))
+  testImplementation 'org.mockito:mockito-core'
+  testImplementation 'org.mockito.kotlin:mockito-kotlin'
+  testImplementation 'org.assertj:assertj-core'
+}
