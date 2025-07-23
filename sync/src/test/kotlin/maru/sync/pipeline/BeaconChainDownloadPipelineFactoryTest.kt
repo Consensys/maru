@@ -63,10 +63,10 @@ class BeaconChainDownloadPipelineFactoryTest {
 
     val rangeResponses = mutableMapOf<Pair<ULong, ULong>, List<SealedBeaconBlock>>()
 
-    // Ranges: [100, 110], [111, 121], [122, 125]
-    rangeResponses[100uL to 11uL] = (100uL..110uL).map { DataGenerators.randomSealedBeaconBlock(it) }
-    rangeResponses[111uL to 11uL] = (111uL..121uL).map { DataGenerators.randomSealedBeaconBlock(it) }
-    rangeResponses[122uL to 4uL] = (122uL..125uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+    // Ranges: [100, 109], [110, 119], [120, 125]
+    rangeResponses[100uL to 10uL] = (100uL..109uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+    rangeResponses[110uL to 10uL] = (110uL..119uL).map { DataGenerators.randomSealedBeaconBlock(it) }
+    rangeResponses[120uL to 6uL] = (120uL..125uL).map { DataGenerators.randomSealedBeaconBlock(it) }
 
     rangeResponses.forEach { (range, blocks) ->
       val response = mock<BeaconBlocksByRangeResponse>()

@@ -27,16 +27,7 @@ class BeaconChainDownloadPipelineFactory(
     startBlock: ULong,
     endBlock: ULong,
   ): Pipeline<SyncTargetRange?> {
-    val syncTargetRangeSequence =
-      sequence {
-        var currentStart = startBlock
-        while (currentStart <= endBlock) {
-          val currentEnd = minOf(currentStart + requestSize.toULong(), endBlock)
-          yield(SyncTargetRange(currentStart, currentEnd))
-          currentStart = currentEnd + 1uL
-        }
-      }
-
+    val syncTargetRangeSequence = createTargetRangeSequence(startBlock, endBlock)
     val downloadBlocksStep = DownloadBlocksStep(peerLookup)
     val importBlocksStep = ImportBlocksStep(blockImporter)
 
@@ -57,4 +48,21 @@ class BeaconChainDownloadPipelineFactory(
       ).thenProcessAsyncOrdered("downloadBlocks", downloadBlocksStep, downloaderParallelism)
       .andFinishWith("importBlocks", importBlocksStep)
   }
+
+  private fun createTargetRangeSequence(
+    startBlock: ULong,
+    endBlock: ULong,
+  ): Sequence<SyncTargetRange> =
+    sequence {
+      var currentStart = startBlock
+      while (currentStart <= endBlock) {
+        val currentEnd = minOf(currentStart + requestSize.toULong() - 1uL, endBlock)
+        yield(SyncTargetRange(currentStart, currentEnd))
+        // Prevent overflow when currentEnd is ULong.MAX_VALUE
+        if (currentEnd == ULong.MAX_VALUE) {
+          break
+        }
+        currentStart = currentEnd + 1uL
+      }
+    }
 }
