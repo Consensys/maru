@@ -11,11 +11,7 @@ package maru.p2p.discovery
 import java.time.Duration
 import java.util.function.Consumer
 import maru.config.P2P
-import maru.consensus.ForkId
 import maru.consensus.ForkIdHashProvider
-import maru.consensus.ForkIdHasher
-import maru.crypto.Hashing
-import maru.serialization.ForkIdSerializers
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -110,8 +106,7 @@ class MaruDiscoveryService(
     discoverySystem.stop()
   }
 
-  fun updateForkId(forkId: ForkId) { // TODO: Need to call this when the fork id changes
-    val forkIdHash = Bytes.wrap(ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash).hash(forkId))
+  fun updateForkIdHash(forkIdHash: Bytes) { // TODO: Need to call this when the fork id changes
     discoverySystem.updateCustomFieldValue(
       FORK_ID_HASH_FIELD_NAME,
       forkIdHash,

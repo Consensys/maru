@@ -8,7 +8,6 @@
  */
 package maru.p2p.discovery
 
-import io.netty.channel.unix.NativeInetAddress.address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
@@ -82,13 +81,6 @@ class MaruDiscoveryServiceTest {
       )
 
     val otherForkSpec = ForkSpec(1L, 1, consensusConfig)
-
-    val forkId =
-      ForkId(
-        chainId = chainId + 2u,
-        forkSpec = otherForkSpec,
-        genesisRootHash = ByteArray(32),
-      )
   }
 
   private lateinit var service: MaruDiscoveryService
@@ -158,17 +150,25 @@ class MaruDiscoveryServiceTest {
   }
 
   @Test
-  fun `updateForkId updates local `() {
+  fun `updateForkIdHash updates local`() {
     val localNodeRecordBefore = service.getLocalNodeRecord()
 
-    service.updateForkId(forkId)
+    val differentForkId =
+      ForkId(
+        chainId = chainId + 2u,
+        forkSpec = otherForkSpec,
+        genesisRootHash = ByteArray(32),
+      )
+    val differentForkIdHash =
+      Bytes.wrap(
+        ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash).hash(differentForkId),
+      )
+    service.updateForkIdHash(differentForkIdHash)
 
     val localNodeRecordAfter = service.getLocalNodeRecord()
     val actual = localNodeRecordAfter.get(FORK_ID_HASH_FIELD_NAME)
     assertThat(actual).isNotEqualTo(localNodeRecordBefore.get(FORK_ID_HASH_FIELD_NAME))
-    assertThat(
-      actual,
-    ).isEqualTo(Bytes.wrap(ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash).hash(forkId)))
+    assertThat(actual).isEqualTo(differentForkIdHash)
   }
 
   @Test
