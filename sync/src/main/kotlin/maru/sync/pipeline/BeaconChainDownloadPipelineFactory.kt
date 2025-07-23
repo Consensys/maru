@@ -32,6 +32,7 @@ class BeaconChainDownloadPipelineFactory(
     endBlock: ULong,
   ): Pipeline<SyncTargetRange?> {
     check(startBlock <= endBlock) { "Start block ($startBlock) must be less than or equal to end block ($endBlock)" }
+    check(endBlock < ULong.MAX_VALUE) { "End block ($endBlock) must be less than Long max value" }
 
     val syncTargetRangeSequence = createTargetRangeSequence(startBlock, endBlock)
     val downloadBlocksStep = DownloadBlocksStep(peerLookup)
@@ -62,27 +63,10 @@ class BeaconChainDownloadPipelineFactory(
     sequence {
       var currentStart = startBlock
       val maxRangeSize = requestSize.toULong()
-      
+
       while (currentStart <= endBlock) {
-        // Calculate how far we can go without exceeding endBlock
-        val distanceToEnd = endBlock - currentStart
-        
-        // The actual range size is the minimum of our request size and distance to end + 1
-        val actualRangeSize = if (distanceToEnd >= maxRangeSize - 1uL) {
-          maxRangeSize
-        } else {
-          distanceToEnd + 1uL
-        }
-        
-        // Calculate currentEnd (safe because actualRangeSize - 1 <= distanceToEnd)
-        val currentEnd = currentStart + actualRangeSize - 1uL
-
+        val currentEnd = minOf(currentStart + maxRangeSize - 1uL, endBlock)
         yield(SyncTargetRange(currentStart, currentEnd))
-
-        // Exit if we've reached the end
-        if (currentEnd >= endBlock) {
-          break
-        }
         currentStart = currentEnd + 1uL
       }
     }
