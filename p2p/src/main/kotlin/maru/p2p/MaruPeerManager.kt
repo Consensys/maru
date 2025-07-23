@@ -61,7 +61,7 @@ class MaruPeerManager(
 
   fun stop(): SafeFuture<Unit> {
     stopCalled = true
-    return SafeFuture.completedFuture(null)
+    return SafeFuture.completedFuture(Unit)
   }
 
   private fun searchForPeersUntilMaxReached() {
