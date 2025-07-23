@@ -26,11 +26,11 @@ private fun ULong.toByteArray(): ByteArray =
 
 // Ported from the Besu Word.clampedAdd method for Long values
 fun ULong.clampedAdd(other: ULong): ULong {
-    val r = this + other
-    if (((this xor r) and (other xor r)) < 0UL) {
-      // out of bounds, clamp it!
-      return if (this > 0UL) ULong.MAX_VALUE else ULong.MIN_VALUE
-    } else {
-      return r
-    }
+  val r = this + other
+  if (((this xor r) and (other xor r)) < 0UL) {
+    // out of bounds, clamp it!
+    return if (this > 0UL) ULong.MAX_VALUE else ULong.MIN_VALUE
+  } else {
+    return r
+  }
 }
