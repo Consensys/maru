@@ -61,18 +61,26 @@ class BeaconChainDownloadPipelineFactory(
   ): Sequence<SyncTargetRange> =
     sequence {
       var currentStart = startBlock
+      val maxRangeSize = requestSize.toULong()
+      
       while (currentStart <= endBlock) {
-        // Calculate range size safely to avoid overflow
-        val remainingBlocks = endBlock - currentStart + 1uL
-        val rangeSize = minOf(remainingBlocks, requestSize.toULong())
-
-        // Calculate currentEnd safely without underflow or overflow
-        val currentEnd = currentStart + rangeSize - 1uL
+        // Calculate how far we can go without exceeding endBlock
+        val distanceToEnd = endBlock - currentStart
+        
+        // The actual range size is the minimum of our request size and distance to end + 1
+        val actualRangeSize = if (distanceToEnd >= maxRangeSize - 1uL) {
+          maxRangeSize
+        } else {
+          distanceToEnd + 1uL
+        }
+        
+        // Calculate currentEnd (safe because actualRangeSize - 1 <= distanceToEnd)
+        val currentEnd = currentStart + actualRangeSize - 1uL
 
         yield(SyncTargetRange(currentStart, currentEnd))
 
-        // Prevent overflow when currentEnd is ULong.MAX_VALUE
-        if (currentEnd == ULong.MAX_VALUE || currentEnd >= endBlock) {
+        // Exit if we've reached the end
+        if (currentEnd >= endBlock) {
           break
         }
         currentStart = currentEnd + 1uL
