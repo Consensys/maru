@@ -110,7 +110,7 @@ class P2PNetworkImpl(
     }
 
   // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
-  val peerLookup = builtNetwork.peerLookup
+  private val peerLookup = builtNetwork.peerLookup
   private val log: Logger = LogManager.getLogger(this::javaClass)
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
@@ -289,4 +289,6 @@ class P2PNetworkImpl(
 
   override fun getPeer(peerId: String): PeerInfo? =
     peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(peerId)))?.toPeerInfo()
+
+  override fun getPeerLookup(): PeerLookup = peerLookup
 }
