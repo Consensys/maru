@@ -6,13 +6,11 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.syncing
-import maru.core.SealedBeaconBlock
+package maru.p2p
 
-interface ChainTracker {
-  fun onChainHeadUpdated(chainHeadUpdatedHandler: ChainHeadUpdatedHandler)
-}
-
-interface ChainHeadUpdatedHandler {
-  fun onChainHeadUpdated(headSealedBeaconBlock: SealedBeaconBlock)
+interface PeerHeadBlockProvider {
+  /**
+   * Returns a list of peerId and chain head block number
+   */
+  fun getPeersHeads(): Map<String, ULong>
 }

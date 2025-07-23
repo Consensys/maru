@@ -8,14 +8,30 @@
  */
 package maru.syncing
 
-interface SyncController : ChainHeadUpdatedHandler {
-  fun start()
+enum class CLSyncStatus {
+  SYNCING,
+  SYNCED, // up to head - nearHeadBlocks
+}
 
-  fun stop()
+enum class ELSyncStatus {
+  SYNCING,
+  SYNCED, // EL has latest SYNCED block from Beacon
+}
+
+interface SyncController : SyncTargetUpdateHandler {
+  fun getCLSyncStatus(): CLSyncStatus
+
+  fun getElSyncStatus(): ELSyncStatus
+
+  fun onClSyncStatusUpdate(handler: (newStatus: CLSyncStatus) -> Unit)
+
+  fun onElSyncStatusUpdate(handler: (newStatus: ELSyncStatus) -> Unit)
 
   fun isBeaconChainSynced(): Boolean
 
   fun isELSynced(): Boolean
+
+  fun isNodeFullInSync(): Boolean = isELSynced() && isBeaconChainSynced()
 
   fun onBeaconSyncComplete(handler: () -> Unit)
 
