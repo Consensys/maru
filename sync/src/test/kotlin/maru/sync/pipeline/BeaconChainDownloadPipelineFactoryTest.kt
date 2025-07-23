@@ -19,6 +19,7 @@ import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
 import maru.p2p.messages.BeaconBlocksByRangeResponse
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -170,5 +171,27 @@ class BeaconChainDownloadPipelineFactoryTest {
     assertThat(pipeline1).isNotNull()
     assertThat(pipeline2).isNotNull()
     assertThat(pipeline1).isNotSameAs(pipeline2)
+  }
+
+  @Test
+  fun `createPipeline throws when startBlock is greater than endBlock`() {
+    assertThatThrownBy {
+      factory.createPipeline(100uL, 50uL)
+    }.isInstanceOf(IllegalStateException::class.java)
+      .hasMessageContaining("Start block (100) must be less than or equal to end block (50)")
+  }
+
+  @Test
+  fun `factory construction throws when requestSize is zero`() {
+    assertThatThrownBy {
+      BeaconChainDownloadPipelineFactory(
+        blockImporter = blockImporter,
+        metricsSystem = NoOpMetricsSystem(),
+        peerLookup = peerLookup,
+        downloaderParallelism = 2,
+        requestSize = 0,
+      )
+    }.isInstanceOf(IllegalArgumentException::class.java)
+      .hasMessageContaining("Request size must be greater than 0")
   }
 }
