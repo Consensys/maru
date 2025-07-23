@@ -32,7 +32,7 @@ class BeaconChainDownloadPipelineFactory(
     endBlock: ULong,
   ): Pipeline<SyncTargetRange?> {
     check(startBlock <= endBlock) { "Start block ($startBlock) must be less than or equal to end block ($endBlock)" }
-    check(endBlock < ULong.MAX_VALUE) { "End block ($endBlock) must be less than Long max value" }
+    check(endBlock < ULong.MAX_VALUE) { "End block ($endBlock) must be less than ULong max value" }
 
     val syncTargetRangeSequence = createTargetRangeSequence(startBlock, endBlock)
     val downloadBlocksStep = DownloadBlocksStep(peerLookup)
