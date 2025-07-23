@@ -1,4 +1,5 @@
 replicaCount: 1
+fullnameOverride: maru-follower-1
 configFiles:
   privateKey: |
     0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aa1
