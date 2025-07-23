@@ -11,6 +11,7 @@ package maru.sync.pipeline
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
+import org.hyperledger.besu.evm.internal.Words.clampedAdd
 import org.hyperledger.besu.metrics.BesuMetricCategory
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.services.pipeline.Pipeline
@@ -65,8 +66,8 @@ class BeaconChainDownloadPipelineFactory(
       val maxRangeSize = requestSize.toULong()
 
       while (currentStart <= endBlock) {
-        val nextEnd = (currentStart + maxRangeSize - 1uL).coerceAtMost(ULong.MAX_VALUE)
-        val currentEnd = minOf(nextEnd, endBlock)
+        val nextEnd = clampedAdd(currentStart.toLong(), maxRangeSize.toLong()) - 1L
+        val currentEnd = minOf(nextEnd.toULong(), endBlock)
         yield(SyncTargetRange(currentStart, currentEnd))
         currentStart = currentEnd + 1uL
       }
