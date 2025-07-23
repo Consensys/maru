@@ -30,6 +30,11 @@ chaos-experiment-podkill-validator:
 	@kubectl apply -f experiments/podkill-validator.yaml
 	@kubectl get pods -l app.kubernetes.io/instance=maru-validator
 
+chaos-experiment-podkill-besu-nodes:
+	-@kubectl delete -f experiments/podkill-besu-once.yaml
+	@kubectl apply -f experiments/podkill-besu-once.yaml
+	@kubectl get pods -l app.kubernetes.io/component=besu
+
 .PHONY: chaos-mesh-install-with-curl \
 	chaos-mesh-install \
 	chaos-mesh-uninstall \
