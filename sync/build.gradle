@@ -7,11 +7,11 @@ dependencies {
   implementation project(':consensus')
   implementation project(':p2p')
   implementation project(':storage')
+  implementation project(':jvm-libs:extensions')
 
   implementation 'org.hyperledger.besu.internal:besu-services-pipeline'
   implementation 'org.hyperledger.besu.internal:besu-metrics-core'
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
-  implementation("org.hyperledger.besu:besu-evm")
 
   implementation 'tech.pegasys.teku.internal:async'
   implementation 'tech.pegasys.teku.internal:p2p'
