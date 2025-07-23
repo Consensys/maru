@@ -6,12 +6,18 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-import maru.core.Protocol
+package maru.syncing
 
-interface ELSyncPipeline : Protocol {
-  fun setELHead(head: ByteArray)
+interface SyncController : ChainHeadUpdatedHandler {
+  fun start()
+
+  fun stop()
+
+  fun isBeaconChainSynced(): Boolean
 
   fun isELSynced(): Boolean
 
-  fun setOnELSyncCompleteHandler(handler: (head: ByteArray) -> Unit)
+  fun onBeaconSyncComplete(handler: () -> Unit)
+
+  fun onELSyncComplete(handler: () -> Unit)
 }

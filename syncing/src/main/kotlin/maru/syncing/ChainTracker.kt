@@ -6,11 +6,13 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-import maru.core.Protocol
+package maru.syncing
 import maru.core.SealedBeaconBlock
 
-interface NewBlocksPipeline : Protocol {
-  fun poll(): SealedBeaconBlock?
+interface ChainTracker {
+  fun onChainHeadUpdated(chainHeadUpdatedHandler: ChainHeadUpdatedHandler)
+}
 
-  fun peek(): SealedBeaconBlock?
+interface ChainHeadUpdatedHandler {
+  fun onChainHeadUpdated(headSealedBeaconBlock: SealedBeaconBlock)
 }
