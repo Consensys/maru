@@ -65,7 +65,8 @@ class BeaconChainDownloadPipelineFactory(
       val maxRangeSize = requestSize.toULong()
 
       while (currentStart <= endBlock) {
-        val currentEnd = minOf(currentStart + maxRangeSize - 1uL, endBlock)
+        val nextEnd = (currentStart + maxRangeSize).coerceIn(0uL, ULong.MAX_VALUE) - 1uL // Clamp to ULong max value
+        val currentEnd = minOf(nextEnd, endBlock)
         yield(SyncTargetRange(currentStart, currentEnd))
         currentStart = currentEnd + 1uL
       }

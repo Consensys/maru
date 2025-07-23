@@ -194,4 +194,32 @@ class BeaconChainDownloadPipelineFactoryTest {
     }.isInstanceOf(IllegalArgumentException::class.java)
       .hasMessageContaining("Request size must be greater than 0")
   }
+
+  @Test
+  fun `pipeline handles ranges near ULong MAX_VALUE without overflow`() {
+    val peer = mock<MaruPeer>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
+
+    // Test with a range very close to ULong.MAX_VALUE
+    val startBlock = ULong.MAX_VALUE - 20uL
+    val endBlock = ULong.MAX_VALUE - 1uL
+
+    // The expected ranges with request size 10
+    val response1 = mock<BeaconBlocksByRangeResponse>()
+    whenever(response1.blocks).thenReturn(emptyList())
+    whenever(peer.sendBeaconBlocksByRange(startBlock, 10uL)).thenReturn(SafeFuture.completedFuture(response1))
+
+    val response2 = mock<BeaconBlocksByRangeResponse>()
+    whenever(response2.blocks).thenReturn(emptyList())
+    whenever(
+      peer.sendBeaconBlocksByRange(ULong.MAX_VALUE - 10uL, 10uL),
+    ).thenReturn(SafeFuture.completedFuture(response2))
+
+    val pipeline = factory.createPipeline(startBlock, endBlock)
+    val completionFuture = pipeline.start(executorService)
+
+    // Should complete without overflow errors
+    completionFuture.get(5, TimeUnit.SECONDS)
+    assertThat(completionFuture).isCompleted
+  }
 }
