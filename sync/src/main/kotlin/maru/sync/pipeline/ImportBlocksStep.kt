@@ -20,7 +20,7 @@ import org.apache.logging.log4j.Logger
 class ImportBlocksStep(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
 ) : Consumer<List<SealedBeaconBlock>> {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun accept(blocks: List<SealedBeaconBlock>) {
     if (blocks.isEmpty()) return
