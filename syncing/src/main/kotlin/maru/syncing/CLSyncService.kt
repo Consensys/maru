@@ -11,8 +11,6 @@ package maru.syncing
 import maru.services.LongRunningService
 
 interface CLSyncService {
-  fun onSyncChunkPersisted(handler: (ULong) -> Unit)
-
   fun setSyncTarget(syncTarget: ULong)
 
   /**
@@ -25,10 +23,6 @@ interface CLSyncService {
 class CLSyncPipelineImpl :
   CLSyncService,
   LongRunningService {
-  override fun onSyncChunkPersisted(handler: (ULong) -> Unit) {
-    TODO("Not yet implemented")
-  }
-
   override fun setSyncTarget(syncTarget: ULong) {
     TODO("Not yet implemented")
   }
