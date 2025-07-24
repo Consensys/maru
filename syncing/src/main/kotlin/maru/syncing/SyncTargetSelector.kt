@@ -14,12 +14,14 @@ import maru.services.LongRunningService
 /**
  * Responsible to keep track of peer's STATUS and select the head of the chain
  */
-interface SyncTargetCalculator {
-  fun calcTargetChaiHead(peerHeads: List<ULong>): ULong
+interface SyncTargetSelector {
+  fun selectBestSyncTarget(peerHeads: List<ULong>): ULong
 }
 
-class HighestHeadSyncTargetCalculator : SyncTargetCalculator {
-  override fun calcTargetChaiHead(peerHeads: List<ULong>): ULong = peerHeads.maxOrNull() ?: 0uL
+class MostFrequentHeadTargetSelector : SyncTargetSelector {
+  override fun selectBestSyncTarget(peerHeads: List<ULong>): ULong {
+    TODO("Not implemented yet")
+  }
 }
 
 fun interface SyncTargetUpdateHandler {
@@ -37,7 +39,7 @@ fun interface SyncTargetUpdateHandler {
 class PeerChainTracker(
   val peersHeadsProvider: PeersHeadBlockProvider,
   val syncTargetUpdateHandler: SyncTargetUpdateHandler,
-  val targetChainHeadCalculator: SyncTargetCalculator,
+  val targetChainHeadCalculator: SyncTargetSelector,
 ) : LongRunningService {
   override fun start() {
     TODO("Not yet implemented")

@@ -12,8 +12,6 @@ import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.services.LongRunningService
 
-interface SyncPipeline<T>
-
 data class ElBlockInfo(
   val blockNumber: ULong,
   val blockHash: ByteArray,
@@ -37,8 +35,6 @@ data class ElBlockInfo(
   }
 }
 
-interface ELSyncService
-
 /**
  * Polls the EL for its latest block
  * If it's behind the executionPayload block number in the `beaconChain` by more than `leeway` it sends the
@@ -50,57 +46,12 @@ class ELSyncServiceImpl(
   private val leeway: UInt,
   private val executionLayerManager: ExecutionLayerManager,
   private val onStatusChange: (ELSyncStatus) -> Unit,
-) : ELSyncService,
-  LongRunningService {
+) : LongRunningService {
   override fun start() {
     // Implementation to start the EL sync service
   }
 
   override fun stop() {
     // Implementation to stop the EL sync service
-  }
-}
-
-interface CLSyncService {
-  fun onSyncChunkPersisted(handler: (ULong) -> Unit)
-
-  fun setSyncTarget(syncTarget: ULong)
-
-  /**
-   * Notifies the handler when the <b>latest<b/> target is reached.
-   * If target is updated, onSyncComplete won't be called for previous targets
-   */
-  fun onSyncComplete(handler: (syncTarget: ULong) -> Unit)
-}
-
-interface FullNodeSyncPipeline {
-  fun setClSyncTarget(beaconBlockNumber: ULong)
-
-  fun onElSyncComplete(handler: () -> Unit)
-
-  fun onClSyncComplete(handler: () -> Unit)
-}
-
-class CLSyncPipelineImpl :
-  CLSyncService,
-  LongRunningService {
-  override fun onSyncChunkPersisted(handler: (ULong) -> Unit) {
-    TODO("Not yet implemented")
-  }
-
-  override fun setSyncTarget(syncTarget: ULong) {
-    TODO("Not yet implemented")
-  }
-
-  override fun onSyncComplete(handler: (ULong) -> Unit) {
-    TODO("Not yet implemented")
-  }
-
-  override fun start() {
-    TODO("Not yet implemented")
-  }
-
-  override fun stop() {
-    TODO("Not yet implemented")
   }
 }

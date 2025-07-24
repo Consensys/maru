@@ -92,7 +92,7 @@ class SyncControllerImpl(
       beaconChain: BeaconChain,
       elManager: ExecutionLayerManager,
       peersHeadsProvider: PeersHeadBlockProvider,
-      targetChainHeadCalculator: SyncTargetCalculator = HighestHeadSyncTargetCalculator(),
+      targetChainHeadCalculator: SyncTargetSelector = MostFrequentHeadTargetSelector(),
     ): SyncStatusProvider {
       val controller = SyncControllerImpl()
 
