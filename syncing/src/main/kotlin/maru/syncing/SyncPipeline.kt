@@ -12,15 +12,7 @@ import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.services.LongRunningService
 
-interface SyncPipeline<T> {
-  fun setSyncTarget(syncTarget: T)
-
-  /**
-   * Notifies the handler when the <b>latest<b/> target is reached.
-   * If target is updated, onSyncComplete won't be called for previous targets
-   */
-  fun onSyncComplete(handler: (syncTarget: T) -> Unit)
-}
+interface SyncPipeline<T>
 
 data class ElBlockInfo(
   val blockNumber: ULong,
@@ -69,8 +61,16 @@ class ELSyncServiceImpl(
   }
 }
 
-interface CLSyncPipeline : SyncPipeline<ULong> {
+interface CLSyncService {
   fun onSyncChunkPersisted(handler: (ULong) -> Unit)
+
+  fun setSyncTarget(syncTarget: ULong)
+
+  /**
+   * Notifies the handler when the <b>latest<b/> target is reached.
+   * If target is updated, onSyncComplete won't be called for previous targets
+   */
+  fun onSyncComplete(handler: (syncTarget: ULong) -> Unit)
 }
 
 interface FullNodeSyncPipeline {
@@ -82,7 +82,7 @@ interface FullNodeSyncPipeline {
 }
 
 class CLSyncPipelineImpl :
-  CLSyncPipeline,
+  CLSyncService,
   LongRunningService {
   override fun onSyncChunkPersisted(handler: (ULong) -> Unit) {
     TODO("Not yet implemented")
