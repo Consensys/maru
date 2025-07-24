@@ -130,11 +130,11 @@ class ValidatingSealedBeaconBlockImporter(
     try {
       val beaconBlock = sealedBeaconBlock.beaconBlock
       val beaconBlockHeader = beaconBlock.beaconBlockHeader
-      log.debug(
-        "received block: clBlockNumber={} elBlockNumber={} clBlockHash={}",
+      log.info(
+        "block received: clBlockNumber={} elBlockNumber={} clBlockHash={}",
         beaconBlockHeader.number,
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
-        beaconBlockHeader.hash,
+        beaconBlockHeader.hash.encodeHex(),
       )
       val blockValidators =
         beaconBlockValidatorFactory
@@ -148,7 +148,7 @@ class ValidatingSealedBeaconBlockImporter(
             sealsVerificationResult.flatMap { blockValidationResult.mapError { it.message } }
           when (combinedValidationResult) {
             is Ok -> {
-              log.info(
+              log.debug(
                 "block validated: clBlockNumber={} elBlockNumber={} clBlockHash={}",
                 beaconBlockHeader.number,
                 sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
