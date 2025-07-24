@@ -37,6 +37,7 @@ import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import maru.services.LongRunningService
+import maru.syncing.ELSyncStatus
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
@@ -62,7 +63,7 @@ class MaruApp(
   private val lastBlockMetadataCache: LatestBlockElMetadataCache,
   private val ethereumJsonRpcClient: Web3JClient,
   private val apiServer: ApiServer,
-  private val syncService: SyncStatusProvider,
+  private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
@@ -95,7 +96,22 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
+  private val protocolStarter =
+    createProtocolStarter(config, beaconGenesisConfig, clock).also { protocolStarter ->
+      syncStatusProvider.onElSyncStatusUpdate {
+        when (it) {
+          ELSyncStatus.SYNCING -> protocolStarter.stop()
+          ELSyncStatus.SYNCED -> {
+            try {
+              protocolStarter.start()
+            } catch (th: Throwable) {
+              log.error("Error while trying to start the protocol starter", th)
+              throw th
+            }
+          }
+        }
+      }
+    }
 
   @Suppress("UNCHECKED_CAST")
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
@@ -127,12 +143,6 @@ class MaruApp(
       syncControllerManager.start()
     } catch (th: Throwable) {
       log.error("Error while trying to start the Sync Service", th)
-      throw th
-    }
-    try {
-      protocolStarter.start()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the protocol starter", th)
       throw th
     }
     apiServer.start()
@@ -215,7 +225,7 @@ class MaruApp(
           beaconChainInitialization = beaconChainInitialization,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
-          syncStatusProvider = syncService,
+          syncStatusProvider = syncStatusProvider,
         )
       } else {
         QbftFollowerFactory(

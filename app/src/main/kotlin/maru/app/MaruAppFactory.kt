@@ -49,6 +49,7 @@ import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import maru.services.LongRunningService
+import maru.syncing.ELSyncStatus
 import maru.syncing.SyncControllerImpl
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
@@ -133,17 +134,18 @@ class MaruAppFactory {
       LatestBlockElMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
 
+    val syncStatusProvider = SyncControllerImpl()
     // Should be a SyncControllerManager instance returned by SyncControllerImpl::create
     val syncControllerManager: LongRunningService =
+
       object : LongRunningService {
         override fun start() {
+          syncStatusProvider.elSyncStatusWasUpdated(ELSyncStatus.SYNCED)
         }
 
         override fun stop() {
         }
       }
-
-    val syncStatusProvider: SyncStatusProvider = SyncControllerImpl()
 
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
@@ -189,7 +191,7 @@ class MaruAppFactory {
         ethereumJsonRpcClient = ethereumJsonRpcClient,
         apiServer = apiServer,
         syncControllerManager = syncControllerManager,
-        syncService = syncStatusProvider,
+        syncStatusProvider = syncStatusProvider,
       )
 
     return maru
