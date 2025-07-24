@@ -45,12 +45,12 @@ helm-redeploy-maru-and-besu:
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-redeploy-maru
 
 wait-maru-follower-is-syncing:
-	@echo "Waiting for Maru follower $* to be ready..."
+	@echo "Waiting for Maru follower to be ready..."
 	@until kubectl get pods -n default -l app.kubernetes.io/instance=maru-follower-0 | grep -q '1/1'; do \
 		sleep 1; \
 	done
-	@echo "Maru follower $* is ready."
-	@echo "Waiting for sync 'blockNumber=2 received' in maru-follower-0 pod..."
-	@until kubectl logs -n default -l app.kubernetes.io/instance=maru-follower-0 | grep -q ' received'; do \
+	@echo "Maru follower is ready."
+	@echo "Waiting for sync 'blockNumber=1 received' in maru-follower-0 pod..."
+	@until kubectl logs -n default -l app.kubernetes.io/instance=maru-follower-0 | grep -q 'umber=1 received'; do \
 		sleep 1; \
 	done

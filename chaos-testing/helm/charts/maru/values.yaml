@@ -1,6 +1,6 @@
 replicaCount: 1
 image:
-  name: consensys/maru:d695244
+  name: consensys/maru:3ae104e
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
