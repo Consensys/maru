@@ -26,7 +26,7 @@ class ProtocolStarterBlockHandler(
         beaconBlock.beaconBlockHeader.hash,
         beaconBlock.beaconBlockHeader.timestamp.toLong(),
       )
-    protocolStarter.handleNewBlock(elBlockMetadata)
+    protocolStarter.handleNewElBlock(elBlockMetadata)
     return SafeFuture.completedFuture(Unit)
   }
 }
@@ -49,10 +49,10 @@ class ProtocolStarter(
   internal val currentProtocolWithForkReference: AtomicReference<ProtocolWithFork> = AtomicReference()
 
   @Synchronized
-  fun handleNewBlock(block: ElBlockMetadata) {
-    log.debug("New blockNumber={} received", { block.blockNumber })
+  fun handleNewElBlock(elBlock: ElBlockMetadata) {
+    log.debug("New blockNumber={} received", { elBlock.blockNumber })
 
-    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(block.unixTimestampSeconds)
+    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(elBlock.unixTimestampSeconds)
     val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()
@@ -79,13 +79,13 @@ class ProtocolStarter(
       newProtocol.start()
       log.debug("stated new protocol {}", newProtocol)
     } else {
-      log.trace("block {} was produced, but the fork switch isn't required", { block.blockNumber })
+      log.trace("block {} was produced, but the fork switch isn't required", { elBlock.blockNumber })
     }
   }
 
   override fun start() {
     val latestBlock = elMetadataProvider.getLatestBlockMetadata()
-    handleNewBlock(latestBlock)
+    handleNewElBlock(latestBlock)
   }
 
   override fun stop() {
