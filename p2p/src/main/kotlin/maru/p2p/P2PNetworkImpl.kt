@@ -60,7 +60,7 @@ class P2PNetworkImpl(
       sequenceNumberExtractor = { it.beaconBlock.beaconBlockHeader.number },
       deserializer = serDe,
       topicId = sealedBlocksTopicId,
-      isImportEnabled = isBlockImportEnabledProvider,
+      isHandlingEnabled = isBlockImportEnabledProvider,
       nextExpectedSequenceNumberProvider = { beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL },
     )
   private val broadcastMessageCounterFactory =

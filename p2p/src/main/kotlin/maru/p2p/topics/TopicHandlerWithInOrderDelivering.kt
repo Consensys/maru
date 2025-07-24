@@ -45,7 +45,7 @@ class TopicHandlerWithInOrderDelivering<T>(
   private val sequenceNumberExtractor: SequenceNumberExtractor<T>,
   private val topicId: String,
   private val maxQueueSize: Int = 1000,
-  private val isImportEnabled: () -> Boolean,
+  private val isHandlingEnabled: () -> Boolean,
   private val nextExpectedSequenceNumberProvider: () -> ULong,
 ) : TopicHandler {
   private val log: Logger = LogManager.getLogger(this::javaClass)
@@ -84,16 +84,7 @@ class TopicHandlerWithInOrderDelivering<T>(
       val sequenceNumber = sequenceNumberExtractor.extractSequenceNumber(deserializedMessage)
       val nextExpectedSequenceNumber = nextExpectedSequenceNumberProvider()
       when {
-        sequenceNumber == nextExpectedSequenceNumber && isImportEnabled() -> {
-          log.debug("Handling message with sequenceNumber={}", sequenceNumber)
-          val futureToReturn = handleEvent(deserializedMessage)
-          futureToReturn.thenAccept {
-            processNextPendingEvent()
-          }
-          futureToReturn
-        }
-
-        sequenceNumber > nextExpectedSequenceNumber -> {
+        sequenceNumber >= nextExpectedSequenceNumber -> {
           if (pendingEvents.size < maxQueueSize) {
             log.trace(
               "enqueuing message with sequenceNumber={} next expectedSequenceNumber={}",
@@ -102,6 +93,7 @@ class TopicHandlerWithInOrderDelivering<T>(
             )
             val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
             pendingEvents.add(deserializedMessage to delayedHandlingFuture)
+            processNextPendingEvent()
             // Note that it will be completed only when it's handled
             delayedHandlingFuture
           } else {
@@ -140,6 +132,7 @@ class TopicHandlerWithInOrderDelivering<T>(
 
   private fun processNextPendingEvent() {
     if (pendingEvents.isNotEmpty() &&
+      isHandlingEnabled() &&
       sequenceNumberExtractor.extractSequenceNumber(pendingEvents.peek().first) ==
       nextExpectedSequenceNumberProvider()
     ) {

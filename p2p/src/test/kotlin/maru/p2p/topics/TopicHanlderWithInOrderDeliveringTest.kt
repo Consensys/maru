@@ -47,7 +47,7 @@ class TopicHanlderWithInOrderDeliveringTest {
       topicId = "test-topic",
       maxQueueSize = maxQueueSize,
       nextExpectedSequenceNumberProvider = nextExpectedSequenceNumberProvider,
-      isImportEnabled = { true },
+      isHandlingEnabled = { true },
     )
   }
 
@@ -135,7 +135,7 @@ class TopicHanlderWithInOrderDeliveringTest {
         deserializer = deserializer,
         sequenceNumberExtractor = extractor,
         topicId = "test-topic",
-        isImportEnabled = { true },
+        isHandlingEnabled = { true },
       )
     val msg = makeMessage(1uL)
     assertThat(handler.handleMessage(msg).get(5, TimeUnit.SECONDS)).isEqualTo(Libp2pValidationResult.Invalid)
