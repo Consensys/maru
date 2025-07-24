@@ -25,5 +25,5 @@ chaos-full-reload:
 chaos-redeploy-and-run-experiment:
 	@$(MAKE) helm-redeploy-maru-and-besu
 	@$(MAKE) wait-maru-follower-is-syncing
-	@sleep 30 # wait for some time to ensure nodes are cruising and ready for chaos experiments
+	@sleep 20 # wait for some time to ensure nodes are cruising and ready for chaos experiments
 	@$(MAKE) chaos-experiment-podkill-besu-nodes
