@@ -41,45 +41,45 @@ interface SyncStatusProvider {
   fun onBeaconSyncComplete(handler: () -> Unit)
 
   fun onELSyncComplete(handler: () -> Unit)
+
+  fun onFullSyncComplete(handler: () -> Unit)
 }
 
 class SyncControllerImpl(
-  private var clState: CLSyncStatus = CLSyncStatus.SYNCING,
-  private var elState: ELSyncStatus = ELSyncStatus.SYNCING,
+  private var clState: CLSyncStatus = CLSyncStatus.SYNCED, // Change both to SYNCING by default
+  private var elState: ELSyncStatus = ELSyncStatus.SYNCED,
 ) : SyncStatusProvider,
   SyncTargetUpdateHandler {
   fun elSyncStatusWasUpdated(newStatus: ELSyncStatus) {
+    elState = newStatus
+    // Call onELSyncComplete subscribers
   }
 
-  override fun getCLSyncStatus(): CLSyncStatus {
-    TODO("Not yet implemented")
-  }
+  override fun getCLSyncStatus(): CLSyncStatus = clState
 
-  override fun getElSyncStatus(): ELSyncStatus {
-    TODO("Not yet implemented")
-  }
+  override fun getElSyncStatus(): ELSyncStatus = elState
 
   override fun onClSyncStatusUpdate(handler: (CLSyncStatus) -> Unit) {
     TODO("Not yet implemented")
   }
 
   override fun onElSyncStatusUpdate(handler: (ELSyncStatus) -> Unit) {
-    TODO("Not yet implemented")
+    // TODO: Implement
   }
 
-  override fun isBeaconChainSynced(): Boolean {
-    TODO("Not yet implemented")
-  }
+  override fun isBeaconChainSynced(): Boolean = clState == CLSyncStatus.SYNCED
 
-  override fun isELSynced(): Boolean {
-    TODO("Not yet implemented")
-  }
+  override fun isELSynced(): Boolean = elState == ELSyncStatus.SYNCED
 
   override fun onBeaconSyncComplete(handler: () -> Unit) {
     TODO("Not yet implemented")
   }
 
   override fun onELSyncComplete(handler: () -> Unit) {
+    TODO("Not yet implemented")
+  }
+
+  override fun onFullSyncComplete(handler: () -> Unit) {
     TODO("Not yet implemented")
   }
 

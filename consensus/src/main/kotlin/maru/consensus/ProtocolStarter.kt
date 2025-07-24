@@ -20,13 +20,13 @@ class ProtocolStarterBlockHandler(
   private val protocolStarter: ProtocolStarter,
 ) : NewBlockHandler<Unit> {
   override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
-    val blockMetadata =
-      BlockMetadata(
+    val elBlockMetadata =
+      ElBlockMetadata(
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         beaconBlock.beaconBlockHeader.hash,
         beaconBlock.beaconBlockHeader.timestamp.toLong(),
       )
-    protocolStarter.handleNewBlock(blockMetadata)
+    protocolStarter.handleNewBlock(elBlockMetadata)
     return SafeFuture.completedFuture(Unit)
   }
 }
@@ -34,7 +34,7 @@ class ProtocolStarterBlockHandler(
 class ProtocolStarter(
   private val forksSchedule: ForksSchedule,
   private val protocolFactory: ProtocolFactory,
-  private val metadataProvider: MetadataProvider, // TODO: we should probably replace it with BeaconChain
+  private val elMetadataProvider: ElMetadataProvider, // TODO: we should probably replace it with BeaconChain
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
 ) : Protocol {
   data class ProtocolWithFork(
@@ -49,7 +49,7 @@ class ProtocolStarter(
   internal val currentProtocolWithForkReference: AtomicReference<ProtocolWithFork> = AtomicReference()
 
   @Synchronized
-  fun handleNewBlock(block: BlockMetadata) {
+  fun handleNewBlock(block: ElBlockMetadata) {
     log.debug("New block number={} received", { block.blockNumber })
 
     val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(block.unixTimestampSeconds)
@@ -84,7 +84,7 @@ class ProtocolStarter(
   }
 
   override fun start() {
-    val latestBlock = metadataProvider.getLatestBlockMetadata()
+    val latestBlock = elMetadataProvider.getLatestBlockMetadata()
     handleNewBlock(latestBlock)
   }
 

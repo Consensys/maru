@@ -18,8 +18,7 @@ plugins {
 }
 
 dependencies {
-  implementation (project(":core"))
-  implementation (project(":jvm-libs:extensions"))
-  implementation (project(":p2p"))
+  implementation(project(":core"))
+  implementation(project(":jvm-libs:extensions"))
   testImplementation (testFixtures(project(":core")))
 }

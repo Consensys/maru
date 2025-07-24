@@ -66,7 +66,7 @@ class ProtocolStarterTest {
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        metadataProvider = metadataProvider,
+        elMetadataProvider = metadataProvider,
         clockMilliseconds = 14000,
       )
     protocolStarter.start()
@@ -90,7 +90,7 @@ class ProtocolStarterTest {
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        metadataProvider = metadataProvider,
+        elMetadataProvider = metadataProvider,
         clockMilliseconds = 16000,
       )
     protocolStarter.start()
@@ -116,7 +116,7 @@ class ProtocolStarterTest {
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        metadataProvider = metadataProvider,
+        elMetadataProvider = metadataProvider,
         clockMilliseconds = 14000,
       )
     protocolStarter.start()
@@ -148,7 +148,7 @@ class ProtocolStarterTest {
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        metadataProvider = metadataProvider,
+        elMetadataProvider = metadataProvider,
         clockMilliseconds = 15000,
       )
     protocolStarter.start()
@@ -171,13 +171,13 @@ class ProtocolStarterTest {
 
   private fun createProtocolStarter(
     forksSchedule: ForksSchedule,
-    metadataProvider: MetadataProvider,
+    elMetadataProvider: ElMetadataProvider,
     clockMilliseconds: Long,
   ): ProtocolStarter =
     ProtocolStarter(
       forksSchedule = forksSchedule,
       protocolFactory = protocolFactory,
-      metadataProvider = metadataProvider,
+      elMetadataProvider = elMetadataProvider,
       nextBlockTimestampProvider =
         NextBlockTimestampProviderImpl(
           clock = Clock.fixed(Instant.ofEpochMilli(clockMilliseconds), ZoneOffset.UTC),
@@ -185,8 +185,8 @@ class ProtocolStarterTest {
         ),
     )
 
-  fun randomBlockMetadata(timestamp: Long): BlockMetadata =
-    BlockMetadata(
+  fun randomBlockMetadata(timestamp: Long): ElBlockMetadata =
+    ElBlockMetadata(
       Random.nextULong(),
       blockHash = Random.nextBytes(32),
       unixTimestampSeconds = timestamp,
