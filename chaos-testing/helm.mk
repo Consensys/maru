@@ -4,7 +4,7 @@ helm-clean-releases:
 	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-0
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1
+	-#@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1
 	KUBECONFIG=$(KUBECONFIG) kubectl delete pvc --all
 	KUBECONFIG=$(KUBECONFIG) kubectl delete pv --all
 
@@ -29,7 +29,7 @@ helm-redeploy-maru:
 	@sleep 2 # Wait for a second to ensure the previous release is fully uninstalled
 	@echo "Deploying Maru Followers"
 	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-0 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-0.yaml
-	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-1.yaml
+	@#helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-1.yaml
 	@sleep 3 # wait for followers to start
 	@echo "Deploying Maru Validator"
 	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-validator ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-validator.yaml

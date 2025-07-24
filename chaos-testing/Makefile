@@ -18,7 +18,7 @@ chaos-full-reload:
 	@$(MAKE) helm-redeploy-maru-and-besu
 	@$(MAKE) chaos-mesh-install
 	@$(MAKE) wait-maru-follower-is-syncing
-	@$(MAKE) chaos-mesh-run-experiment-podkill-validator
+	#@$(MAKE) chaos-mesh-run-experiment-podkill-validator
 	@echo "Chaos testing environment is ready. You can now run your chaos experiments."
 
 chaos-redeploy-and-run-experiment:
