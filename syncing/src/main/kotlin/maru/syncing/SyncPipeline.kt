@@ -8,6 +8,9 @@
  */
 package maru.syncing
 
+import maru.database.BeaconChain
+import maru.executionlayer.manager.ExecutionLayerManager
+
 interface SyncPipeline<T> {
   fun setSyncTarget(syncTarget: T)
 
@@ -41,7 +44,20 @@ data class ElBlockInfo(
   }
 }
 
-interface ELSyncPipeline : SyncPipeline<ElBlockInfo>
+interface ELSyncService
+
+/**
+ * Polls the EL for its latest block
+ * If it's behind the executionPayload block number in the `beaconChain` by more than `leeway` it sends the
+ * status update callback `onStatusChange` and it tries to sync the EL by `executionLayerManager` with the latest known
+ * EL hash from the `beaconChain`
+ */
+class ELSyncServiceImpl(
+  private val beaconChain: BeaconChain,
+  private val leeway: UInt,
+  private val executionLayerManager: ExecutionLayerManager,
+  private val onStatusChange: (ELSyncStatus) -> Unit,
+) : ELSyncService
 
 interface CLSyncPipeline : SyncPipeline<ULong> {
   fun onSyncChunkPersisted(handler: (ULong) -> Unit)
@@ -55,16 +71,6 @@ interface FullNodeSyncPipeline {
   fun onClSyncComplete(handler: () -> Unit)
 }
 
-class ELSyncPipelineImpl : ELSyncPipeline {
-  override fun setSyncTarget(syncTarget: ElBlockInfo) {
-    TODO("Not yet implemented")
-  }
-
-  override fun onSyncComplete(handler: (ElBlockInfo) -> Unit) {
-    TODO("Not yet implemented")
-  }
-}
-
 class CLSyncPipelineImpl : CLSyncPipeline {
   override fun onSyncChunkPersisted(handler: (ULong) -> Unit) {
     TODO("Not yet implemented")
@@ -75,26 +81,6 @@ class CLSyncPipelineImpl : CLSyncPipeline {
   }
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {
-    TODO("Not yet implemented")
-  }
-}
-
-/**
- * Responsible to orchestrate
- */
-class FullNodeSyncPipelineImpl(
-  clSyncPipelineImpl: CLSyncPipelineImpl,
-  elSyncPipelineImpl: ELSyncPipelineImpl,
-) : FullNodeSyncPipeline {
-  override fun setClSyncTarget(beaconBlockNumber: ULong) {
-    TODO("Not yet implemented")
-  }
-
-  override fun onElSyncComplete(handler: () -> Unit) {
-    TODO("Not yet implemented")
-  }
-
-  override fun onClSyncComplete(handler: () -> Unit) {
     TODO("Not yet implemented")
   }
 }

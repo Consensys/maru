@@ -37,3 +37,8 @@ interface SyncController : SyncTargetUpdateHandler {
 
   fun onELSyncComplete(handler: () -> Unit)
 }
+
+class SyncControllerImpl() {
+  private var clState = CLSyncStatus.SYNCING
+  private var elState = ELSyncStatus.SYNCING
+}
