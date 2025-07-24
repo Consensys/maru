@@ -2,9 +2,10 @@
 # Maru test network topology
 
 - 1 maru validator: `maru-validator` -> `besu-sequencer`
-- 1 maru follower: `maru-follower-0-0` -> `besu-follower-0` + `besu-follower-1`
-   - `besu-follower-0` is the primary EL client
-   - `besu-follower-1` is just EL client replica
+- 1 maru follower: `maru-follower-0-0` -> `besu-follower-0`
+- 1 maru follower: `maru-follower-1-0` -> `besu-follower-1`+ `besu-follower-2`
+   - `besu-follower-1` is the primary EL client
+   - `besu-follower-2` is just EL client replica
 
 # Quick start
 
