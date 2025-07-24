@@ -8,16 +8,16 @@ spec:
     namespaces:
       - default
     labelSelectors:
-      'app.kubernetes.io/component': 'maru'
-  target: Request
+      'app.kubernetes.io/component': 'besu'
+  target: Response
   port: 8550
 #  method: GET
-  delay: 2s
+  delay: 5s
   patch:
     headers:
       - ['x-chaos-test', 'forced-error']
     body:
       type: JSON
-#      value: '{"jsonrpc": "2.0", "id": 1, "error": {"code": -32000, "message": "Forced error"}}'
-      value: '{"jsonrpc": "2.0", "id": 1, "some-key": "foreced-error"}'
+      value: '{"jsonrpc": "2.0", "id": 1, "error": {"code": -32000, "message": "Forced error"}}'
+#      value: '{"jsonrpc": "2.0", "id": 1, "some-key": "foreced-error"}'
   duration: 20s
