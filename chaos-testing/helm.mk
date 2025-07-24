@@ -50,7 +50,7 @@ wait-maru-follower-is-syncing:
 		sleep 1; \
 	done
 	@echo "Maru follower is ready."
-	@echo "Waiting for sync 'blockNumber=1 received' in maru-follower-0 pod..."
-	@until kubectl logs -n default -l app.kubernetes.io/instance=maru-follower-0 | grep -q 'umber=1 received'; do \
+	@echo "Waiting for 'block received' message in maru-follower-0 pod..."
+	@until kubectl logs -n default -l app.kubernetes.io/instance=maru-follower-0 | grep -q 'block received'; do \
 		sleep 1; \
 	done
