@@ -8,13 +8,18 @@
  */
 package maru.syncing
 
-import maru.p2p.PeerHeadBlockProvider
+import maru.p2p.PeersHeadBlockProvider
+import maru.services.LongRunningService
 
 /**
  * Responsible to keep track of peer's STATUS and select the head of the chain
  */
 interface SyncTargetCalculator {
   fun calcTargetChaiHead(peerHeads: List<ULong>): ULong
+}
+
+class HighestHeadSyncTargetCalculator : SyncTargetCalculator {
+  override fun calcTargetChaiHead(peerHeads: List<ULong>): ULong = peerHeads.maxOrNull() ?: 0uL
 }
 
 fun interface SyncTargetUpdateHandler {
@@ -30,7 +35,15 @@ fun interface SyncTargetUpdateHandler {
  * MaruPeerManager -> PeerChainTracker -> SyncController
  */
 class PeerChainTracker(
-  val peersHeadsProvider: PeerHeadBlockProvider,
+  val peersHeadsProvider: PeersHeadBlockProvider,
   val syncTargetUpdateHandler: SyncTargetUpdateHandler,
   val targetChainHeadCalculator: SyncTargetCalculator,
-)
+) : LongRunningService {
+  override fun start() {
+    TODO("Not yet implemented")
+  }
+
+  override fun stop() {
+    TODO("Not yet implemented")
+  }
+}

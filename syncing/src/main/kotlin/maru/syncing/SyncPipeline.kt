@@ -10,6 +10,7 @@ package maru.syncing
 
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.services.LongRunningService
 
 interface SyncPipeline<T> {
   fun setSyncTarget(syncTarget: T)
@@ -57,7 +58,16 @@ class ELSyncServiceImpl(
   private val leeway: UInt,
   private val executionLayerManager: ExecutionLayerManager,
   private val onStatusChange: (ELSyncStatus) -> Unit,
-) : ELSyncService
+) : ELSyncService,
+  LongRunningService {
+  override fun start() {
+    // Implementation to start the EL sync service
+  }
+
+  override fun stop() {
+    // Implementation to stop the EL sync service
+  }
+}
 
 interface CLSyncPipeline : SyncPipeline<ULong> {
   fun onSyncChunkPersisted(handler: (ULong) -> Unit)
@@ -71,7 +81,9 @@ interface FullNodeSyncPipeline {
   fun onClSyncComplete(handler: () -> Unit)
 }
 
-class CLSyncPipelineImpl : CLSyncPipeline {
+class CLSyncPipelineImpl :
+  CLSyncPipeline,
+  LongRunningService {
   override fun onSyncChunkPersisted(handler: (ULong) -> Unit) {
     TODO("Not yet implemented")
   }
@@ -81,6 +93,14 @@ class CLSyncPipelineImpl : CLSyncPipeline {
   }
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {
+    TODO("Not yet implemented")
+  }
+
+  override fun start() {
+    TODO("Not yet implemented")
+  }
+
+  override fun stop() {
     TODO("Not yet implemented")
   }
 }
