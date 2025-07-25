@@ -35,7 +35,7 @@ class PeerChainTracker(
     val granularity: UInt, // Resolution of the peer heights
   ) {
     init {
-      require(granularity > 0UL) { "Granularity is negative!" }
+      require(granularity > 0U) { "Granularity is negative!" }
     }
   }
 
