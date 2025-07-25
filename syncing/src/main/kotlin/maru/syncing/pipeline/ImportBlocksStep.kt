@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.sync.pipeline
+package maru.syncing.pipeline
 
 import java.util.function.Consumer
 import maru.consensus.blockimport.SealedBeaconBlockImporter

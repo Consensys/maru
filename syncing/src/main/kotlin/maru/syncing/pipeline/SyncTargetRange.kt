@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.sync.pipeline
+package maru.syncing.pipeline
 
 /** * Represents a range of blocks to be synchronized.
  *

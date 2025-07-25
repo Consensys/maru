@@ -6,8 +6,9 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.sync.pipeline
+package maru.syncing.pipeline
 
+import java.util.concurrent.CompletionException
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
@@ -116,7 +117,7 @@ class ImportBlocksStepTest {
     )
 
     assertThatThrownBy { importBlocksStep.accept(blocks) }
-      .isInstanceOf(java.util.concurrent.CompletionException::class.java)
+      .isInstanceOf(CompletionException::class.java)
       .hasCauseInstanceOf(RuntimeException::class.java)
       .hasRootCauseMessage("Import failed")
 
