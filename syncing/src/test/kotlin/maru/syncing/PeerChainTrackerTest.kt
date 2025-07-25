@@ -54,6 +54,7 @@ class PeerChainTrackerTest {
     val scheduledTasks = mutableListOf<TimerTask>()
     val delays = mutableListOf<Long>()
     val periods = mutableListOf<Long>()
+    var purge: () -> Int = { 0 } // Default implementation returns 0 (not cancelled)
 
     override fun scheduleAtFixedRate(
       task: TimerTask,
@@ -78,6 +79,9 @@ class PeerChainTrackerTest {
       delays.clear()
       periods.clear()
     }
+
+    // Mock implementation for the purge() method
+    override fun purge(): Int = purge.invoke()
   }
 
   private lateinit var peersHeadsProvider: TestPeersHeadBlockProvider
@@ -337,5 +341,72 @@ class PeerChainTrackerTest {
     // Assert - Update should occur when peers are added
     assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
     assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(100UL)
+  }
+
+  @Test
+  fun `start should be idempotent`() {
+    // Act - Call start twice
+    peerChainTracker.start()
+    peerChainTracker.start() // Should be a no-op
+
+    // Assert - Only one task should be scheduled
+    assertThat(timer.scheduledTasks).hasSize(1)
+  }
+
+  @Test
+  fun `stop should be idempotent`() {
+    // Arrange - Start the tracker
+    peerChainTracker.start()
+    assertThat(timer.scheduledTasks).hasSize(1)
+
+    // Act - Call stop twice
+    peerChainTracker.stop()
+    peerChainTracker.stop() // Should be a no-op
+
+    // Assert - Scheduled tasks should be cleared
+    assertThat(timer.scheduledTasks).isEmpty()
+  }
+
+  @Test
+  fun `should be able to restart after stopping`() {
+    // Arrange - Set up initial peer data
+    val initialPeersHeads = mapOf("peer1" to 100UL)
+    peersHeadsProvider.setPeersHeads(initialPeersHeads)
+
+    // Start the tracker and verify initial sync target
+    peerChainTracker.start()
+    timer.runNextTask()
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
+    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(100UL)
+
+    peerChainTracker.stop()
+    syncTargetUpdateHandler.reset()
+
+    val updatedPeersHeads = mapOf("peer1" to 100UL, "peer2" to 200UL)
+    peersHeadsProvider.setPeersHeads(updatedPeersHeads)
+
+    timer.purge = { -1 } // Mock the purge method to simulate a cancelled timer
+
+    peerChainTracker.start()
+
+    // Verify that no updates are sent before timer task runs
+    assertThat(syncTargetUpdateHandler.receivedTargets).isEmpty()
+
+    timer.runNextTask()
+
+    // Verify that after restart, the tracker properly processes the updated peer data
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
+    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(200UL)
+
+    // Further verify the functionality by updating peers again
+    syncTargetUpdateHandler.reset()
+    val finalPeersHeads = mapOf("peer1" to 100UL, "peer2" to 300UL)
+    peersHeadsProvider.setPeersHeads(finalPeersHeads)
+
+    timer.runNextTask()
+
+    // Verify that the tracker continues to function properly after restart
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
+    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(300UL)
   }
 }

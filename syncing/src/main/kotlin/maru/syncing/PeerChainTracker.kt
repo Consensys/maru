@@ -28,7 +28,7 @@ class PeerChainTracker(
   private val syncTargetUpdateHandler: SyncTargetUpdateHandler,
   private val targetChainHeadCalculator: SyncTargetSelector,
   private val config: Config,
-  timerFactory: (String, Boolean) -> Timer = { name, isDaemon -> Timer(name, isDaemon) },
+  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon -> Timer(name, isDaemon) },
 ) : LongRunningService {
   data class Config(
     val pollingUpdateInterval: Duration,
@@ -37,8 +37,9 @@ class PeerChainTracker(
 
   private var peers = mutableMapOf<String, ULong>()
   private var lastNotifiedTarget: ULong? = null
+  private var isRunning = false
 
-  private val poller = timerFactory("peer-chain-tracker", true)
+  private var poller = timerFactory("peer-chain-tracker", true)
 
   /**
    * Rounds the block height according to the configured granularity
@@ -98,14 +99,34 @@ class PeerChainTracker(
   }
 
   override fun start() {
-    poller.scheduleAtFixedRate(
-      /* task = */ timerTask { updatePeerView() },
-      /* delay = */ 0.seconds.inWholeMilliseconds,
-      /* period = */ config.pollingUpdateInterval.inWholeMilliseconds,
-    )
+    synchronized(this) {
+      if (isRunning) {
+        return // Already running, don't start again
+      }
+
+      // Create a new timer if previous one was cancelled
+      if (poller.purge() == -1) {
+        poller = timerFactory("peer-chain-tracker", true)
+      }
+
+      poller.scheduleAtFixedRate(
+        /* task = */ timerTask { updatePeerView() },
+        /* delay = */ 0.seconds.inWholeMilliseconds,
+        /* period = */ config.pollingUpdateInterval.inWholeMilliseconds,
+      )
+
+      isRunning = true
+    }
   }
 
   override fun stop() {
-    poller.cancel()
+    synchronized(this) {
+      if (!isRunning) {
+        return // Already stopped, don't stop again
+      }
+
+      poller.cancel()
+      isRunning = false
+    }
   }
 }
