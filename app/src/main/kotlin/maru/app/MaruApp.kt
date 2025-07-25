@@ -98,7 +98,13 @@ class MaruApp(
     followers.followers
       .mapValues {
         val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague, metricsFacade)
-        FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider) as NewBlockHandler<Unit>
+        val importer = FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider)
+        NewBlockHandler<Unit> { block ->
+          importer
+            .handleNewBlock(block)
+            .thenApply { } // Ignore output
+            .exceptionally { } // Ignore errors
+        }
       }
 
   fun start() {
