@@ -33,13 +33,18 @@ class PeerChainTracker(
   data class Config(
     val pollingUpdateInterval: Duration,
     val granularity: UInt, // Resolution of the peer heights
-  )
+  ) {
+    init {
+      require(granularity > 0U) { "Granularity is negative!" }
+    }
+  }
 
   private var peers = mutableMapOf<String, ULong>()
-  private var lastNotifiedTarget: ULong? = null
+  private var lastNotifiedTarget: ULong = 0UL // 0 is an Ok magic number, since it represents Genesis
   private var isRunning = false
 
-  private var poller = timerFactory("peer-chain-tracker", true)
+  // Marked as volatile to ensure visibility across threads
+  private var poller: Timer? = null
 
   /**
    * Rounds the block height according to the configured granularity
@@ -55,48 +60,27 @@ class PeerChainTracker(
    */
   private fun updatePeerView() {
     val newPeerHeads = peersHeadsProvider.getPeersHeads()
-
-    // Round all heights according to granularity
     val roundedNewPeerHeads = newPeerHeads.mapValues { roundHeight(it.value) }
-
-    // Detect if there are any actual changes
-    val hasChanges = hasActualChanges(roundedNewPeerHeads)
-
-    // Update our peers view (removing disconnected peers and updating heights)
+    val hasActualChanges = hasActualChanges(roundedNewPeerHeads)
     peers = roundedNewPeerHeads.toMutableMap()
-
-    // If there are changes, recalculate the sync target
-    if (hasChanges && peers.isNotEmpty()) {
-      calculateAndNotifyNewSyncTarget()
+    // If there are changes, update the state and recalculate the sync target
+    if (hasActualChanges && peers.isNotEmpty()) {
+      val newSyncTarget = targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
+      if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change
+        syncTargetUpdateHandler.onChainHeadUpdated(newSyncTarget)
+        lastNotifiedTarget = newSyncTarget
+      }
     }
   }
 
   /**
    * Checks if there are actual changes compared to current peer view
    */
-  private fun hasActualChanges(newPeerHeads: Map<String, ULong>): Boolean {
-    // Check if any peer was disconnected
-    if (peers.keys != newPeerHeads.keys) return true
-
-    // Check if any peer's height changed
-    return peers.any { (peerId, height) ->
-      newPeerHeads[peerId] != height
-    }
-  }
-
-  /**
-   * Calculates new sync target and notifies the handler if it's different from the last notified target
-   */
-  private fun calculateAndNotifyNewSyncTarget() {
-    // Use target selector to determine the best sync target
-    val newSyncTarget = targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
-
-    // Only notify if the target is different from the last one
-    if (newSyncTarget != lastNotifiedTarget) {
-      syncTargetUpdateHandler.onChainHeadUpdated(newSyncTarget)
-      lastNotifiedTarget = newSyncTarget
-    }
-  }
+  private fun hasActualChanges(newPeerHeads: Map<String, ULong>): Boolean =
+    peers.keys != newPeerHeads.keys ||
+      peers.any { (peerId, height) ->
+        newPeerHeads[peerId] != height
+      }
 
   override fun start() {
     synchronized(this) {
@@ -104,12 +88,10 @@ class PeerChainTracker(
         return // Already running, don't start again
       }
 
-      // Create a new timer if previous one was cancelled
-      if (poller.purge() == -1) {
-        poller = timerFactory("peer-chain-tracker", true)
-      }
+      // Always create a new timer when starting
+      poller = timerFactory("peer-chain-tracker", true)
 
-      poller.scheduleAtFixedRate(
+      poller!!.scheduleAtFixedRate(
         /* task = */ timerTask { updatePeerView() },
         /* delay = */ 0.seconds.inWholeMilliseconds,
         /* period = */ config.pollingUpdateInterval.inWholeMilliseconds,
@@ -125,7 +107,8 @@ class PeerChainTracker(
         return // Already stopped, don't stop again
       }
 
-      poller.cancel()
+      poller?.cancel()
+      poller = null
       isRunning = false
     }
   }
