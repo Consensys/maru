@@ -31,3 +31,7 @@ prometheus-metrics-enabled = true
 
 [api]
 port = 8080
+
+[syncing]
+peer-chain-height-polling-interval = 5000
+peer-chain-height-granularity = 10
