@@ -23,8 +23,6 @@ class ImportBlocksStep(
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun accept(blocks: List<SealedBeaconBlock>) {
-    if (blocks.isEmpty()) return
-
     // Process blocks sequentially
     blocks.forEach { sealedBeaconBlock ->
       try {

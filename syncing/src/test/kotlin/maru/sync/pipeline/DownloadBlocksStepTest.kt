@@ -8,23 +8,25 @@
  */
 package maru.sync.pipeline
 
-import maru.core.ext.DataGenerators
+import maru.core.ext.DataGenerators.randomSealedBeaconBlock
+import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
+import maru.p2p.messages.BeaconBlocksByRangeResponse
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 
 class DownloadBlocksStepTest {
   @Test
   fun `downloads blocks from a random peer`() {
-    val peer = mock<maru.p2p.MaruPeer>()
+    val peer = mock<MaruPeer>()
     val peerLookup = mock<PeerLookup>()
-    val blocks = listOf(DataGenerators.randomSealedBeaconBlock(10u), DataGenerators.randomSealedBeaconBlock(11u))
-    val response = mock<maru.p2p.messages.BeaconBlocksByRangeResponse>()
+    val blocks = listOf(randomSealedBeaconBlock(10u), randomSealedBeaconBlock(11u))
+    val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(blocks)
-    whenever(peer.sendBeaconBlocksByRange(10u, 2u)).thenReturn(SafeFuture.completedFuture(response))
+    whenever(peer.sendBeaconBlocksByRange(10u, 2u)).thenReturn(completedFuture(response))
     whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
 
     val step = DownloadBlocksStep(peerLookup)
@@ -35,11 +37,11 @@ class DownloadBlocksStepTest {
 
   @Test
   fun `returns empty list if peer returns empty response`() {
-    val peer = mock<maru.p2p.MaruPeer>()
+    val peer = mock<MaruPeer>()
     val peerLookup = mock<PeerLookup>()
-    val response = mock<maru.p2p.messages.BeaconBlocksByRangeResponse>()
+    val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(emptyList())
-    whenever(peer.sendBeaconBlocksByRange(0u, 1u)).thenReturn(SafeFuture.completedFuture(response))
+    whenever(peer.sendBeaconBlocksByRange(0u, 1u)).thenReturn(completedFuture(response))
     whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
 
     val step = DownloadBlocksStep(peerLookup)

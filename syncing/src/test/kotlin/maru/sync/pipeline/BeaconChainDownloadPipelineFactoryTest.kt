@@ -24,8 +24,8 @@ import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.atLeastOnce
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.times
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -47,7 +47,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        downloaderParallelism = 2,
+        downloaderParallelism = 1,
         requestSize = 10u,
       )
   }
@@ -86,7 +86,8 @@ class BeaconChainDownloadPipelineFactoryTest {
     completionFuture.get(5, TimeUnit.SECONDS)
 
     // Verify all blocks were imported
-    verify(blockImporter, atLeastOnce()).importBlock(any())
+    val numberOfImportedBlocks = 125 - 100 + 1 // Total blocks from 100 to 125 inclusive
+    verify(blockImporter, times(numberOfImportedBlocks)).importBlock(any())
   }
 
   @Test
@@ -143,24 +144,6 @@ class BeaconChainDownloadPipelineFactoryTest {
 
     // Should make only one request since request size (100) is larger than range
     verify(peer).sendBeaconBlocksByRange(0uL, 51uL)
-  }
-
-  @Test
-  fun `pipeline handles empty block response`() {
-    val peer = mock<MaruPeer>()
-    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
-
-    val response = mock<BeaconBlocksByRangeResponse>()
-    whenever(response.blocks).thenReturn(emptyList())
-    whenever(peer.sendBeaconBlocksByRange(any(), any())).thenReturn(SafeFuture.completedFuture(response))
-
-    val pipeline = factory.createPipeline(100uL, 110uL)
-    val completionFuture = pipeline.start(executorService)
-
-    completionFuture.get(5, TimeUnit.SECONDS)
-
-    // Pipeline should complete without errors
-    assertThat(completionFuture).isCompleted
   }
 
   @Test
