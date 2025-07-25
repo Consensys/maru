@@ -15,9 +15,9 @@ import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.BlockMetadata
+import maru.consensus.ElBlockMetadata
 import maru.consensus.ForksSchedule
-import maru.consensus.LatestBlockMetadataCache
+import maru.consensus.LatestBlockElMetadataCache
 import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
@@ -36,6 +36,9 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
+import maru.services.LongRunningService
+import maru.syncing.ELSyncStatus
+import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
@@ -57,9 +60,11 @@ class MaruApp(
   private val metricsFacade: MetricsFacade,
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
-  private val lastBlockMetadataCache: LatestBlockMetadataCache,
+  private val lastBlockMetadataCache: LatestBlockElMetadataCache,
   private val ethereumJsonRpcClient: Web3JClient,
   private val apiServer: ApiServer,
+  private val syncStatusProvider: SyncStatusProvider,
+  private val syncControllerManager: LongRunningService,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -82,8 +87,8 @@ class MaruApp(
 
   private val metadataProviderCacheUpdater =
     NewBlockHandler<Unit> { beaconBlock ->
-      val blockMetadata = BlockMetadata.fromBeaconBlock(beaconBlock)
-      lastBlockMetadataCache.updateLatestBlockMetadata(blockMetadata)
+      val elBlockMetadata = ElBlockMetadata.fromBeaconBlock(beaconBlock)
+      lastBlockMetadataCache.updateLatestBlockMetadata(elBlockMetadata)
       SafeFuture.completedFuture(Unit)
     }
   private val nextTargetBlockTimestampProvider =
@@ -91,7 +96,22 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
+  private val protocolStarter =
+    createProtocolStarter(config, beaconGenesisConfig, clock).also { protocolStarter ->
+      syncStatusProvider.onElSyncStatusUpdate {
+        when (it) {
+          ELSyncStatus.SYNCING -> protocolStarter.stop()
+          ELSyncStatus.SYNCED -> {
+            try {
+              protocolStarter.start()
+            } catch (th: Throwable) {
+              log.error("Error while trying to start the protocol starter", th)
+              throw th
+            }
+          }
+        }
+      }
+    }
 
   @Suppress("UNCHECKED_CAST")
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
@@ -120,9 +140,9 @@ class MaruApp(
       throw th
     }
     try {
-      protocolStarter.start()
+      syncControllerManager.start()
     } catch (th: Throwable) {
-      log.error("Error while trying to start the protocol starter", th)
+      log.error("Error while trying to start the Sync Service", th)
       throw th
     }
     apiServer.start()
@@ -141,6 +161,12 @@ class MaruApp(
       p2pNetwork.stop().get()
     } catch (th: Throwable) {
       log.warn("Error while trying to stop the P2P network", th)
+    }
+    try {
+      syncControllerManager.stop()
+    } catch (th: Throwable) {
+      log.error("Error while trying to stop the Sync Service", th)
+      throw th
     }
     protocolStarter.stop()
     apiServer.stop()
@@ -199,6 +225,7 @@ class MaruApp(
           beaconChainInitialization = beaconChainInitialization,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
+          syncStatusProvider = syncStatusProvider,
         )
       } else {
         QbftFollowerFactory(
@@ -228,7 +255,7 @@ class MaruApp(
               ),
             qbftConsensusFactory = qbftFactory,
           ),
-        metadataProvider = lastBlockMetadataCache,
+        elMetadataProvider = lastBlockMetadataCache,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
       )
 

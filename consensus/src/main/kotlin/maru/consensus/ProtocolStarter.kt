@@ -20,13 +20,13 @@ class ProtocolStarterBlockHandler(
   private val protocolStarter: ProtocolStarter,
 ) : NewBlockHandler<Unit> {
   override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
-    val blockMetadata =
-      BlockMetadata(
+    val elBlockMetadata =
+      ElBlockMetadata(
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         beaconBlock.beaconBlockHeader.hash,
         beaconBlock.beaconBlockHeader.timestamp.toLong(),
       )
-    protocolStarter.handleNewBlock(blockMetadata)
+    protocolStarter.handleNewElBlock(elBlockMetadata)
     return SafeFuture.completedFuture(Unit)
   }
 }
@@ -34,7 +34,7 @@ class ProtocolStarterBlockHandler(
 class ProtocolStarter(
   private val forksSchedule: ForksSchedule,
   private val protocolFactory: ProtocolFactory,
-  private val metadataProvider: MetadataProvider, // TODO: we should probably replace it with BeaconChain
+  private val elMetadataProvider: ElMetadataProvider, // TODO: we should probably replace it with BeaconChain
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
 ) : Protocol {
   data class ProtocolWithFork(
@@ -49,10 +49,10 @@ class ProtocolStarter(
   internal val currentProtocolWithForkReference: AtomicReference<ProtocolWithFork> = AtomicReference()
 
   @Synchronized
-  fun handleNewBlock(block: BlockMetadata) {
-    log.debug("new blockNumber={} received", { block.blockNumber })
+  fun handleNewElBlock(elBlock: ElBlockMetadata) {
+    log.debug("New blockNumber={} received", { elBlock.blockNumber })
 
-    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(block.unixTimestampSeconds)
+    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(elBlock.unixTimestampSeconds)
     val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()
@@ -79,13 +79,13 @@ class ProtocolStarter(
       newProtocol.start()
       log.debug("stated new protocol {}", newProtocol)
     } else {
-      log.trace("block {} was produced, but the fork switch isn't required", { block.blockNumber })
+      log.trace("block {} was produced, but the fork switch isn't required", { elBlock.blockNumber })
     }
   }
 
   override fun start() {
-    val latestBlock = metadataProvider.getLatestBlockMetadata()
-    handleNewBlock(latestBlock)
+    val latestBlock = elMetadataProvider.getLatestBlockMetadata()
+    handleNewElBlock(latestBlock)
   }
 
   override fun stop() {
