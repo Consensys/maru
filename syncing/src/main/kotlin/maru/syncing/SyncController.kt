@@ -21,7 +21,7 @@ enum class CLSyncStatus {
 
 enum class ELSyncStatus {
   SYNCING,
-  SYNCED, // EL has latest SYNCED block from Beacon
+  SYNCED, // EL has the latest SYNCED block from Beacon
 }
 
 interface SyncStatusProvider {
@@ -93,6 +93,9 @@ class SyncControllerImpl(
       beaconChain: BeaconChain,
       elManager: ExecutionLayerManager,
       peersHeadsProvider: PeersHeadBlockProvider,
+      validators: Set<maru.core.Validator>,
+      peerLookup: maru.p2p.PeerLookup,
+      besuMetrics: org.hyperledger.besu.plugin.services.MetricsSystem,
       targetChainHeadCalculator: SyncTargetSelector = MostFrequentHeadTargetSelector(),
     ): SyncStatusProvider {
       val controller = SyncControllerImpl()
@@ -104,7 +107,15 @@ class SyncControllerImpl(
           executionLayerManager = elManager,
           onStatusChange = controller::elSyncStatusWasUpdated,
         )
-      val clSyncPipeline = CLSyncPipelineImpl()
+      val clSyncPipeline = CLSyncPipelineImpl(
+        beaconChain = beaconChain,
+        validators = validators,
+        allowEmptyBlocks = true,
+        downloaderParallelism = 1u,
+        requestSize = 40u,
+        peerLookup = peerLookup,
+        besuMetrics = besuMetrics
+      )
 
       val peerChainTracker =
         PeerChainTracker(

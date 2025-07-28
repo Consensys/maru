@@ -48,7 +48,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        downloaderParallelism = 1,
+        downloaderParallelism = 1u,
         requestSize = 10u,
       )
   }
@@ -121,7 +121,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        downloaderParallelism = 1,
+        downloaderParallelism = 1u,
         requestSize = 100u,
       )
 
@@ -172,7 +172,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        downloaderParallelism = 2,
+        downloaderParallelism = 2u,
         requestSize = 0u,
       )
     }.isInstanceOf(IllegalArgumentException::class.java)

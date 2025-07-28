@@ -68,6 +68,7 @@ class CLSyncPipelineImpl(
     // If the pipeline is already running, abort it before starting a new one
     pipeline?.abort()
 
+    log.info("Syncing started syncTarget={}", syncTarget)
     val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
     val pipeline = pipelineFactory.createPipeline(startBlock, syncTarget)
     val syncCompleteFuture = pipeline.start(executorService)
