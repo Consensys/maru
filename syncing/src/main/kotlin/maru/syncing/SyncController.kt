@@ -12,6 +12,7 @@ import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
+import maru.syncing.beaconchain.CLSyncPipelineImpl
 
 enum class CLSyncStatus {
   SYNCING,

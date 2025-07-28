@@ -6,12 +6,14 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.syncing.pipeline
+package maru.syncing.pipeline.beaconchain
 
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.messages.BeaconBlocksByRangeResponse
+import maru.syncing.beaconchain.pipeline.DownloadBlocksStep
+import maru.syncing.beaconchain.pipeline.SyncTargetRange
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
