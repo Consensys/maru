@@ -16,13 +16,8 @@ import maru.p2p.PeerLookup
 class DownloadBlocksStep(
   private val peerLookup: PeerLookup,
 ) : Function<SyncTargetRange, CompletableFuture<List<SealedBeaconBlock>>> {
-  override fun apply(targetRange: SyncTargetRange): CompletableFuture<List<SealedBeaconBlock>> {
-    val startBlockNumber = targetRange.startBlock
-    val count = targetRange.endBlock - targetRange.startBlock + 1uL
-    val peer = peerLookup.getPeers().random()
-    return peer
-      .sendBeaconBlocksByRange(startBlockNumber, count)
-      .toCompletableFuture()
-      .thenApply { response -> response.blocks }
-  }
+  val downloadCompleteBlockRangeTask = DownloadCompleteBlockRangeTask(peerLookup = peerLookup)
+
+  override fun apply(targetRange: SyncTargetRange): CompletableFuture<List<SealedBeaconBlock>> =
+    downloadCompleteBlockRangeTask.getCompleteBlockRange(targetRange)
 }

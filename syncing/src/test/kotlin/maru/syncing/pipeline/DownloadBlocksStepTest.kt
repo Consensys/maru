@@ -36,21 +36,6 @@ class DownloadBlocksStepTest {
   }
 
   @Test
-  fun `returns empty list if peer returns empty response`() {
-    val peer = mock<MaruPeer>()
-    val peerLookup = mock<PeerLookup>()
-    val response = mock<BeaconBlocksByRangeResponse>()
-    whenever(response.blocks).thenReturn(emptyList())
-    whenever(peer.sendBeaconBlocksByRange(0u, 1u)).thenReturn(completedFuture(response))
-    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
-
-    val step = DownloadBlocksStep(peerLookup)
-    val range = SyncTargetRange(0u, 0u)
-    val result = step.apply(range).get()
-    assertThat(result).isEmpty()
-  }
-
-  @Test
   fun `throws if no peers are available`() {
     val peerLookup = mock<PeerLookup>()
     whenever(peerLookup.getPeers()).thenReturn(emptyList())
@@ -60,7 +45,7 @@ class DownloadBlocksStepTest {
       step.apply(range).get()
       assert(false) { "Expected exception" }
     } catch (e: Exception) {
-      assertThat(e).isInstanceOf(NoSuchElementException::class.java)
+      assertThat(e.cause).isInstanceOf(NoSuchElementException::class.java)
     }
   }
 }
