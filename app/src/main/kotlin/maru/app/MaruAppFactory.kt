@@ -140,7 +140,7 @@ class MaruAppFactory {
 
       object : LongRunningService {
         override fun start() {
-          syncStatusProvider.elSyncStatusWasUpdated(ELSyncStatus.SYNCED)
+          syncStatusProvider.updateElSyncStatus(ELSyncStatus.SYNCED)
         }
 
         override fun stop() {
