@@ -61,10 +61,9 @@ class PeerChainTracker(
   private fun updatePeerView() {
     val newPeerHeads = peersHeadsProvider.getPeersHeads()
     val roundedNewPeerHeads = newPeerHeads.mapValues { roundHeight(it.value) }
-    val hasActualChanges = hasActualChanges(roundedNewPeerHeads)
     peers = roundedNewPeerHeads.toMutableMap()
-    // If there are changes, update the state and recalculate the sync target
-    if (hasActualChanges && peers.isNotEmpty()) {
+    // Update the state and recalculate the sync target
+    if (peers.isNotEmpty()) {
       val newSyncTarget = targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
       if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change
         syncTargetUpdateHandler.onChainHeadUpdated(newSyncTarget)
@@ -72,15 +71,6 @@ class PeerChainTracker(
       }
     }
   }
-
-  /**
-   * Checks if there are actual changes compared to current peer view
-   */
-  private fun hasActualChanges(newPeerHeads: Map<String, ULong>): Boolean =
-    peers.keys != newPeerHeads.keys ||
-      peers.any { (peerId, height) ->
-        newPeerHeads[peerId] != height
-      }
 
   override fun start() {
     synchronized(this) {
