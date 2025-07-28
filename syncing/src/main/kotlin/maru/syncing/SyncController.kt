@@ -107,15 +107,16 @@ class SyncControllerImpl(
           executionLayerManager = elManager,
           onStatusChange = controller::elSyncStatusWasUpdated,
         )
-      val clSyncPipeline = CLSyncPipelineImpl(
-        beaconChain = beaconChain,
-        validators = validators,
-        allowEmptyBlocks = true,
-        downloaderParallelism = 1u,
-        requestSize = 40u,
-        peerLookup = peerLookup,
-        besuMetrics = besuMetrics
-      )
+      val clSyncPipeline =
+        CLSyncPipelineImpl(
+          beaconChain = beaconChain,
+          validators = validators,
+          allowEmptyBlocks = true,
+          downloaderParallelism = 1u,
+          requestSize = 40u,
+          peerLookup = peerLookup,
+          besuMetrics = besuMetrics,
+        )
 
       val peerChainTracker =
         PeerChainTracker(

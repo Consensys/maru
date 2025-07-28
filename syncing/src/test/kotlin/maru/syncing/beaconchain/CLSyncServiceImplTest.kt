@@ -1,3 +1,11 @@
+/*
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
+ */
 package maru.syncing.beaconchain
 
 import java.util.concurrent.TimeUnit
@@ -24,7 +32,6 @@ import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
-import org.mockito.Mockito.mock
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 
 @Execution(ExecutionMode.SAME_THREAD)
@@ -135,20 +142,22 @@ class CLSyncServiceImplTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
-      val clSyncPipelineImpl1 = CLSyncPipelineImpl(
-        beaconChain = beaconChain1,
-        validators = setOf(DataGenerators.randomValidator()),
-        peerLookup = p2PNetworkImpl1.getPeerLookup(),
-        besuMetrics = TestMetrics.TestMetricsSystemAdapter,
-      )
+      val clSyncPipelineImpl1 =
+        CLSyncPipelineImpl(
+          beaconChain = beaconChain1,
+          validators = setOf(DataGenerators.randomValidator()),
+          peerLookup = p2PNetworkImpl1.getPeerLookup(),
+          besuMetrics = TestMetrics.TestMetricsSystemAdapter,
+        )
       clSyncPipelineImpl1.start()
 
-      val clSyncPipelineImpl2 = CLSyncPipelineImpl(
-        beaconChain = beaconChain1,
-        validators = setOf(DataGenerators.randomValidator()),
-        peerLookup = p2PNetworkImpl1.getPeerLookup(),
-        besuMetrics = TestMetrics.TestMetricsSystemAdapter,
-      )
+      val clSyncPipelineImpl2 =
+        CLSyncPipelineImpl(
+          beaconChain = beaconChain1,
+          validators = setOf(DataGenerators.randomValidator()),
+          peerLookup = p2PNetworkImpl1.getPeerLookup(),
+          besuMetrics = TestMetrics.TestMetricsSystemAdapter,
+        )
       clSyncPipelineImpl2.start()
 
       clSyncPipelineImpl1.setSyncTarget(2uL)
@@ -174,5 +183,4 @@ class CLSyncServiceImplTest {
   ) {
     assertThat(network.getPeers().count()).isEqualTo(peers)
   }
-
 }
