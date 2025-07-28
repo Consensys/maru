@@ -14,6 +14,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
+import org.apache.logging.log4j.LogManager
 
 /**
  * polls periodically peers chain head
@@ -30,6 +31,8 @@ class PeerChainTracker(
   private val config: Config,
   private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon -> Timer(name, isDaemon) },
 ) : LongRunningService {
+  private val log = LogManager.getLogger(this.javaClass)
+
   data class Config(
     val pollingUpdateInterval: Duration,
     val granularity: UInt, // Resolution of the peer heights
@@ -59,14 +62,19 @@ class PeerChainTracker(
    * Updates the peer view and triggers sync target updates if needed
    */
   private fun updatePeerView() {
+    log.trace("Updating peer view")
     val newPeerHeads = peersHeadsProvider.getPeersHeads()
+
     val roundedNewPeerHeads = newPeerHeads.mapValues { roundHeight(it.value) }
     peers = roundedNewPeerHeads.toMutableMap()
+    log.debug("Rounded peers peersSize={}", peers.size)
     // Update the state and recalculate the sync target
     if (peers.isNotEmpty()) {
       val newSyncTarget = targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
+      log.trace("Selected best syncTarget={} lastNotifiedTarget={}", newSyncTarget, lastNotifiedTarget)
       if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change
         syncTargetUpdateHandler.onChainHeadUpdated(newSyncTarget)
+        log.trace("Notified about the new syncTarget={}", newSyncTarget)
         lastNotifiedTarget = newSyncTarget
       }
     }
@@ -87,6 +95,7 @@ class PeerChainTracker(
         /* period = */ config.pollingUpdateInterval.inWholeMilliseconds,
       )
 
+      log.info("PeerChainTracker is started")
       isRunning = true
     }
   }
@@ -100,6 +109,7 @@ class PeerChainTracker(
       poller?.cancel()
       poller = null
       isRunning = false
+      log.info("PeerChainTracker is stopped")
     }
   }
 }
