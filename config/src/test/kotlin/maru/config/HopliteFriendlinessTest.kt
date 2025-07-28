@@ -32,7 +32,7 @@ class HopliteFriendlinessTest {
     port = 3322
     ip-address = "127.0.0.1"
     static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
-    reconnect-delay = 500milliseconds
+    reconnect-delay = "500 ms"
 
     [p2p.discovery]
     port = 3324
@@ -49,7 +49,7 @@ class HopliteFriendlinessTest {
     port = 8080
 
     [syncing]
-    peer-chain-height-polling-interval = 5000
+    peer-chain-height-polling-interval = "5 seconds"
     peer-chain-height-granularity = 10
     """.trimIndent()
   private val rawConfigToml =
