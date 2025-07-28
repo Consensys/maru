@@ -8,7 +8,17 @@
  */
 package maru.syncing.beaconchain
 
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import maru.core.Validator
+import maru.database.BeaconChain
+import maru.p2p.PeerLookup
 import maru.services.LongRunningService
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import org.hyperledger.besu.plugin.services.MetricsSystem
+import org.hyperledger.besu.services.pipeline.Pipeline
 
 /**
  * Service to synchronize the beacon chain with a specified target.
@@ -30,22 +40,50 @@ interface CLSyncService {
   fun onSyncComplete(handler: (syncTarget: ULong) -> Unit)
 }
 
-class CLSyncPipelineImpl :
-  CLSyncService,
+class CLSyncPipelineImpl(
+  private val beaconChain: BeaconChain,
+  private val validators: Set<Validator>,
+  private val allowEmptyBlocks: Boolean = true,
+  downloaderParallelism: UInt = 1u,
+  requestSize: UInt = 40u,
+  peerLookup: PeerLookup,
+  besuMetrics: MetricsSystem,
+) : CLSyncService,
   LongRunningService {
+  private val log: Logger = LogManager.getLogger(this::class.java)
+  private var executorService: ExecutorService? = null
+  private val syncCompleteHanders = mutableListOf<(ULong) -> Unit>()
+  private var pipeline: Pipeline<*>? = null
+  private val blockImporter =
+    SyncSealedBlockImporterFactory()
+      .create(
+        beaconChain = beaconChain,
+        validators = validators,
+        allowEmptyBlocks = allowEmptyBlocks,
+      )
+  private var pipelineFactory =
+    BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, downloaderParallelism, requestSize)
+
   override fun setSyncTarget(syncTarget: ULong) {
-    TODO("Not yet implemented")
+    // If the pipeline is already running, abort it before starting a new one
+    pipeline?.abort()
+
+    val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+    val pipeline = pipelineFactory.createPipeline(startBlock, syncTarget)
+    val syncCompleteFuture = pipeline.start(executorService)
+    syncCompleteFuture.thenApply { syncCompleteHanders.forEach { handler -> handler(startBlock) } }
   }
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {
-    TODO("Not yet implemented")
+    syncCompleteHanders.add(handler)
   }
 
   override fun start() {
-    TODO("Not yet implemented")
+    executorService = Executors.newCachedThreadPool()
   }
 
   override fun stop() {
-    TODO("Not yet implemented")
+    pipeline?.abort()
+    executorService?.shutdownNow()
   }
 }

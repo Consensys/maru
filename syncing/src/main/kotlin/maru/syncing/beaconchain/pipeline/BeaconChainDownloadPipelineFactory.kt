@@ -22,7 +22,7 @@ class BeaconChainDownloadPipelineFactory(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
   private val metricsSystem: MetricsSystem,
   private val peerLookup: PeerLookup,
-  private val downloaderParallelism: Int,
+  private val downloaderParallelism: UInt,
   private val requestSize: UInt,
 ) {
   init {
@@ -45,7 +45,7 @@ class BeaconChainDownloadPipelineFactory(
       .createPipelineFrom(
         "blockNumbers",
         syncTargetRangeSequence.iterator(),
-        downloaderParallelism,
+        downloaderParallelism.toInt(),
         metricsSystem.createLabelledCounter(
           BesuMetricCategory.SYNCHRONIZER,
           "chain_download_pipeline_processed_total",
@@ -55,7 +55,7 @@ class BeaconChainDownloadPipelineFactory(
         ),
         true,
         "importBlocks",
-      ).thenProcessAsyncOrdered("downloadBlocks", downloadBlocksStep, downloaderParallelism)
+      ).thenProcessAsyncOrdered("downloadBlocks", downloadBlocksStep, downloaderParallelism.toInt())
       .andFinishWith("importBlocks", importBlocksStep)
   }
 
