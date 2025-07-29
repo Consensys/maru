@@ -15,9 +15,9 @@ import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.BlockMetadata
+import maru.consensus.ElBlockMetadata
 import maru.consensus.ForksSchedule
-import maru.consensus.LatestBlockMetadataCache
+import maru.consensus.LatestElBlockMetadataCache
 import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
@@ -36,6 +36,8 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
+import maru.services.LongRunningService
+import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
@@ -57,9 +59,12 @@ class MaruApp(
   private val metricsFacade: MetricsFacade,
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
-  private val lastBlockMetadataCache: LatestBlockMetadataCache,
+  private val lastElBlockMetadataCache: LatestElBlockMetadataCache,
   private val ethereumJsonRpcClient: Web3JClient,
   private val apiServer: ApiServer,
+  private val syncStatusProvider: SyncStatusProvider,
+  private val syncControllerManager: LongRunningService,
+  private val peerChainTracker: LongRunningService,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -73,7 +78,7 @@ class MaruApp(
       name = "block.height",
       description = "Latest block height",
       measurementSupplier = {
-        lastBlockMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
+        lastElBlockMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
       },
     )
   }
@@ -82,8 +87,8 @@ class MaruApp(
 
   private val metadataProviderCacheUpdater =
     NewBlockHandler<Unit> { beaconBlock ->
-      val blockMetadata = BlockMetadata.fromBeaconBlock(beaconBlock)
-      lastBlockMetadataCache.updateLatestBlockMetadata(blockMetadata)
+      val elBlockMetadata = ElBlockMetadata.fromBeaconBlock(beaconBlock)
+      lastElBlockMetadataCache.updateLatestBlockMetadata(elBlockMetadata)
       SafeFuture.completedFuture(Unit)
     }
   private val nextTargetBlockTimestampProvider =
@@ -120,9 +125,9 @@ class MaruApp(
       throw th
     }
     try {
-      protocolStarter.start()
+      syncControllerManager.start()
     } catch (th: Throwable) {
-      log.error("Error while trying to start the protocol starter", th)
+      log.error("Error while trying to start the Sync Service", th)
       throw th
     }
     apiServer.start()
@@ -141,6 +146,11 @@ class MaruApp(
       p2pNetwork.stop().get()
     } catch (th: Throwable) {
       log.warn("Error while trying to stop the P2P network", th)
+    }
+    try {
+      syncControllerManager.stop()
+    } catch (th: Throwable) {
+      log.error("Error while trying to stop the Sync Service", th)
     }
     protocolStarter.stop()
     apiServer.stop()
@@ -199,6 +209,7 @@ class MaruApp(
           beaconChainInitialization = beaconChainInitialization,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
+          syncStatusProvider = syncStatusProvider,
         )
       } else {
         QbftFollowerFactory(
@@ -217,7 +228,7 @@ class MaruApp(
       )
 
     val protocolStarter =
-      ProtocolStarter(
+      ProtocolStarter.create(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
           OmniProtocolFactory(
@@ -228,8 +239,9 @@ class MaruApp(
               ),
             qbftConsensusFactory = qbftFactory,
           ),
-        metadataProvider = lastBlockMetadataCache,
+        elMetadataProvider = lastElBlockMetadataCache,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
+        syncStatusProvider = syncStatusProvider,
       )
 
     val protocolStarterBlockHandlerEntry = "protocol starter" to ProtocolStarterBlockHandler(protocolStarter)
