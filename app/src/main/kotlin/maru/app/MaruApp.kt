@@ -60,7 +60,7 @@ class MaruApp(
   private val metricsFacade: MetricsFacade,
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
-  private val lastBlockElMetadataCache: LatestBlockElMetadataCache,
+  private val lastElBlockMetadataCache: LatestElBlockMetadataCache,
   private val ethereumJsonRpcClient: Web3JClient,
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
