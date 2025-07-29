@@ -46,6 +46,7 @@ class DownloadCompleteBlockRangeTask(
                 val numBlocks = response.blocks.size.toULong()
                 startBlockNumber += numBlocks
                 remaining -= numBlocks
+                peer.adjustReputation(ReputationAdjustment.SMALL_REWARD)
               }
             }.join()
         } catch (e: Exception) {
