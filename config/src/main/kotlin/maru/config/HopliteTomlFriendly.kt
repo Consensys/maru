@@ -90,6 +90,7 @@ data class MaruConfigDtoToml(
   private val followerEngineApis: Map<String, ApiEndpointDto>?,
   private val observability: ObservabilityOptions,
   private val api: ApiConfig,
+  private val syncing: SyncingConfig,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
@@ -104,5 +105,6 @@ data class MaruConfigDtoToml(
         ),
       observabilityOptions = observability,
       apiConfig = api,
+      syncing = syncing,
     )
 }
