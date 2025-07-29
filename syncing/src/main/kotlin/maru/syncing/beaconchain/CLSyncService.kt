@@ -66,14 +66,24 @@ class CLSyncPipelineImpl(
     BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, downloaderParallelism, requestSize)
 
   override fun setSyncTarget(syncTarget: ULong) {
+    log.info("Syncing started syncTarget={}", syncTarget)
+    startSync(syncTarget)
+  }
+
+  private fun startSync(syncTarget: ULong) {
     // If the pipeline is already running, abort it before starting a new one
     pipeline?.abort()
 
-    log.info("Syncing started syncTarget={}", syncTarget)
     val startBlock = max(beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number, 1uL)
     val pipeline = pipelineFactory.createPipeline(startBlock, syncTarget)
-    val syncCompleteFuture = pipeline.start(executorService)
-    syncCompleteFuture.thenApply { syncCompleteHanders.forEach { handler -> handler(startBlock) } }
+    pipeline.start(executorService).handle { _, ex ->
+      if (ex != null) {
+        log.error("Sync pipeline failed, restarting", ex)
+        startSync(syncTarget)
+      } else {
+        syncCompleteHanders.forEach { handler -> handler(startBlock) }
+      }
+    }
   }
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {

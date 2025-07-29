@@ -77,7 +77,7 @@ class CLSyncServiceImplTest {
   // starts syncing from block 1
 
   @Test
-  fun `sync service downloads and imports blocks from peers`() {
+  fun `sync service downloads and imports blocks from another node`() {
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val keypair = signatureAlgorithm.generateKeyPair()
     val validator = Validator(Util.publicKeyToAddress(keypair.publicKey).toArray())
