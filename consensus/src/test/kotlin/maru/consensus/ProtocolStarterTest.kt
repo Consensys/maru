@@ -14,6 +14,9 @@ import java.time.ZoneOffset
 import kotlin.random.Random
 import kotlin.random.nextULong
 import maru.core.Protocol
+import maru.syncing.CLSyncStatus
+import maru.syncing.ELSyncStatus
+import maru.syncing.SyncStatusProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -45,6 +48,42 @@ class ProtocolStarterTest {
       2,
       protocolConfig2,
     )
+  private val testSyncStatusProvider: SyncStatusProvider =
+    object : SyncStatusProvider {
+      override fun getCLSyncStatus(): CLSyncStatus {
+        TODO("Not yet implemented")
+      }
+
+      override fun getElSyncStatus(): ELSyncStatus {
+        TODO("Not yet implemented")
+      }
+
+      override fun onClSyncStatusUpdate(handler: (CLSyncStatus) -> Unit) {
+      }
+
+      override fun onElSyncStatusUpdate(handler: (ELSyncStatus) -> Unit) {
+      }
+
+      override fun isBeaconChainSynced(): Boolean {
+        TODO("Not yet implemented")
+      }
+
+      override fun isELSynced(): Boolean {
+        TODO("Not yet implemented")
+      }
+
+      override fun onBeaconSyncComplete(handler: () -> Unit) {
+        TODO("Not yet implemented")
+      }
+
+      override fun onELSyncComplete(handler: () -> Unit) {
+        TODO("Not yet implemented")
+      }
+
+      override fun onFullSyncComplete(handler: () -> Unit) {
+        TODO("Not yet implemented")
+      }
+    }
 
   @BeforeEach
   fun stopStubProtocols() {
@@ -183,6 +222,7 @@ class ProtocolStarterTest {
           clock = Clock.fixed(Instant.ofEpochMilli(clockMilliseconds), ZoneOffset.UTC),
           forksSchedule = forksSchedule,
         ),
+      syncStatusProvider = testSyncStatusProvider,
     )
 
   fun randomBlockMetadata(timestamp: Long): ElBlockMetadata =

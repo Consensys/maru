@@ -17,7 +17,7 @@ import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ElBlockMetadata
 import maru.consensus.ForksSchedule
-import maru.consensus.LatestBlockElMetadataCache
+import maru.consensus.LatestElBlockMetadataCache
 import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
@@ -37,7 +37,6 @@ import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import maru.services.LongRunningService
-import maru.syncing.ELSyncStatus
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
@@ -79,7 +78,7 @@ class MaruApp(
       name = "block.height",
       description = "Latest block height",
       measurementSupplier = {
-        lastBlockElMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
+        lastElBlockMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
       },
     )
   }
@@ -89,7 +88,7 @@ class MaruApp(
   private val metadataProviderCacheUpdater =
     NewBlockHandler<Unit> { beaconBlock ->
       val elBlockMetadata = ElBlockMetadata.fromBeaconBlock(beaconBlock)
-      lastBlockElMetadataCache.updateLatestBlockMetadata(elBlockMetadata)
+      lastElBlockMetadataCache.updateLatestBlockMetadata(elBlockMetadata)
       SafeFuture.completedFuture(Unit)
     }
   private val nextTargetBlockTimestampProvider =
@@ -97,22 +96,7 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val protocolStarter =
-    createProtocolStarter(config, beaconGenesisConfig, clock).also { protocolStarter ->
-      syncStatusProvider.onElSyncStatusUpdate {
-        when (it) {
-          ELSyncStatus.SYNCING -> protocolStarter.stop()
-          ELSyncStatus.SYNCED -> {
-            try {
-              protocolStarter.start()
-            } catch (th: Throwable) {
-              log.error("Error while trying to start the protocol starter", th)
-              throw th
-            }
-          }
-        }
-      }
-    }
+  private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
   @Suppress("UNCHECKED_CAST")
   private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
@@ -255,8 +239,9 @@ class MaruApp(
               ),
             qbftConsensusFactory = qbftFactory,
           ),
-        elMetadataProvider = lastBlockElMetadataCache,
+        elMetadataProvider = lastElBlockMetadataCache,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
+        syncStatusProvider = syncStatusProvider,
       )
 
     val protocolStarterBlockHandlerEntry = "protocol starter" to ProtocolStarterBlockHandler(protocolStarter)
