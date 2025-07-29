@@ -26,7 +26,7 @@ class SyncControllerImpl(
   elState: ELSyncStatus = ELSyncStatus.SYNCING,
 ) : SyncStatusProvider,
   SyncTargetUpdateHandler {
-  private val stateLock = Any()
+  private val stateLock = Unit
 
   @Volatile
   private var syncState: SyncState = SyncState(clState, elState)
@@ -48,20 +48,24 @@ class SyncControllerImpl(
 
   fun updateElSyncStatus(newStatus: ELSyncStatus) {
     var shouldNotifyFullSync = false
+    var thereWasStateChange = false
 
     synchronized(stateLock) {
       if (syncState.clStatus == CLSyncStatus.SYNCING) return
-      val previousState = syncState
+      val previousElState = syncState.elStatus
       syncState = syncState.copy(elStatus = newStatus)
 
       // Check if full sync is complete after EL status change
-      if (previousState.elStatus == ELSyncStatus.SYNCING && syncState.elStatus == ELSyncStatus.SYNCED) {
+      if (previousElState == ELSyncStatus.SYNCING && syncState.elStatus == ELSyncStatus.SYNCED) {
         shouldNotifyFullSync = isNodeFullInSync()
       }
+      thereWasStateChange = previousElState != syncState.elStatus
     }
 
     // Notify handlers outside of synchronized block - handlers are immutable after init
-    elSyncHandler(newStatus) // Still notify with the original status for transparency
+    if (thereWasStateChange) {
+      elSyncHandler(newStatus) // Still notify with the original status for transparency
+    }
     if (shouldNotifyFullSync) {
       fullSyncCompleteHandler()
     }
@@ -71,12 +75,11 @@ class SyncControllerImpl(
     var shouldNotifyBeaconSync = false
     var shouldNotifyFullSync = false
     var shouldNotifyElStatusChange = false
+    var thereWasStateChange = false
     var elStatusToNotify: ELSyncStatus = ELSyncStatus.SYNCING
-    val currentState: SyncState
 
     synchronized(stateLock) {
-      val previousState = syncState
-
+      val previousElState = syncState.clStatus
       // When CL starts syncing, EL should also be marked as syncing
       val newElStatus =
         if (newStatus == CLSyncStatus.SYNCING && syncState.elStatus == ELSyncStatus.SYNCED) {
@@ -88,16 +91,18 @@ class SyncControllerImpl(
         }
 
       syncState = SyncState(newStatus, newElStatus)
-      currentState = syncState
 
-      if (previousState.clStatus == CLSyncStatus.SYNCING && currentState.clStatus == CLSyncStatus.SYNCED) {
+      if (previousElState == CLSyncStatus.SYNCING && syncState.clStatus == CLSyncStatus.SYNCED) {
         shouldNotifyBeaconSync = true
         shouldNotifyFullSync = isNodeFullInSync()
       }
+      thereWasStateChange = previousElState != syncState.clStatus
     }
 
     // Notify handlers outside of synchronized block
-    clSyncHandler(newStatus)
+    if (thereWasStateChange) {
+      clSyncHandler(newStatus)
+    }
     if (shouldNotifyElStatusChange) {
       // Notify EL handler directly instead of calling updateElSyncStatus to avoid race condition
       elSyncHandler(elStatusToNotify)
@@ -141,7 +146,7 @@ class SyncControllerImpl(
       return
     }
 
-    // Only trigger sync if conditions are met
+    // Only trigger sync if
     if (isBeaconChainOutOfSync(beaconBlockNumber)) {
       // Update CL sync status to SYNCING and propagate sync target
       updateClSyncStatus(CLSyncStatus.SYNCING)

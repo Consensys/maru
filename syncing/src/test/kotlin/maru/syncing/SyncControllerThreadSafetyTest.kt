@@ -17,7 +17,6 @@ import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 
 class SyncControllerThreadSafetyTest {

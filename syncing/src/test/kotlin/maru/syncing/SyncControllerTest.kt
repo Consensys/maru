@@ -240,6 +240,50 @@ class SyncControllerTest {
   }
 
   @Test
+  fun `should not call onClSyncStatusUpdate without actual status change`() {
+    val clStatusUpdates = mutableListOf<CLSyncStatus>()
+    val elStatusUpdates = mutableListOf<ELSyncStatus>()
+
+    syncController.onClSyncStatusUpdate { clStatusUpdates.add(it) }
+    syncController.onElSyncStatusUpdate { elStatusUpdates.add(it) }
+
+    // Given: send multiple updateClSyncStatus calls
+    syncController.updateClSyncStatus(CLSyncStatus.SYNCED)
+    syncController.updateClSyncStatus(CLSyncStatus.SYNCED)
+
+    // Then: only EL status update should be called, CL should remain synced
+    assertThat(syncController.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCED)
+    assertThat(syncController.getElSyncStatus()).isEqualTo(ELSyncStatus.SYNCING)
+    assertThat(clStatusUpdates).isEqualTo(listOf(CLSyncStatus.SYNCED))
+    assertThat(elStatusUpdates).isEmpty()
+  }
+
+  @Test
+  fun `should not call onElSyncStatusUpdate without actual status change`() {
+    val clStatusUpdates = mutableListOf<CLSyncStatus>()
+    val elStatusUpdates = mutableListOf<ELSyncStatus>()
+    var fullSyncUpdates = 0u
+
+    syncController.onClSyncStatusUpdate { clStatusUpdates.add(it) }
+    syncController.onElSyncStatusUpdate { elStatusUpdates.add(it) }
+    syncController.onFullSyncComplete { fullSyncUpdates += 1u }
+
+    // Given: Cl is synced, send multiple updateClSyncStatus calls
+    syncController.updateClSyncStatus(CLSyncStatus.SYNCED)
+    syncController.updateElSyncStatus(ELSyncStatus.SYNCED)
+    syncController.updateElSyncStatus(ELSyncStatus.SYNCED)
+
+    clStatusUpdates.clear()
+
+    // Then: only EL status update should be called, CL should remain synced
+    assertThat(syncController.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCED)
+    assertThat(syncController.getElSyncStatus()).isEqualTo(ELSyncStatus.SYNCED)
+    assertThat(elStatusUpdates).isEqualTo(listOf(ELSyncStatus.SYNCED))
+    assertThat(clStatusUpdates).isEmpty()
+    assertThat(fullSyncUpdates).isEqualTo(1u)
+  }
+
+  @Test
   fun `should transition to synced when sync target is updated to match current chain head`() {
     // Given: beacon chain at block 100
     val state100 = DataGenerators.randomBeaconState(100UL)
@@ -357,4 +401,3 @@ private class TrackingCLSyncService : CLSyncService {
     syncCompleteHandlers.forEach { it(syncTarget) }
   }
 }
-
