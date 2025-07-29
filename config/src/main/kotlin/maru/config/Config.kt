@@ -147,7 +147,7 @@ data class SyncingConfig(
   val downloadBlocksBatchSize: UInt = 10u,
   val downloadBlocksParallelism: UInt = 1u,
   val downloadMaxRetries: UInt = 5u,
-  )
+)
 
 data class MaruConfig(
   val allowEmptyBlocks: Boolean = false,
