@@ -67,32 +67,11 @@ class CLSyncServiceImplTest {
 
     private val key1 = Bytes.fromHexString(PRIVATE_KEY1).toArray()
     private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
-
-    fun createForkIdHashProvider(beaconChain: BeaconChain): ForkIdHashProvider {
-      val consensusConfig: ConsensusConfig =
-        QbftConsensusConfig(
-          validatorSet =
-            setOf(
-              DataGenerators.randomValidator(),
-              DataGenerators.randomValidator(),
-            ),
-          elFork = ElFork.Prague,
-        )
-      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0L, 1, consensusConfig)))
-
-      return ForkIdHashProvider(
-        chainId = chainId,
-        beaconChain = beaconChain,
-        forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
-      )
-    }
   }
 
   // Tests for the CLSyncServiceImpl
   // starting the service
   // stopping the service
-  // syncing to a sync target
   // new sync target aborts the previous sync
   // error during sync restarts the sync
   // starts syncing from block 1
@@ -108,9 +87,16 @@ class CLSyncServiceImplTest {
     val (genesisBeaconState, genesisBeaconBlock) = genesisState(genesisTimestamp, validators)
     val beaconChain1 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
     val beaconChain2 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
+    createBlocks(
+      beaconChain = beaconChain2,
+      genesisBeaconBlock = genesisBeaconBlock,
+      genesisTimestamp = genesisTimestamp,
+      validators = validators,
+      signatureAlgorithm = signatureAlgorithm,
+      keypair = keypair,
+    )
 
-    val p2PNetworkImpl1 =
-      createNetwork(beaconChain1, key1, PORT1)
+    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, PORT1)
     val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, PORT2)
 
     try {
@@ -147,6 +133,7 @@ class CLSyncServiceImplTest {
       clSyncPipelineImpl1.setSyncTarget(100uL)
       clSyncPipelineImpl1.onSyncComplete { synced = true }
       awaitUntilAsserted { synced }
+      assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
       assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
       for (i in 0uL..2uL) {
         assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
@@ -255,6 +242,26 @@ class CLSyncServiceImplTest {
       parentSealedBeaconBlock = sealedBlock
     }
     updater.commit()
+  }
+
+  fun createForkIdHashProvider(beaconChain: BeaconChain): ForkIdHashProvider {
+    val consensusConfig: ConsensusConfig =
+      QbftConsensusConfig(
+        validatorSet =
+          setOf(
+            DataGenerators.randomValidator(),
+            DataGenerators.randomValidator(),
+          ),
+        elFork = ElFork.Prague,
+      )
+    val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0L, 1, consensusConfig)))
+
+    return ForkIdHashProvider(
+      chainId = chainId,
+      beaconChain = beaconChain,
+      forksSchedule = forksSchedule,
+      forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+    )
   }
 
   private fun awaitUntilAsserted(
