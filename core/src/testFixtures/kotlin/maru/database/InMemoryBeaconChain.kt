@@ -13,6 +13,7 @@ import maru.core.SealedBeaconBlock
 
 class InMemoryBeaconChain(
   initialBeaconState: BeaconState,
+  initialBeaconBlock: SealedBeaconBlock? = null,
 ) : BeaconChain {
   private val beaconStateByBlockRoot = mutableListOf<Pair<ByteArray, BeaconState>>()
   private val beaconStateByBlockNumber = mutableMapOf<ULong, BeaconState>()
@@ -22,7 +23,10 @@ class InMemoryBeaconChain(
   private var latestBeaconState: BeaconState = initialBeaconState
 
   init {
-    newUpdater().putBeaconState(initialBeaconState).commit()
+    val updater = newUpdater()
+    updater.putBeaconState(initialBeaconState)
+    initialBeaconBlock?.let { updater.putSealedBeaconBlock(initialBeaconBlock) }
+    updater.commit()
   }
 
   override fun isInitialized(): Boolean = true

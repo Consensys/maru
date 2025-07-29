@@ -38,6 +38,8 @@ import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
+import org.hyperledger.besu.crypto.KeyPair
+import org.hyperledger.besu.crypto.SignatureAlgorithm
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.ethereum.core.Util
 import org.junit.jupiter.api.Test
@@ -60,10 +62,7 @@ class CLSyncServiceImplTest {
     private const val PRIVATE_KEY2: String =
       "0x0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
 
-    private const val PEER_ID_NODE_1: String = "16Uiu2HAmPRfinavM2jE9BSkCagBGStJ2SEkPPm6fxFVMdCQebzt6"
     private const val PEER_ID_NODE_2: String = "16Uiu2HAmVXtqhevTAJqZucPbR2W4nCMpetrQASgjZpcxDEDaUPPt"
-
-    private const val PEER_ADDRESS_NODE_1: String = "/ip4/$IPV4/tcp/$PORT1/p2p/$PEER_ID_NODE_1"
     private const val PEER_ADDRESS_NODE_2: String = "/ip4/$IPV4/tcp/$PORT2/p2p/$PEER_ID_NODE_2"
 
     private val key1 = Bytes.fromHexString(PRIVATE_KEY1).toArray()
@@ -106,110 +105,13 @@ class CLSyncServiceImplTest {
     val validators = setOf(validator)
     val genesisTimestamp = DataGenerators.randomTimestamp()
 
-    val genesisBeaconBlockHeader =
-      BeaconBlockHeader(
-        number = 0uL,
-        round = 0u,
-        timestamp = genesisTimestamp,
-        proposer = validators.first(),
-        parentRoot = Random.nextBytes(32),
-        stateRoot = Random.nextBytes(32),
-        bodyRoot = Random.nextBytes(32),
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      )
-    val genesisBeaconState =
-      BeaconState(
-        latestBeaconBlockHeader = genesisBeaconBlockHeader,
-        validators = validators,
-      )
+    val (genesisBeaconState, genesisBeaconBlock) = genesisState(genesisTimestamp, validators)
+    val beaconChain1 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
+    val beaconChain2 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
 
-    val genesisBeaconBlock =
-      SealedBeaconBlock(
-        beaconBlock =
-          BeaconBlock(
-            beaconBlockHeader = genesisBeaconBlockHeader,
-            beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
-          ),
-        commitSeals = setOf(Seal(Random.nextBytes(96))),
-      )
-    val beaconChain1 = InMemoryBeaconChain(genesisBeaconState)
-    beaconChain1.newUpdater().putSealedBeaconBlock(genesisBeaconBlock).commit()
-
-    val forkIdHashProvider1 = createForkIdHashProvider(beaconChain1)
-    val statusMessageFactory1 = StatusMessageFactory(beaconChain1, forkIdHashProvider1)
-    val initialExpectedBeaconBlockNumber = 1uL
     val p2PNetworkImpl1 =
-      P2PNetworkImpl(
-        privateKeyBytes = key1,
-        p2pConfig =
-          P2P(
-            ipAddress = IPV4,
-            port = PORT1,
-            staticPeers = emptyList(),
-          ),
-        chainId = chainId,
-        serDe = RLPSerializers.SealedBeaconBlockSerializer,
-        metricsFacade = TestMetrics.TestMetricsFacade,
-        statusMessageFactory = statusMessageFactory1,
-        beaconChain = beaconChain1,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
-        forkIdHashProvider = forkIdHashProvider1,
-      )
-
-    val beaconChain2 = InMemoryBeaconChain(genesisBeaconState)
-    beaconChain2.newUpdater().putSealedBeaconBlock(genesisBeaconBlock).commit()
-
-    // populate the second beacon chain with some blocks
-    val updater = beaconChain2.newUpdater()
-    var parentSealedBeaconBlock = genesisBeaconBlock
-    for (i in 1uL..100uL) {
-      val beaconBlock =
-        DelayedQbftBlockCreator.createBeaconBlock(
-          parentSealedBeaconBlock = parentSealedBeaconBlock,
-          executionPayload = DataGenerators.randomExecutionPayload(),
-          round = 0,
-          timestamp = genesisTimestamp + i,
-          proposer = validators.first().address,
-          validators = validators,
-        )
-      val seal = signatureAlgorithm.sign(Bytes32.wrap(beaconBlock.beaconBlockHeader.hash), keypair)
-      val sealedBlock =
-        SealedBeaconBlock(
-          beaconBlock = beaconBlock,
-          setOf(Seal(seal.encodedBytes().toArray())),
-        )
-      val beaconState =
-        BeaconState(
-          latestBeaconBlockHeader = beaconBlock.beaconBlockHeader,
-          validators = validators,
-        )
-      updater.putSealedBeaconBlock(sealedBlock)
-      updater.putBeaconState(beaconState)
-      parentSealedBeaconBlock = sealedBlock
-    }
-    updater.commit()
-
-    val forkIdHashProvider2 = createForkIdHashProvider(beaconChain1)
-    val statusMessageFactory2 = StatusMessageFactory(beaconChain1, forkIdHashProvider1)
-    val p2pNetworkImpl2 =
-      P2PNetworkImpl(
-        privateKeyBytes = key2,
-        p2pConfig =
-          P2P(
-            ipAddress = IPV4,
-            port = PORT2,
-            staticPeers = emptyList(),
-          ),
-        chainId = chainId,
-        serDe = RLPSerializers.SealedBeaconBlockSerializer,
-        metricsFacade = TestMetrics.TestMetricsFacade,
-        statusMessageFactory = statusMessageFactory2,
-        beaconChain = beaconChain2,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
-        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
-        forkIdHashProvider = forkIdHashProvider2,
-      )
+      createNetwork(beaconChain1, key1, PORT1)
+    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, PORT2)
 
     try {
       p2PNetworkImpl1.start()
@@ -254,6 +156,105 @@ class CLSyncServiceImplTest {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
     }
+  }
+
+  private fun genesisState(
+    genesisTimestamp: ULong,
+    validators: Set<Validator>,
+  ): Pair<BeaconState, SealedBeaconBlock> {
+    val genesisBeaconBlockHeader =
+      BeaconBlockHeader(
+        number = 0uL,
+        round = 0u,
+        timestamp = genesisTimestamp,
+        proposer = validators.first(),
+        parentRoot = Random.nextBytes(32),
+        stateRoot = Random.nextBytes(32),
+        bodyRoot = Random.nextBytes(32),
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      )
+    val genesisBeaconState =
+      BeaconState(
+        latestBeaconBlockHeader = genesisBeaconBlockHeader,
+        validators = validators,
+      )
+
+    val genesisBeaconBlock =
+      SealedBeaconBlock(
+        beaconBlock =
+          BeaconBlock(
+            beaconBlockHeader = genesisBeaconBlockHeader,
+            beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
+          ),
+        commitSeals = setOf(Seal(Random.nextBytes(96))),
+      )
+    return Pair(genesisBeaconState, genesisBeaconBlock)
+  }
+
+  private fun createNetwork(
+    beaconChain: InMemoryBeaconChain,
+    key: ByteArray,
+    port: UInt,
+  ): P2PNetworkImpl {
+    val forkIdHashProvider = createForkIdHashProvider(beaconChain)
+    val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
+    val p2pNetworkImpl =
+      P2PNetworkImpl(
+        privateKeyBytes = key,
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = port,
+            staticPeers = emptyList(),
+          ),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory = statusMessageFactory,
+        beaconChain = beaconChain,
+        nextExpectedBeaconBlockNumber = 1uL,
+        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
+        forkIdHashProvider = forkIdHashProvider,
+      )
+    return p2pNetworkImpl
+  }
+
+  private fun createBlocks(
+    beaconChain: BeaconChain,
+    genesisBeaconBlock: SealedBeaconBlock,
+    genesisTimestamp: ULong,
+    validators: Set<Validator>,
+    signatureAlgorithm: SignatureAlgorithm,
+    keypair: KeyPair,
+  ) {
+    val updater = beaconChain.newUpdater()
+    var parentSealedBeaconBlock = genesisBeaconBlock
+    for (i in 1uL..100uL) {
+      val beaconBlock =
+        DelayedQbftBlockCreator.createBeaconBlock(
+          parentSealedBeaconBlock = parentSealedBeaconBlock,
+          executionPayload = DataGenerators.randomExecutionPayload(),
+          round = 0,
+          timestamp = genesisTimestamp + i,
+          proposer = validators.first().address,
+          validators = validators,
+        )
+      val seal = signatureAlgorithm.sign(Bytes32.wrap(beaconBlock.beaconBlockHeader.hash), keypair)
+      val sealedBlock =
+        SealedBeaconBlock(
+          beaconBlock = beaconBlock,
+          setOf(Seal(seal.encodedBytes().toArray())),
+        )
+      val beaconState =
+        BeaconState(
+          latestBeaconBlockHeader = beaconBlock.beaconBlockHeader,
+          validators = validators,
+        )
+      updater.putSealedBeaconBlock(sealedBlock)
+      updater.putBeaconState(beaconState)
+      parentSealedBeaconBlock = sealedBlock
+    }
+    updater.commit()
   }
 
   private fun awaitUntilAsserted(
