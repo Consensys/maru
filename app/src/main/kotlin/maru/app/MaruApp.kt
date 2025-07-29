@@ -228,7 +228,7 @@ class MaruApp(
       )
 
     val protocolStarter =
-      ProtocolStarter(
+      ProtocolStarter.create(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
           OmniProtocolFactory(
