@@ -200,7 +200,7 @@ class SyncControllerImpl(
 
       return SyncControllerManager(
         syncStatusController = controller,
-        elSyncServicer = elSyncService,
+        elSyncService = elSyncService,
         clSyncPipeline = clSyncPipeline,
         peerChainTracker = peerChainTracker,
       )
@@ -209,21 +209,28 @@ class SyncControllerImpl(
 }
 
 class SyncControllerManager(
-  val syncStatusController: SyncStatusProvider,
-  val elSyncServicer: LongRunningService,
+  val syncStatusController: SyncControllerImpl,
+  val elSyncService: LongRunningService,
   val clSyncPipeline: LongRunningService,
   val peerChainTracker: PeerChainTracker,
 ) : SyncStatusProvider by syncStatusController,
   LongRunningService {
   override fun start() {
+    // TODO: remove when clSyncService is implemented
+    syncStatusController.updateClSyncStatus(CLSyncStatus.SYNCED)
+    // TODO: remove when elSyncService is implemented
+    syncStatusController.updateElSyncStatus(ELSyncStatus.SYNCED)
     clSyncPipeline.start()
-    elSyncServicer.start()
+    elSyncService.start()
     peerChainTracker.start()
   }
 
   override fun stop() {
     clSyncPipeline.stop()
-    elSyncServicer.stop()
+    elSyncService.stop()
     peerChainTracker.stop()
+    // Setting to default status so that SYNCING -> SYNCED will actually trigger the callbacks
+    syncStatusController.updateClSyncStatus(CLSyncStatus.SYNCING)
+    syncStatusController.updateElSyncStatus(ELSyncStatus.SYNCING)
   }
 }

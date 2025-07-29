@@ -37,7 +37,6 @@ import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import maru.services.LongRunningService
-import maru.syncing.ELSyncStatus
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
