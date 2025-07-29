@@ -18,7 +18,7 @@ interface SubscriptionManager<T> {
 
   fun addAsyncSubscriber(
     subscriberId: String,
-    asyncHandler: (T) -> SafeFuture<Unit>,
+    asyncHandler: (T) -> SafeFuture<*>,
   )
 
   /**
