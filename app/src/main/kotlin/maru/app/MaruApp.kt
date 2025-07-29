@@ -60,7 +60,7 @@ class MaruApp(
   private val metricsFacade: MetricsFacade,
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
-  private val lastBlockMetadataCache: LatestBlockElMetadataCache,
+  private val lastBlockElMetadataCache: LatestBlockElMetadataCache,
   private val ethereumJsonRpcClient: Web3JClient,
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
@@ -79,7 +79,7 @@ class MaruApp(
       name = "block.height",
       description = "Latest block height",
       measurementSupplier = {
-        lastBlockMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
+        lastBlockElMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
       },
     )
   }
@@ -89,7 +89,7 @@ class MaruApp(
   private val metadataProviderCacheUpdater =
     NewBlockHandler<Unit> { beaconBlock ->
       val elBlockMetadata = ElBlockMetadata.fromBeaconBlock(beaconBlock)
-      lastBlockMetadataCache.updateLatestBlockMetadata(elBlockMetadata)
+      lastBlockElMetadataCache.updateLatestBlockMetadata(elBlockMetadata)
       SafeFuture.completedFuture(Unit)
     }
   private val nextTargetBlockTimestampProvider =
@@ -167,7 +167,6 @@ class MaruApp(
       syncControllerManager.stop()
     } catch (th: Throwable) {
       log.error("Error while trying to stop the Sync Service", th)
-      throw th
     }
     protocolStarter.stop()
     apiServer.stop()
@@ -256,7 +255,7 @@ class MaruApp(
               ),
             qbftConsensusFactory = qbftFactory,
           ),
-        elMetadataProvider = lastBlockMetadataCache,
+        elMetadataProvider = lastBlockElMetadataCache,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
       )
 
