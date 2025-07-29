@@ -14,9 +14,9 @@ import maru.core.SealedBeaconBlock
 class InMemoryBeaconChain(
   initialBeaconState: BeaconState,
 ) : BeaconChain {
-  private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
+  private val beaconStateByBlockRoot = mutableListOf<Pair<ByteArray, BeaconState>>()
   private val beaconStateByBlockNumber = mutableMapOf<ULong, BeaconState>()
-  private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
+  private val sealedBeaconBlockByBlockRoot = mutableListOf<Pair<ByteArray, SealedBeaconBlock>>()
   private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
 
   private var latestBeaconState: BeaconState = initialBeaconState
@@ -29,12 +29,13 @@ class InMemoryBeaconChain(
 
   override fun getLatestBeaconState(): BeaconState = latestBeaconState
 
-  override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? = beaconStateByBlockRoot[beaconBlockRoot]
+  override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? =
+    beaconStateByBlockRoot.firstOrNull { it.first.contentEquals(beaconBlockRoot) }?.second
 
   override fun getBeaconState(beaconBlockNumber: ULong): BeaconState? = beaconStateByBlockNumber[beaconBlockNumber]
 
   override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
-    sealedBeaconBlockByBlockRoot[beaconBlockRoot]
+    sealedBeaconBlockByBlockRoot.firstOrNull { it.first.contentEquals(beaconBlockRoot) }?.second
 
   override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
     sealedBeaconBlockByBlockNumber[beaconBlockNumber]
@@ -48,30 +49,30 @@ class InMemoryBeaconChain(
   private class InMemoryUpdater(
     private val beaconChain: InMemoryBeaconChain,
   ) : BeaconChain.Updater {
-    private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
+    private val beaconStateByBlockRoot = mutableListOf<Pair<ByteArray, BeaconState>>()
     private val beaconStateByBlockNumber = mutableMapOf<ULong, BeaconState>()
-    private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
+    private val sealedBeaconBlockByBlockRoot = mutableListOf<Pair<ByteArray, SealedBeaconBlock>>()
     private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
 
     private var newBeaconState: BeaconState? = null
 
     override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
-      beaconStateByBlockRoot[beaconState.latestBeaconBlockHeader.hash] = beaconState
+      beaconStateByBlockRoot.add(beaconState.latestBeaconBlockHeader.hash to beaconState)
       beaconStateByBlockNumber[beaconState.latestBeaconBlockHeader.number] = beaconState
       newBeaconState = beaconState
       return this
     }
 
     override fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): BeaconChain.Updater {
-      sealedBeaconBlockByBlockRoot[sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash] = sealedBeaconBlock
+      sealedBeaconBlockByBlockRoot.add(sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash to sealedBeaconBlock)
       sealedBeaconBlockByBlockNumber[sealedBeaconBlock.beaconBlock.beaconBlockHeader.number] = sealedBeaconBlock
       return this
     }
 
     override fun commit() {
-      beaconChain.beaconStateByBlockRoot.putAll(beaconStateByBlockRoot)
+      beaconChain.beaconStateByBlockRoot.addAll(beaconStateByBlockRoot)
       beaconChain.beaconStateByBlockNumber.putAll(beaconStateByBlockNumber)
-      beaconChain.sealedBeaconBlockByBlockRoot.putAll(sealedBeaconBlockByBlockRoot)
+      beaconChain.sealedBeaconBlockByBlockRoot.addAll(sealedBeaconBlockByBlockRoot)
       beaconChain.sealedBeaconBlockByBlockNumber.putAll(sealedBeaconBlockByBlockNumber)
       if (newBeaconState != null) {
         beaconChain.latestBeaconState = newBeaconState!!
