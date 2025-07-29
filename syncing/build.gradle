@@ -41,4 +41,5 @@ dependencies {
   testImplementation 'org.mockito.kotlin:mockito-kotlin'
   testImplementation 'org.assertj:assertj-core'
   testImplementation 'build.linea.internal:metrics'
+  testImplementation 'org.hyperledger.besu.internal:besu-ethereum-core'
 }

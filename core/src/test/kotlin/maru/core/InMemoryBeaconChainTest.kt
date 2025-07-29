@@ -235,7 +235,9 @@ class InMemoryBeaconChainTest {
     val newBlock = DataGenerators.randomSealedBeaconBlock(4UL)
     val updater = inMemoryBeaconChain.newUpdater()
     updater.putSealedBeaconBlock(newBlock).commit()
-    val blockRootCopy = newBlock.beaconBlock.beaconBlockHeader.hash.copyOf() // new instance, same content
+    val blockRootCopy =
+      newBlock.beaconBlock.beaconBlockHeader.hash
+        .copyOf() // new instance, same content
     val found = inMemoryBeaconChain.getSealedBeaconBlock(blockRootCopy)
     assertThat(found).isEqualTo(newBlock)
   }

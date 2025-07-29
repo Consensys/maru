@@ -111,7 +111,8 @@ class TransactionalSealedBeaconBlockImporter(
 /**
  * Verifies the seal and delegates to another beaconBlockImporter
  */
-class ValidatingSealedBeaconBlockImporter(
+class
+ValidatingSealedBeaconBlockImporter(
   private val sealsVerifier: SealsVerifier,
   private val beaconBlockImporter: SealedBeaconBlockImporter<ValidationResult>,
   private val beaconBlockValidatorFactory: BeaconBlockValidatorFactory,

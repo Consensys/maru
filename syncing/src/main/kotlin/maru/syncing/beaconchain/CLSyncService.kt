@@ -10,6 +10,7 @@ package maru.syncing.beaconchain
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.math.max
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.p2p.PeerLookup
@@ -69,7 +70,7 @@ class CLSyncPipelineImpl(
     pipeline?.abort()
 
     log.info("Syncing started syncTarget={}", syncTarget)
-    val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+    val startBlock = max(beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number, 1uL)
     val pipeline = pipelineFactory.createPipeline(startBlock, syncTarget)
     val syncCompleteFuture = pipeline.start(executorService)
     syncCompleteFuture.thenApply { syncCompleteHanders.forEach { handler -> handler(startBlock) } }

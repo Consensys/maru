@@ -9,6 +9,7 @@
 package maru.syncing.beaconchain
 
 import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 import maru.config.P2P
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -17,6 +18,13 @@ import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.qbft.DelayedQbftBlockCreator
+import maru.core.BeaconBlock
+import maru.core.BeaconBlockHeader
+import maru.core.BeaconState
+import maru.core.Seal
+import maru.core.SealedBeaconBlock
+import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
 import maru.crypto.Hashing
@@ -27,8 +35,11 @@ import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
+import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
+import org.hyperledger.besu.ethereum.core.Util
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -79,17 +90,51 @@ class CLSyncServiceImplTest {
     }
   }
 
-  private val genesisState = DataGenerators.randomBeaconState(0u)
-
+  // Tests for the CLSyncServiceImpl
   // starting the service
   // stopping the service
   // syncing to a sync target
   // new sync target aborts the previous sync
   // error during sync restarts the sync
+  // starts syncing from block 1
 
   @Test
   fun `sync service downloads and imports blocks from peers`() {
-    val beaconChain1 = InMemoryBeaconChain(genesisState)
+    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    val keypair = signatureAlgorithm.generateKeyPair()
+    val validator = Validator(Util.publicKeyToAddress(keypair.publicKey).toArray())
+    val validators = setOf(validator)
+    val genesisTimestamp = DataGenerators.randomTimestamp()
+
+    val genesisBeaconBlockHeader =
+      BeaconBlockHeader(
+        number = 0uL,
+        round = 0u,
+        timestamp = genesisTimestamp,
+        proposer = validators.first(),
+        parentRoot = Random.nextBytes(32),
+        stateRoot = Random.nextBytes(32),
+        bodyRoot = Random.nextBytes(32),
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      )
+    val genesisBeaconState =
+      BeaconState(
+        latestBeaconBlockHeader = genesisBeaconBlockHeader,
+        validators = validators,
+      )
+
+    val genesisBeaconBlock =
+      SealedBeaconBlock(
+        beaconBlock =
+          BeaconBlock(
+            beaconBlockHeader = genesisBeaconBlockHeader,
+            beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
+          ),
+        commitSeals = setOf(Seal(Random.nextBytes(96))),
+      )
+    val beaconChain1 = InMemoryBeaconChain(genesisBeaconState)
+    beaconChain1.newUpdater().putSealedBeaconBlock(genesisBeaconBlock).commit()
+
     val forkIdHashProvider1 = createForkIdHashProvider(beaconChain1)
     val statusMessageFactory1 = StatusMessageFactory(beaconChain1, forkIdHashProvider1)
     val initialExpectedBeaconBlockNumber = 1uL
@@ -112,7 +157,38 @@ class CLSyncServiceImplTest {
         forkIdHashProvider = forkIdHashProvider1,
       )
 
-    val beaconChain2 = InMemoryBeaconChain(genesisState)
+    val beaconChain2 = InMemoryBeaconChain(genesisBeaconState)
+    beaconChain2.newUpdater().putSealedBeaconBlock(genesisBeaconBlock).commit()
+
+    // populate the second beacon chain with some blocks
+    val updater = beaconChain2.newUpdater()
+    for (i in 1uL..1uL) {
+      val parentSealedBeaconBlock = genesisBeaconBlock
+      val beaconBlock =
+        DelayedQbftBlockCreator.createBeaconBlock(
+          parentSealedBeaconBlock = parentSealedBeaconBlock,
+          executionPayload = DataGenerators.randomExecutionPayload(),
+          round = 0,
+          timestamp = genesisTimestamp + i,
+          proposer = validators.first().address,
+          validators = validators,
+        )
+      val seal = signatureAlgorithm.sign(Bytes32.wrap(beaconBlock.beaconBlockHeader.hash), keypair)
+      val sealedBlock =
+        SealedBeaconBlock(
+          beaconBlock = beaconBlock,
+          setOf(Seal(seal.encodedBytes().toArray())),
+        )
+      val beaconState =
+        BeaconState(
+          latestBeaconBlockHeader = beaconBlock.beaconBlockHeader,
+          validators = validators,
+        )
+      updater.putSealedBeaconBlock(sealedBlock)
+      updater.putBeaconState(beaconState)
+    }
+    updater.commit()
+
     val forkIdHashProvider2 = createForkIdHashProvider(beaconChain1)
     val statusMessageFactory2 = StatusMessageFactory(beaconChain1, forkIdHashProvider1)
     val p2pNetworkImpl2 =
@@ -145,7 +221,7 @@ class CLSyncServiceImplTest {
       val clSyncPipelineImpl1 =
         CLSyncPipelineImpl(
           beaconChain = beaconChain1,
-          validators = setOf(DataGenerators.randomValidator()),
+          validators = validators,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetrics.TestMetricsSystemAdapter,
         )
@@ -153,14 +229,18 @@ class CLSyncServiceImplTest {
 
       val clSyncPipelineImpl2 =
         CLSyncPipelineImpl(
-          beaconChain = beaconChain1,
-          validators = setOf(DataGenerators.randomValidator()),
+          beaconChain = beaconChain2,
+          validators = validators,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetrics.TestMetricsSystemAdapter,
         )
       clSyncPipelineImpl2.start()
 
-      clSyncPipelineImpl1.setSyncTarget(2uL)
+      var synced = false
+      clSyncPipelineImpl1.setSyncTarget(10uL)
+      clSyncPipelineImpl1.onSyncComplete { synced = true }
+      awaitUntilAsserted { synced }
+      assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
