@@ -8,7 +8,9 @@
  */
 package maru.syncing
 
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.PeersHeadBlockProvider
@@ -26,98 +28,30 @@ class SyncControllerImpl(
   elState: ELSyncStatus = ELSyncStatus.SYNCING,
 ) : SyncStatusProvider,
   SyncTargetUpdateHandler {
-  private val stateLock = Unit
+  private val lock = ReentrantReadWriteLock()
+  private var currentState = SyncState(clState, elState)
+  private var currentSyncTarget: ULong? = null
 
-  @Volatile
-  private var syncState: SyncState = SyncState(clState, elState)
-
-  // Handlers are set once during initialization, so no need for @Volatile or synchronization
-  private var elSyncHandler: (ELSyncStatus) -> Unit = {}
   private var clSyncHandler: (CLSyncStatus) -> Unit = {}
+  private var elSyncHandler: (ELSyncStatus) -> Unit = {}
   private var beaconSyncCompleteHandler: () -> Unit = {}
   private var fullSyncCompleteHandler: () -> Unit = {}
 
-  private val currentSyncTarget = AtomicReference<ULong?>(null)
-
   init {
-    // Set up CL sync completion handler
     clSyncService.onSyncComplete { syncTarget ->
       updateClSyncStatus(CLSyncStatus.SYNCED)
     }
   }
 
-  fun updateElSyncStatus(newStatus: ELSyncStatus) {
-    var shouldNotifyFullSync = false
-    var thereWasStateChange = false
+  override fun getCLSyncStatus(): CLSyncStatus = lock.read { currentState.clStatus }
 
-    synchronized(stateLock) {
-      if (syncState.clStatus == CLSyncStatus.SYNCING) return
-      val previousElState = syncState.elStatus
-      syncState = syncState.copy(elStatus = newStatus)
+  override fun getElSyncStatus(): ELSyncStatus = lock.read { currentState.elStatus }
 
-      // Check if full sync is complete after EL status change
-      if (previousElState == ELSyncStatus.SYNCING && syncState.elStatus == ELSyncStatus.SYNCED) {
-        shouldNotifyFullSync = isNodeFullInSync()
-      }
-      thereWasStateChange = previousElState != syncState.elStatus
-    }
+  override fun isNodeFullInSync(): Boolean = lock.read { isELSynced() && isBeaconChainSynced() }
 
-    // Notify handlers outside of synchronized block - handlers are immutable after init
-    if (thereWasStateChange) {
-      elSyncHandler(newStatus) // Still notify with the original status for transparency
-    }
-    if (shouldNotifyFullSync) {
-      fullSyncCompleteHandler()
-    }
-  }
+  override fun isBeaconChainSynced(): Boolean = lock.read { currentState.clStatus == CLSyncStatus.SYNCED }
 
-  fun updateClSyncStatus(newStatus: CLSyncStatus) {
-    var shouldNotifyBeaconSync = false
-    var shouldNotifyFullSync = false
-    var shouldNotifyElStatusChange = false
-    var thereWasStateChange = false
-    var elStatusToNotify: ELSyncStatus = ELSyncStatus.SYNCING
-
-    synchronized(stateLock) {
-      val previousElState = syncState.clStatus
-      // When CL starts syncing, EL should also be marked as syncing
-      val newElStatus =
-        if (newStatus == CLSyncStatus.SYNCING && syncState.elStatus == ELSyncStatus.SYNCED) {
-          shouldNotifyElStatusChange = true
-          elStatusToNotify = ELSyncStatus.SYNCING
-          ELSyncStatus.SYNCING
-        } else {
-          syncState.elStatus
-        }
-
-      syncState = SyncState(newStatus, newElStatus)
-
-      if (previousElState == CLSyncStatus.SYNCING && syncState.clStatus == CLSyncStatus.SYNCED) {
-        shouldNotifyBeaconSync = true
-        shouldNotifyFullSync = isNodeFullInSync()
-      }
-      thereWasStateChange = previousElState != syncState.clStatus
-    }
-
-    // Notify handlers outside of synchronized block
-    if (thereWasStateChange) {
-      clSyncHandler(newStatus)
-    }
-    if (shouldNotifyElStatusChange) {
-      // Notify EL handler directly instead of calling updateElSyncStatus to avoid race condition
-      elSyncHandler(elStatusToNotify)
-    }
-    if (shouldNotifyBeaconSync) {
-      beaconSyncCompleteHandler()
-    }
-    if (shouldNotifyFullSync) {
-      fullSyncCompleteHandler()
-    }
-  }
-
-  override fun getCLSyncStatus(): CLSyncStatus = syncState.clStatus
-
-  override fun getElSyncStatus(): ELSyncStatus = syncState.elStatus
+  override fun isELSynced(): Boolean = lock.read { currentState.elStatus == ELSyncStatus.SYNCED }
 
   override fun onClSyncStatusUpdate(handler: (CLSyncStatus) -> Unit) {
     clSyncHandler = handler
@@ -127,10 +61,6 @@ class SyncControllerImpl(
     elSyncHandler = handler
   }
 
-  override fun isBeaconChainSynced(): Boolean = syncState.clStatus == CLSyncStatus.SYNCED
-
-  override fun isELSynced(): Boolean = syncState.elStatus == ELSyncStatus.SYNCED
-
   override fun onBeaconSyncComplete(handler: () -> Unit) {
     beaconSyncCompleteHandler = handler
   }
@@ -139,32 +69,110 @@ class SyncControllerImpl(
     fullSyncCompleteHandler = handler
   }
 
-  override fun onChainHeadUpdated(beaconBlockNumber: ULong) {
-    val previousTarget = currentSyncTarget.getAndSet(beaconBlockNumber)
+  fun updateClSyncStatus(newStatus: CLSyncStatus) {
+    val events =
+      lock.write {
+        val previousState = currentState
 
-    if (previousTarget == beaconBlockNumber) {
+        if (previousState.clStatus == newStatus) return@write emptyList()
+
+        // When CL starts syncing, EL must also be syncing (EL follows CL rule)
+        val newElStatus =
+          when {
+            newStatus == CLSyncStatus.SYNCING -> ELSyncStatus.SYNCING
+            else -> previousState.elStatus
+          }
+
+        currentState = SyncState(newStatus, newElStatus)
+
+        buildList {
+          add { clSyncHandler(newStatus) }
+
+          // If EL status changed due to CL change, notify EL handlers
+          if (newElStatus != previousState.elStatus) {
+            add { elSyncHandler(newElStatus) }
+          }
+
+          // If CL moved from SYNCING to SYNCED, beacon sync is complete
+          if (previousState.clStatus == CLSyncStatus.SYNCING && newStatus == CLSyncStatus.SYNCED) {
+            add { beaconSyncCompleteHandler() }
+
+            // Check if this makes the node fully synced
+            if (isNodeFullInSync()) {
+              add { fullSyncCompleteHandler() }
+            }
+          }
+        }
+      }
+
+    // Fire events outside of lock
+    events.forEach { it() }
+  }
+
+  fun updateElSyncStatus(newStatus: ELSyncStatus) {
+    val events =
+      lock.write {
+        val previousState = currentState
+
+        // EL can't be synced if CL is still syncing (EL follows CL rule)
+        if (previousState.clStatus == CLSyncStatus.SYNCING ||
+          previousState.elStatus == newStatus
+        ) {
+          return@write emptyList()
+        }
+
+        currentState = SyncState(previousState.clStatus, newStatus)
+
+        // Collect events to fire
+        buildList {
+          add { elSyncHandler(newStatus) }
+
+          // Check if this transition from EL SYNCING->SYNCED when CL is already SYNCED makes us fully synced
+          if (previousState.elStatus == ELSyncStatus.SYNCING &&
+            newStatus == ELSyncStatus.SYNCED &&
+            currentState.clStatus == CLSyncStatus.SYNCED
+          ) {
+            add { fullSyncCompleteHandler() }
+          }
+        }
+      }
+
+    // Fire events outside of lock
+    events.forEach { it() }
+  }
+
+  override fun onChainHeadUpdated(syncTarget: ULong) {
+    val previousTarget =
+      lock.write {
+        val prev = currentSyncTarget
+        currentSyncTarget = syncTarget
+        prev
+      }
+
+    // Early return if same target (prevents redundant operations)
+    if (previousTarget == syncTarget) {
       return
     }
 
-    // Only trigger sync if
-    if (isBeaconChainOutOfSync(beaconBlockNumber)) {
-      // Update CL sync status to SYNCING and propagate sync target
+    val currentHead = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+
+    if (syncTarget > currentHead) {
       updateClSyncStatus(CLSyncStatus.SYNCING)
-      clSyncService.setSyncTarget(beaconBlockNumber)
-    } else if (syncState.clStatus == CLSyncStatus.SYNCING) {
-      // Handle case where controller starts in SYNCING but target matches current head
-      updateClSyncStatus(CLSyncStatus.SYNCED)
-      clSyncService.setSyncTarget(beaconBlockNumber)
+      clSyncService.setSyncTarget(syncTarget)
+    } else {
+      // We're caught up or ahead, but check if we were previously syncing
+      val currentClStatus = lock.read { currentState.clStatus }
+      if (currentClStatus == CLSyncStatus.SYNCING) {
+        // Transition from SYNCING to SYNCED
+        updateClSyncStatus(CLSyncStatus.SYNCED)
+        clSyncService.setSyncTarget(syncTarget)
+      }
+      // If already SYNCED, do nothing
     }
   }
 
-  private fun isBeaconChainOutOfSync(syncTarget: ULong): Boolean {
-    val currentHead = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
-    return syncTarget > currentHead
-  }
-
-  // Method for testing - captures all state atomically from a single syncState read
-  internal fun captureStateSnapshot(): SyncState = syncState
+  // Helper method for testing
+  internal fun captureStateSnapshot(): SyncState = lock.read { currentState }
 
   companion object {
     fun create(
