@@ -14,7 +14,7 @@ import org.apache.logging.log4j.Logger
 class P2PPeersHeadBlockProvider(
   private val peerLookup: PeerLookup,
 ) : PeersHeadBlockProvider {
-  private val log: Logger = LogManager.getLogger(P2PPeersHeadBlockProvider::class.java)
+  private val log: Logger = LogManager.getLogger(P2PPeersHeadBlockProvider::javaClass)
 
   /**
    * Returns a map of peer IDs to their latest block numbers.
@@ -27,12 +27,12 @@ class P2PPeersHeadBlockProvider(
         try {
           val status = peer.getStatus()
           if (status != null) {
-            peer.id.toBase58() to status.latestBlockNumber
+            peer.toPeerInfo().nodeId to status.latestBlockNumber
           } else {
             null
           }
         } catch (e: Exception) {
-          log.debug("Failed to get status from peer ${peer.id.toBase58()}: ${e.message}")
+          log.debug("Failed to get status from peer={}, errorMessage={}", peer, e.message)
           null
         }
       }.toMap()
