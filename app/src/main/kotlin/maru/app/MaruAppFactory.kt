@@ -187,7 +187,7 @@ class MaruAppFactory {
         vertx = vertx,
         beaconChain = beaconChain,
         metricsSystem = besuMetricsSystemAdapter,
-        lastBlockMetadataCache = lastElBlockMetadataCache,
+        lastBlockElMetadataCache = lastElBlockMetadataCache,
         ethereumJsonRpcClient = ethereumJsonRpcClient,
         apiServer = apiServer,
         syncControllerManager = syncControllerManager,
