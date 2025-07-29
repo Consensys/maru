@@ -162,8 +162,8 @@ class CLSyncServiceImplTest {
 
     // populate the second beacon chain with some blocks
     val updater = beaconChain2.newUpdater()
-    for (i in 1uL..1uL) {
-      val parentSealedBeaconBlock = genesisBeaconBlock
+    var parentSealedBeaconBlock = genesisBeaconBlock
+    for (i in 1uL..100uL) {
       val beaconBlock =
         DelayedQbftBlockCreator.createBeaconBlock(
           parentSealedBeaconBlock = parentSealedBeaconBlock,
@@ -186,6 +186,7 @@ class CLSyncServiceImplTest {
         )
       updater.putSealedBeaconBlock(sealedBlock)
       updater.putBeaconState(beaconState)
+      parentSealedBeaconBlock = sealedBlock
     }
     updater.commit()
 
@@ -224,6 +225,8 @@ class CLSyncServiceImplTest {
           validators = validators,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetrics.TestMetricsSystemAdapter,
+          requestSize = 10u,
+          downloaderParallelism = 1u,
         )
       clSyncPipelineImpl1.start()
 
@@ -233,14 +236,20 @@ class CLSyncServiceImplTest {
           validators = validators,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetrics.TestMetricsSystemAdapter,
+          requestSize = 10u,
+          downloaderParallelism = 1u,
         )
       clSyncPipelineImpl2.start()
 
       var synced = false
-      clSyncPipelineImpl1.setSyncTarget(10uL)
+      clSyncPipelineImpl1.setSyncTarget(100uL)
       clSyncPipelineImpl1.onSyncComplete { synced = true }
       awaitUntilAsserted { synced }
       assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
+      for (i in 0uL..2uL) {
+        assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+        assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+      }
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()

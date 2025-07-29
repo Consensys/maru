@@ -30,7 +30,7 @@ class ImportBlocksStep(
         val result = blockImporter.importBlock(sealedBeaconBlock).join()
         when (result.code) {
           ACCEPT -> {
-            log.info(
+            log.debug(
               "Successfully imported block number={} hash={}",
               sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
               sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
@@ -38,7 +38,7 @@ class ImportBlocksStep(
             )
           }
           ValidationResultCode.REJECT -> {
-            log.error(
+            log.info(
               "Block validation failed for block {}",
               sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
                 .encodeHex(),
