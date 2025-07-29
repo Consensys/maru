@@ -12,7 +12,7 @@ import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
-import maru.syncing.beaconchain.CLSyncPipelineImpl
+import maru.syncing.beaconchain.CLSyncServiceImpl
 
 enum class CLSyncStatus {
   SYNCING,
@@ -108,7 +108,7 @@ class SyncControllerImpl(
           onStatusChange = controller::elSyncStatusWasUpdated,
         )
       val clSyncPipeline =
-        CLSyncPipelineImpl(
+        CLSyncServiceImpl(
           beaconChain = beaconChain,
           validators = validators,
           allowEmptyBlocks = true,

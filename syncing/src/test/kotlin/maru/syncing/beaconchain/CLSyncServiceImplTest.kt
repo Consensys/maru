@@ -107,8 +107,8 @@ class CLSyncServiceImplTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
-      val clSyncPipelineImpl1 =
-        CLSyncPipelineImpl(
+      val clSyncServiceImpl1 =
+        CLSyncServiceImpl(
           beaconChain = beaconChain1,
           validators = validators,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
@@ -116,10 +116,10 @@ class CLSyncServiceImplTest {
           requestSize = 10u,
           downloaderParallelism = 1u,
         )
-      clSyncPipelineImpl1.start()
+      clSyncServiceImpl1.start()
 
-      val clSyncPipelineImpl2 =
-        CLSyncPipelineImpl(
+      val clSyncServiceImpl2 =
+        CLSyncServiceImpl(
           beaconChain = beaconChain2,
           validators = validators,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
@@ -127,11 +127,11 @@ class CLSyncServiceImplTest {
           requestSize = 10u,
           downloaderParallelism = 1u,
         )
-      clSyncPipelineImpl2.start()
+      clSyncServiceImpl2.start()
 
       var synced = false
-      clSyncPipelineImpl1.setSyncTarget(100uL)
-      clSyncPipelineImpl1.onSyncComplete { synced = true }
+      clSyncServiceImpl1.setSyncTarget(100uL)
+      clSyncServiceImpl1.onSyncComplete { synced = true }
       awaitUntilAsserted { synced }
       assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
       assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())

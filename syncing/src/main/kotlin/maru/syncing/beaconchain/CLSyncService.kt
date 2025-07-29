@@ -41,7 +41,7 @@ interface CLSyncService {
   fun onSyncComplete(handler: (syncTarget: ULong) -> Unit)
 }
 
-class CLSyncPipelineImpl(
+class CLSyncServiceImpl(
   private val beaconChain: BeaconChain,
   private val validators: Set<Validator>,
   private val allowEmptyBlocks: Boolean = true,
