@@ -173,7 +173,7 @@ class SyncControllerImpl(
       peersHeadsProvider: PeersHeadBlockProvider,
       targetChainHeadCalculator: SyncTargetSelector = MostFrequentHeadTargetSelector(),
       peerChainTrackerConfig: PeerChainTracker.Config,
-    ): SyncStatusProvider {
+    ): SyncControllerManager {
       val clSyncPipeline = CLSyncPipelineImpl()
 
       val controller =
@@ -208,7 +208,7 @@ class SyncControllerImpl(
   }
 }
 
-internal class SyncControllerManager(
+class SyncControllerManager(
   val syncStatusController: SyncStatusProvider,
   val elSyncServicer: LongRunningService,
   val clSyncPipeline: LongRunningService,

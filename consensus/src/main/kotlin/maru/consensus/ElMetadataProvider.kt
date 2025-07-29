@@ -55,7 +55,7 @@ data class ElBlockMetadata(
   }
 }
 
-class LatestBlockElMetadataCache(
+class LatestElBlockMetadataCache(
   currentElBlockMetadata: ElBlockMetadata,
 ) : ElMetadataProvider {
   private var latestBlockMetadataCache = AtomicReference(currentElBlockMetadata)

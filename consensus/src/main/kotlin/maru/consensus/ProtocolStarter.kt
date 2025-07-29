@@ -12,6 +12,8 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
 import maru.core.BeaconBlock
 import maru.core.Protocol
+import maru.syncing.ELSyncStatus
+import maru.syncing.SyncStatusProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -37,6 +39,37 @@ class ProtocolStarter(
   private val elMetadataProvider: ElMetadataProvider, // TODO: we should probably replace it with BeaconChain
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
 ) : Protocol {
+  companion object {
+    fun create(
+      forksSchedule: ForksSchedule,
+      protocolFactory: ProtocolFactory,
+      elMetadataProvider: ElMetadataProvider,
+      nextBlockTimestampProvider: NextBlockTimestampProvider,
+      syncStatusProvider: SyncStatusProvider,
+    ): ProtocolStarter {
+      val protocolStarter =
+        ProtocolStarter(
+          forksSchedule = forksSchedule,
+          protocolFactory = protocolFactory,
+          elMetadataProvider = elMetadataProvider,
+          nextBlockTimestampProvider = nextBlockTimestampProvider,
+        )
+      syncStatusProvider.onElSyncStatusUpdate {
+        when (it) {
+          ELSyncStatus.SYNCING -> protocolStarter.stop()
+          ELSyncStatus.SYNCED -> {
+            try {
+              protocolStarter.start()
+            } catch (th: Throwable) {
+              throw th
+            }
+          }
+        }
+      }
+      return protocolStarter
+    }
+  }
+
   data class ProtocolWithFork(
     val protocol: Protocol,
     val fork: ForkSpec,
