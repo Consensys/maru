@@ -181,7 +181,9 @@ class FanoutSubscriptionManagerTest {
     })
     subscriptionManager.notifySubscribers("d1")
     assertThat(notifications).isEqualTo(listOf("handler1 called with: d1"))
+
     subscriptionManager.removeSubscriber("handler1")
+
     subscriptionManager.notifySubscribers("d2")
     assertThat(notifications).isEqualTo(listOf("handler1 called with: d1"))
   }

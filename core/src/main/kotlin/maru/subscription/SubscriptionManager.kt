@@ -54,13 +54,13 @@ interface SubscriptionManager<T> {
 class FanoutSubscriptionManager<T>(
   val log: Logger = LogManager.getLogger(FanoutSubscriptionManager::class.java),
 ) : SubscriptionManager<T> {
-  data class SubscriberData<T>(
+  private data class SubscriberData<T>(
     val id: String,
     val syncHandler: ((T) -> Any?)? = null,
     val asyncHandler: ((T) -> CompletableFuture<*>)? = null,
   )
 
-  val subscribers: MutableList<SubscriberData<T>> = CopyOnWriteArrayList()
+  private val subscribers: MutableList<SubscriberData<T>> = CopyOnWriteArrayList()
 
   private fun ensureUniqueSubscriber(
     subscriberId: String,
