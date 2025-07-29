@@ -13,7 +13,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 interface SubscriptionManager<T> {
   fun addSyncSubscriber(
     subscriberId: String,
-    syncHandler: (T) -> Unit,
+    syncHandler: (T) -> Any?,
   )
 
   fun addAsyncSubscriber(
