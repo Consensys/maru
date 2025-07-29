@@ -26,7 +26,8 @@ import maru.core.Seal
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.core.ext.DataGenerators
-import maru.core.ext.metrics.TestMetrics
+import maru.core.ext.metrics.TestMetrics.TestMetricsFacade
+import maru.core.ext.metrics.TestMetrics.TestMetricsSystemAdapter
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
@@ -34,6 +35,8 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
+import net.consensys.linea.metrics.Counter
+import net.consensys.linea.metrics.MetricsFacade
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
@@ -45,6 +48,13 @@ import org.hyperledger.besu.ethereum.core.Util
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.times
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.spy
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 
 @Execution(ExecutionMode.SAME_THREAD)
@@ -112,33 +122,101 @@ class CLSyncServiceImplTest {
           beaconChain = beaconChain1,
           validators = validators,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
-          besuMetrics = TestMetrics.TestMetricsSystemAdapter,
+          besuMetrics = TestMetricsSystemAdapter,
+          metricsFacade = TestMetricsFacade,
           requestSize = 10u,
           downloaderParallelism = 1u,
         )
       clSyncServiceImpl1.start()
 
-      val clSyncServiceImpl2 =
-        CLSyncServiceImpl(
-          beaconChain = beaconChain2,
-          validators = validators,
-          peerLookup = p2PNetworkImpl1.getPeerLookup(),
-          besuMetrics = TestMetrics.TestMetricsSystemAdapter,
-          requestSize = 10u,
-          downloaderParallelism = 1u,
-        )
-      clSyncServiceImpl2.start()
-
       var synced = false
       clSyncServiceImpl1.setSyncTarget(100uL)
       clSyncServiceImpl1.onSyncComplete { synced = true }
-      awaitUntilAsserted { synced }
+      awaitUntilAsserted { assertThat(synced).isTrue() }
+      assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
+      assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
+      for (i in 1uL..100uL) {
+        assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+        assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+      }
+    } finally {
+      p2PNetworkImpl1.stop()
+      p2pNetworkImpl2.stop()
+    }
+  }
+
+  @Test
+  fun `sync service download restarts on errors`() {
+    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    val keypair = signatureAlgorithm.generateKeyPair()
+    val validator = Validator(Util.publicKeyToAddress(keypair.publicKey).toArray())
+    val validators = setOf(validator)
+    val genesisTimestamp = DataGenerators.randomTimestamp()
+
+    val (genesisBeaconState, genesisBeaconBlock) = genesisState(genesisTimestamp, validators)
+    val beaconChain1 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
+    val beaconChain2 = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
+
+    // Create an invalid block to simulate failures in the import block stage of the sync process
+    var retries = 0
+    doAnswer {
+      if (it.arguments[0] == 1L && retries < 2) {
+        retries++
+        listOf(DataGenerators.randomSealedBeaconBlock(1uL))
+      } else {
+        it.callRealMethod()
+      }
+    }.whenever(beaconChain2).getSealedBeaconBlocks(any(), any())
+
+    createBlocks(
+      beaconChain = beaconChain2,
+      genesisBeaconBlock = genesisBeaconBlock,
+      genesisTimestamp = genesisTimestamp,
+      validators = validators,
+      signatureAlgorithm = signatureAlgorithm,
+      keypair = keypair,
+    )
+
+    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, PORT1)
+    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, PORT2)
+
+    try {
+      p2PNetworkImpl1.start()
+      p2pNetworkImpl2.start()
+      p2PNetworkImpl1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
+
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
+
+      val metricsFacade = mock(MetricsFacade::class.java)
+      val retriesCounter = mock(Counter::class.java)
+      whenever(metricsFacade.createCounter(any(), any(), any(), any())).thenReturn(retriesCounter)
+
+      val clSyncServiceImpl =
+        CLSyncServiceImpl(
+          beaconChain = beaconChain1,
+          validators = validators,
+          peerLookup = p2PNetworkImpl1.getPeerLookup(),
+          besuMetrics = TestMetricsSystemAdapter,
+          metricsFacade = metricsFacade,
+          requestSize = 10u,
+          downloaderParallelism = 1u,
+        )
+      clSyncServiceImpl.start()
+
+      var synced = false
+      clSyncServiceImpl.setSyncTarget(100uL)
+      clSyncServiceImpl.onSyncComplete { synced = true }
+      awaitUntilAsserted { assertThat(synced).isTrue() }
+
       assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
       assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
       for (i in 0uL..2uL) {
         assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
         assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
       }
+
+      verify(retriesCounter, times(retries)).increment()
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -179,7 +257,7 @@ class CLSyncServiceImplTest {
   }
 
   private fun createNetwork(
-    beaconChain: InMemoryBeaconChain,
+    beaconChain: BeaconChain,
     key: ByteArray,
     port: UInt,
   ): P2PNetworkImpl {
@@ -196,11 +274,11 @@ class CLSyncServiceImplTest {
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
-        metricsFacade = TestMetrics.TestMetricsFacade,
+        metricsFacade = TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
         nextExpectedBeaconBlockNumber = 1uL,
-        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
+        metricsSystem = TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
       )
     return p2pNetworkImpl

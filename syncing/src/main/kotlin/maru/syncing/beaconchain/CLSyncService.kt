@@ -13,9 +13,11 @@ import java.util.concurrent.Executors
 import kotlin.math.max
 import maru.core.Validator
 import maru.database.BeaconChain
+import maru.metrics.MaruMetricsCategory
 import maru.p2p.PeerLookup
 import maru.services.LongRunningService
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
+import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
@@ -49,6 +51,7 @@ class CLSyncServiceImpl(
   requestSize: UInt,
   peerLookup: PeerLookup,
   besuMetrics: MetricsSystem,
+  metricsFacade: MetricsFacade,
 ) : CLSyncService,
   LongRunningService {
   private val log: Logger = LogManager.getLogger(this::class.java)
@@ -64,6 +67,12 @@ class CLSyncServiceImpl(
       )
   private var pipelineFactory =
     BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, downloaderParallelism, requestSize)
+  private val pipelineRestartCounter =
+    metricsFacade.createCounter(
+      category = MaruMetricsCategory.SYNCHRONIZER,
+      name = "beaconchain.restart.counter",
+      description = "Count of chain pipeline restarts",
+    )
 
   override fun setSyncTarget(syncTarget: ULong) {
     log.info("Syncing started syncTarget={}", syncTarget)
@@ -79,8 +88,10 @@ class CLSyncServiceImpl(
     pipeline.start(executorService).handle { _, ex ->
       if (ex != null) {
         log.error("Sync pipeline failed, restarting", ex)
+        pipelineRestartCounter.increment()
         startSync(syncTarget)
       } else {
+        log.info("Sync pipeline completed successfully")
         syncCompleteHanders.forEach { handler -> handler(startBlock) }
       }
     }

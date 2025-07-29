@@ -13,6 +13,8 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
 import maru.syncing.beaconchain.CLSyncServiceImpl
+import net.consensys.linea.metrics.MetricsFacade
+import org.hyperledger.besu.plugin.services.MetricsSystem
 
 enum class CLSyncStatus {
   SYNCING,
@@ -95,7 +97,8 @@ class SyncControllerImpl(
       peersHeadsProvider: PeersHeadBlockProvider,
       validators: Set<maru.core.Validator>,
       peerLookup: maru.p2p.PeerLookup,
-      besuMetrics: org.hyperledger.besu.plugin.services.MetricsSystem,
+      besuMetrics: MetricsSystem,
+      metricsFacade: MetricsFacade,
       targetChainHeadCalculator: SyncTargetSelector = MostFrequentHeadTargetSelector(),
     ): SyncStatusProvider {
       val controller = SyncControllerImpl()
@@ -116,6 +119,7 @@ class SyncControllerImpl(
           requestSize = 40u,
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,
+          metricsFacade = metricsFacade,
         )
 
       val peerChainTracker =
