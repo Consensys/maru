@@ -192,7 +192,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     val startBlock = ULong.MAX_VALUE - 2uL
     val endBlock = ULong.MAX_VALUE - 1uL
 
-    // The expected ranges with request size 10
+    // The expected ranges with request size 2
     whenever(
       peer.sendBeaconBlocksByRange(startBlock, 2uL),
     ).thenReturn(completedFuture(BeaconBlocksByRangeResponse(listOf(block1))))

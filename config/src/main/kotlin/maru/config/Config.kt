@@ -50,6 +50,13 @@ data class P2P(
   )
 }
 
+data class Sync(
+  val blockRangeRequestTimeout: Duration = 5.seconds,
+  val downloadBlocksBatchSize: UInt = 10u,
+  val downloadBlocksParallelism: UInt = 1u,
+  val downloadMaxRetries: UInt = 5u,
+)
+
 data class ValidatorElNode(
   val ethApiEndpoint: ApiEndpointConfig,
   val engineApiEndpoint: ApiEndpointConfig,

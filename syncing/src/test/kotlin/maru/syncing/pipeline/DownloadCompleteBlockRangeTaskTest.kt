@@ -10,6 +10,8 @@ package maru.syncing.pipeline
 
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeoutException
+import kotlin.time.Duration.Companion.seconds
+import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
@@ -36,12 +38,12 @@ class DownloadCompleteBlockRangeTaskTest {
     whenever(peer.sendBeaconBlocksByRange(10uL, 2uL)).thenReturn(completedFuture(BeaconBlocksByRangeResponse(blocks)))
     whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
 
-    val task = DownloadCompleteBlockRangeTask(peerLookup)
+    val task = DownloadCompleteBlockRangeTask(peerLookup, maxRetries = 5u, blockRangeRequestTimeout = 5.seconds)
     val range = SyncTargetRange(10uL, 11uL)
-    val result = task.getCompleteBlockRange(range).get()
+    val result = task.apply(range).get()
 
-    assertThat(result).hasSize(2)
-    assertThat(result).containsAll(blocks)
+    assertThat(result.size).isEqualTo(2)
+    assertThat(result.stream().map({ it.sealedBeaconBlock }).toList()).containsAll(blocks)
   }
 
   @Test
@@ -59,13 +61,16 @@ class DownloadCompleteBlockRangeTaskTest {
       .thenReturn(completedFuture(BeaconBlocksByRangeResponse(listOf(block2, block3))))
     whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
 
-    val task = DownloadCompleteBlockRangeTask(peerLookup)
+    val task =
+      DownloadCompleteBlockRangeTask(
+        peerLookup,
+        maxRetries = 5u,
+        blockRangeRequestTimeout = 5.seconds,
+      )
     val range = SyncTargetRange(10uL, 12uL)
-    val result = task.getCompleteBlockRange(range).get()
+    val result = task.apply(range).get()
 
-    assertThat(result).containsExactly(block1, block2, block3)
-    verify(peer).sendBeaconBlocksByRange(10uL, 3uL)
-    verify(peer).sendBeaconBlocksByRange(11uL, 2uL)
+    assertThat(result.stream().map({ it.sealedBeaconBlock }).toList()).containsExactly(block1, block2, block3)
   }
 
   @Test
@@ -79,10 +84,10 @@ class DownloadCompleteBlockRangeTaskTest {
       ),
     )
 
-    val task = DownloadCompleteBlockRangeTask(peerLookup)
+    val task = DownloadCompleteBlockRangeTask(peerLookup, maxRetries = 5u, blockRangeRequestTimeout = 5.seconds)
     val range = SyncTargetRange(1uL, 2uL)
 
-    assertThrows<Exception> { task.getCompleteBlockRange(range).get() }
+    assertThrows<Exception> { task.apply(range).get() }
     verify(peer, atLeastOnce()).adjustReputation(ReputationAdjustment.SMALL_PENALTY)
   }
 
@@ -95,10 +100,10 @@ class DownloadCompleteBlockRangeTaskTest {
     future.completeExceptionally(TimeoutException("timeout"))
     whenever(peer.sendBeaconBlocksByRange(1uL, 1uL)).thenReturn(future)
 
-    val task = DownloadCompleteBlockRangeTask(peerLookup)
+    val task = DownloadCompleteBlockRangeTask(peerLookup, maxRetries = 5u, blockRangeRequestTimeout = 5.seconds)
     val range = SyncTargetRange(1uL, 1uL)
 
-    assertThrows<Exception> { task.getCompleteBlockRange(range).get() }
+    assertThrows<Exception> { task.apply(range).get() }
     verify(peer, atLeastOnce()).adjustReputation(ReputationAdjustment.LARGE_PENALTY)
   }
 
@@ -113,11 +118,11 @@ class DownloadCompleteBlockRangeTaskTest {
     future.completeExceptionally(Exception("fail"))
     whenever(peer.sendBeaconBlocksByRange(any(), any())).thenReturn(future)
 
-    val task = DownloadCompleteBlockRangeTask(peerLookup)
+    val task = DownloadCompleteBlockRangeTask(peerLookup, maxRetries = 5u, blockRangeRequestTimeout = 5.seconds)
     val range = SyncTargetRange(1uL, 1uL)
 
-    val ex = assertThrows<Exception> { task.getCompleteBlockRange(range).get() }
-    assertThat(ex.message).contains("Failed to download blocks after 5 retries")
+    val ex = assertThrows<Exception> { task.apply(range).get() }
+    assertThat(ex.message).contains("Maximum retries reached.")
   }
 
   @Test
@@ -125,9 +130,50 @@ class DownloadCompleteBlockRangeTaskTest {
     val peerLookup = mock<PeerLookup>()
     whenever(peerLookup.getPeers()).thenReturn(emptyList())
 
-    val task = DownloadCompleteBlockRangeTask(peerLookup)
+    val task = DownloadCompleteBlockRangeTask(peerLookup, maxRetries = 5u, blockRangeRequestTimeout = 5.seconds)
     val range = SyncTargetRange(1uL, 1uL)
 
-    assertThrows<ExecutionException> { task.getCompleteBlockRange(range).get() }
+    assertThrows<ExecutionException> { task.apply(range).get() }
   }
+
+  @Test
+  fun `downloads blocks from a random peer`() {
+    val peer = mock<MaruPeer>()
+    val peerLookup = mock<PeerLookup>()
+    val blocks = listOf(randomSealedBeaconBlock(10u), randomSealedBeaconBlock(11u))
+    val response = mock<BeaconBlocksByRangeResponse>()
+    whenever(response.blocks).thenReturn(blocks)
+    whenever(peer.sendBeaconBlocksByRange(10u, 2u)).thenReturn(completedFuture(response))
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
+
+    val step = DownloadCompleteBlockRangeTask(peerLookup, maxRetries = 5u, blockRangeRequestTimeout = 5.seconds)
+    val range = SyncTargetRange(10u, 11u)
+    val result = step.apply(range).get()
+    assertThat(result).isEqualTo(createSealedBlocksWithPeers(blocks, peer))
+  }
+
+  @Test
+  fun `throws if no peers are available`() {
+    val peerLookup = mock<PeerLookup>()
+    whenever(peerLookup.getPeers()).thenReturn(emptyList())
+    val step = DownloadCompleteBlockRangeTask(peerLookup, maxRetries = 5u, blockRangeRequestTimeout = 5.seconds)
+    val range = SyncTargetRange(0u, 0u)
+    try {
+      step.apply(range).get()
+      assert(false) { "Expected exception" }
+    } catch (e: Exception) {
+      assertThat(e.cause).isInstanceOf(NoSuchElementException::class.java)
+    }
+  }
+
+  private fun createSealedBlocksWithPeers(
+    blocks: List<SealedBeaconBlock>,
+    peer: MaruPeer,
+  ): List<SealedBlockWithPeer> =
+    blocks
+      .stream()
+      .map({
+        SealedBlockWithPeer(it, peer)
+      })
+      .toList()
 }

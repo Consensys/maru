@@ -11,42 +11,60 @@ package maru.syncing.pipeline
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import java.util.function.Function
+import kotlin.time.Duration
 import maru.core.SealedBeaconBlock
+import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
 class DownloadCompleteBlockRangeTask(
   private val peerLookup: PeerLookup,
-) {
-  private val log: org.apache.logging.log4j.Logger = LogManager.getLogger(this::javaClass)
+  private val maxRetries: UInt,
+  private val blockRangeRequestTimeout: Duration,
+) : Function<SyncTargetRange, CompletableFuture<List<SealedBlockWithPeer>>> {
+  private val log: Logger = LogManager.getLogger(this::javaClass)
 
-  fun getCompleteBlockRange(targetRange: SyncTargetRange): CompletableFuture<List<SealedBeaconBlock>> =
+  override fun apply(targetRange: SyncTargetRange): CompletableFuture<List<SealedBlockWithPeer>> =
     CompletableFuture<List<SealedBeaconBlock>>.supplyAsync {
       var startBlockNumber = targetRange.startBlock
-      var count = targetRange.endBlock - targetRange.startBlock + 1uL
+      val count = targetRange.endBlock - targetRange.startBlock + 1uL
       var remaining = count
-      val downloadedBlocks = mutableListOf<SealedBeaconBlock>()
-      var retries = 0
+      val downloadedBlocks = mutableListOf<SealedBlockWithPeer>()
+      var retries = 0u
+      var peer: MaruPeer? = null
       do {
-        val peer = peerLookup.getPeers().random() // TODO: filter peers? Do we want to use least busy peer?
+        peer = peerLookup.getPeers().random() // TODO: filter peers? Do we want to use least busy peer?
         try {
           peer
             .sendBeaconBlocksByRange(startBlockNumber, remaining)
-            .orTimeout(5L, TimeUnit.SECONDS)
+            .orTimeout(blockRangeRequestTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
             .thenApply { response ->
               if (response.blocks.isEmpty()) {
                 peer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
                 log.debug("No blocks received from peer: {}", peer.id)
                 retries++
               } else {
-                // TODO: can we check if the blocks are valid?
-                // we could check the first block number, and whether the following block numbers increment by 1, as well as the parent roots
-                downloadedBlocks.addAll(response.blocks)
                 val numBlocks = response.blocks.size.toULong()
-                startBlockNumber += numBlocks
-                remaining -= numBlocks
-                peer.adjustReputation(ReputationAdjustment.SMALL_REWARD)
+                if (numBlocks > remaining) {
+                  peer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+                  log.debug(
+                    "Received more blocks than requested from peer: {}. Expected: {}, Received: {}",
+                    peer.id,
+                    remaining,
+                    numBlocks,
+                  )
+                  retries++
+                } else {
+                  response.blocks.forEach { downloadedBlocks.add(SealedBlockWithPeer(it, peer)) }
+                  startBlockNumber += numBlocks
+                  remaining -= numBlocks
+                  retries = 0u // Reset retries on successful download
+                  peer.adjustReputation(ReputationAdjustment.SMALL_REWARD)
+                }
               }
             }.join()
         } catch (e: Exception) {
@@ -58,10 +76,9 @@ class DownloadCompleteBlockRangeTask(
           }
           retries++
         }
-        if (retries > 5) {
-          log.warn("Failed to download blocks after 5 retries, giving up.")
-          throw Exception("Failed to download blocks after 5 retries, giving up.")
-          // TODO: If that happens we should probably restart the pipeline
+        if (retries >= maxRetries) {
+          log.debug("Maximum retries reached.")
+          throw Exception("Maximum retries reached.")
         }
       } while (downloadedBlocks.size.toULong() < count)
       downloadedBlocks

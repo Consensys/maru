@@ -8,6 +8,8 @@
  */
 package maru.syncing.pipeline
 
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.extensions.clampedAdd
 import maru.p2p.PeerLookup
@@ -23,7 +25,9 @@ class BeaconChainDownloadPipelineFactory(
   private val metricsSystem: MetricsSystem,
   private val peerLookup: PeerLookup,
   private val downloaderParallelism: Int,
-  private val requestSize: UInt,
+  private val requestSize: UInt = 10u,
+  private val maxRetries: UInt = 5u,
+  private val blockRangeRequestTimeout: Duration = 5.seconds,
 ) {
   init {
     require(requestSize > 0u) { "Request size must be greater than 0" }
@@ -38,7 +42,7 @@ class BeaconChainDownloadPipelineFactory(
     check(endBlock < ULong.MAX_VALUE) { "End block ($endBlock) must be less than ULong max value" }
 
     val syncTargetRangeSequence = createTargetRangeSequence(startBlock, endBlock)
-    val downloadBlocksStep = DownloadBlocksStep(peerLookup)
+    val downloadBlocksStep = DownloadCompleteBlockRangeTask(peerLookup, maxRetries, blockRangeRequestTimeout)
     val importBlocksStep = ImportBlocksStep(blockImporter)
 
     return PipelineBuilder
@@ -65,11 +69,11 @@ class BeaconChainDownloadPipelineFactory(
   ): Sequence<SyncTargetRange> =
     sequence {
       var currentStart = startBlock
-      val maxRangeSize = requestSize.toULong()
+      val rangeSize = requestSize.toULong()
 
       while (currentStart <= endBlock) {
-        val nextEnd = currentStart.clampedAdd(maxRangeSize) - 1uL
-        val currentEnd = minOf(nextEnd.toULong(), endBlock)
+        val nextEnd = currentStart.clampedAdd(rangeSize) - 1uL
+        val currentEnd = minOf(nextEnd, endBlock)
         yield(SyncTargetRange(currentStart, currentEnd))
         currentStart = currentEnd + 1uL
       }

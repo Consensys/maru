@@ -85,6 +85,7 @@ data class MaruConfigDtoToml(
   private val persistence: Persistence,
   private val qbft: QbftOptionsDtoToml?,
   private val p2p: P2P?,
+  private val sync: Sync?,
   private val payloadValidator: PayloadValidatorDto,
   private val followerEngineApis: Map<String, ApiEndpointDto>?,
   private val observability: ObservabilityOptions,
