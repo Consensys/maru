@@ -38,12 +38,6 @@ class HopliteFriendlinessTest {
     port = 3324
     bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
 
-    [sync]
-    block-range-request-timeout = 10000
-    download-blocks-batch-size = 64
-    download-blocks-parallelism = 10
-    download-max-retries = 5
-
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
     eth-api-endpoint = { endpoint = "http://localhost:8545" }
@@ -57,6 +51,10 @@ class HopliteFriendlinessTest {
     [syncing]
     peer-chain-height-polling-interval = "5 seconds"
     peer-chain-height-granularity = 10
+    block-range-request-timeout = 10000
+    download-blocks-batch-size = 64
+    download-blocks-parallelism = 10
+    download-max-retries = 5
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -86,13 +84,6 @@ class HopliteFriendlinessTest {
               "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
             ),
         ),
-    )
-  private val syncConfig =
-    Sync(
-      blockRangeRequestTimeout = 10.seconds,
-      downloadBlocksBatchSize = 64u,
-      downloadBlocksParallelism = 10u,
-      downloadMaxRetries = 5u,
     )
   private val ethApiEndpoint =
     ApiEndpointConfig(
@@ -146,6 +137,10 @@ class HopliteFriendlinessTest {
     SyncingConfig(
       peerChainHeightPollingInterval = 5.seconds,
       peerChainHeightGranularity = 10u,
+      blockRangeRequestTimeout = 10.seconds,
+      downloadBlocksBatchSize = 64u,
+      downloadBlocksParallelism = 10u,
+      downloadMaxRetries = 5u,
     )
 
   @Test
@@ -157,7 +152,6 @@ class HopliteFriendlinessTest {
         persistence = persistence,
         qbft = qbftOptions,
         p2p = p2pConfig,
-        sync = syncConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
         observability = ObservabilityOptions(port = 9090u),
@@ -176,7 +170,6 @@ class HopliteFriendlinessTest {
         persistence = persistence,
         qbft = qbftOptions,
         p2p = p2pConfig,
-        sync = syncConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = null,
         observability = ObservabilityOptions(port = 9090u),
@@ -273,7 +266,6 @@ class HopliteFriendlinessTest {
           persistence = persistence,
           qbft = qbftOptions,
           p2p = p2pConfig,
-          sync = syncConfig,
           payloadValidator = payloadValidator,
           followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
           observability = ObservabilityOptions(port = 9090u),
