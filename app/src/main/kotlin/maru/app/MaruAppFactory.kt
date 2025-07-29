@@ -50,6 +50,7 @@ import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import maru.services.LongRunningService
 import maru.syncing.ELSyncStatus
+import maru.syncing.PeerChainTracker
 import maru.syncing.SyncControllerImpl
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
@@ -174,6 +175,16 @@ class MaruAppFactory {
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(beaconChain),
         )
+    val peerChainTracker =
+      PeerChainTracker(
+        { emptyMap() },
+        {},
+        { it.first() },
+        PeerChainTracker.Config(
+          config.syncing.peerChainHeightPollingInterval,
+          config.syncing.peerChainHeightGranularity,
+        ),
+      )
 
     val maru =
       MaruApp(
@@ -192,6 +203,7 @@ class MaruAppFactory {
         apiServer = apiServer,
         syncControllerManager = syncControllerManager,
         syncStatusProvider = syncStatusProvider,
+        peerChainTracker = peerChainTracker,
       )
 
     return maru
