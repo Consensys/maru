@@ -8,6 +8,7 @@
  */
 package maru.syncing
 
+import kotlin.time.Duration.Companion.milliseconds
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.PeersHeadBlockProvider
@@ -98,11 +99,15 @@ class SyncControllerImpl(
       val controller = SyncControllerImpl()
 
       val elSyncService =
-        ELSyncServiceImpl(
+        ELSyncService(
           beaconChain = beaconChain,
-          leeway = 10u,
           executionLayerManager = elManager,
           onStatusChange = controller::elSyncStatusWasUpdated,
+          config =
+            ELSyncService.Config(
+              pollingInterval = 5000.milliseconds,
+              leeway = 10u,
+            ),
         )
       val clSyncPipeline = CLSyncPipelineImpl()
 
