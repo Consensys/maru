@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.whenever
+import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 
 class P2PPeersHeadBlockProviderTest {
@@ -134,6 +135,7 @@ class P2PPeersHeadBlockProviderTest {
 
     whenever(peer.id).thenReturn(nodeId)
     whenever(nodeId.toBase58()).thenReturn(peerId)
+    whenever(peer.address).thenReturn(PeerAddress(nodeId))
 
     val status =
       Status(
