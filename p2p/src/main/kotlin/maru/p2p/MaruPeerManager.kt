@@ -169,12 +169,6 @@ class MaruPeerManager(
             }
           }
         }
-      log.debug(
-        "peer={} connected to peer={}",
-        discoveryService!!.getLocalNodeRecord().nodeId,
-        peer
-          .nodeIdBytes,
-      )
     } catch (e: Exception) {
       log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeIdBytes, e.message, e)
       synchronized(connectionInProgress) {
