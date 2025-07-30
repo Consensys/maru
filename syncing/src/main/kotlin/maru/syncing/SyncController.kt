@@ -13,6 +13,7 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
 import maru.syncing.beaconchain.CLSyncServiceImpl
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem
 
@@ -87,8 +88,7 @@ class SyncControllerImpl(
           beaconChain = beaconChain,
           validators = validators,
           allowEmptyBlocks = true,
-          downloaderParallelism = 1u,
-          requestSize = 40u,
+          BeaconChainDownloadPipelineFactory.Config(),
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,
           metricsFacade = metricsFacade,

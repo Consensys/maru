@@ -16,6 +16,9 @@ import maru.core.ext.DataGenerators.randomSealedBeaconBlock
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.messages.BeaconBlocksByRangeResponse
+import maru.syncing.beaconchain.pipeline.DownloadCompleteBlockRangeTask
+import maru.syncing.beaconchain.pipeline.SealedBlockWithPeer
+import maru.syncing.beaconchain.pipeline.SyncTargetRange
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows

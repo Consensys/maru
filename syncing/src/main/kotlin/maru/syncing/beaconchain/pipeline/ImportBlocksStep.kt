@@ -14,7 +14,6 @@ import maru.extensions.encodeHex
 import maru.p2p.ValidationResult
 import maru.p2p.ValidationResultCode
 import maru.p2p.ValidationResultCode.ACCEPT
-import maru.syncing.pipeline.SealedBlockWithPeer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason

@@ -48,8 +48,7 @@ class CLSyncServiceImpl(
   private val beaconChain: BeaconChain,
   private val validators: Set<Validator>,
   private val allowEmptyBlocks: Boolean = true,
-  downloaderParallelism: UInt,
-  requestSize: UInt,
+  pipelineConfig: BeaconChainDownloadPipelineFactory.Config,
   peerLookup: PeerLookup,
   besuMetrics: MetricsSystem,
   metricsFacade: MetricsFacade,
@@ -68,7 +67,7 @@ class CLSyncServiceImpl(
         allowEmptyBlocks = allowEmptyBlocks,
       )
   private var pipelineFactory =
-    BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, downloaderParallelism, requestSize) {
+    BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, pipelineConfig) {
       syncTarget.get()
     }
   private val pipelineRestartCounter =

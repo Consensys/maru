@@ -36,6 +36,7 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import net.consensys.linea.metrics.Counter
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.tuweni.bytes.Bytes32
@@ -114,8 +115,7 @@ class CLSyncServiceImplTest {
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetricsSystemAdapter,
           metricsFacade = TestMetricsFacade,
-          requestSize = 10u,
-          downloaderParallelism = 1u,
+          pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
         )
       clSyncServiceImpl1.start()
 
@@ -173,8 +173,7 @@ class CLSyncServiceImplTest {
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetricsSystemAdapter,
           metricsFacade = TestMetricsFacade,
-          requestSize = 10u,
-          downloaderParallelism = 1u,
+          pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
         )
       clSyncServiceImpl1.start()
 
@@ -262,8 +261,7 @@ class CLSyncServiceImplTest {
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetricsSystemAdapter,
           metricsFacade = metricsFacade,
-          requestSize = 10u,
-          downloaderParallelism = 1u,
+          pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
         )
       clSyncServiceImpl.start()
 
@@ -340,9 +338,9 @@ class CLSyncServiceImplTest {
         metricsFacade = TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = 1uL,
         metricsSystem = TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     return p2pNetworkImpl
   }

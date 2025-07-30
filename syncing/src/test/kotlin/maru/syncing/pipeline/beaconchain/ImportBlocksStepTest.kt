@@ -18,6 +18,7 @@ import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResult.Companion.Invalid
 import maru.p2p.ValidationResult.Companion.Valid
 import maru.syncing.beaconchain.pipeline.ImportBlocksStep
+import maru.syncing.beaconchain.pipeline.SealedBlockWithPeer
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach

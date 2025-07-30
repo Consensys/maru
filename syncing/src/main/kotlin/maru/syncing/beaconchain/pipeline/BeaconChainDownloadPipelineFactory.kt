@@ -15,7 +15,6 @@ import maru.extensions.clampedAdd
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
 import maru.p2p.messages.BeaconBlocksByRangeHandler.Companion.MAX_BLOCKS_PER_REQUEST
-import maru.syncing.pipeline.DownloadCompleteBlockRangeTask
 import org.hyperledger.besu.metrics.BesuMetricCategory
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.services.pipeline.Pipeline
