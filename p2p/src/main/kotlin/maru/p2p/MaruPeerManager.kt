@@ -161,7 +161,7 @@ class MaruPeerManager(
         .whenComplete { _, throwable ->
           try {
             if (throwable != null) {
-              log.error("Failed to connect to peer={}", peer.nodeIdBytes,  throwable)
+              log.error("Failed to connect to peer={}", peer.nodeIdBytes, throwable)
             }
           } finally {
             synchronized(connectionInProgress) {
