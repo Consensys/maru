@@ -15,10 +15,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.collections.contains
-import kotlin.collections.remove
-import kotlin.text.compareTo
-import kotlin.text.set
 import maru.config.P2P
 import maru.p2p.discovery.MaruDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService
@@ -99,7 +95,7 @@ class MaruPeerManager(
   init {
     scheduler.scheduleAtFixedRate({
       logConnectedPeers()
-    }, 30, 30000, TimeUnit.SECONDS)
+    }, 30, 30, TimeUnit.SECONDS)
   }
 
   private fun logConnectedPeers() {
