@@ -9,7 +9,6 @@
 package maru.p2p
 
 import java.time.Duration
-import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -31,8 +30,6 @@ import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
-private const val STATUS_TIMEOUT_SECONDS = 10L
-
 class MaruPeerManager(
   private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(),
   private val maruPeerFactory: MaruPeerFactory,
@@ -45,7 +42,7 @@ class MaruPeerManager(
   private val connectionInProgress = mutableListOf<Bytes>()
 
   private var discoveryService: MaruDiscoveryService? = null
-  private lateinit var p2pNetwork: tech.pegasys.teku.networking.p2p.network.P2PNetwork<Peer>
+  private lateinit var p2pNetwork: P2PNetwork<Peer>
   private var stopCalled = false
 
   fun start(
@@ -115,23 +112,13 @@ class MaruPeerManager(
     if (maruPeer.connectionInitiatedLocally()) {
       maruPeer.sendStatus()
     } else {
-      ensureStatusReceived(maruPeer)
+      maruPeer.scheduleDisconnectIfStatusNotReceived(STATUS_TIMEOUT_SECONDS)
     }
-  }
-
-  private fun ensureStatusReceived(peer: MaruPeer) {
-    scheduler.schedule({
-      if (peer.getStatus() == null) {
-        peer.disconnectImmediately(
-          Optional.of(DisconnectReason.REMOTE_FAULT),
-          false,
-        )
-      }
-    }, STATUS_TIMEOUT_SECONDS, TimeUnit.SECONDS)
   }
 
   override fun onDisconnect(peer: Peer) {
     connectedPeers.remove(peer.id)
+    log.info("Peer {} disconnected", peer.id)
     if (!stopCalled && p2pNetwork.peerCount < maxPeers) {
       searchForPeersUntilMaxReached()
     }
