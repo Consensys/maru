@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.function.Function
 import kotlin.time.Duration
-import maru.core.SealedBeaconBlock
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import org.apache.logging.log4j.LogManager
@@ -29,13 +28,13 @@ class DownloadCompleteBlockRangeTask(
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
   override fun apply(targetRange: SyncTargetRange): CompletableFuture<List<SealedBlockWithPeer>> =
-    CompletableFuture<List<SealedBeaconBlock>>.supplyAsync {
+    CompletableFuture.supplyAsync {
       var startBlockNumber = targetRange.startBlock
       val count = targetRange.endBlock - targetRange.startBlock + 1uL
       var remaining = count
       val downloadedBlocks = mutableListOf<SealedBlockWithPeer>()
       var retries = 0u
-      var peer: MaruPeer? = null
+      var peer: MaruPeer?
       do {
         peer = peerLookup.getPeers().random() // TODO: filter peers? Do we want to use least busy peer?
         try {

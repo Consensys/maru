@@ -24,15 +24,24 @@ class BeaconChainDownloadPipelineFactory(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
   private val metricsSystem: MetricsSystem,
   private val peerLookup: PeerLookup,
-  private val downloaderParallelism: Int,
-  private val requestSize: UInt = 10u,
-  private val maxRetries: UInt = 5u,
-  private val blockRangeRequestTimeout: Duration = 5.seconds,
+  private val config: Config = Config(),
 ) {
   init {
-    require(requestSize > 0u) { "Request size must be greater than 0" }
-    require(requestSize <= MAX_BLOCKS_PER_REQUEST) { "Request size must not be greater than $MAX_BLOCKS_PER_REQUEST" }
+    require(config.blocksBatchSize > 0u) { "Request size must be greater than 0" }
+    require(config.blocksBatchSize <= MAX_BLOCKS_PER_REQUEST) {
+      "Request size must not be greater than $MAX_BLOCKS_PER_REQUEST"
+    }
+    require(config.maxRetries > 0u) { "Maxi retries must be greater than 0" }
+    require(config.blockRangeRequestTimeout.isPositive()) { "Block range request timeout must be positive" }
+    require(config.blocksParallelism > 0u) { "Blocks download parallelism must be greater than 0" }
   }
+
+  data class Config(
+    val blockRangeRequestTimeout: Duration = 5.seconds,
+    val blocksBatchSize: UInt = 10u,
+    val blocksParallelism: UInt = 1u,
+    val maxRetries: UInt = 5u,
+  )
 
   fun createPipeline(
     startBlock: ULong,
@@ -42,14 +51,15 @@ class BeaconChainDownloadPipelineFactory(
     check(endBlock < ULong.MAX_VALUE) { "End block ($endBlock) must be less than ULong max value" }
 
     val syncTargetRangeSequence = createTargetRangeSequence(startBlock, endBlock)
-    val downloadBlocksStep = DownloadCompleteBlockRangeTask(peerLookup, maxRetries, blockRangeRequestTimeout)
+    val downloadBlocksStep =
+      DownloadCompleteBlockRangeTask(peerLookup, config.maxRetries, config.blockRangeRequestTimeout)
     val importBlocksStep = ImportBlocksStep(blockImporter)
 
     return PipelineBuilder
       .createPipelineFrom(
         "blockNumbers",
         syncTargetRangeSequence.iterator(),
-        downloaderParallelism,
+        config.blocksParallelism.toInt(),
         metricsSystem.createLabelledCounter(
           BesuMetricCategory.SYNCHRONIZER,
           "chain_download_pipeline_processed_total",
@@ -59,7 +69,7 @@ class BeaconChainDownloadPipelineFactory(
         ),
         true,
         "importBlocks",
-      ).thenProcessAsyncOrdered("downloadBlocks", downloadBlocksStep, downloaderParallelism)
+      ).thenProcessAsyncOrdered("downloadBlocks", downloadBlocksStep, config.blocksParallelism.toInt())
       .andFinishWith("importBlocks", importBlocksStep)
   }
 
@@ -69,7 +79,7 @@ class BeaconChainDownloadPipelineFactory(
   ): Sequence<SyncTargetRange> =
     sequence {
       var currentStart = startBlock
-      val rangeSize = requestSize.toULong()
+      val rangeSize = config.blocksBatchSize.toULong()
 
       while (currentStart <= endBlock) {
         val nextEnd = currentStart.clampedAdd(rangeSize) - 1uL

@@ -51,10 +51,12 @@ class HopliteFriendlinessTest {
     [syncing]
     peer-chain-height-polling-interval = "5 seconds"
     peer-chain-height-granularity = 10
-    block-range-request-timeout = 10000
-    download-blocks-batch-size = 64
-    download-blocks-parallelism = 10
-    download-max-retries = 5
+
+    [syncing.download]
+    block-range-request-timeout = "10 seconds"
+    blocks-batch-size = 64
+    blocks-parallelism = 10
+    max-retries = 5
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -137,10 +139,12 @@ class HopliteFriendlinessTest {
     SyncingConfig(
       peerChainHeightPollingInterval = 5.seconds,
       peerChainHeightGranularity = 10u,
-      blockRangeRequestTimeout = 10.seconds,
-      downloadBlocksBatchSize = 64u,
-      downloadBlocksParallelism = 10u,
-      downloadMaxRetries = 5u,
+      SyncingConfig.Download(
+        blockRangeRequestTimeout = 10.seconds,
+        blocksBatchSize = 64u,
+        blocksParallelism = 10u,
+        maxRetries = 5u,
+      ),
     )
 
   @Test
