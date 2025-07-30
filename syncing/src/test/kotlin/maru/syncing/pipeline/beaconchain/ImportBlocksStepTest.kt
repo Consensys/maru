@@ -12,6 +12,7 @@ import java.util.concurrent.CompletionException
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
+import maru.p2p.MaruPeer
 import maru.p2p.ValidationResult
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResult.Companion.Invalid
@@ -48,7 +49,7 @@ class ImportBlocksStepTest {
 
     whenever(blockImporter.importBlock(any())).thenReturn(SafeFuture.completedFuture(Valid))
 
-    importBlocksStep.accept(blocks)
+    importBlocksStep.accept(createSealedBlocksWithPeers(blocks))
 
     verify(blockImporter, times(3)).importBlock(any())
     verify(blockImporter).importBlock(block1)
@@ -76,7 +77,7 @@ class ImportBlocksStepTest {
     ).thenReturn(SafeFuture.completedFuture(Invalid("Block validation failed")))
     whenever(blockImporter.importBlock(block3)).thenReturn(SafeFuture.completedFuture(Valid))
 
-    importBlocksStep.accept(blocks)
+    importBlocksStep.accept(createSealedBlocksWithPeers(blocks))
 
     verify(blockImporter).importBlock(block1)
     verify(blockImporter).importBlock(block2)
@@ -100,7 +101,7 @@ class ImportBlocksStepTest {
     )
     whenever(blockImporter.importBlock(block3)).thenReturn(SafeFuture.completedFuture(Valid))
 
-    importBlocksStep.accept(blocks)
+    importBlocksStep.accept(createSealedBlocksWithPeers(blocks))
 
     verify(blockImporter).importBlock(block1)
     verify(blockImporter).importBlock(block2)
@@ -117,7 +118,7 @@ class ImportBlocksStepTest {
       SafeFuture.failedFuture(expectedException),
     )
 
-    assertThatThrownBy { importBlocksStep.accept(blocks) }
+    assertThatThrownBy { importBlocksStep.accept(createSealedBlocksWithPeers(blocks)) }
       .isInstanceOf(CompletionException::class.java)
       .hasCauseInstanceOf(RuntimeException::class.java)
       .hasRootCauseMessage("Import failed")
@@ -141,7 +142,7 @@ class ImportBlocksStepTest {
       SafeFuture.completedFuture(acceptResult)
     }
 
-    importBlocksStep.accept(blocks)
+    importBlocksStep.accept(createSealedBlocksWithPeers(blocks))
 
     assertThat(completedBlocks).containsExactly(block1, block2, block3)
   }
@@ -161,11 +162,19 @@ class ImportBlocksStepTest {
     ).thenReturn(SafeFuture.completedFuture(Ignore("Block ignored for mixed results test")))
     whenever(blockImporter.importBlock(block4)).thenReturn(SafeFuture.completedFuture(Valid))
 
-    importBlocksStep.accept(blocks)
+    importBlocksStep.accept(createSealedBlocksWithPeers(blocks))
 
     verify(blockImporter).importBlock(block1)
     verify(blockImporter).importBlock(block2)
     verify(blockImporter).importBlock(block3)
     verify(blockImporter, never()).importBlock(block4)
   }
+
+  private fun createSealedBlocksWithPeers(blocks: List<SealedBeaconBlock>): List<SealedBlockWithPeer> =
+    blocks
+      .stream()
+      .map({
+        SealedBlockWithPeer(it, mock(MaruPeer::class.java))
+      })
+      .toList()
 }

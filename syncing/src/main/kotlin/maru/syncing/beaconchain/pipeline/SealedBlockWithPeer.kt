@@ -6,11 +6,12 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.p2p
+package maru.syncing.pipeline
 
-fun interface PeersHeadBlockProvider {
-  /**
-   * Returns a list of peerId and chain head block number
-   */
-  fun getPeersHeads(): Map<String, ULong>
-}
+import maru.core.SealedBeaconBlock
+import maru.p2p.MaruPeer
+
+data class SealedBlockWithPeer(
+  val sealedBeaconBlock: SealedBeaconBlock,
+  val peer: MaruPeer,
+)

@@ -140,6 +140,19 @@ data class ApiConfig(
   val port: UInt,
 )
 
+data class SyncingConfig(
+  val peerChainHeightPollingInterval: Duration,
+  val peerChainHeightGranularity: UInt,
+  val download: Download? = Download(),
+) {
+  data class Download(
+    val blockRangeRequestTimeout: Duration = 5.seconds,
+    val blocksBatchSize: UInt = 10u,
+    val blocksParallelism: UInt = 1u,
+    val maxRetries: UInt = 5u,
+  )
+}
+
 data class MaruConfig(
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
@@ -150,4 +163,5 @@ data class MaruConfig(
   val observabilityOptions: ObservabilityOptions,
   val linea: LineaConfig? = null,
   val apiConfig: ApiConfig,
+  val syncing: SyncingConfig,
 )

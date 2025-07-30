@@ -15,41 +15,41 @@ import maru.extensions.encodeHex
 import maru.p2p.ValidationResult
 import maru.p2p.ValidationResultCode
 import maru.p2p.ValidationResultCode.ACCEPT
+import maru.syncing.pipeline.SealedBlockWithPeer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 
 class ImportBlocksStep(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
-) : Consumer<List<SealedBeaconBlock>> {
+) : Consumer<List<SealedBlockWithPeer>> {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
-  override fun accept(blocks: List<SealedBeaconBlock>) {
+  override fun accept(blocksWithPeers: List<SealedBlockWithPeer>) {
     // Process blocks sequentially
-    blocks.forEach { sealedBeaconBlock ->
+    blocksWithPeers.forEach { blockAndPeer ->
       try {
-        val result = blockImporter.importBlock(sealedBeaconBlock).join()
+        val result = blockImporter.importBlock(blockAndPeer.sealedBeaconBlock).join()
         when (result.code) {
           ACCEPT -> {
             log.debug(
               "Successfully imported block number={} hash={}",
-              sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
-              sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
-                .encodeHex(),
+              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex(),
             )
           }
           ValidationResultCode.REJECT -> {
-            log.info(
+            blockAndPeer.peer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+            log.error(
               "Block validation failed for block {}",
-              sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
-                .encodeHex(),
+              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex(),
             )
             return
           }
           ValidationResultCode.IGNORE -> {
             log.warn(
               "Block validation ignored for block {}",
-              sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
-                .encodeHex(),
+              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex(),
             )
             return
           }

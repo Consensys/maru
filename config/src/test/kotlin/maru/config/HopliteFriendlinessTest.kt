@@ -32,7 +32,7 @@ class HopliteFriendlinessTest {
     port = 3322
     ip-address = "127.0.0.1"
     static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
-    reconnect-delay = 500milliseconds
+    reconnect-delay = "500 ms"
 
     [p2p.discovery]
     port = 3324
@@ -47,6 +47,16 @@ class HopliteFriendlinessTest {
 
     [api]
     port = 8080
+
+    [syncing]
+    peer-chain-height-polling-interval = "5 seconds"
+    peer-chain-height-granularity = 10
+
+    [syncing.download]
+    block-range-request-timeout = "10 seconds"
+    blocks-batch-size = 64
+    blocks-parallelism = 10
+    max-retries = 5
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -125,6 +135,17 @@ class HopliteFriendlinessTest {
       futureMessagesLimit = 1000L,
       feeRecipient = "0xdead000000000000000000000000000000000000".decodeHex(),
     )
+  private val syncingConfig =
+    SyncingConfig(
+      peerChainHeightPollingInterval = 5.seconds,
+      peerChainHeightGranularity = 10u,
+      SyncingConfig.Download(
+        blockRangeRequestTimeout = 10.seconds,
+        blocksBatchSize = 64u,
+        blocksParallelism = 10u,
+        maxRetries = 5u,
+      ),
+    )
 
   @Test
   fun appConfigFileIsParseable() {
@@ -139,6 +160,7 @@ class HopliteFriendlinessTest {
         followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
         observability = ObservabilityOptions(port = 9090u),
         api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
       ),
     )
   }
@@ -156,6 +178,7 @@ class HopliteFriendlinessTest {
         followerEngineApis = null,
         observability = ObservabilityOptions(port = 9090u),
         api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
       ),
     )
   }
@@ -177,6 +200,7 @@ class HopliteFriendlinessTest {
         followers = followersConfig,
         observabilityOptions = ObservabilityOptions(port = 9090u),
         apiConfig = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
       ),
     )
   }
@@ -198,6 +222,7 @@ class HopliteFriendlinessTest {
         followers = emptyFollowersConfig,
         observabilityOptions = ObservabilityOptions(port = 9090u),
         apiConfig = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
       ),
     )
   }
@@ -249,6 +274,7 @@ class HopliteFriendlinessTest {
           followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
           observability = ObservabilityOptions(port = 9090u),
           api = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
         ),
       )
 
@@ -267,6 +293,7 @@ class HopliteFriendlinessTest {
           followers = followersConfig,
           observabilityOptions = ObservabilityOptions(port = 9090u),
           apiConfig = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
         ),
       )
   }
