@@ -169,7 +169,7 @@ class MaruPeerManager(
           }
         }
       log.debug(
-        "peer={} Finished connecting to peer={}...",
+        "peer={} connected to peer={}",
         discoveryService!!.getLocalNodeRecord().nodeId,
         peer
           .nodeIdBytes,
