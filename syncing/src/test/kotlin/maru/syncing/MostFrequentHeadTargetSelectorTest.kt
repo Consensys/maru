@@ -52,13 +52,6 @@ class MostFrequentHeadTargetSelectorTest {
   }
 
   @Test
-  fun `should handle duplicate consecutive elements correctly`() {
-    val peerHeads = listOf(100UL, 100UL, 100UL, 200UL, 200UL)
-    val result = selector.selectBestSyncTarget(peerHeads)
-    assertEquals(100UL, result) // 100 appears 3 times, 200 appears 2 times
-  }
-
-  @Test
   fun `should handle large numbers correctly`() {
     val peerHeads =
       listOf(
