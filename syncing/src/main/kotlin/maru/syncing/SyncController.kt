@@ -77,7 +77,6 @@ class SyncControllerImpl(
           config =
             ELSyncService.Config(
               pollingInterval = 5000.milliseconds,
-              leeway = 10u,
             ),
         )
       val clSyncPipeline = CLSyncPipelineImpl()

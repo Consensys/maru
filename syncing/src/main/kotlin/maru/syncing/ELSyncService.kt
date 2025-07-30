@@ -55,7 +55,6 @@ class ELSyncService(
 ) : LongRunningService {
   data class Config(
     val pollingInterval: Duration,
-    val leeway: UInt,
   )
 
   private val log = LogManager.getLogger(this.javaClass)
@@ -67,7 +66,7 @@ class ELSyncService(
   private fun pollTask() {
     val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
     val latestBeaconBlockNumber = latestBeaconBlockHeader.number
-    if (latestBeaconBlockNumber == 0UL || latestBeaconBlockNumber <= config.leeway) {
+    if (latestBeaconBlockNumber == 0UL) {
       val newELSyncStatus = ELSyncStatus.SYNCED
       if (currentELSyncStatus != newELSyncStatus) {
         currentELSyncStatus = newELSyncStatus
@@ -78,7 +77,7 @@ class ELSyncService(
 
     val latestSealedBeaconBlock =
       beaconChain.getSealedBeaconBlock(
-        beaconBlockNumber = latestBeaconBlockHeader.number - config.leeway,
+        beaconBlockNumber = latestBeaconBlockHeader.number,
       )!!
     val newELSyncTarget =
       ElBlockInfo(

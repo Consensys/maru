@@ -10,7 +10,7 @@ package maru.syncing
 
 import kotlin.time.Duration.Companion.seconds
 import maru.core.ext.DataGenerators
-import maru.database.BeaconChain
+import maru.database.InMemoryBeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
@@ -27,14 +27,9 @@ class ELSyncServiceTest {
   fun `should set sync status to Synced for genesis block`() {
     var elSyncStatus: ELSyncStatus? = null
     val onStatusChange: (ELSyncStatus) -> Unit = { elSyncStatus = it }
-    val config =
-      ELSyncService.Config(
-        pollingInterval = 1.seconds,
-        leeway = 0u,
-      )
+    val config = ELSyncService.Config(pollingInterval = 1.seconds)
     val timer = PeerChainTrackerTest.TestableTimer()
-    val beaconChain = mock<BeaconChain>()
-    whenever(beaconChain.getLatestBeaconState()).thenReturn(DataGenerators.randomBeaconState(0UL))
+    val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
     val executionLayerManager = mock<ExecutionLayerManager>()
 
     val elSyncService =
@@ -58,14 +53,9 @@ class ELSyncServiceTest {
   fun `should change el sync status when el is syncing and synced`() {
     var elSyncStatus: ELSyncStatus? = null
     val onStatusChange: (ELSyncStatus) -> Unit = { elSyncStatus = it }
-    val config =
-      ELSyncService.Config(
-        pollingInterval = 1.seconds,
-        leeway = 1u,
-      )
+    val config = ELSyncService.Config(pollingInterval = 1.seconds)
     val timer = PeerChainTrackerTest.TestableTimer()
-    val beaconChain = mock<BeaconChain>()
-    whenever(beaconChain.getLatestBeaconState()).thenReturn(DataGenerators.randomBeaconState(0UL))
+    val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
     val executionLayerManager = mock<ExecutionLayerManager>()
 
     val elSyncService =
@@ -82,9 +72,11 @@ class ELSyncServiceTest {
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
 
-    whenever(beaconChain.getLatestBeaconState()).thenReturn(DataGenerators.randomBeaconState(3UL))
-    val sealedBlock = DataGenerators.randomSealedBeaconBlock(2UL)
-    whenever(beaconChain.getSealedBeaconBlock(2uL)).thenReturn(sealedBlock)
+    beaconChain
+      .newUpdater()
+      .putBeaconState(DataGenerators.randomBeaconState(3uL))
+      .putSealedBeaconBlock(DataGenerators.randomSealedBeaconBlock(3UL))
+      .commit()
     whenever(executionLayerManager.setHead(any(), any(), any()))
       .thenReturn(
         SafeFuture.completedFuture(
