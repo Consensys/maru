@@ -8,6 +8,7 @@
  */
 package maru.syncing
 
+import java.lang.Exception
 import java.util.Timer
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
@@ -116,7 +117,17 @@ class ELSyncService(
         return
       }
       poller = timerFactory("ELSyncPoller", true)
-      poller!!.scheduleAtFixedRate(timerTask { pollTask() }, 0, config.pollingInterval.inWholeMilliseconds)
+      poller!!.scheduleAtFixedRate(
+        timerTask {
+          try {
+            pollTask()
+          } catch (e: Exception) {
+            log.warn("ELSyncService poll task exception", e)
+          }
+        },
+        0,
+        config.pollingInterval.inWholeMilliseconds,
+      )
     }
   }
 
