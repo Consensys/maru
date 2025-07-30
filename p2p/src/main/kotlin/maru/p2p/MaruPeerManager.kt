@@ -154,14 +154,14 @@ class MaruPeerManager(
         connectionInProgress.add(peer.nodeIdBytes)
       }
 
-      log.debug("peer={} Connecting to peer={}...", discoveryService!!.getLocalNodeRecord().nodeId, peer.nodeIdBytes)
+      log.debug("peer={} connecting to peer={}...", discoveryService!!.getLocalNodeRecord().nodeId, peer.nodeIdBytes)
       p2pNetwork
         .connect(p2pNetwork.createPeerAddress(peer))
         .orTimeout(30, TimeUnit.SECONDS)
         .whenComplete { _, throwable ->
           try {
             if (throwable != null) {
-              log.error("Failed to connect to peer ${peer.nodeIdBytes}", throwable)
+              log.error("Failed to connect to peer={}", peer.nodeIdBytes,  throwable)
             }
           } finally {
             synchronized(connectionInProgress) {
@@ -170,13 +170,13 @@ class MaruPeerManager(
           }
         }
       log.debug(
-        "peer={} Finished connecting to peer={}...",
+        "peer={} connected to peer={}",
         discoveryService!!.getLocalNodeRecord().nodeId,
         peer
           .nodeIdBytes,
       )
     } catch (e: Exception) {
-      log.debug("Failed to initiate connection to peer={}: {}", peer.nodeIdBytes, e.stackTraceToString())
+      log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeIdBytes, e.message, e)
       synchronized(connectionInProgress) {
         connectionInProgress.remove(peer.nodeIdBytes)
       }
