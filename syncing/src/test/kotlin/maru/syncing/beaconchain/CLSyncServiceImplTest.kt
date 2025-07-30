@@ -219,17 +219,6 @@ class CLSyncServiceImplTest {
     val beaconChain1 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
     val beaconChain2 = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
 
-    // Create an invalid block to simulate failures in the import block stage of the sync process
-    var retries = 0
-    doAnswer {
-      if (it.arguments[0] == 1L && retries < 2) {
-        retries++
-        listOf(DataGenerators.randomSealedBeaconBlock(1uL))
-      } else {
-        it.callRealMethod()
-      }
-    }.whenever(beaconChain2).getSealedBeaconBlocks(any(), any())
-
     createBlocks(
       beaconChain = beaconChain2,
       genesisBeaconBlock = genesisBeaconBlock,
@@ -241,6 +230,18 @@ class CLSyncServiceImplTest {
 
     val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, PORT1)
     val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, PORT2)
+    val peerLookup = spy(p2PNetworkImpl1.getPeerLookup())
+
+    // Fail the first two calls to getPeers() to simulate failure getting peers and not downloading blocks
+    var retries = 0
+    doAnswer {
+      if (retries < 2) {
+        retries++
+        throw IllegalStateException("Simulated failure for testing")
+      } else {
+        it.callRealMethod()
+      }
+    }.whenever(peerLookup).getPeers()
 
     try {
       p2PNetworkImpl1.start()
@@ -258,7 +259,7 @@ class CLSyncServiceImplTest {
         CLSyncServiceImpl(
           beaconChain = beaconChain1,
           validators = validators,
-          peerLookup = p2PNetworkImpl1.getPeerLookup(),
+          peerLookup = peerLookup,
           besuMetrics = TestMetricsSystemAdapter,
           metricsFacade = metricsFacade,
           pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
