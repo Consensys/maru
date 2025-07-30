@@ -24,20 +24,15 @@ class BeaconChainDownloadPipelineFactory(
   private val peerLookup: PeerLookup,
   private val downloaderParallelism: UInt,
   private val requestSize: UInt,
+  private val syncTargetProvider: () -> ULong,
 ) {
   init {
     require(requestSize > 0u) { "Request size must be greater than 0" }
     require(requestSize <= MAX_BLOCKS_PER_REQUEST) { "Request size must not be greater than $MAX_BLOCKS_PER_REQUEST" }
   }
 
-  fun createPipeline(
-    startBlock: ULong,
-    endBlock: ULong,
-  ): Pipeline<SyncTargetRange?> {
-    check(startBlock <= endBlock) { "Start block ($startBlock) must be less than or equal to end block ($endBlock)" }
-    check(endBlock < ULong.MAX_VALUE) { "End block ($endBlock) must be less than ULong max value" }
-
-    val syncTargetRangeSequence = createTargetRangeSequence(startBlock, endBlock)
+  fun createPipeline(startBlock: ULong): Pipeline<SyncTargetRange?> {
+    val syncTargetRangeSequence = createTargetRangeSequence(startBlock, syncTargetProvider)
     val downloadBlocksStep = DownloadBlocksStep(peerLookup)
     val importBlocksStep = ImportBlocksStep(blockImporter)
 
@@ -61,15 +56,15 @@ class BeaconChainDownloadPipelineFactory(
 
   private fun createTargetRangeSequence(
     startBlock: ULong,
-    endBlock: ULong,
+    syncTargetProvider: () -> ULong,
   ): Sequence<SyncTargetRange> =
     sequence {
       var currentStart = startBlock
       val maxRangeSize = requestSize.toULong()
 
-      while (currentStart <= endBlock) {
+      while (currentStart <= syncTargetProvider()) {
         val nextEnd = currentStart.clampedAdd(maxRangeSize) - 1uL
-        val currentEnd = minOf(nextEnd.toULong(), endBlock)
+        val currentEnd = minOf(nextEnd, syncTargetProvider())
         yield(SyncTargetRange(currentStart, currentEnd))
         currentStart = currentEnd + 1uL
       }

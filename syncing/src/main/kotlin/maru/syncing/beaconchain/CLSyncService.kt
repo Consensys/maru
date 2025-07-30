@@ -10,6 +10,7 @@ package maru.syncing.beaconchain
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
 import maru.core.Validator
 import maru.database.BeaconChain
@@ -56,6 +57,7 @@ class CLSyncServiceImpl(
   LongRunningService {
   private val log: Logger = LogManager.getLogger(this::class.java)
   private var executorService: ExecutorService? = null
+  private val syncTarget: AtomicReference<ULong> = AtomicReference(0UL)
   private val syncCompleteHanders = mutableListOf<(ULong) -> Unit>()
   private var pipeline: Pipeline<*>? = null
   private val blockImporter =
@@ -66,7 +68,9 @@ class CLSyncServiceImpl(
         allowEmptyBlocks = allowEmptyBlocks,
       )
   private var pipelineFactory =
-    BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, downloaderParallelism, requestSize)
+    BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, downloaderParallelism, requestSize) {
+      syncTarget.get()
+    }
   private val pipelineRestartCounter =
     metricsFacade.createCounter(
       category = MaruMetricsCategory.SYNCHRONIZER,
@@ -76,23 +80,32 @@ class CLSyncServiceImpl(
 
   override fun setSyncTarget(syncTarget: ULong) {
     log.info("Syncing started syncTarget={}", syncTarget)
-    startSync(syncTarget)
+    this.syncTarget.set(syncTarget)
+
+    // If the pipeline is already running, we don't need to start a new one
+    if (pipeline == null) {
+      startSync()
+    }
   }
 
-  private fun startSync(syncTarget: ULong) {
-    // If the pipeline is already running, abort it before starting a new one
-    pipeline?.abort()
+  private fun startSync() {
+    // no existing pipeline then create a new one using syncTarget and current start block
+    if (this.pipeline == null) {
+      val startBlock = max(beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number, 1uL)
+      val pipeline = pipelineFactory.createPipeline(startBlock)
+      this.pipeline = pipeline
 
-    val startBlock = max(beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number, 1uL)
-    val pipeline = pipelineFactory.createPipeline(startBlock, syncTarget)
-    pipeline.start(executorService).handle { _, ex ->
-      if (ex != null) {
-        log.error("Sync pipeline failed, restarting", ex)
-        pipelineRestartCounter.increment()
-        startSync(syncTarget)
-      } else {
-        log.info("Sync pipeline completed successfully")
-        syncCompleteHanders.forEach { handler -> handler(startBlock) }
+      pipeline.start(executorService).handle { _, ex ->
+        if (ex != null) {
+          log.error("Sync pipeline failed, restarting", ex)
+          pipelineRestartCounter.increment()
+          this.pipeline = null
+          startSync()
+        } else {
+          log.info("Sync pipeline completed successfully")
+          syncCompleteHanders.forEach { handler -> handler(startBlock) }
+          this.pipeline = null
+        }
       }
     }
   }
