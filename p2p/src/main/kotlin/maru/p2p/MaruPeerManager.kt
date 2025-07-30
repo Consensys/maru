@@ -36,12 +36,19 @@ class MaruPeerManager(
   p2pConfig: P2P,
 ) : PeerHandler,
   PeerLookup {
+  init {
+    scheduler.scheduleAtFixedRate({
+      logConnectedPeers()
+    }, 30, 30, TimeUnit.SECONDS)
+  }
+
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val maxPeers = p2pConfig.maxPeers
   private val currentlySearching = AtomicBoolean(false)
-  private val connectionInProgress = mutableListOf<Bytes>()
 
+  private val connectionInProgress = mutableListOf<Bytes>()
   private var discoveryService: MaruDiscoveryService? = null
+
   private lateinit var p2pNetwork: P2PNetwork<Peer>
 
   @Volatile
@@ -91,12 +98,6 @@ class MaruPeerManager(
   }
 
   private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
-
-  init {
-    scheduler.scheduleAtFixedRate({
-      logConnectedPeers()
-    }, 30, 30, TimeUnit.SECONDS)
-  }
 
   private fun logConnectedPeers() {
     val peerIds = connectedPeers.keys.joinToString(", ") { it.toString() }
