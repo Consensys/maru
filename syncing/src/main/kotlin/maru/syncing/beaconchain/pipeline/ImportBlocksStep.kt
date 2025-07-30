@@ -10,7 +10,6 @@ package maru.syncing.beaconchain.pipeline
 
 import java.util.function.Consumer
 import maru.consensus.blockimport.SealedBeaconBlockImporter
-import maru.core.SealedBeaconBlock
 import maru.extensions.encodeHex
 import maru.p2p.ValidationResult
 import maru.p2p.ValidationResultCode
@@ -35,21 +34,24 @@ class ImportBlocksStep(
             log.debug(
               "Successfully imported block number={} hash={}",
               blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
-              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex(),
+              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+                .encodeHex(),
             )
           }
           ValidationResultCode.REJECT -> {
             blockAndPeer.peer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)
             log.error(
               "Block validation failed for block {}",
-              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex(),
+              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+                .encodeHex(),
             )
             return
           }
           ValidationResultCode.IGNORE -> {
             log.warn(
               "Block validation ignored for block {}",
-              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex(),
+              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+                .encodeHex(),
             )
             return
           }

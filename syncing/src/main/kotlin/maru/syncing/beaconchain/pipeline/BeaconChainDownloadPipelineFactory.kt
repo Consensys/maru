@@ -45,9 +45,7 @@ class BeaconChainDownloadPipelineFactory(
     val maxRetries: UInt = 5u,
   )
 
-  fun createPipeline(
-    startBlock: ULong
-  ): Pipeline<SyncTargetRange?> {
+  fun createPipeline(startBlock: ULong): Pipeline<SyncTargetRange?> {
     val syncTargetRangeSequence = createTargetRangeSequence(startBlock, syncTargetProvider)
     val downloadBlocksStep =
       DownloadCompleteBlockRangeTask(peerLookup, config.maxRetries, config.blockRangeRequestTimeout)
