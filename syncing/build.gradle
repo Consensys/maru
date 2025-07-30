@@ -36,4 +36,5 @@ dependencies {
   testImplementation 'org.mockito:mockito-core'
   testImplementation 'org.mockito.kotlin:mockito-kotlin'
   testImplementation 'org.assertj:assertj-core'
+  testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.20"
 }
