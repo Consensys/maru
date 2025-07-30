@@ -83,8 +83,8 @@ class MaruPeerManager(
               }
             }
           }.whenComplete { _, _ ->
-            log.debug("Peer count: {}. Max Peers: {}", p2pNetwork.peerCount, maxPeers)
             currentlySearching.set(false)
+            log.debug("Peer count: {}. Max Peers: {}", p2pNetwork.peerCount, maxPeers)
             if (!stopCalled && p2pNetwork.peerCount < maxPeers) {
               CompletableFuture.runAsync { searchForPeersUntilMaxReached() }
             }
