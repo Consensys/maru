@@ -175,7 +175,7 @@ class MaruPeerManager(
           .nodeIdBytes,
       )
     } catch (e: Exception) {
-      log.debug("Failed to initiate connection to peer={}: {}", peer.nodeIdBytes, e.stackTraceToString())
+      log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeIdBytes, e.message, e)
       synchronized(connectionInProgress) {
         connectionInProgress.remove(peer.nodeIdBytes)
       }
