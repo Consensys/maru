@@ -153,7 +153,7 @@ class MaruPeerManager(
         connectionInProgress.add(peer.nodeIdBytes)
       }
 
-      log.debug("peer={} Connecting to peer={}...", discoveryService!!.getLocalNodeRecord().nodeId, peer.nodeIdBytes)
+      log.debug("peer={} connecting to peer={}...", discoveryService!!.getLocalNodeRecord().nodeId, peer.nodeIdBytes)
       p2pNetwork
         .connect(p2pNetwork.createPeerAddress(peer))
         .orTimeout(30, TimeUnit.SECONDS)
