@@ -15,12 +15,12 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class FanoutSubscriptionManagerTest {
-  private lateinit var subscriptionManager: FanoutSubscriptionManager<String>
+class InOrderFanoutSubscriptionManagerTest {
+  private lateinit var subscriptionManager: InOrderFanoutSubscriptionManager<String>
 
   @BeforeEach
   fun setUp() {
-    subscriptionManager = FanoutSubscriptionManager()
+    subscriptionManager = InOrderFanoutSubscriptionManager()
   }
 
   @Test
@@ -96,7 +96,7 @@ class FanoutSubscriptionManagerTest {
     val futures = CopyOnWriteArrayList<SafeFuture<String>>()
     subscriptionManager.addAsyncSubscriber("handler2", { data ->
       val futureResult = SafeFuture<String>()
-      futureResult.thenPeek { notifications.add("handler2 called with: $data") }
+      futureResult.thenPeek { notifications.add("async handler2 called with: $data") }
       futures.add(futureResult)
       futureResult
     })
@@ -120,9 +120,9 @@ class FanoutSubscriptionManagerTest {
         "handler1 called with: d1",
         "handler1 called with: d2",
         "handler1 called with: d3",
-        "handler2 called with: d1",
-        "handler2 called with: d2",
-        "handler2 called with: d3",
+        "async handler2 called with: d1",
+        "async handler2 called with: d2",
+        "async handler2 called with: d3",
       ),
     )
   }

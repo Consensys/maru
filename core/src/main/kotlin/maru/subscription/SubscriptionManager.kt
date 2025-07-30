@@ -49,16 +49,25 @@ interface SubscriptionManager<T> {
 
 /**
  * This is a simple implementation of SubscriptionManager that notifies all subscribers
- * in a fanout manner.
+ * in a fanout manner. Subscribers are notified in the order they are added.
  */
-class FanoutSubscriptionManager<T>(
-  val log: Logger = LogManager.getLogger(FanoutSubscriptionManager::class.java),
+class InOrderFanoutSubscriptionManager<T>(
+  val log: Logger = LogManager.getLogger(InOrderFanoutSubscriptionManager::class.java),
 ) : SubscriptionManager<T> {
   private data class SubscriberData<T>(
     val id: String,
     val syncHandler: ((T) -> Any?)? = null,
     val asyncHandler: ((T) -> CompletableFuture<*>)? = null,
-  )
+  ) {
+    init {
+      require(syncHandler != null || asyncHandler != null) {
+        "Either syncHandler or asyncHandler must be provided"
+      }
+      require(syncHandler == null || asyncHandler == null) {
+        "Only one of syncHandler or asyncHandler can be provided"
+      }
+    }
+  }
 
   private val subscribers: MutableList<SubscriberData<T>> = CopyOnWriteArrayList()
 
@@ -128,13 +137,13 @@ class FanoutSubscriptionManager<T>(
   override fun removeSubscriber(subscriberId: String) {
     val removed = subscribers.removeIf { it.id == subscriberId }
     if (!removed) {
-      log.warn("No found with subscriberId={}", subscriberId)
+      log.warn("No subscriber found with subscriberId={}", subscriberId)
     }
   }
 
   private fun logIfEmptySubscribers(data: T) {
     if (subscribers.isEmpty()) {
-      log.warn("empty subscribers list,  following data wont be delivered: data={}", data)
+      log.warn("empty subscribers list, following data wont be delivered: data={}", data)
     }
   }
 
