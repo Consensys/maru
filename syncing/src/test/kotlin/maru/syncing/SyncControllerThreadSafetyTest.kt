@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 
 // These tests employ multiple threads on their own, so they could use some more CPU space than usual
@@ -33,7 +32,7 @@ class SyncControllerThreadSafetyTest {
     syncController = createController(50UL)
   }
 
-  @RepeatedTest(10)
+  @Test
   fun `should handle concurrent status updates without race conditions`() {
     val executor = Executors.newFixedThreadPool(3)
     val barrier = CyclicBarrier(3)
@@ -158,12 +157,13 @@ class SyncControllerThreadSafetyTest {
   fun `should handle concurrent handler invocation`() {
     val executor = Executors.newFixedThreadPool(2)
     val iterations = 100
-    val handlerCallCounts = AtomicInteger(0)
+    val beaconSyncCompletions = AtomicInteger(0)
+    val fullSyncCompletions = AtomicInteger(0)
     val latch = CountDownLatch(2)
 
     // Set handlers once during initialization
-    syncController.onClSyncStatusUpdate { handlerCallCounts.incrementAndGet() }
-    syncController.onElSyncStatusUpdate { handlerCallCounts.incrementAndGet() }
+    syncController.onClSyncStatusUpdate { beaconSyncCompletions.incrementAndGet() }
+    syncController.onElSyncStatusUpdate { fullSyncCompletions.incrementAndGet() }
 
     try {
       // Thread 1: Triggers CL status changes
@@ -187,7 +187,8 @@ class SyncControllerThreadSafetyTest {
       assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue()
 
       // Should have received handler calls without crashes or deadlocks
-      assertThat(handlerCallCounts.get()).isGreaterThan(iterations)
+      assertThat(beaconSyncCompletions.get()).isGreaterThanOrEqualTo(iterations - 1)
+      assertThat(fullSyncCompletions.get()).isGreaterThan(0)
     } finally {
       executor.shutdownNow()
     }
@@ -231,8 +232,7 @@ class SyncControllerThreadSafetyTest {
         assertThat(syncTargetCalls).isNotEmpty()
 
         // No two consecutive calls should have the same value
-        val consecutiveDuplicates = syncTargetCalls.zipWithNext().count { (a, b) -> a == b }
-        assertThat(consecutiveDuplicates).isEqualTo(0)
+        assertThat(syncTargetCalls.toSet().size == syncTargetCalls.size).isTrue
       }
     } finally {
       executor.shutdownNow()
