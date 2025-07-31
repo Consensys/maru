@@ -16,9 +16,11 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 
 // These tests employ multiple threads on their own, so they could use some more CPU space than usual
-// @Execution(ExecutionMode.SAME_THREAD)
+@Execution(ExecutionMode.SAME_THREAD)
 class SyncControllerThreadSafetyTest {
   private lateinit var syncController: BeaconSyncControllerImpl
 
@@ -92,10 +94,10 @@ class SyncControllerThreadSafetyTest {
       assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING).isFalse
 
       // Verify we received status updates (exact count may vary due to concurrency)
-      assertThat(clStatusUpdates).size().isGreaterThan(0)
+      assertThat(clStatusUpdates).size().isGreaterThanOrEqualTo(iterations / 2)
       assertThat(elStatusUpdates).size().isGreaterThan(0)
       assertThat(fullSyncCompletions.get()).isGreaterThan(0)
-      assertThat(beaconSyncCompletions.get()).isGreaterThan(0)
+      assertThat(beaconSyncCompletions.get()).isGreaterThanOrEqualTo(iterations / 2)
     } finally {
       if (!executor.isShutdown) {
         executor.shutdownNow()
