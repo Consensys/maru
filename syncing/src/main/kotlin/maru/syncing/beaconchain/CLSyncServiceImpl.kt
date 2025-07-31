@@ -72,6 +72,7 @@ class CLSyncServiceImpl(
 
   private fun startSync() {
     val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
+    val currentSyncTarget = syncTarget.get()
     val pipeline = pipelineFactory.createPipeline(startBlock)
     this.pipeline = pipeline
 
@@ -83,8 +84,8 @@ class CLSyncServiceImpl(
         startSync()
       } else {
         log.info("Sync pipeline completed successfully")
-        syncCompleteHanders.notifySubscribers(syncTarget.get())
-        this.pipeline = null
+        this.pipeline = null // Set to null before notification
+        syncCompleteHanders.notifySubscribers(currentSyncTarget)
       }
     }
   }
