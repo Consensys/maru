@@ -86,7 +86,7 @@ class SyncControllerImpl(
           executionLayerManager = elManager,
           onStatusChange = controller::elSyncStatusWasUpdated,
         )
-      val clSyncPipeline =
+      val clSyncService =
         CLSyncServiceImpl(
           beaconChain = beaconChain,
           validatorProvider = validatorProvider,
@@ -108,7 +108,7 @@ class SyncControllerImpl(
       return SyncControllerManager(
         syncStatusController = controller,
         elSyncServicer = elSyncService,
-        clSyncPipeline = clSyncPipeline,
+        clSyncService = clSyncService,
         peerChainTracker = peerChainTracker,
       )
     }
@@ -118,18 +118,18 @@ class SyncControllerImpl(
 internal class SyncControllerManager(
   val syncStatusController: SyncStatusProvider,
   val elSyncServicer: LongRunningService,
-  val clSyncPipeline: LongRunningService,
+  val clSyncService: LongRunningService,
   val peerChainTracker: PeerChainTracker,
 ) : SyncStatusProvider by syncStatusController,
   LongRunningService {
   override fun start() {
-    clSyncPipeline.start()
+    clSyncService.start()
     elSyncServicer.start()
     peerChainTracker.start()
   }
 
   override fun stop() {
-    clSyncPipeline.stop()
+    clSyncService.stop()
     elSyncServicer.stop()
     peerChainTracker.stop()
   }

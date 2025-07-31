@@ -50,8 +50,6 @@ import org.hyperledger.besu.crypto.SignatureAlgorithm
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.ethereum.core.Util
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.parallel.Execution
-import org.junit.jupiter.api.parallel.ExecutionMode
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.kotlin.any
@@ -61,7 +59,6 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 
-@Execution(ExecutionMode.SAME_THREAD)
 class CLSyncServiceImplTest {
   companion object {
     private const val CHAIN_ID = 1337u
