@@ -115,9 +115,11 @@ class MaruLineaFinalizationTest {
 
   @AfterEach
   fun tearDown() {
+    followerStack.maruApp.stop()
+    validatorStack.maruApp.stop()
+    followerStack.maruApp.close()
+    validatorStack.maruApp.close()
     cluster.close()
-    followerStack.stop()
-    validatorStack.stop()
   }
 
   @Test
