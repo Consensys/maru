@@ -61,6 +61,6 @@ fun Cluster.startWithRetry(vararg besuNodes: BesuNode) {
         Thread.sleep(1000)
       }
     }
-    throw lastException ?: IllegalStateException("Failed to start BesuNode after $maxAttempts attempts")
   }
+  throw lastException ?: IllegalStateException("Failed to start BesuNode after $maxAttempts attempts")
 }
