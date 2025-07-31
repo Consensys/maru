@@ -44,14 +44,17 @@ data class P2P(
   val reconnectDelay: Duration = 5.seconds,
   val maxPeers: Int = 25,
   val discovery: Discovery? = null,
-  val statusUpdateRenewal: Duration = 5.minutes,
-  val statusUpdateLeeway: Duration = 10.seconds,
-  val statusUpdateTimeout: Duration = 10.seconds,
+  val statusUpdate: StatusUpdateConfig = StatusUpdateConfig(),
 ) {
   data class Discovery(
     val port: UInt,
     val bootnodes: List<String> = emptyList(),
     val refreshInterval: Duration,
+  )
+  data class StatusUpdateConfig(
+    val renewal: Duration = 5.minutes,
+    val renewalLeeway: Duration = 10.seconds,
+    val timeout: Duration = 10.seconds,
   )
 }
 

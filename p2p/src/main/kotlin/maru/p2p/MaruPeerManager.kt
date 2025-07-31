@@ -113,7 +113,7 @@ class MaruPeerManager(
     if (maruPeer.connectionInitiatedLocally()) {
       maruPeer.sendStatus()
     } else {
-      maruPeer.scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdateTimeout)
+      maruPeer.scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
     }
   }
 

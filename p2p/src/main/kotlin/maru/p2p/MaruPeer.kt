@@ -88,14 +88,14 @@ class DefaultMaruPeer(
       val statusMessage = statusMessageFactory.createStatusMessage()
       val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
         sendRpcMessage(statusMessage, rpcMethods.status())
-      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdateTimeout)
+      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
       return sendRpcMessage.thenApply { message -> message.payload }.whenComplete { status, error ->
         if (error != null) {
           disconnectImmediately(Optional.of(DisconnectReason.REMOTE_FAULT), false)
           log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
         } else {
           updateStatus(status)
-          scheduler.schedule(this::sendStatus, p2pConfig.statusUpdateRenewal.inWholeSeconds, TimeUnit.SECONDS)
+          scheduler.schedule(this::sendStatus, p2pConfig.statusUpdate.renewal.inWholeSeconds, TimeUnit.SECONDS)
         }
       }
     } catch (e: Exception) {
@@ -109,7 +109,7 @@ class DefaultMaruPeer(
     status.set(newStatus)
     log.debug("Received status update from peer={}: status={}", id, newStatus)
     if (connectionInitiatedRemotely()) {
-      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdateRenewal + p2pConfig.statusUpdateLeeway)
+      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.renewal + p2pConfig.statusUpdate.renewalLeeway)
     }
   }
 
