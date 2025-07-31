@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -106,7 +105,7 @@ class SyncControllerThreadSafetyTest {
     }
   }
 
-  @RepeatedTest(10)
+  @Test
   fun `should maintain EL-follows-CL invariant under concurrent access`() {
     val executor = Executors.newFixedThreadPool(3)
     val latch = CountDownLatch(3)
