@@ -51,7 +51,7 @@ class MaruFollowerNegativeTest {
     val validatorStack =
       NetworkParticipantStack(
         cluster = cluster,
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+        besuBuilder = { BesuFactory.buildTestBesu(validator = true) },
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
         maruFactory.buildTestMaruValidatorWithoutP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
@@ -75,6 +75,7 @@ class MaruFollowerNegativeTest {
     val followerStack =
       NetworkParticipantStack(
         cluster = cluster,
+        besuBuilder = { BesuFactory.buildTestBesu(validator = true) },
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
         maruFactory.buildTestMaruFollowerWithoutP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
