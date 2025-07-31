@@ -12,6 +12,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import linea.kotlin.decodeHex
 import maru.config.P2P
 import maru.config.consensus.ElFork
@@ -47,12 +48,12 @@ class MaruDiscoveryServiceTest {
   companion object {
     private const val IPV4 = "127.0.0.1"
 
-    private const val PORT1 = 9234u
-    private const val PORT2 = 9235u
-    private const val PORT3 = 9236u
-    private const val PORT4 = 9237u
-    private const val PORT5 = 9238u
-    private const val PORT6 = 9239u
+    private const val PORT1 = 9334u
+    private const val PORT2 = 9335u
+    private const val PORT3 = 9336u
+    private const val PORT4 = 9337u
+    private const val PORT5 = 9338u
+    private const val PORT6 = 9339u
 
     private val key1 = "0x12c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".decodeHex()
     private val key2 = "0xf3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".decodeHex()
@@ -134,6 +135,7 @@ class MaruDiscoveryServiceTest {
           P2P.Discovery(
             port = 9000u,
             bootnodes = listOf(),
+            refreshInterval = 5.seconds,
           ),
       )
     service = MaruDiscoveryService(keyPair.secretKey().bytesArray(), p2pConfig, forkIdHashProvider, NoOpMetricsSystem())
@@ -190,6 +192,7 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT2,
                 bootnodes = emptyList(),
+                refreshInterval = 5.seconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
@@ -215,6 +218,7 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT4,
                 bootnodes = listOf(enrString),
+                refreshInterval = 5.seconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
@@ -232,6 +236,7 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT6,
                 bootnodes = listOf(enrString),
+                refreshInterval = 5.seconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
