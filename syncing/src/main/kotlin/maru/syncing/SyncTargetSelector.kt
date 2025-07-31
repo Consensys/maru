@@ -21,6 +21,6 @@ class MostFrequentHeadTargetSelector : SyncTargetSelector {
   }
 }
 
-fun interface SyncTargetUpdateHandler {
-  fun onChainHeadUpdated(beaconBlockNumber: ULong)
+fun interface BeaconSyncTargetUpdateHandler {
+  fun onBeaconChainSyncTargetUpdated(syncTargetBlockNumber: ULong)
 }

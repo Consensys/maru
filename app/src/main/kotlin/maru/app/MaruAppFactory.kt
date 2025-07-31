@@ -51,8 +51,8 @@ import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
+import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.PeerChainTracker
-import maru.syncing.SyncControllerImpl
 import maru.syncing.SyncControllerManager
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -160,7 +160,7 @@ class MaruAppFactory {
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     syncControllerImpl =
-      SyncControllerImpl.create(
+      BeaconSyncControllerImpl.create(
         beaconChain = beaconChain,
         elManager = executionLayerManager,
         peersHeadsProvider = peersHeadBlockProvider,

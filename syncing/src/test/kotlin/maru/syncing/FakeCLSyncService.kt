@@ -8,7 +8,7 @@
  */
 package maru.syncing
 
-class TestCLSyncService : CLSyncService {
+class FakeCLSyncService : CLSyncService {
   var lastSyncTarget: ULong? = null
   private val syncCompleteHandlers = mutableListOf<(ULong) -> Unit>()
 

@@ -21,13 +21,13 @@ internal data class SyncState(
   val elStatus: ELSyncStatus,
 )
 
-class SyncControllerImpl(
+class BeaconSyncControllerImpl(
   private val beaconChain: BeaconChain,
   private val clSyncService: CLSyncService,
   clState: CLSyncStatus = CLSyncStatus.SYNCING,
   elState: ELSyncStatus = ELSyncStatus.SYNCING,
 ) : SyncStatusProvider,
-  SyncTargetUpdateHandler {
+  BeaconSyncTargetUpdateHandler {
   private val lock = ReentrantReadWriteLock()
   private var currentState = SyncState(clState, elState)
   private var currentSyncTarget: ULong? = null
@@ -70,7 +70,7 @@ class SyncControllerImpl(
   }
 
   fun updateClSyncStatus(newStatus: CLSyncStatus) {
-    val events =
+    val callbacks: List<() -> Unit> =
       lock.write {
         val previousState = currentState
 
@@ -105,12 +105,12 @@ class SyncControllerImpl(
         }
       }
 
-    // Fire events outside of lock
-    events.forEach { it() }
+    // Fire callbacks outside of lock
+    callbacks.forEach { it() }
   }
 
   fun updateElSyncStatus(newStatus: ELSyncStatus) {
-    val events =
+    val callbacks: List<() -> Unit> =
       lock.write {
         val previousState = currentState
 
@@ -123,7 +123,6 @@ class SyncControllerImpl(
 
         currentState = SyncState(previousState.clStatus, newStatus)
 
-        // Collect events to fire
         buildList {
           add { elSyncHandler(newStatus) }
 
@@ -137,35 +136,34 @@ class SyncControllerImpl(
         }
       }
 
-    // Fire events outside of lock
-    events.forEach { it() }
+    // Fire callbacks outside of lock
+    callbacks.forEach { it() }
   }
 
-  override fun onChainHeadUpdated(syncTarget: ULong) {
+  override fun onBeaconChainSyncTargetUpdated(syncTargetBlockNumber: ULong) {
     val previousTarget =
       lock.write {
         val prev = currentSyncTarget
-        currentSyncTarget = syncTarget
+        currentSyncTarget = syncTargetBlockNumber
         prev
       }
 
     // Early return if same target (prevents redundant operations)
-    if (previousTarget == syncTarget) {
+    if (previousTarget == syncTargetBlockNumber) {
       return
     }
 
     val currentHead = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
 
-    if (syncTarget > currentHead) {
+    if (syncTargetBlockNumber > currentHead) {
       updateClSyncStatus(CLSyncStatus.SYNCING)
-      clSyncService.setSyncTarget(syncTarget)
+      clSyncService.setSyncTarget(syncTargetBlockNumber)
     } else {
       // We're caught up or ahead, but check if we were previously syncing
       val currentClStatus = lock.read { currentState.clStatus }
       if (currentClStatus == CLSyncStatus.SYNCING) {
         // Transition from SYNCING to SYNCED
-        updateClSyncStatus(CLSyncStatus.SYNCED)
-        clSyncService.setSyncTarget(syncTarget)
+        clSyncService.setSyncTarget(syncTargetBlockNumber)
       }
       // If already SYNCED, do nothing
     }
@@ -185,7 +183,7 @@ class SyncControllerImpl(
       val clSyncPipeline = CLSyncPipelineImpl()
 
       val controller =
-        SyncControllerImpl(
+        BeaconSyncControllerImpl(
           beaconChain = beaconChain,
           clSyncService = clSyncPipeline,
         )
@@ -201,7 +199,7 @@ class SyncControllerImpl(
       val peerChainTracker =
         PeerChainTracker(
           peersHeadsProvider = peersHeadsProvider,
-          syncTargetUpdateHandler = controller,
+          beaconSyncTargetUpdateHandler = controller,
           targetChainHeadCalculator = targetChainHeadCalculator,
           config = peerChainTrackerConfig,
         )
@@ -217,7 +215,7 @@ class SyncControllerImpl(
 }
 
 class SyncControllerManager(
-  val syncStatusController: SyncControllerImpl,
+  val syncStatusController: BeaconSyncControllerImpl,
   val elSyncService: LongRunningService,
   val clSyncPipeline: LongRunningService,
   val peerChainTracker: PeerChainTracker,

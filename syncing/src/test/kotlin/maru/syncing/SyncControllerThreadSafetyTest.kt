@@ -21,18 +21,18 @@ import org.junit.jupiter.api.Test
 
 class SyncControllerThreadSafetyTest {
   private lateinit var testBeaconChain: InMemoryBeaconChain
-  private lateinit var testClSyncService: TestCLSyncService
-  private lateinit var syncController: SyncControllerImpl
+  private lateinit var fakeClSyncService: FakeCLSyncService
+  private lateinit var syncController: BeaconSyncControllerImpl
 
   @BeforeEach
   fun setUp() {
     val initialState = DataGenerators.randomBeaconState(50UL)
     testBeaconChain = InMemoryBeaconChain(initialState)
-    testClSyncService = TestCLSyncService()
+    fakeClSyncService = FakeCLSyncService()
     syncController =
-      SyncControllerImpl(
+      BeaconSyncControllerImpl(
         beaconChain = testBeaconChain,
-        clSyncService = testClSyncService,
+        clSyncService = fakeClSyncService,
       )
   }
 
@@ -79,7 +79,7 @@ class SyncControllerThreadSafetyTest {
         barrier.await()
         repeat(iterations) { i ->
           val target = 100 + (i % 50)
-          syncController.onChainHeadUpdated(target.toULong())
+          syncController.onBeaconChainSyncTargetUpdated(target.toULong())
           Thread.sleep(5)
         }
       }
@@ -96,8 +96,8 @@ class SyncControllerThreadSafetyTest {
       assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING).isFalse
 
       // Verify we received status updates (exact count may vary due to concurrency)
-      assertThat(clStatusUpdates).isNotEmpty()
-      assertThat(elStatusUpdates).isNotEmpty()
+      assertThat(clStatusUpdates).size().isGreaterThan(iterations / 4)
+      assertThat(elStatusUpdates).size().isGreaterThan(iterations / 4)
     } finally {
       if (!executor.isShutdown) {
         executor.shutdownNow()
@@ -188,7 +188,7 @@ class SyncControllerThreadSafetyTest {
       assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue()
 
       // Should have received handler calls without crashes or deadlocks
-      assertThat(handlerCallCounts.get()).isGreaterThan(0)
+      assertThat(handlerCallCounts.get()).isGreaterThan(iterations)
     } finally {
       executor.shutdownNow()
     }
@@ -212,7 +212,7 @@ class SyncControllerThreadSafetyTest {
       }
 
     val controller =
-      SyncControllerImpl(
+      BeaconSyncControllerImpl(
         beaconChain = testBeaconChain,
         clSyncService = trackingService,
       )
@@ -223,7 +223,7 @@ class SyncControllerThreadSafetyTest {
         executor.submit {
           repeat(iterations) { i ->
             val target = (threadIndex * 1000 + i).toULong()
-            controller.onChainHeadUpdated(target)
+            controller.onBeaconChainSyncTargetUpdated(target)
           }
           latch.countDown()
         }
