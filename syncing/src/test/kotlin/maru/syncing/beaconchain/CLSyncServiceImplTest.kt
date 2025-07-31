@@ -8,6 +8,7 @@
  */
 package maru.syncing.beaconchain
 
+import java.net.ServerSocket
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.random.Random
@@ -63,15 +64,9 @@ import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 @Execution(ExecutionMode.SAME_THREAD)
 class CLSyncServiceImplTest {
   companion object {
-    private val chainId = 1337u
-
+    private const val CHAIN_ID = 1337u
     private const val IPV4 = "127.0.0.1"
-
-    private const val PORT1 = 9234u
-    private const val PORT2 = 9235u
-
     private const val PEER_ID_NODE_2: String = "16Uiu2HAmVXtqhevTAJqZucPbR2W4nCMpetrQASgjZpcxDEDaUPPt"
-    private const val PEER_ADDRESS_NODE_2: String = "/ip4/$IPV4/tcp/$PORT2/p2p/$PEER_ID_NODE_2"
 
     private val key1 = "0x0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".fromHexToByteArray()
     private val key2 =
@@ -99,13 +94,15 @@ class CLSyncServiceImplTest {
       keypair = keypair,
     )
 
-    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, PORT1)
-    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, PORT2)
+    val port1 = findFreePort()
+    val port2 = findFreePort()
+    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, port1)
+    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, port2)
 
     try {
       p2PNetworkImpl1.start()
       p2pNetworkImpl2.start()
-      p2PNetworkImpl1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
+      p2PNetworkImpl1.addStaticPeer(createPeerAddress(port2))
 
       awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
@@ -158,13 +155,15 @@ class CLSyncServiceImplTest {
       keypair = keypair,
     )
 
-    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, PORT1)
-    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, PORT2)
+    val port1 = findFreePort()
+    val port2 = findFreePort()
+    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, port1)
+    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, port2)
 
     try {
       p2PNetworkImpl1.start()
       p2pNetworkImpl2.start()
-      p2PNetworkImpl1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
+      p2PNetworkImpl1.addStaticPeer(createPeerAddress(port2))
 
       awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
@@ -232,8 +231,10 @@ class CLSyncServiceImplTest {
       keypair = keypair,
     )
 
-    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, PORT1)
-    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, PORT2)
+    val port1 = findFreePort()
+    val port2 = findFreePort()
+    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, port1)
+    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, port2)
     val peerLookup = spy(p2PNetworkImpl1.getPeerLookup())
 
     // Fail the first two calls to getPeers() to simulate failure getting peers and not downloading blocks
@@ -250,7 +251,7 @@ class CLSyncServiceImplTest {
     try {
       p2PNetworkImpl1.start()
       p2pNetworkImpl2.start()
-      p2PNetworkImpl1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
+      p2PNetworkImpl1.addStaticPeer(createPeerAddress(port2))
 
       awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
@@ -289,6 +290,9 @@ class CLSyncServiceImplTest {
       p2pNetworkImpl2.stop()
     }
   }
+
+  private fun createPeerAddress(port: UInt): MultiaddrPeerAddress =
+    MultiaddrPeerAddress.fromAddress("/ip4/$IPV4/tcp/$port/p2p/$PEER_ID_NODE_2")
 
   private fun genesisState(
     genesisTimestamp: ULong,
@@ -339,7 +343,7 @@ class CLSyncServiceImplTest {
             port = port,
             staticPeers = emptyList(),
           ),
-        chainId = chainId,
+        chainId = CHAIN_ID,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
@@ -399,10 +403,10 @@ class CLSyncServiceImplTest {
           ),
         elFork = ElFork.Prague,
       )
-    val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0L, 1, consensusConfig)))
+    val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0L, 1, consensusConfig)))
 
     return ForkIdHashProvider(
-      chainId = chainId,
+      chainId = CHAIN_ID,
       beaconChain = beaconChain,
       forksSchedule = forksSchedule,
       forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
@@ -425,4 +429,14 @@ class CLSyncServiceImplTest {
   ) {
     assertThat(network.getPeers().count()).isEqualTo(peers)
   }
+
+  private fun findFreePort(): UInt =
+    runCatching {
+      ServerSocket(0).use { socket ->
+        socket.reuseAddress = true
+        socket.localPort.toUInt()
+      }
+    }.getOrElse {
+      throw IllegalStateException("Could not find a free port", it)
+    }
 }
