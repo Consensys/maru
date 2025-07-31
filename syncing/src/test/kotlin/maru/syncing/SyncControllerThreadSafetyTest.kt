@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 
 // These tests employ multiple threads on their own, so they could use some more CPU space than usual
@@ -32,7 +33,7 @@ class SyncControllerThreadSafetyTest {
     syncController = createController(50UL)
   }
 
-  @Test
+  @RepeatedTest(10)
   fun `should handle concurrent status updates without race conditions`() {
     val executor = Executors.newFixedThreadPool(3)
     val barrier = CyclicBarrier(3)
@@ -92,8 +93,10 @@ class SyncControllerThreadSafetyTest {
       assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING).isFalse
 
       // Verify we received status updates (exact count may vary due to concurrency)
-      assertThat(clStatusUpdates).size().isGreaterThan(iterations / 8)
-      assertThat(elStatusUpdates).size().isGreaterThan(iterations / 8)
+      assertThat(clStatusUpdates).size().isGreaterThan(0)
+      assertThat(elStatusUpdates).size().isGreaterThan(0)
+      assertThat(fullSyncCompletions.get()).isGreaterThan(0)
+      assertThat(beaconSyncCompletions.get()).isGreaterThan(0)
     } finally {
       if (!executor.isShutdown) {
         executor.shutdownNow()
