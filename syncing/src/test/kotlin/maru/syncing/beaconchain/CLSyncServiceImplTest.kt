@@ -19,6 +19,7 @@ import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.DelayedQbftBlockCreator
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
@@ -112,7 +113,7 @@ class CLSyncServiceImplTest {
       val clSyncServiceImpl1 =
         CLSyncServiceImpl(
           beaconChain = beaconChain1,
-          validators = validators,
+          validatorProvider = StaticValidatorProvider(validators),
           allowEmptyBlocks = true,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetricsSystemAdapter,
@@ -171,7 +172,7 @@ class CLSyncServiceImplTest {
       val clSyncServiceImpl1 =
         CLSyncServiceImpl(
           beaconChain = beaconChain1,
-          validators = validators,
+          validatorProvider = StaticValidatorProvider(validators),
           allowEmptyBlocks = true,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetricsSystemAdapter,
@@ -261,7 +262,7 @@ class CLSyncServiceImplTest {
       val clSyncServiceImpl =
         CLSyncServiceImpl(
           beaconChain = beaconChain1,
-          validators = validators,
+          validatorProvider = StaticValidatorProvider(validators),
           allowEmptyBlocks = true,
           peerLookup = peerLookup,
           besuMetrics = TestMetricsSystemAdapter,
