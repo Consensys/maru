@@ -37,6 +37,7 @@ class HopliteFriendlinessTest {
     [p2p.discovery]
     port = 3324
     bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
+    refresh-interval = "30 seconds"
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
@@ -51,6 +52,12 @@ class HopliteFriendlinessTest {
     [syncing]
     peer-chain-height-polling-interval = "5 seconds"
     peer-chain-height-granularity = 10
+
+    [syncing.download]
+    block-range-request-timeout = "10 seconds"
+    blocks-batch-size = 64
+    blocks-parallelism = 10
+    max-retries = 5
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -79,6 +86,7 @@ class HopliteFriendlinessTest {
             listOf(
               "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
             ),
+          refreshInterval = 30.seconds,
         ),
     )
   private val ethApiEndpoint =
@@ -133,6 +141,12 @@ class HopliteFriendlinessTest {
     SyncingConfig(
       peerChainHeightPollingInterval = 5.seconds,
       peerChainHeightGranularity = 10u,
+      SyncingConfig.Download(
+        blockRangeRequestTimeout = 10.seconds,
+        blocksBatchSize = 64u,
+        blocksParallelism = 10u,
+        maxRetries = 5u,
+      ),
     )
 
   @Test

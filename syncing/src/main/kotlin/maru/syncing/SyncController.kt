@@ -11,6 +11,7 @@ package maru.syncing
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import kotlin.time.Duration.Companion.milliseconds
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.PeersHeadBlockProvider
@@ -189,11 +190,14 @@ class BeaconSyncControllerImpl(
         )
 
       val elSyncService =
-        ELSyncServiceImpl(
+        ELSyncService(
           beaconChain = beaconChain,
-          leeway = 10u,
           executionLayerManager = elManager,
           onStatusChange = controller::updateElSyncStatus,
+          config =
+            ELSyncService.Config(
+              pollingInterval = 5000.milliseconds,
+            ),
         )
 
       val peerChainTracker =

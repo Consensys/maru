@@ -65,7 +65,7 @@ class MaruApp(
   private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
 ) : AutoCloseable {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   init {
     if (config.qbftOptions == null) {

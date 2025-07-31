@@ -79,7 +79,7 @@ class TransactionalSealedBeaconBlockImporter(
   private val stateTransition: StateTransition,
   private val beaconBlockImporter: BeaconBlockImporter,
 ) : SealedBeaconBlockImporter<ValidationResult> {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     val updater = beaconChain.newUpdater()
@@ -171,21 +171,23 @@ class ValidatingSealedBeaconBlockImporter(
           }
         }.whenException {
           log.error(
-            "exception during block import: clBlockNumber={} elBlockNumber={}  clBlockHash={} ",
+            "exception during block import: clBlockNumber={} elBlockNumber={}  clBlockHash={} errorMessage={}",
             sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
             sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
             sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
               .encodeHex(),
+            it.message,
             it,
           )
         }
     } catch (ex: Throwable) {
       log.error(
-        "exception during block import: clBlockNumber={} elBlockNumber={} clBlockHash={}",
+        "exception during block import: clBlockNumber={} elBlockNumber={} clBlockHash={} errorMessage={}",
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
         sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
           .encodeHex(),
+        ex.message,
         ex,
       )
       throw ex
