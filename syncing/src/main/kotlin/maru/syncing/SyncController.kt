@@ -9,6 +9,7 @@
 package maru.syncing
 
 import java.util.concurrent.Executors
+import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -81,11 +82,14 @@ class SyncControllerImpl(
       val controller = SyncControllerImpl()
 
       val elSyncService =
-        ELSyncServiceImpl(
+        ELSyncService(
           beaconChain = beaconChain,
-          leeway = 10u,
           executionLayerManager = elManager,
           onStatusChange = controller::elSyncStatusWasUpdated,
+          config =
+            ELSyncService.Config(
+              pollingInterval = 5000.milliseconds,
+            ),
         )
       val clSyncService =
         CLSyncServiceImpl(
