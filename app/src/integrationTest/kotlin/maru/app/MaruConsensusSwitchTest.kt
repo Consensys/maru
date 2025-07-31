@@ -68,6 +68,8 @@ class MaruConsensusSwitchTest {
   fun tearDown() {
     followerMaruNode.close()
     validatorBesuNode.close()
+    followerMaruNode.stop()
+    validatorBesuNode.stop()
     cluster.close()
   }
 
