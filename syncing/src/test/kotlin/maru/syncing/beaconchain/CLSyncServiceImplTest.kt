@@ -57,6 +57,8 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.never
+import org.mockito.kotlin.reset
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -94,8 +96,8 @@ class CLSyncServiceImplTest {
 
     val genesisTimestamp = DataGenerators.randomTimestamp()
     val (genesisBeaconState, genesisBeaconBlock) = genesisState(genesisTimestamp, validators)
-    beaconChain1 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
-    beaconChain2 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
+    beaconChain1 = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
+    beaconChain2 = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
 
     port1 = findFreePort()
     port2 = findFreePort()
@@ -143,9 +145,7 @@ class CLSyncServiceImplTest {
   }
 
   @Test
-  fun `sync service downloads and imports blocks from another node`() {
-    clSyncService.start()
-
+  fun `chain sync downloads and imports blocks from another node`() {
     val synced = AtomicBoolean(false)
     clSyncService.setSyncTarget(100uL)
     clSyncService.onSyncComplete { synced.set(true) }
@@ -160,8 +160,6 @@ class CLSyncServiceImplTest {
 
   @Test
   fun `sync target can be updated ahead of current target and continue downloading`() {
-    clSyncService.start()
-
     // sync to block 50
     val synced = AtomicBoolean(false)
     clSyncService.setSyncTarget(50uL)
@@ -189,7 +187,7 @@ class CLSyncServiceImplTest {
   }
 
   @Test
-  fun `sync service download restarts on errors`() {
+  fun `chain sync download restarts on errors`() {
     val peerLookup = spy(p2pNetwork1.getPeerLookup())
 
     // Fail the first two calls to getPeers() to simulate failure getting peers and not downloading blocks
@@ -207,8 +205,6 @@ class CLSyncServiceImplTest {
     val retriesCounter = mock(Counter::class.java)
     whenever(metricsFacade.createCounter(any(), any(), any(), any())).thenReturn(retriesCounter)
 
-    clSyncService.start()
-
     val synced = AtomicBoolean(false)
     clSyncService.setSyncTarget(100uL)
     clSyncService.onSyncComplete { synced.set(true) }
@@ -222,6 +218,96 @@ class CLSyncServiceImplTest {
     }
 
     verify(retriesCounter, times(retries)).increment()
+  }
+
+  @Test
+  fun `sync target set to same target returns immediately`() {
+    // sync to block 50
+    val synced = AtomicBoolean(false)
+    clSyncService.setSyncTarget(50uL)
+    clSyncService.onSyncComplete { synced.set(true) }
+    awaitUntilAsserted { assertThat(synced).isTrue() }
+
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(50uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getBeaconState(50uL))
+    for (i in 1uL..50uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+    }
+
+    // update the sync target to 50 again
+    synced.set(false)
+    reset(beaconChain1, beaconChain2)
+    clSyncService.setSyncTarget(50uL)
+    awaitUntilAsserted { assertThat(synced).isTrue() }
+
+    // Ensure the state remains unchanged
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(50uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getBeaconState(50uL))
+    for (i in 1uL..50uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+    }
+
+    // Verify that beaconChain for node1 was not updated, and there are no reads on node2 beaconChain
+    verify(beaconChain1, never()).newUpdater()
+    verify(beaconChain2, never()).getSealedBeaconBlocks(any(), any())
+  }
+
+  @Test
+  fun `sync target set to older target returns immediately`() {
+    // sync to block 50
+    val synced = AtomicBoolean(false)
+    clSyncService.setSyncTarget(50uL)
+    clSyncService.onSyncComplete { synced.set(true) }
+    awaitUntilAsserted { assertThat(synced).isTrue() }
+
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(50uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getBeaconState(50uL))
+    for (i in 1uL..50uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+    }
+
+    // update the sync target to 40, should return immediately
+    synced.set(false)
+    reset(beaconChain1, beaconChain2)
+    clSyncService.setSyncTarget(40uL)
+    awaitUntilAsserted { assertThat(synced).isTrue() }
+
+    // Ensure the state remains unchanged
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(50uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getBeaconState(50uL))
+    for (i in 1uL..50uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+    }
+
+    // Verify that beaconChain for node1 was not updated, and there are no reads on node2 beaconChain
+    verify(beaconChain1, never()).newUpdater()
+    verify(beaconChain2, never()).getSealedBeaconBlocks(any(), any())
+  }
+
+  @Test
+  fun `onSyncComplete handler is called only once per sync`() {
+    var callCount = 0
+    clSyncService.onSyncComplete { callCount++ }
+    clSyncService.setSyncTarget(50uL)
+    awaitUntilAsserted { assertThat(callCount).isEqualTo(1) }
+  }
+
+  @Test
+  fun `multiple onSyncComplete handlers are called`() {
+    var handler1Called = false
+    var handler2Called = false
+    clSyncService.onSyncComplete { handler1Called = true }
+    clSyncService.onSyncComplete { handler2Called = true }
+
+    clSyncService.setSyncTarget(50uL)
+    awaitUntilAsserted {
+      assertThat(handler1Called).isTrue()
+      assertThat(handler2Called).isTrue()
+    }
   }
 
   private fun createPeerAddress(port: UInt): MultiaddrPeerAddress =

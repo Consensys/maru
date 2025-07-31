@@ -37,11 +37,12 @@ class CLSyncServiceImpl(
 ) : CLSyncService,
   LongRunningService {
   private val log: Logger = LogManager.getLogger(this::class.java)
-  private var executorService: ExecutorService = Executors.newCachedThreadPool()
+
+  var executorService: ExecutorService = Executors.newCachedThreadPool()
+  var pipeline: Pipeline<*>? = null
   private val syncTarget: AtomicReference<ULong> = AtomicReference(0UL)
   private val syncHandlerSubscriptionIds = mutableListOf<String>()
   private val syncCompleteHanders: SubscriptionManager<ULong> = InOrderFanoutSubscriptionManager()
-  private var pipeline: Pipeline<*>? = null
   private val blockImporter =
     SyncSealedBlockImporterFactory()
       .create(
