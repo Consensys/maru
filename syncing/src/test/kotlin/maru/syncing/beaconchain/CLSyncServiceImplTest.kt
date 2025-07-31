@@ -289,6 +289,36 @@ class CLSyncServiceImplTest {
   }
 
   @Test
+  fun `chain sync continues to download after stopped is called`() {
+    // sync to block 50
+    val synced = AtomicBoolean(false)
+    clSyncService.setSyncTarget(50uL)
+    clSyncService.onSyncComplete { synced.set(true) }
+    awaitUntilAsserted { assertThat(synced).isTrue() }
+
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(50uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getBeaconState(50uL))
+    for (i in 1uL..50uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+    }
+
+    clSyncService.stop()
+
+    // update sync target to 100
+    synced.set(false)
+    clSyncService.setSyncTarget(100uL)
+    awaitUntilAsserted { assertThat(synced).isTrue() }
+
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
+    for (i in 1uL..100uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+    }
+  }
+
+  @Test
   fun `onSyncComplete handler is called only once per sync`() {
     var callCount = 0
     clSyncService.onSyncComplete { callCount++ }

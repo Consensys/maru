@@ -102,6 +102,5 @@ class CLSyncServiceImpl(
   override fun stop() {
     pipeline?.abort()
     executorService.shutdownNow()
-    syncHandlerSubscriptionIds.forEach { subscriptionId -> syncHandlerSubscriptionIds.remove(subscriptionId) }
   }
 }
