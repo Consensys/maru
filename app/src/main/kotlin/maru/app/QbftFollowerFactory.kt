@@ -8,7 +8,6 @@
  */
 package maru.app
 
-import maru.config.ValidatorElNode
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
@@ -19,22 +18,18 @@ import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
 import maru.consensus.qbft.ProposerSelectorImpl
 import maru.consensus.qbft.QbftConsensusFollower
 import maru.consensus.state.StateTransitionImpl
-import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
+import maru.consensus.validation.QbftFollowerBeaconBlockValidatorFactoryImpl
 import maru.consensus.validation.QuorumOfSealsVerifier
 import maru.consensus.validation.SCEP256SealVerifier
 import maru.core.Protocol
 import maru.database.BeaconChain
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
-import net.consensys.linea.metrics.MetricsFacade
 
 class QbftFollowerFactory(
   val p2PNetwork: P2PNetwork,
   val beaconChain: BeaconChain,
   val newBlockHandler: NewBlockHandler<*>,
-  val validatorElNodeConfig: ValidatorElNode,
   val beaconChainInitialization: BeaconChainInitialization,
-  val metricsFacade: MetricsFacade,
   val allowEmptyBlocks: Boolean,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
@@ -46,22 +41,11 @@ class QbftFollowerFactory(
         newBlockHandler.handleNewBlock(beaconBlock)
       }
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())
-    val engineApiExecutionLayerClient =
-      Helpers.buildExecutionEngineClient(
-        validatorElNodeConfig.engineApiEndpoint,
-        elFork = qbftConsensusConfig.elFork,
-        metricsFacade = metricsFacade,
-      )
-    val executionLayerManager =
-      JsonRpcExecutionLayerManager(
-        executionLayerEngineApiClient = engineApiExecutionLayerClient,
-      )
     val beaconBlockValidatorFactory =
-      BeaconBlockValidatorFactoryImpl(
+      QbftFollowerBeaconBlockValidatorFactoryImpl(
         beaconChain = beaconChain,
         proposerSelector = ProposerSelectorImpl,
         stateTransition = stateTransition,
-        executionLayerManager = executionLayerManager,
         allowEmptyBlocks = allowEmptyBlocks,
       )
     val blockImporter =

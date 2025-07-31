@@ -215,9 +215,7 @@ class MaruApp(
           p2PNetwork = p2pNetwork,
           beaconChain = beaconChain,
           newBlockHandler = blockImportHandlers,
-          validatorElNodeConfig = config.validatorElNode,
           beaconChainInitialization = beaconChainInitialization,
-          metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
         )
       }
