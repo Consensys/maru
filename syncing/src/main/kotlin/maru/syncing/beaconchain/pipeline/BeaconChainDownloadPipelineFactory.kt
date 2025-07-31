@@ -76,11 +76,13 @@ class BeaconChainDownloadPipelineFactory(
       var currentStart = startBlock
       val rangeSize = config.blocksBatchSize.toULong()
 
-      while (currentStart <= syncTargetProvider()) {
+      var syncTarget = syncTargetProvider()
+      while (currentStart <= syncTarget) {
         val nextEnd = currentStart.clampedAdd(rangeSize) - 1uL
-        val currentEnd = minOf(nextEnd, syncTargetProvider())
+        val currentEnd = minOf(nextEnd, syncTarget)
         yield(SyncTargetRange(currentStart, currentEnd))
         currentStart = currentEnd + 1uL
+        syncTarget = syncTargetProvider()
       }
     }
 }
