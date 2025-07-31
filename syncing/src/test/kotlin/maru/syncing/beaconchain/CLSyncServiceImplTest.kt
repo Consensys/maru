@@ -9,6 +9,7 @@
 package maru.syncing.beaconchain
 
 import java.net.ServerSocket
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.random.Random
@@ -116,6 +117,7 @@ class CLSyncServiceImplTest {
     clSyncService =
       CLSyncServiceImpl(
         beaconChain = beaconChain1,
+        executorService = Executors.newCachedThreadPool(),
         validatorProvider = StaticValidatorProvider(validators),
         allowEmptyBlocks = true,
         peerLookup = peerLookup,

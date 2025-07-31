@@ -8,6 +8,7 @@
  */
 package maru.syncing
 
+import java.util.concurrent.Executors
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -91,7 +92,8 @@ class SyncControllerImpl(
           beaconChain = beaconChain,
           validatorProvider = validatorProvider,
           allowEmptyBlocks = allowEmptyBlocks,
-          BeaconChainDownloadPipelineFactory.Config(),
+          executorService = Executors.newCachedThreadPool(),
+          pipelineConfig = BeaconChainDownloadPipelineFactory.Config(),
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,
           metricsFacade = metricsFacade,

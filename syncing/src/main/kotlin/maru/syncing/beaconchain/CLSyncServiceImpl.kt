@@ -8,8 +8,8 @@
  */
 package maru.syncing.beaconchain
 
+import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
@@ -30,6 +30,7 @@ class CLSyncServiceImpl(
   private val beaconChain: BeaconChain,
   private val validatorProvider: ValidatorProvider,
   private val allowEmptyBlocks: Boolean,
+  private var executorService: ExecutorService,
   pipelineConfig: BeaconChainDownloadPipelineFactory.Config,
   peerLookup: PeerLookup,
   besuMetrics: MetricsSystem,
@@ -37,9 +38,7 @@ class CLSyncServiceImpl(
 ) : CLSyncService,
   LongRunningService {
   private val log: Logger = LogManager.getLogger(this::class.java)
-
-  var executorService: ExecutorService = Executors.newCachedThreadPool()
-  var pipeline: Pipeline<*>? = null
+  private var pipeline: Pipeline<*>? = null
   private val syncTarget: AtomicReference<ULong> = AtomicReference(0UL)
   private val syncHandlerSubscriptionIds = mutableListOf<String>()
   private val syncCompleteHanders: SubscriptionManager<ULong> = InOrderFanoutSubscriptionManager()
@@ -77,7 +76,7 @@ class CLSyncServiceImpl(
     this.pipeline = pipeline
 
     pipeline.start(executorService).handle { _, ex ->
-      if (ex != null) {
+      if (ex != null && ex !is CancellationException) {
         log.error("Sync pipeline failed, restarting", ex)
         pipelineRestartCounter.increment()
         this.pipeline = null
@@ -101,6 +100,5 @@ class CLSyncServiceImpl(
 
   override fun stop() {
     pipeline?.abort()
-    executorService.shutdownNow()
   }
 }
