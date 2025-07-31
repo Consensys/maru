@@ -9,6 +9,7 @@
 package maru.p2p
 
 import java.util.Optional
+import maru.config.P2P
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import org.assertj.core.api.Assertions.assertThat
@@ -32,7 +33,13 @@ class DefaultMaruPeerTest {
   private val delegatePeer = mock<Peer>()
   private val rpcMethods = mock<RpcMethods>()
   private val statusMessageFactory = mock<StatusMessageFactory>()
-  private val maruPeer = DefaultMaruPeer(delegatePeer, rpcMethods, statusMessageFactory)
+  private val maruPeer =
+    DefaultMaruPeer(
+      delegatePeer,
+      rpcMethods,
+      statusMessageFactory,
+      p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u),
+    )
 
   @Test
   fun `getStatus returns null initially`() {
@@ -43,6 +50,7 @@ class DefaultMaruPeerTest {
   @Test
   fun `updateStatus sets the status`() {
     val status = mock<Status>()
+    whenever(delegatePeer.address).thenReturn(mock())
 
     maruPeer.updateStatus(status)
 
@@ -172,6 +180,7 @@ class DefaultMaruPeerTest {
   @Test
   fun `sendStatus returns failed future when exception is thrown`() {
     whenever(statusMessageFactory.createStatusMessage()).thenThrow(RuntimeException("fail"))
+    whenever(delegatePeer.address).thenReturn(mock())
 
     val future = maruPeer.sendStatus()
     assertThat(future).isNotNull()

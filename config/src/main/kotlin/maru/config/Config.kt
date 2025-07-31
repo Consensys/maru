@@ -12,6 +12,7 @@ import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
@@ -43,10 +44,14 @@ data class P2P(
   val reconnectDelay: Duration = 5.seconds,
   val maxPeers: Int = 25,
   val discovery: Discovery? = null,
+  val statusUpdateRenewal: Duration = 5.minutes,
+  val statusUpdateLeeway: Duration = 10.seconds,
+  val statusUpdateTimeout: Duration = 10.seconds,
 ) {
   data class Discovery(
     val port: UInt,
     val bootnodes: List<String> = emptyList(),
+    val refreshInterval: Duration,
   )
 }
 

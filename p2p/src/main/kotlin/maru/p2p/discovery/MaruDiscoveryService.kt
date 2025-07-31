@@ -8,16 +8,11 @@
  */
 package maru.p2p.discovery
 
-import java.time.Duration
-import java.util.Optional
+import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
+import kotlin.time.toJavaDuration
 import maru.config.P2P
-import maru.consensus.ForkId
 import maru.consensus.ForkIdHashProvider
-import maru.consensus.ForkIdHasher
-import maru.crypto.Hashing
-import maru.crypto.Hashing.shortShaHash
-import maru.serialization.ForkIdSerializers
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -43,19 +38,24 @@ class MaruDiscoveryService(
   private val forkIdHashProvider: ForkIdHashProvider,
   metricsSystem: MetricsSystem,
 ) {
-  companion object {
-    val BOOTNODE_REFRESH_DELAY: Duration = Duration.ofMinutes(2L)
-    const val FORK_ID_HASH_FIELD_NAME = "mfidh"
+  init {
+    require(p2pConfig.discovery != null) {
+      "MaruDiscoveryService is being initialized without the discovery section in the P2P config!"
+    }
   }
 
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  companion object {
+    const val FORK_ID_HASH_FIELD_NAME = "mfidh"
+    const val DISCOVERY_TIMEOUT_SECONDS = 30L
+  }
+
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   private val privateKey = SecretKeyParser.fromLibP2pPrivKey(Bytes.wrap(privateKeyBytes))
 
   private val bootnodes =
     p2pConfig.discovery!!
       .bootnodes
-      .stream()
       .map { NodeRecordFactory.DEFAULT.fromEnr(it) }
       .toList()
 
@@ -96,7 +96,7 @@ class MaruDiscoveryService(
         this.bootnodeRefreshTask =
           delayedExecutor.runWithFixedDelay(
             { this.pingBootnodes(bootnodes) },
-            BOOTNODE_REFRESH_DELAY,
+            p2pConfig.discovery!!.refreshInterval.toJavaDuration(),
             { error: Throwable ->
               log.error(
                 "Failed to contact discovery bootnodes",
@@ -104,7 +104,7 @@ class MaruDiscoveryService(
               )
             },
           )
-      }.get(30, java.util.concurrent.TimeUnit.SECONDS)
+      }.get(DISCOVERY_TIMEOUT_SECONDS, TimeUnit.SECONDS)
     return
   }
 
@@ -113,8 +113,7 @@ class MaruDiscoveryService(
     discoverySystem.stop()
   }
 
-  fun updateForkId(forkId: ForkId) { // TODO: Need to call this when the fork id changes
-    val forkIdHash = Bytes.wrap(ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash).hash(forkId))
+  fun updateForkIdHash(forkIdHash: Bytes) { // TODO: Need to call this when the fork id changes
     discoverySystem.updateCustomFieldValue(
       FORK_ID_HASH_FIELD_NAME,
       forkIdHash,
@@ -131,22 +130,61 @@ class MaruDiscoveryService(
   fun getKnownPeers(): Collection<MaruDiscoveryPeer> =
     discoverySystem
       .streamLiveNodes()
+      .filter(this::checkNodeRecord)
       .map { node: NodeRecord ->
-        convertNodeRecordToDiscoveryPeer(node)
-      }.filter { checkPeer(it) }
-      .toList()
+        convertSafeNodeRecordToDiscoveryPeer(node)
+      }.toList()
+      .toSet()
 
-  private fun convertNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
-    val forkIdHash = node.get(FORK_ID_HASH_FIELD_NAME) as? Bytes?
+  private fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
+    // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
     return MaruDiscoveryPeer(
-      (node.get(EnrField.PKEY_SECP256K1) as? Bytes),
+      (node.get(EnrField.PKEY_SECP256K1) as Bytes),
       node.nodeId,
-      node.tcpAddress.orElse(null),
-      Optional.ofNullable(forkIdHash),
+      node.tcpAddress.get(),
+      node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
     )
   }
 
+  private fun checkNodeRecord(node: NodeRecord): Boolean {
+    if (node.get(FORK_ID_HASH_FIELD_NAME) == null) {
+      log.trace("Node record is missing forkId field: {}", node)
+      return false
+    }
+    val forkId =
+      (node.get(FORK_ID_HASH_FIELD_NAME) as? Bytes) ?: run {
+        log.trace("Failed to cast value for the forkId hash to Bytes")
+        return false
+      }
+    if (forkId != Bytes.wrap(forkIdHashProvider.currentForkIdHash())) {
+      log.trace(
+        "Peer {} is on a different chain. Expected: {}, Found: {}",
+        node.nodeId,
+        Bytes.wrap(forkIdHashProvider.currentForkIdHash()),
+        forkId,
+      )
+      return false
+    }
+    if (node.get(EnrField.PKEY_SECP256K1) == null) {
+      log.trace("Node record is missing public key field: {}", node)
+      return false
+    }
+    (node.get(EnrField.PKEY_SECP256K1) as? Bytes) ?: run {
+      log.trace("Failed to cast value for the public key to Bytes")
+      return false
+    }
+    if (node.tcpAddress.isEmpty) {
+      log.trace(
+        "node record doesn't have a TCP address: {}",
+        node,
+      )
+      return false
+    }
+    return true
+  }
+
   private fun pingBootnodes(bootnodeRecords: List<NodeRecord>) {
+    log.debug("Pinging bootnodes")
     bootnodeRecords.forEach(
       Consumer { bootnode: NodeRecord? ->
         SafeFuture
@@ -173,26 +211,5 @@ class MaruDiscoveryService(
     // TODO: do we want more custom fields to identify version/topics/role/something else?
 
     return nodeRecordBuilder.build()
-  }
-
-  private fun checkPeer(peer: MaruDiscoveryPeer): Boolean {
-    if (peer.nodeIdBytes == null ||
-      peer.publicKey == null ||
-      peer.addr == null ||
-      peer.forkIdBytes.isEmpty
-    ) {
-      return false
-    }
-    if (peer.forkIdBytes.get() != Bytes.wrap(forkIdHashProvider.currentForkIdHash())) {
-      log.debug(
-        "Peer {} is on a different chain. Expected: {}, Found: {}",
-        peer.nodeId,
-        Bytes.wrap(forkIdHashProvider.currentForkIdHash()),
-        peer.forkIdBytes.get(),
-      )
-      return false
-    } else {
-      return true
-    }
   }
 }

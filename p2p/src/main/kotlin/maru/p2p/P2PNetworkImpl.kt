@@ -17,6 +17,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
 import maru.core.SealedBeaconBlock
+import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.discovery.MaruDiscoveryService
@@ -81,7 +82,7 @@ class P2PNetworkImpl(
     val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
     maruPeerManager =
       MaruPeerManager(
-        maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory),
+        maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory, p2pConfig),
         p2pConfig = p2pConfig,
       )
 
@@ -102,11 +103,7 @@ class P2PNetworkImpl(
   private val discoveryService: MaruDiscoveryService? =
     p2pConfig.discovery?.let {
       MaruDiscoveryService(
-        privateKeyBytes =
-          privateKeyBytes
-            .slice(
-              (privateKeyBytes.size - 32).rangeTo(privateKeyBytes.size - 1),
-            ).toByteArray(),
+        privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
         p2pConfig = p2pConfig,
         forkIdHashProvider = forkIdHashProvider,
         metricsSystem = metricsSystem,
@@ -115,7 +112,7 @@ class P2PNetworkImpl(
 
   // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
   private val peerLookup = builtNetwork.peerLookup
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
   private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()
@@ -222,7 +219,7 @@ class P2PNetworkImpl(
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
             log.trace(
-              "Failed to connect to peer {}, retrying after {} ms. Error: {}",
+              "Failed to connect to static peer={}, retrying after {} ms. Error: {}",
               peerAddress,
               p2pConfig.reconnectDelay,
               t.message,
