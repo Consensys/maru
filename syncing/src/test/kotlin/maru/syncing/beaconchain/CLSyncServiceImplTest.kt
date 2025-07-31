@@ -36,6 +36,7 @@ import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.extensions.fromHexToByteArray
 import maru.p2p.P2PNetworkImpl
+import maru.p2p.PeerLookup
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
@@ -49,6 +50,8 @@ import org.hyperledger.besu.crypto.KeyPair
 import org.hyperledger.besu.crypto.SignatureAlgorithm
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.ethereum.core.Util
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
@@ -71,168 +74,123 @@ class CLSyncServiceImplTest {
         .fromHexToByteArray()
   }
 
-  @Test
-  fun `sync service downloads and imports blocks from another node`() {
-    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
-    val keypair = signatureAlgorithm.generateKeyPair()
-    val validator = Validator(Util.publicKeyToAddress(keypair.publicKey).toArray())
-    val validators = setOf(validator)
-    val genesisTimestamp = DataGenerators.randomTimestamp()
+  private var port1: UInt = 0u
+  private var port2: UInt = 0u
+  private lateinit var signatureAlgorithm: SignatureAlgorithm
+  private lateinit var keypair: KeyPair
+  private lateinit var beaconChain1: BeaconChain
+  private lateinit var beaconChain2: BeaconChain
+  private lateinit var validators: Set<Validator>
+  private lateinit var p2pNetwork1: P2PNetworkImpl
+  private lateinit var p2pNetwork2: P2PNetworkImpl
+  private lateinit var clSyncService: CLSyncServiceImpl
+  private lateinit var peerLookup: PeerLookup
 
+  @BeforeEach
+  fun setUp() {
+    signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    keypair = signatureAlgorithm.generateKeyPair()
+    validators = setOf(Validator(Util.publicKeyToAddress(keypair.publicKey).toArray()))
+
+    val genesisTimestamp = DataGenerators.randomTimestamp()
     val (genesisBeaconState, genesisBeaconBlock) = genesisState(genesisTimestamp, validators)
-    val beaconChain1 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
-    val beaconChain2 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
+    beaconChain1 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
+    beaconChain2 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
+
+    port1 = findFreePort()
+    port2 = findFreePort()
+    p2pNetwork1 = createNetwork(beaconChain1, key1, port1)
+    p2pNetwork2 = createNetwork(beaconChain2, key2, port2)
+
     createBlocks(
       beaconChain = beaconChain2,
       genesisBeaconBlock = genesisBeaconBlock,
-      genesisTimestamp = genesisTimestamp,
+      genesisTimestamp = genesisBeaconBlock.beaconBlock.beaconBlockHeader.timestamp,
       validators = validators,
       signatureAlgorithm = signatureAlgorithm,
       keypair = keypair,
     )
-
-    val port1 = findFreePort()
-    val port2 = findFreePort()
-    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, port1)
-    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, port2)
+    peerLookup = spy(p2pNetwork1.getPeerLookup())
+    clSyncService =
+      CLSyncServiceImpl(
+        beaconChain = beaconChain1,
+        validatorProvider = StaticValidatorProvider(validators),
+        allowEmptyBlocks = true,
+        peerLookup = peerLookup,
+        besuMetrics = TestMetricsSystemAdapter,
+        metricsFacade = TestMetricsFacade,
+        pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
+      )
 
     try {
-      p2PNetworkImpl1.start()
-      p2pNetworkImpl2.start()
-      p2PNetworkImpl1.addStaticPeer(createPeerAddress(port2))
+      p2pNetwork1.start()
+      p2pNetwork2.start()
+      p2pNetwork1.addStaticPeer(createPeerAddress(port2))
 
-      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
-      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetwork1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetwork2, peers = 1) }
+    } catch (e: Exception) {
+      p2pNetwork1.stop()
+      p2pNetwork2.stop()
+      throw IllegalStateException("Failed to start P2P networks", e)
+    }
+  }
 
-      val clSyncServiceImpl1 =
-        CLSyncServiceImpl(
-          beaconChain = beaconChain1,
-          validatorProvider = StaticValidatorProvider(validators),
-          allowEmptyBlocks = true,
-          peerLookup = p2PNetworkImpl1.getPeerLookup(),
-          besuMetrics = TestMetricsSystemAdapter,
-          metricsFacade = TestMetricsFacade,
-          pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
-        )
-      clSyncServiceImpl1.start()
+  @AfterEach
+  fun tearDown() {
+    p2pNetwork1.stop()
+    p2pNetwork2.stop()
+  }
 
-      val synced = AtomicBoolean(false)
-      clSyncServiceImpl1.setSyncTarget(100uL)
-      clSyncServiceImpl1.onSyncComplete { synced.set(true) }
-      awaitUntilAsserted { assertThat(synced).isTrue() }
-      assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
-      assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
-      for (i in 1uL..100uL) {
-        assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
-        assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
-      }
-    } finally {
-      p2PNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+  @Test
+  fun `sync service downloads and imports blocks from another node`() {
+    clSyncService.start()
+
+    val synced = AtomicBoolean(false)
+    clSyncService.setSyncTarget(100uL)
+    clSyncService.onSyncComplete { synced.set(true) }
+    awaitUntilAsserted { assertThat(synced).isTrue() }
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
+    for (i in 1uL..100uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
     }
   }
 
   @Test
   fun `sync target can be updated ahead of current target and continue downloading`() {
-    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
-    val keypair = signatureAlgorithm.generateKeyPair()
-    val validator = Validator(Util.publicKeyToAddress(keypair.publicKey).toArray())
-    val validators = setOf(validator)
-    val genesisTimestamp = DataGenerators.randomTimestamp()
+    clSyncService.start()
 
-    val (genesisBeaconState, genesisBeaconBlock) = genesisState(genesisTimestamp, validators)
-    val beaconChain1 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
-    val beaconChain2 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
-    createBlocks(
-      beaconChain = beaconChain2,
-      genesisBeaconBlock = genesisBeaconBlock,
-      genesisTimestamp = genesisTimestamp,
-      validators = validators,
-      signatureAlgorithm = signatureAlgorithm,
-      keypair = keypair,
-    )
+    // sync to block 50
+    val synced = AtomicBoolean(false)
+    clSyncService.setSyncTarget(50uL)
+    clSyncService.onSyncComplete { synced.set(true) }
+    awaitUntilAsserted { assertThat(synced).isTrue() }
 
-    val port1 = findFreePort()
-    val port2 = findFreePort()
-    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, port1)
-    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, port2)
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(50uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getBeaconState(50uL))
+    for (i in 1uL..50uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+    }
 
-    try {
-      p2PNetworkImpl1.start()
-      p2pNetworkImpl2.start()
-      p2PNetworkImpl1.addStaticPeer(createPeerAddress(port2))
+    // update sync target to 100
+    synced.set(false)
+    clSyncService.setSyncTarget(100uL)
+    awaitUntilAsserted { assertThat(synced).isTrue() }
 
-      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
-      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
-
-      val clSyncServiceImpl1 =
-        CLSyncServiceImpl(
-          beaconChain = beaconChain1,
-          validatorProvider = StaticValidatorProvider(validators),
-          allowEmptyBlocks = true,
-          peerLookup = p2PNetworkImpl1.getPeerLookup(),
-          besuMetrics = TestMetricsSystemAdapter,
-          metricsFacade = TestMetricsFacade,
-          pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
-        )
-      clSyncServiceImpl1.start()
-
-      // sync to block 50
-      val synced = AtomicBoolean(false)
-      clSyncServiceImpl1.setSyncTarget(50uL)
-      clSyncServiceImpl1.onSyncComplete { synced.set(true) }
-      awaitUntilAsserted { assertThat(synced).isTrue() }
-
-      assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(50uL)
-      assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getBeaconState(50uL))
-      for (i in 1uL..50uL) {
-        assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
-        assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
-      }
-
-      // update sync target to 100
-      synced.set(false)
-      clSyncServiceImpl1.setSyncTarget(100uL)
-      awaitUntilAsserted { assertThat(synced).isTrue() }
-
-      assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
-      assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
-      for (i in 1uL..100uL) {
-        assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
-        assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
-      }
-    } finally {
-      p2PNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
+    for (i in 1uL..100uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
     }
   }
 
   @Test
   fun `sync service download restarts on errors`() {
-    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
-    val keypair = signatureAlgorithm.generateKeyPair()
-    val validator = Validator(Util.publicKeyToAddress(keypair.publicKey).toArray())
-    val validators = setOf(validator)
-    val genesisTimestamp = DataGenerators.randomTimestamp()
-
-    val (genesisBeaconState, genesisBeaconBlock) = genesisState(genesisTimestamp, validators)
-    val beaconChain1 = InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock)
-    val beaconChain2 = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
-
-    createBlocks(
-      beaconChain = beaconChain2,
-      genesisBeaconBlock = genesisBeaconBlock,
-      genesisTimestamp = genesisTimestamp,
-      validators = validators,
-      signatureAlgorithm = signatureAlgorithm,
-      keypair = keypair,
-    )
-
-    val port1 = findFreePort()
-    val port2 = findFreePort()
-    val p2PNetworkImpl1 = createNetwork(beaconChain1, key1, port1)
-    val p2pNetworkImpl2 = createNetwork(beaconChain2, key2, port2)
-    val peerLookup = spy(p2PNetworkImpl1.getPeerLookup())
+    val peerLookup = spy(p2pNetwork1.getPeerLookup())
 
     // Fail the first two calls to getPeers() to simulate failure getting peers and not downloading blocks
     var retries = 0
@@ -245,47 +203,25 @@ class CLSyncServiceImplTest {
       }
     }.whenever(peerLookup).getPeers()
 
-    try {
-      p2PNetworkImpl1.start()
-      p2pNetworkImpl2.start()
-      p2PNetworkImpl1.addStaticPeer(createPeerAddress(port2))
+    val metricsFacade = mock(MetricsFacade::class.java)
+    val retriesCounter = mock(Counter::class.java)
+    whenever(metricsFacade.createCounter(any(), any(), any(), any())).thenReturn(retriesCounter)
 
-      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
-      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
+    clSyncService.start()
 
-      val metricsFacade = mock(MetricsFacade::class.java)
-      val retriesCounter = mock(Counter::class.java)
-      whenever(metricsFacade.createCounter(any(), any(), any(), any())).thenReturn(retriesCounter)
+    val synced = AtomicBoolean(false)
+    clSyncService.setSyncTarget(100uL)
+    clSyncService.onSyncComplete { synced.set(true) }
+    awaitUntilAsserted { assertThat(synced).isTrue() }
 
-      val clSyncServiceImpl =
-        CLSyncServiceImpl(
-          beaconChain = beaconChain1,
-          validatorProvider = StaticValidatorProvider(validators),
-          allowEmptyBlocks = true,
-          peerLookup = peerLookup,
-          besuMetrics = TestMetricsSystemAdapter,
-          metricsFacade = metricsFacade,
-          pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
-        )
-      clSyncServiceImpl.start()
-
-      val synced = AtomicBoolean(false)
-      clSyncServiceImpl.setSyncTarget(100uL)
-      clSyncServiceImpl.onSyncComplete { synced.set(true) }
-      awaitUntilAsserted { assertThat(synced).isTrue() }
-
-      assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
-      assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
-      for (i in 0uL..2uL) {
-        assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
-        assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
-      }
-
-      verify(retriesCounter, times(retries)).increment()
-    } finally {
-      p2PNetworkImpl1.stop()
-      p2pNetworkImpl2.stop()
+    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
+    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
+    for (i in 0uL..2uL) {
+      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
+      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
     }
+
+    verify(retriesCounter, times(retries)).increment()
   }
 
   private fun createPeerAddress(port: UInt): MultiaddrPeerAddress =
