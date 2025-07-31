@@ -8,8 +8,6 @@
  */
 package maru.syncing
 
-import maru.core.ext.DataGenerators
-import maru.database.InMemoryBeaconChain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -51,13 +49,7 @@ class SyncControllerTest {
   @Test
   fun `should trigger sync when behind sync target`() {
     // Given: beacon chain initialized with current head at block 50
-    val state50 = DataGenerators.randomBeaconState(50UL)
-    val beaconChain50 = InMemoryBeaconChain(state50)
-    val controller =
-      BeaconSyncControllerImpl(
-        beaconChain = beaconChain50,
-        clSyncService = fakeClSyncService,
-      )
+    val controller = createController(50UL)
 
     // When: chain head is updated to higher block
     controller.onBeaconChainSyncTargetUpdated(100UL)
@@ -70,13 +62,7 @@ class SyncControllerTest {
   @Test
   fun `should not trigger sync when synced already at sync target`() {
     // Given: beacon chain is at the same level as sync target
-    val state100 = DataGenerators.randomBeaconState(100UL)
-    val beaconChain100 = InMemoryBeaconChain(state100)
-    val controller =
-      BeaconSyncControllerImpl(
-        beaconChain = beaconChain100,
-        clSyncService = fakeClSyncService,
-      )
+    val controller = createController(100UL)
     controller.updateClSyncStatus(CLSyncStatus.SYNCED)
 
     // When: chain head is updated to same block (controller starts in SYNCING by default)
