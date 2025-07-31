@@ -27,3 +27,20 @@ interface CLSyncService {
    */
   fun onSyncComplete(handler: (syncTarget: ULong) -> Unit)
 }
+
+class CLSyncPipelineImpl :
+  CLSyncService,
+  LongRunningService {
+  override fun setSyncTarget(syncTarget: ULong) {
+    TODO("Not yet implemented")
+  }
+
+  override fun onSyncComplete(handler: (ULong) -> Unit) {
+  }
+
+  override fun start() {
+  }
+
+  override fun stop() {
+  }
+}
