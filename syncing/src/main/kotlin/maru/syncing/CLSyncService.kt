@@ -8,6 +8,8 @@
  */
 package maru.syncing
 
+import maru.services.LongRunningService
+
 /**
  * Service to synchronize the beacon chain with a specified target.
  * It allows setting a sync target and provides a callback mechanism to notify when the sync is complete.

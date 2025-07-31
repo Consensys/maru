@@ -8,6 +8,7 @@
  */
 package maru.syncing
 
+import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -18,6 +19,8 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.PeerLookup
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
+import maru.syncing.beaconchain.CLSyncServiceImpl
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem
 
