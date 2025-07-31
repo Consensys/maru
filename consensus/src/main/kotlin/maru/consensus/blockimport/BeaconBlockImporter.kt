@@ -85,7 +85,7 @@ class BlockBuildingBeaconBlockImporter(
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
 ) : BeaconBlockImporter {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun importBlock(
     beaconState: BeaconState,
@@ -101,12 +101,13 @@ class BlockBuildingBeaconBlockImporter(
             .latestBeaconBlockHeader.timestamp
             .toLong(),
         )
-      log.debug(
-        "Importing blockHeader={} with timestamp={} blockNumber={} and starting building of next block with timestamp={}",
-        beaconBlockHeader,
-        beaconBlock.beaconBlockBody.executionPayload.timestamp,
+      log.info(
+        "importing block and starting build next block: " +
+          "clBlockNumber={} clBlockTimestamp={} clNextBlockTimestamp={} beaconBlockHeader={}",
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
+        beaconBlock.beaconBlockBody.executionPayload.timestamp,
         nextBlockTimestamp,
+        beaconBlockHeader,
       )
       executionLayerManager.setHeadAndStartBlockBuilding(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
@@ -123,7 +124,11 @@ class BlockBuildingBeaconBlockImporter(
           ),
       )
     } else {
-      log.debug("Importing blockHeader={}", beaconBlockHeader)
+      log.info(
+        "importing block: clBlockNumber={} clBlockHeader={}",
+        beaconBlockHeader.number,
+        beaconBlockHeader,
+      )
       executionLayerManager.setHead(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
         safeHash = finalizationState.safeBlockHash,

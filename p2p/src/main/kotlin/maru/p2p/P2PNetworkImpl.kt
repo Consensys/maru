@@ -17,6 +17,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
 import maru.core.SealedBeaconBlock
+import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.discovery.MaruDiscoveryService
@@ -48,7 +49,7 @@ class P2PNetworkImpl(
   private val statusMessageFactory: StatusMessageFactory,
   private val beaconChain: BeaconChain,
   private val forkIdHashProvider: ForkIdHashProvider,
-  nextExpectedBeaconBlockNumber: ULong,
+  isBlockImportEnabledProvider: () -> Boolean,
 ) : P2PNetwork {
   lateinit var maruPeerManager: MaruPeerManager
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
@@ -56,11 +57,12 @@ class P2PNetworkImpl(
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     TopicHandlerWithInOrderDelivering(
-      initialExpectedSequenceNumber = nextExpectedBeaconBlockNumber,
       subscriptionManager = sealedBlocksSubscriptionManager,
       sequenceNumberExtractor = { it.beaconBlock.beaconBlockHeader.number },
       deserializer = serDe,
       topicId = sealedBlocksTopicId,
+      isHandlingEnabled = isBlockImportEnabledProvider,
+      nextExpectedSequenceNumberProvider = { beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL },
     )
   private val broadcastMessageCounterFactory =
     metricsFacade.createCounterFactory(
@@ -101,11 +103,7 @@ class P2PNetworkImpl(
   private val discoveryService: MaruDiscoveryService? =
     p2pConfig.discovery?.let {
       MaruDiscoveryService(
-        privateKeyBytes =
-          privateKeyBytes
-            .slice(
-              (privateKeyBytes.size - 32).rangeTo(privateKeyBytes.size - 1),
-            ).toByteArray(),
+        privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
         p2pConfig = p2pConfig,
         forkIdHashProvider = forkIdHashProvider,
         metricsSystem = metricsSystem,
@@ -113,8 +111,8 @@ class P2PNetworkImpl(
     }
 
   // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
-  val peerLookup = builtNetwork.peerLookup
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val peerLookup = builtNetwork.peerLookup
+  private val log: Logger = LogManager.getLogger(this.javaClass)
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
   private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()
@@ -168,7 +166,7 @@ class P2PNetworkImpl(
       GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
-        val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload as SealedBeaconBlock))
+        val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload))
         p2pNetwork.gossip(topicIdGenerator.id(message.type.name, message.version), serializedSealedBeaconBlock)
       }
     }
@@ -292,4 +290,6 @@ class P2PNetworkImpl(
 
   override fun getPeer(peerId: String): PeerInfo? =
     peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(peerId)))?.toPeerInfo()
+
+  override fun getPeerLookup(): PeerLookup = peerLookup
 }

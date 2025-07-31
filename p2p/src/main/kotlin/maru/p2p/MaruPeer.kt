@@ -62,7 +62,7 @@ class DefaultMaruPeer(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
 ) : MaruPeer {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
   private val status = AtomicReference<Status?>(null)
 
   override fun getStatus(): Status? = status.get()
@@ -137,4 +137,8 @@ class DefaultMaruPeer(
   override fun connectionInitiatedRemotely(): Boolean = delegatePeer.connectionInitiatedRemotely()
 
   override fun adjustReputation(adjustment: ReputationAdjustment) = delegatePeer.adjustReputation(adjustment)
+
+  override fun toString(): String =
+    "DefaultMaruPeer(id=${id.toBase58()}, status=${status.get()}, address=${getAddress()}, " +
+      "gossipScore=${getGossipScore()}, connected=$isConnected)"
 }

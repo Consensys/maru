@@ -9,8 +9,10 @@
 package maru.p2p
 
 import io.libp2p.core.PeerId
+import io.libp2p.etc.types.fromHex
 import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -19,17 +21,20 @@ import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
 import maru.crypto.Hashing
+import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
-import org.apache.tuweni.bytes.Bytes
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
 import org.awaitility.Awaitility.await
@@ -41,9 +46,12 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
+import maru.p2p.ext.DataGenerators as P2P2DataGenerators
 
 @Execution(ExecutionMode.SAME_THREAD)
 class P2PTest {
+  private val log: Logger = LogManager.getLogger(this.javaClass)
+
   companion object {
     private val chainId = 1337u
 
@@ -56,13 +64,6 @@ class P2PTest {
     private const val PORT5 = 9238u
     private const val PORT6 = 9239u
 
-    private const val PRIVATE_KEY1: String =
-      "0x0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2"
-    private const val PRIVATE_KEY2: String =
-      "0x0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
-    private const val PRIVATE_KEY3: String =
-      "0x080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57"
-
     private const val PEER_ID_NODE_1: String = "16Uiu2HAmPRfinavM2jE9BSkCagBGStJ2SEkPPm6fxFVMdCQebzt6"
     private const val PEER_ID_NODE_2: String = "16Uiu2HAmVXtqhevTAJqZucPbR2W4nCMpetrQASgjZpcxDEDaUPPt"
     private const val PEER_ID_NODE_3: String = "16Uiu2HAkzq767a82zfyUz4VLgPbFrxSQBrdmUYxgNDbwgvmjwWo5"
@@ -72,9 +73,9 @@ class P2PTest {
     private const val PEER_ADDRESS_NODE_2: String = "/ip4/$IPV4/tcp/$PORT2/p2p/$PEER_ID_NODE_2"
     private const val PEER_ADDRESS_NODE_3: String = "/ip4/$IPV4/tcp/$PORT3/p2p/$PEER_ID_NODE_3"
 
-    private val key1 = Bytes.fromHexString(PRIVATE_KEY1).toArray()
-    private val key2 = Bytes.fromHexString(PRIVATE_KEY2).toArray()
-    private val key3 = Bytes.fromHexString(PRIVATE_KEY3).toArray()
+    private val key1 = "0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".fromHex()
+    private val key2 = "0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".fromHex()
+    private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
     private val initialExpectedBeaconBlockNumber = 1UL
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     private val forkIdHashProvider =
@@ -133,9 +134,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -151,9 +152,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     try {
       p2PNetworkImpl1.start()
@@ -186,9 +187,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -204,9 +205,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     try {
       p2PNetworkImpl1.start()
@@ -244,9 +245,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -262,9 +263,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     try {
       p2PNetworkImpl1.start()
@@ -296,8 +297,8 @@ class P2PTest {
         statusMessageFactory = statusMessageFactory,
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
+        isBlockImportEnabledProvider = { true },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -313,9 +314,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     try {
       p2PNetworkImpl1.start()
@@ -337,6 +338,7 @@ class P2PTest {
 
   @Test
   fun `two peers can gossip with each other`() {
+    val beaconChain2 = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     val p2pNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
@@ -351,9 +353,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -368,10 +370,10 @@ class P2PTest {
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
-        beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
+        beaconChain = beaconChain2,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     try {
       p2pNetworkImpl1.start()
@@ -379,6 +381,7 @@ class P2PTest {
       val blocksReceived = mutableListOf<SealedBeaconBlock>()
       p2pNetworkImpl2.start()
       p2pNetworkImpl2.subscribeToBlocks {
+        updateBeaconChainState(beaconChain2, it.beaconBlock.beaconBlockHeader)
         blocksReceived.add(it)
         SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
@@ -386,9 +389,11 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
-      val randomBlockMessage1 = DataGenerators.randomBlockMessage()
+      val randomBlockMessage1 =
+        maru.p2p.ext.DataGenerators
+          .randomBlockMessage()
       p2pNetworkImpl1.broadcastMessage(randomBlockMessage1).get()
-      val randomBlockMessage2 = DataGenerators.randomBlockMessage(2UL)
+      val randomBlockMessage2 = P2P2DataGenerators.randomBlockMessage(2UL)
       p2pNetworkImpl1.broadcastMessage(randomBlockMessage2).get()
 
       awaitUntilAsserted {
@@ -402,6 +407,8 @@ class P2PTest {
 
   @Test
   fun `peer receiving gossip passes message on`() {
+    val beaconChain2 = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
+    val beaconChain3 = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     val p2PNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
@@ -416,9 +423,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     val p2PNetworkImpl2 =
       P2PNetworkImpl(
@@ -433,10 +440,10 @@ class P2PTest {
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
-        beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
+        beaconChain = beaconChain2,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     val p2PNetworkImpl3 =
       P2PNetworkImpl(
@@ -451,20 +458,24 @@ class P2PTest {
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
-        beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
+        beaconChain = beaconChain3,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     try {
       p2PNetworkImpl1.start()
 
       p2PNetworkImpl2.start()
-      p2PNetworkImpl2.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
+      p2PNetworkImpl2.subscribeToBlocks {
+        updateBeaconChainState(beaconChain2, it.beaconBlock.beaconBlockHeader)
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid)
+      }
 
       val blockReceived = SafeFuture<SealedBeaconBlock>()
       p2PNetworkImpl3.start()
       p2PNetworkImpl3.subscribeToBlocks {
+        updateBeaconChainState(beaconChain3, it.beaconBlock.beaconBlockHeader)
         blockReceived.complete(it)
         SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
@@ -479,17 +490,30 @@ class P2PTest {
       sleep(1100L) // to make sure that the peers have communicated that they have subscribed to the topic
       // This sleep can be decreased if the heartbeat is decreased (set to 1s for now, see P2PNetworkFactory) in the GossipRouter
 
-      val randomBlockMessage = DataGenerators.randomBlockMessage()
+      val randomBlockMessage = P2P2DataGenerators.randomBlockMessage()
       p2PNetworkImpl1.broadcastMessage(randomBlockMessage)
 
       assertThat(
-        blockReceived.get(100, TimeUnit.MILLISECONDS),
+        blockReceived.get(200, TimeUnit.MILLISECONDS),
       ).isEqualTo(randomBlockMessage.payload)
     } finally {
       p2PNetworkImpl1.stop()
       p2PNetworkImpl2.stop()
       p2PNetworkImpl3.stop()
     }
+  }
+
+  private fun updateBeaconChainState(
+    beaconChain: BeaconChain,
+    beaconBlockHeader: BeaconBlockHeader,
+  ) {
+    beaconChain
+      .newUpdater()
+      .putBeaconState(
+        beaconChain.getLatestBeaconState().copy(
+          latestBeaconBlockHeader = beaconBlockHeader,
+        ),
+      ).commit()
   }
 
   @Test
@@ -508,9 +532,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     val p2pManagerImpl2 =
       P2PNetworkImpl(
@@ -526,9 +550,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     try {
       p2PNetworkImpl1.start()
@@ -546,7 +570,7 @@ class P2PTest {
           latestBlockNumber = latestBeaconBlockHeader.number,
         )
       val peer1 =
-        p2pManagerImpl2.peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
+        p2pManagerImpl2.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
       val maruPeer1 = DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory)
 
@@ -598,9 +622,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = testBeaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     val p2pManagerImpl2 =
       P2PNetworkImpl(
@@ -616,9 +640,9 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        nextExpectedBeaconBlockNumber = initialExpectedBeaconBlockNumber,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
+        isBlockImportEnabledProvider = { true },
       )
     try {
       p2PNetworkImpl1.start()
@@ -628,7 +652,7 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) }
 
       val peer1 =
-        p2pManagerImpl2.peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
+        p2pManagerImpl2.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
 
       val startBlockNumber = 3UL
@@ -648,6 +672,7 @@ class P2PTest {
 
   @Test
   fun `peer can be discovered and disconnected peers can be rediscovered`() {
+    val refreshInterval = 5.seconds
     val p2pNetworkImpl1 =
       P2PNetworkImpl(
         privateKeyBytes = key1,
@@ -660,16 +685,17 @@ class P2PTest {
             discovery =
               P2P.Discovery(
                 port = PORT2,
+                refreshInterval = refreshInterval,
               ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
-        nextExpectedBeaconBlockNumber = 1UL,
         metricsSystem = NoOpMetricsSystem(),
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = beaconChain,
+        isBlockImportEnabledProvider = { true },
       )
 
     val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
@@ -694,16 +720,17 @@ class P2PTest {
               P2P.Discovery(
                 port = PORT4,
                 bootnodes = listOf(bootnodeEnrString),
+                refreshInterval = refreshInterval,
               ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
-        nextExpectedBeaconBlockNumber = 1UL,
         metricsSystem = NoOpMetricsSystem(),
         forkIdHashProvider = forkIdHashProvider,
-        beaconChain = beaconChain,
+        beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
+        isBlockImportEnabledProvider = { true },
       )
 
     val p2pNetworkImpl3 =
@@ -719,16 +746,17 @@ class P2PTest {
               P2P.Discovery(
                 port = PORT6,
                 bootnodes = listOf(bootnodeEnrString),
+                refreshInterval = refreshInterval,
               ),
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
-        nextExpectedBeaconBlockNumber = 1UL,
         metricsSystem = NoOpMetricsSystem(),
         forkIdHashProvider = forkIdHashProvider,
-        beaconChain = beaconChain,
+        beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
+        isBlockImportEnabledProvider = { true },
       )
 
     try {
@@ -736,44 +764,47 @@ class P2PTest {
       p2pNetworkImpl2.start()
       p2pNetworkImpl3.start()
 
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      val awaitTimeoutInSeconds = 30L
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_2)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_3)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_3)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_1)
       }
 
-      p2pNetworkImpl2.dropPeer(PEER_ID_NODE_1, DisconnectReason.TOO_MANY_PEERS)
-      p2pNetworkImpl2.dropPeer(PEER_ID_NODE_3, DisconnectReason.TOO_MANY_PEERS)
+      log.info("Dropping peers from p2pNetworkImpl2")
+      p2pNetworkImpl2.dropPeer(PEER_ID_NODE_1, DisconnectReason.TOO_MANY_PEERS).get()
+      p2pNetworkImpl2.dropPeer(PEER_ID_NODE_3, DisconnectReason.TOO_MANY_PEERS).get()
 
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_2)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_3)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_3)
       }
-      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_1)
       }
     } finally {
