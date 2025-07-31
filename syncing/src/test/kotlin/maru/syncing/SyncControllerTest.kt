@@ -15,21 +15,18 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class SyncControllerTest {
-  private lateinit var testBeaconChain: InMemoryBeaconChain
   private lateinit var fakeClSyncService: FakeCLSyncService
   private lateinit var syncController: BeaconSyncControllerImpl
 
+  private fun createController(
+    blockNumber: ULong,
+    clSyncService: CLSyncService = fakeClSyncService,
+  ): BeaconSyncControllerImpl = createSyncController(blockNumber, clSyncService)
+
   @BeforeEach
   fun setUp() {
-    // Create beacon chain with initial state at block 0
-    val initialState = DataGenerators.randomBeaconState(0UL)
-    testBeaconChain = InMemoryBeaconChain(initialState)
     fakeClSyncService = FakeCLSyncService()
-    syncController =
-      BeaconSyncControllerImpl(
-        beaconChain = testBeaconChain,
-        clSyncService = fakeClSyncService,
-      )
+    syncController = createController(0UL)
   }
 
   @Test
@@ -43,20 +40,11 @@ class SyncControllerTest {
 
   @Test
   fun `should trigger sync when beacon chain is empty and sync target is provided`() {
-    // Given: beacon chain with empty initial state (block 0)
-    val emptyState = DataGenerators.randomBeaconState(0UL)
-    val emptyBeaconChain = InMemoryBeaconChain(emptyState)
-    val controller =
-      BeaconSyncControllerImpl(
-        beaconChain = emptyBeaconChain,
-        clSyncService = fakeClSyncService,
-      )
-
     // When: chain head is updated with non-empty target
-    controller.onBeaconChainSyncTargetUpdated(100UL)
+    syncController.onBeaconChainSyncTargetUpdated(100UL)
 
     // Then: CL sync should start and target should be set
-    assertThat(controller.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
+    assertThat(syncController.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
     assertThat(fakeClSyncService.lastSyncTarget).isEqualTo(100UL)
   }
 
@@ -195,13 +183,7 @@ class SyncControllerTest {
   @Test
   fun `should handle multiple sync target updates correctly`() {
     // Given: beacon chain with empty initial state (block 0)
-    val emptyState = DataGenerators.randomBeaconState(0UL)
-    val emptyBeaconChain = InMemoryBeaconChain(emptyState)
-    val controller =
-      BeaconSyncControllerImpl(
-        beaconChain = emptyBeaconChain,
-        clSyncService = fakeClSyncService,
-      )
+    val controller = createController(0UL)
 
     // When: multiple targets are provided
     controller.onBeaconChainSyncTargetUpdated(50UL)
@@ -286,13 +268,7 @@ class SyncControllerTest {
   @Test
   fun `should transition to synced when sync target is updated to match current chain head`() {
     // Given: beacon chain at block 100
-    val state100 = DataGenerators.randomBeaconState(100UL)
-    val beaconChain100 = InMemoryBeaconChain(state100)
-    val controller =
-      BeaconSyncControllerImpl(
-        beaconChain = beaconChain100,
-        clSyncService = fakeClSyncService,
-      )
+    val controller = createController(100UL)
 
     val clStatusUpdates = mutableListOf<CLSyncStatus>()
     val elStatusUpdates = mutableListOf<ELSyncStatus>()
@@ -325,13 +301,7 @@ class SyncControllerTest {
 
   @Test
   fun `should handle ongoing sync target updates correctly`() {
-    val state50 = DataGenerators.randomBeaconState(50UL)
-    val beaconChain50 = InMemoryBeaconChain(state50)
-    val controller =
-      BeaconSyncControllerImpl(
-        beaconChain = beaconChain50,
-        clSyncService = fakeClSyncService,
-      )
+    val controller = createController(50UL)
 
     // Given: sync is triggered to target 200
     controller.onBeaconChainSyncTargetUpdated(200UL)
@@ -355,14 +325,8 @@ class SyncControllerTest {
 
   @Test
   fun `should not set redundant sync targets for same value`() {
-    val state50 = DataGenerators.randomBeaconState(50UL)
-    val beaconChain50 = InMemoryBeaconChain(state50)
     val trackingClSyncService = TrackingCLSyncService()
-    val controller =
-      BeaconSyncControllerImpl(
-        beaconChain = beaconChain50,
-        clSyncService = trackingClSyncService,
-      )
+    val controller = createController(50UL, trackingClSyncService)
 
     // Given: sync is triggered to target 100
     controller.onBeaconChainSyncTargetUpdated(100UL)
@@ -395,9 +359,5 @@ private class TrackingCLSyncService : CLSyncService {
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {
     syncCompleteHandlers.add(handler)
-  }
-
-  fun triggerSyncComplete(syncTarget: ULong) {
-    syncCompleteHandlers.forEach { it(syncTarget) }
   }
 }

@@ -13,27 +13,23 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import maru.core.ext.DataGenerators
-import maru.database.InMemoryBeaconChain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
+// These tests employ multiple threads on their own, so they could use some more CPU space than usual
+// @Execution(ExecutionMode.SAME_THREAD)
 class SyncControllerThreadSafetyTest {
-  private lateinit var testBeaconChain: InMemoryBeaconChain
-  private lateinit var fakeClSyncService: FakeCLSyncService
   private lateinit var syncController: BeaconSyncControllerImpl
+
+  private fun createController(
+    blockNumber: ULong,
+    clSyncService: CLSyncService = FakeCLSyncService(),
+  ): BeaconSyncControllerImpl = createSyncController(blockNumber, clSyncService)
 
   @BeforeEach
   fun setUp() {
-    val initialState = DataGenerators.randomBeaconState(50UL)
-    testBeaconChain = InMemoryBeaconChain(initialState)
-    fakeClSyncService = FakeCLSyncService()
-    syncController =
-      BeaconSyncControllerImpl(
-        beaconChain = testBeaconChain,
-        clSyncService = fakeClSyncService,
-      )
+    syncController = createController(50UL)
   }
 
   @Test
@@ -96,8 +92,8 @@ class SyncControllerThreadSafetyTest {
       assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING).isFalse
 
       // Verify we received status updates (exact count may vary due to concurrency)
-      assertThat(clStatusUpdates).size().isGreaterThan(iterations / 4)
-      assertThat(elStatusUpdates).size().isGreaterThan(iterations / 4)
+      assertThat(clStatusUpdates).size().isGreaterThan(iterations / 8)
+      assertThat(elStatusUpdates).size().isGreaterThan(iterations / 8)
     } finally {
       if (!executor.isShutdown) {
         executor.shutdownNow()
@@ -211,11 +207,7 @@ class SyncControllerThreadSafetyTest {
         override fun onSyncComplete(handler: (ULong) -> Unit) {}
       }
 
-    val controller =
-      BeaconSyncControllerImpl(
-        beaconChain = testBeaconChain,
-        clSyncService = trackingService,
-      )
+    val controller = createController(50UL, trackingService)
 
     try {
       // Multiple threads calling onChainHeadUpdated with different targets

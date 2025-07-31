@@ -8,6 +8,12 @@
  */
 package maru.syncing
 
+import maru.core.ext.DataGenerators
+import maru.database.InMemoryBeaconChain
+
+/**
+ * Fake implementation of CLSyncService for testing purposes.
+ */
 class FakeCLSyncService : CLSyncService {
   var lastSyncTarget: ULong? = null
   private val syncCompleteHandlers = mutableListOf<(ULong) -> Unit>()
@@ -23,4 +29,16 @@ class FakeCLSyncService : CLSyncService {
   fun triggerSyncComplete(syncTarget: ULong) {
     syncCompleteHandlers.forEach { it(syncTarget) }
   }
+}
+
+fun createSyncController(
+  blockNumber: ULong,
+  clSyncService: CLSyncService = FakeCLSyncService(),
+): BeaconSyncControllerImpl {
+  val state = DataGenerators.randomBeaconState(blockNumber)
+  val beaconChain = InMemoryBeaconChain(state)
+  return BeaconSyncControllerImpl(
+    beaconChain = beaconChain,
+    clSyncService = clSyncService,
+  )
 }
