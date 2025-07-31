@@ -8,6 +8,7 @@
  */
 package maru.syncing.beaconchain.pipeline
 
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Consumer
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.extensions.encodeHex
@@ -16,12 +17,14 @@ import maru.p2p.ValidationResultCode
 import maru.p2p.ValidationResultCode.ACCEPT
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.hyperledger.besu.util.log.LogUtil
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 
 class ImportBlocksStep(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
 ) : Consumer<List<SealedBlockWithPeer>> {
   private val log: Logger = LogManager.getLogger(this.javaClass)
+  private val shouldLog = AtomicBoolean(true)
 
   override fun accept(blocksWithPeers: List<SealedBlockWithPeer>) {
     // Process blocks sequentially
@@ -30,17 +33,21 @@ class ImportBlocksStep(
         val result = blockImporter.importBlock(blockAndPeer.sealedBeaconBlock).join()
         when (result.code) {
           ACCEPT -> {
-            log.debug(
-              "Successfully imported block number={} hash={}",
-              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
-              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
-                .encodeHex(),
+            LogUtil.throttledLog(
+              log::info,
+              "Imported block: " +
+                "clBlockNumber=${blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number} " +
+                "clBlockHash=${blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+                  .encodeHex()}",
+              shouldLog,
+              30,
             )
           }
           ValidationResultCode.REJECT -> {
             blockAndPeer.peer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)
             log.error(
-              "Block validation failed for block {}",
+              "Block validation failed for block: clBlockNumber:{} clBlockHash={}",
+              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
               blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
                 .encodeHex(),
             )
@@ -48,7 +55,8 @@ class ImportBlocksStep(
           }
           ValidationResultCode.IGNORE -> {
             log.warn(
-              "Block validation ignored for block {}",
+              "Block validation ignored for block: clBlockNumber:{}, clBlockHash={}",
+              blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
               blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
                 .encodeHex(),
             )
@@ -56,7 +64,13 @@ class ImportBlocksStep(
           }
         }
       } catch (e: Exception) {
-        log.error("Exception importing block", e)
+        log.error(
+          "Exception importing block: clBlockNumber:{}, clBlockHash={}",
+          blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+          blockAndPeer.sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+            .encodeHex(),
+          e,
+        )
         throw e
       }
     }

@@ -8,8 +8,10 @@
  */
 package maru.syncing
 
+import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.p2p.PeerLookup
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
 import maru.syncing.beaconchain.CLSyncServiceImpl
@@ -67,12 +69,13 @@ class SyncControllerImpl(
       beaconChain: BeaconChain,
       elManager: ExecutionLayerManager,
       peersHeadsProvider: PeersHeadBlockProvider,
-      validators: Set<maru.core.Validator>,
-      peerLookup: maru.p2p.PeerLookup,
+      validatorProvider: ValidatorProvider,
+      peerLookup: PeerLookup,
       besuMetrics: MetricsSystem,
       metricsFacade: MetricsFacade,
       targetChainHeadCalculator: SyncTargetSelector = MostFrequentHeadTargetSelector(),
       peerChainTrackerConfig: PeerChainTracker.Config,
+      allowEmptyBlocks: Boolean = true,
     ): SyncStatusProvider {
       val controller = SyncControllerImpl()
 
@@ -86,8 +89,8 @@ class SyncControllerImpl(
       val clSyncPipeline =
         CLSyncServiceImpl(
           beaconChain = beaconChain,
-          validators = validators,
-          allowEmptyBlocks = true,
+          validatorProvider = validatorProvider,
+          allowEmptyBlocks = allowEmptyBlocks,
           BeaconChainDownloadPipelineFactory.Config(),
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,

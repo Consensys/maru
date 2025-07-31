@@ -9,6 +9,7 @@
 package maru.syncing.beaconchain
 
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.random.Random
 import maru.config.P2P
 import maru.config.consensus.ElFork
@@ -112,6 +113,7 @@ class CLSyncServiceImplTest {
         CLSyncServiceImpl(
           beaconChain = beaconChain1,
           validators = validators,
+          allowEmptyBlocks = true,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetricsSystemAdapter,
           metricsFacade = TestMetricsFacade,
@@ -119,9 +121,9 @@ class CLSyncServiceImplTest {
         )
       clSyncServiceImpl1.start()
 
-      var synced = false
+      val synced = AtomicBoolean(false)
       clSyncServiceImpl1.setSyncTarget(100uL)
-      clSyncServiceImpl1.onSyncComplete { synced = true }
+      clSyncServiceImpl1.onSyncComplete { synced.set(true) }
       awaitUntilAsserted { assertThat(synced).isTrue() }
       assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)
       assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(beaconChain2.getLatestBeaconState())
@@ -170,6 +172,7 @@ class CLSyncServiceImplTest {
         CLSyncServiceImpl(
           beaconChain = beaconChain1,
           validators = validators,
+          allowEmptyBlocks = true,
           peerLookup = p2PNetworkImpl1.getPeerLookup(),
           besuMetrics = TestMetricsSystemAdapter,
           metricsFacade = TestMetricsFacade,
@@ -178,9 +181,9 @@ class CLSyncServiceImplTest {
       clSyncServiceImpl1.start()
 
       // sync to block 50
-      var synced = false
+      val synced = AtomicBoolean(false)
       clSyncServiceImpl1.setSyncTarget(50uL)
-      clSyncServiceImpl1.onSyncComplete { synced = true }
+      clSyncServiceImpl1.onSyncComplete { synced.set(true) }
       awaitUntilAsserted { assertThat(synced).isTrue() }
 
       assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(50uL)
@@ -191,7 +194,7 @@ class CLSyncServiceImplTest {
       }
 
       // update sync target to 100
-      synced = false
+      synced.set(false)
       clSyncServiceImpl1.setSyncTarget(100uL)
       awaitUntilAsserted { assertThat(synced).isTrue() }
 
@@ -259,6 +262,7 @@ class CLSyncServiceImplTest {
         CLSyncServiceImpl(
           beaconChain = beaconChain1,
           validators = validators,
+          allowEmptyBlocks = true,
           peerLookup = peerLookup,
           besuMetrics = TestMetricsSystemAdapter,
           metricsFacade = metricsFacade,
@@ -266,9 +270,9 @@ class CLSyncServiceImplTest {
         )
       clSyncServiceImpl.start()
 
-      var synced = false
+      val synced = AtomicBoolean(false)
       clSyncServiceImpl.setSyncTarget(100uL)
-      clSyncServiceImpl.onSyncComplete { synced = true }
+      clSyncServiceImpl.onSyncComplete { synced.set(true) }
       awaitUntilAsserted { assertThat(synced).isTrue() }
 
       assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(100uL)

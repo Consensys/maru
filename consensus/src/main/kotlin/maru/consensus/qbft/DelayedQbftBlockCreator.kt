@@ -66,6 +66,7 @@ class DelayedQbftBlockCreator(
       return QbftSealedBlockAdapter(sealedBlockBody)
     }
 
+    // Visible for testing
     fun createBeaconBlock(
       parentSealedBeaconBlock: SealedBeaconBlock,
       executionPayload: ExecutionPayload,

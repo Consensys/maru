@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.syncing.pipeline.beaconchain
+package maru.syncing.beaconchain.pipeline
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -18,7 +18,6 @@ import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
 import maru.p2p.messages.BeaconBlocksByRangeResponse
-import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem

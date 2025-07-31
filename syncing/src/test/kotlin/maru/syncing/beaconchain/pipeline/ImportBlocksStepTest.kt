@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.syncing.pipeline.beaconchain
+package maru.syncing.beaconchain.pipeline
 
 import java.util.concurrent.CompletionException
 import maru.consensus.blockimport.SealedBeaconBlockImporter
@@ -17,8 +17,6 @@ import maru.p2p.ValidationResult
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResult.Companion.Invalid
 import maru.p2p.ValidationResult.Companion.Valid
-import maru.syncing.beaconchain.pipeline.ImportBlocksStep
-import maru.syncing.beaconchain.pipeline.SealedBlockWithPeer
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach

@@ -8,7 +8,7 @@
  */
 package maru.syncing.beaconchain
 
-import maru.consensus.StaticValidatorProvider
+import maru.consensus.ValidatorProvider
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
@@ -26,7 +26,6 @@ import maru.consensus.validation.SCEP256SealVerifier
 import maru.consensus.validation.StateRootValidator
 import maru.consensus.validation.TimestampValidator
 import maru.core.BeaconBlockHeader
-import maru.core.Validator
 import maru.database.BeaconChain
 import maru.p2p.ValidationResult
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -34,10 +33,9 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class SyncSealedBlockImporterFactory {
   fun create(
     beaconChain: BeaconChain,
-    validators: Set<Validator>,
+    validatorProvider: ValidatorProvider,
     allowEmptyBlocks: Boolean = false,
   ): SealedBeaconBlockImporter<ValidationResult> {
-    val validatorProvider = StaticValidatorProvider(validators = validators.toSet())
     val stateTransition = StateTransitionImpl(validatorProvider)
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())
 
@@ -68,7 +66,7 @@ class SyncSealedBlockImporterFactory {
 
   private fun createBeaconBlockValidatorFactory(
     beaconChain: BeaconChain,
-    validatorProvider: StaticValidatorProvider,
+    validatorProvider: ValidatorProvider,
     allowEmptyBlocks: Boolean,
   ): BeaconBlockValidatorFactory {
     // Create a custom BeaconBlockValidatorFactory that excludes ExecutionPayloadValidator
