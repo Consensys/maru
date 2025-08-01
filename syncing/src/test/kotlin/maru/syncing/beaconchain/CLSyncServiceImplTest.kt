@@ -178,9 +178,10 @@ class CLSyncServiceImplTest {
     val peerLookup = spy(targetP2pNetwork.getPeerLookup())
 
     // Fail the first two calls to getPeers() to simulate failure getting peers and not downloading blocks
+    val expectedRetries = 2
     var retries = 0
     doAnswer {
-      if (retries < 2) {
+      if (retries < expectedRetries) {
         retries++
         throw IllegalStateException("Simulated failure for testing")
       } else {
@@ -192,9 +193,22 @@ class CLSyncServiceImplTest {
     val retriesCounter = mock(Counter::class.java)
     whenever(metricsFacade.createCounter(any(), any(), any(), any())).thenReturn(retriesCounter)
 
-    syncToTarget(BEACON_CHAIN_2_HEAD)
+    val restartClSyncService =
+      CLSyncServiceImpl(
+        beaconChain = targetBeaconChain,
+        executorService = Executors.newCachedThreadPool(),
+        validatorProvider = StaticValidatorProvider(validators),
+        allowEmptyBlocks = true,
+        peerLookup = peerLookup,
+        besuMetrics = TestMetricsSystemAdapter,
+        metricsFacade = metricsFacade,
+        pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
+      )
+
+    syncToTarget(BEACON_CHAIN_2_HEAD, restartClSyncService)
+    assertThat(retries).isEqualTo(2)
     verifyChain(BEACON_CHAIN_2_HEAD, sourceBeaconChain.getLatestBeaconState())
-    verify(retriesCounter, times(retries)).increment()
+    verify(retriesCounter, times(expectedRetries)).increment()
   }
 
   @Test
@@ -315,7 +329,10 @@ class CLSyncServiceImplTest {
     }
   }
 
-  private fun syncToTarget(syncTarget: ULong) {
+  private fun syncToTarget(
+    syncTarget: ULong,
+    clSyncService: CLSyncServiceImpl = this.clSyncService,
+  ) {
     clSyncService.start()
     clSyncService.setSyncTarget(syncTarget)
     clSyncService.onSyncComplete { synced.set(true) }
