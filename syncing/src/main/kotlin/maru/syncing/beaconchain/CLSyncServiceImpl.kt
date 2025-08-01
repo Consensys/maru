@@ -10,6 +10,7 @@ package maru.syncing.beaconchain
 
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
@@ -59,8 +60,11 @@ class CLSyncServiceImpl(
       name = "beaconchain.restart.counter",
       description = "Count of chain pipeline restarts",
     )
+  private val started = AtomicBoolean(false)
 
   override fun setSyncTarget(syncTarget: ULong) {
+    check(started.get()) { "Sync service must be started before setting sync target" }
+
     log.info("Syncing started syncTarget={}", syncTarget)
     this.syncTarget.set(syncTarget)
 
@@ -97,9 +101,11 @@ class CLSyncServiceImpl(
   }
 
   override fun start() {
+    started.set(true)
   }
 
   override fun stop() {
+    started.set(false)
     pipeline?.abort()
   }
 }

@@ -55,6 +55,7 @@ import org.hyperledger.besu.ethereum.core.Util
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.kotlin.any
@@ -146,6 +147,7 @@ class CLSyncServiceImplTest {
 
   @AfterEach
   fun tearDown() {
+    clSyncService.stop()
     p2pNetwork1.stop()
     p2pNetwork2.stop()
     executorService.shutdown()
@@ -232,18 +234,15 @@ class CLSyncServiceImplTest {
   }
 
   @Test
-  fun `chain sync continues to download after stopped is called`() {
-    syncToTarget(50UL)
-    verifyChain(50UL, beaconChain2.getBeaconState(50uL)!!)
-
+  fun `chain sync does not download after stopped is called`() {
     clSyncService.stop()
-    syncToTarget(BEACON_CHAIN_2_HEAD)
-    verifyChain(BEACON_CHAIN_2_HEAD, beaconChain2.getLatestBeaconState())
+    assertThrows<IllegalStateException> { clSyncService.setSyncTarget(BEACON_CHAIN_2_HEAD) }
   }
 
   @Test
   fun `onSyncComplete handler is called only once per sync`() {
     var callCount = 0
+    clSyncService.start()
     clSyncService.onSyncComplete { callCount++ }
     clSyncService.setSyncTarget(50uL)
     awaitUntilAsserted { assertThat(callCount).isEqualTo(1) }
@@ -256,6 +255,7 @@ class CLSyncServiceImplTest {
     clSyncService.onSyncComplete { handler1Called = true }
     clSyncService.onSyncComplete { handler2Called = true }
 
+    clSyncService.start()
     clSyncService.setSyncTarget(50uL)
     awaitUntilAsserted {
       assertThat(handler1Called).isTrue()
@@ -264,6 +264,7 @@ class CLSyncServiceImplTest {
   }
 
   private fun syncToTarget(syncTarget: ULong) {
+    clSyncService.start()
     clSyncService.setSyncTarget(syncTarget)
     clSyncService.onSyncComplete { synced.set(true) }
     awaitUntilAsserted { assertThat(synced).isTrue() }
