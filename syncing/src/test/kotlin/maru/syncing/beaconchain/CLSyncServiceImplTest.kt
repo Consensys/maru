@@ -249,6 +249,25 @@ class CLSyncServiceImplTest {
   }
 
   @Test
+  fun `onSyncComplete handler has expected sync target`() {
+    var handlerResult = 0uL
+    clSyncService.start()
+    clSyncService.onSyncComplete { handlerResult = it }
+    clSyncService.setSyncTarget(50uL)
+    awaitUntilAsserted { assertThat(handlerResult).isEqualTo(50uL) }
+  }
+
+  @Test
+  fun `onSyncComplete handler returns latest expected sync target`() {
+    var handlerResult = 0uL
+    clSyncService.start()
+    clSyncService.onSyncComplete { handlerResult = it }
+    clSyncService.setSyncTarget(50uL)
+    clSyncService.setSyncTarget(100uL)
+    awaitUntilAsserted { assertThat(handlerResult).isEqualTo(100uL) }
+  }
+
+  @Test
   fun `multiple onSyncComplete handlers are called`() {
     var handler1Called = false
     var handler2Called = false
