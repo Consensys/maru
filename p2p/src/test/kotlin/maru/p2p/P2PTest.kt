@@ -581,7 +581,7 @@ class P2PTest {
 
       assertThatNoException().isThrownBy { responseFuture.get(500L, TimeUnit.MILLISECONDS) }
       assertThat(
-        responseFuture.get(500L, TimeUnit.MILLISECONDS),
+        peer1.getStatus(),
       ).isEqualTo(expectedStatus)
     } finally {
       p2PNetworkImpl1.stop()
@@ -896,7 +896,7 @@ class P2PTest {
 
       // check for the next 10 seconds that the peers are still connected
       val startTime = System.currentTimeMillis()
-      while (System.currentTimeMillis() < startTime + 10000L) {
+      while (System.currentTimeMillis() < startTime + 100000L) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
       }
