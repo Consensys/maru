@@ -78,6 +78,10 @@ class DefaultMaruPeer(
     ),
   private val p2pConfig: P2P,
 ) : MaruPeer {
+  init {
+    delegatePeer.subscribeDisconnect { _, _ -> scheduler.shutdown() }
+  }
+
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val status = AtomicReference<Status?>(null)
   private var scheduledDisconnect: Optional<ScheduledFuture<*>> = Optional.empty()
