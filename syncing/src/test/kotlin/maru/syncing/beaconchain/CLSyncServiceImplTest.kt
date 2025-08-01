@@ -268,7 +268,6 @@ class CLSyncServiceImplTest {
     awaitUntilAsserted { assertThat(callCount).isEqualTo(1) }
   }
 
-
   @Test
   fun `onSyncComplete handler has expected sync target`() {
     var handlerResult = 0uL
