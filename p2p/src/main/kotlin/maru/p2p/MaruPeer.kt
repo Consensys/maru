@@ -38,7 +38,7 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 interface MaruPeer : Peer {
   fun getStatus(): Status?
 
-  fun sendStatus(): SafeFuture<Status>
+  fun sendStatus(): SafeFuture<Unit>
 
   fun updateStatus(newStatus: Status)
 
@@ -84,23 +84,25 @@ class DefaultMaruPeer(
 
   override fun getStatus(): Status? = status.get()
 
-  override fun sendStatus(): SafeFuture<Status> {
+  override fun sendStatus(): SafeFuture<Unit> {
     try {
       val statusMessage = statusMessageFactory.createStatusMessage()
       val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
         sendRpcMessage(statusMessage, rpcMethods.status())
       scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
-      return sendRpcMessage.thenApply { message -> message.payload }.whenComplete { status, error ->
-        if (error != null) {
-          disconnectImmediately(Optional.of(DisconnectReason.REMOTE_FAULT), false)
-          if (error.cause !is PeerDisconnectedException) {
-            log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
+      return sendRpcMessage
+        .thenApply { message -> message.payload }
+        .whenComplete { status, error ->
+          if (error != null) {
+            disconnectImmediately(Optional.of(DisconnectReason.REMOTE_FAULT), false)
+            if (error.cause !is PeerDisconnectedException) {
+              log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
+            }
+          } else {
+            updateStatus(status)
+            scheduler.schedule(this::sendStatus, p2pConfig.statusUpdate.renewal.inWholeSeconds, TimeUnit.SECONDS)
           }
-        } else {
-          updateStatus(status)
-          scheduler.schedule(this::sendStatus, p2pConfig.statusUpdate.renewal.inWholeSeconds, TimeUnit.SECONDS)
-        }
-      }
+        }.thenApply {}
     } catch (e: Exception) {
       if (e.cause !is PeerDisconnectedException) {
         log.error("Failed to send status message to peer={}", id, e)

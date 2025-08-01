@@ -11,7 +11,6 @@ package maru.p2p
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import maru.config.P2P
-import maru.p2p.messages.Status
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -55,7 +54,7 @@ class MaruPeerManagerTest {
     val peer = mock<Peer>()
     val maruPeerFactory = mock<MaruPeerFactory>()
     val maruPeer = mock<MaruPeer>()
-    val mockFutureStatus = mock<SafeFuture<Status>>()
+    val mockFutureStatus = mock<SafeFuture<Unit>>()
     val p2pConfig = mock<P2P>()
 
     whenever(peer.id).thenReturn(nodeId)
