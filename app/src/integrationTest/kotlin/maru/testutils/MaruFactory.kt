@@ -121,7 +121,7 @@ class MaruFactory {
       observabilityOptions = observabilityOptions,
       linea = lineaConfig,
       apiConfig = apiConfig,
-      syncing = SyncingConfig(5.seconds, 10u),
+      syncing = SyncingConfig(1.seconds, 10u),
     )
   }
 
@@ -179,6 +179,7 @@ class MaruFactory {
     engineApiRpc: String,
     dataDir: Path,
     overridingP2PNetwork: P2PNetwork? = null,
+    allowEmptyBlocks: Boolean = false,
   ): MaruApp {
     val config =
       buildMaruConfig(
@@ -186,6 +187,7 @@ class MaruFactory {
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
         qbftOptions = validatorQbftOptions,
+        allowEmptyBlocks = allowEmptyBlocks,
       )
     writeValidatorPrivateKey(config)
     return buildApp(config, overridingP2PNetwork = overridingP2PNetwork)
