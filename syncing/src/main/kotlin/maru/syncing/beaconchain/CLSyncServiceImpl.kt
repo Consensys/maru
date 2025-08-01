@@ -10,6 +10,7 @@ package maru.syncing.beaconchain
 
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
@@ -40,7 +41,6 @@ class CLSyncServiceImpl(
   private val log: Logger = LogManager.getLogger(this::class.java)
   private var pipeline: Pipeline<*>? = null
   private val syncTarget: AtomicReference<ULong> = AtomicReference(0UL)
-  private val syncHandlerSubscriptionIds = mutableListOf<String>()
   private val syncCompleteHanders: SubscriptionManager<ULong> = InOrderFanoutSubscriptionManager()
   private val blockImporter =
     SyncSealedBlockImporterFactory()
@@ -53,14 +53,17 @@ class CLSyncServiceImpl(
     BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, pipelineConfig) {
       syncTarget.get()
     }
-  private val pipelineRestartCounter =
+  internal val pipelineRestartCounter =
     metricsFacade.createCounter(
       category = MaruMetricsCategory.SYNCHRONIZER,
       name = "beaconchain.restart.counter",
       description = "Count of chain pipeline restarts",
     )
+  private val started = AtomicBoolean(false)
 
   override fun setSyncTarget(syncTarget: ULong) {
+    check(started.get()) { "Sync service must be started before setting sync target" }
+
     log.info("Syncing started syncTarget={}", syncTarget)
     this.syncTarget.set(syncTarget)
 
@@ -82,9 +85,9 @@ class CLSyncServiceImpl(
         this.pipeline = null
         startSync()
       } else {
-        log.info("Sync pipeline completed successfully")
-        this.pipeline = null
         val completedSyncTarget = syncTarget.get() // Capture current target at completion
+        log.info("Sync completed syncTarget={}", completedSyncTarget)
+        this.pipeline = null
         syncCompleteHanders.notifySubscribers(completedSyncTarget)
       }
     }
@@ -92,14 +95,15 @@ class CLSyncServiceImpl(
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {
     val subscriptionId = handler.toString()
-    syncHandlerSubscriptionIds.add(subscriptionId)
     syncCompleteHanders.addSyncSubscriber(subscriptionId, handler)
   }
 
   override fun start() {
+    started.set(true)
   }
 
   override fun stop() {
+    started.set(false)
     pipeline?.abort()
   }
 }
