@@ -215,6 +215,17 @@ class CLSyncServiceImplTest {
   }
 
   @Test
+  fun `chain syncs to updated lower sync target`() {
+    clSyncService.start()
+    clSyncService.onSyncComplete { synced.set(true) }
+    clSyncService.setSyncTarget(150UL)
+    clSyncService.setSyncTarget(100UL)
+    awaitUntilAsserted { assertThat(synced).isTrue() }
+
+    verifyChain(100UL, beaconChain2.getBeaconState(100UL)!!)
+  }
+
+  @Test
   fun `sync target set to older target returns immediately`() {
     // sync to block 50
     syncToTarget(50UL)
