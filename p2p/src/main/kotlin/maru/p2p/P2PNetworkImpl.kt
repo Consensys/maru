@@ -82,7 +82,7 @@ class P2PNetworkImpl(
     val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
     maruPeerManager =
       MaruPeerManager(
-        maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory),
+        maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory, p2pConfig),
         p2pConfig = p2pConfig,
       )
 
@@ -191,6 +191,7 @@ class P2PNetworkImpl(
 
   fun addStaticPeer(peerAddress: MultiaddrPeerAddress) {
     if (peerAddress.id == p2pNetwork.nodeId) { // Don't connect to self
+      log.debug("Not adding static peer as it is the local node")
       return
     }
     synchronized(this) {
@@ -219,7 +220,7 @@ class P2PNetworkImpl(
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
             log.trace(
-              "Failed to connect to peer {}, retrying after {} ms. Error: {}",
+              "Failed to connect to static peer={}, retrying after {} ms. Error: {}",
               peerAddress,
               p2pConfig.reconnectDelay,
               t.message,
@@ -228,7 +229,7 @@ class P2PNetworkImpl(
               .runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
           }
         } else {
-          log.debug("Created persistent connection to {}", peerAddress)
+          log.trace("Created persistent connection to {}", peerAddress)
           reconnectWhenDisconnected(peer!!, peerAddress)
         }
       }.thenApply {}
