@@ -186,6 +186,16 @@ class BeaconChainDownloadPipelineFactoryTest {
   }
 
   @Test
+  fun `factory creates multiple independent pipelines`() {
+    val pipeline1 = factory.createPipeline(100uL)
+    val pipeline2 = factory.createPipeline(100uL)
+
+    assertThat(pipeline1).isNotNull()
+    assertThat(pipeline2).isNotNull()
+    assertThat(pipeline1).isNotSameAs(pipeline2)
+  }
+
+  @Test
   fun `factory construction throws when requestSize is zero`() {
     assertThatThrownBy {
       BeaconChainDownloadPipelineFactory(
