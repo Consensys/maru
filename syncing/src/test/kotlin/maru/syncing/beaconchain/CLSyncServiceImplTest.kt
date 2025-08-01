@@ -73,22 +73,24 @@ class CLSyncServiceImplTest {
     private const val IPV4 = "127.0.0.1"
     private const val PEER_ID_NODE_2: String = "16Uiu2HAmVXtqhevTAJqZucPbR2W4nCMpetrQASgjZpcxDEDaUPPt"
     private const val BEACON_CHAIN_2_HEAD = 100UL
-    private val key1 = "0x0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".fromHexToByteArray()
-    private val key2 =
+    private val targetNodeKey =
+      "0x0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2"
+        .fromHexToByteArray()
+    private val sourceNodeKey =
       "0x0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
         .fromHexToByteArray()
   }
 
-  private var port1: UInt = 0u
-  private var port2: UInt = 0u
+  private var sourceNodePort: UInt = 0u
+  private var targetNodePort: UInt = 0u
   private val synced = AtomicBoolean(false)
   private lateinit var signatureAlgorithm: SignatureAlgorithm
   private lateinit var keypair: KeyPair
-  private lateinit var beaconChain1: BeaconChain
-  private lateinit var beaconChain2: BeaconChain
+  private lateinit var targetBeaconChain: BeaconChain
+  private lateinit var sourceBeaconChain: BeaconChain
   private lateinit var validators: Set<Validator>
-  private lateinit var p2pNetwork1: P2PNetworkImpl
-  private lateinit var p2pNetwork2: P2PNetworkImpl
+  private lateinit var targetP2pNetwork: P2PNetworkImpl
+  private lateinit var sourceP2pNetwork: P2PNetworkImpl
   private lateinit var clSyncService: CLSyncServiceImpl
   private lateinit var peerLookup: PeerLookup
   private lateinit var executorService: ExecutorService
@@ -101,27 +103,27 @@ class CLSyncServiceImplTest {
 
     val genesisTimestamp = DataGenerators.randomTimestamp()
     val (genesisBeaconState, genesisBeaconBlock) = genesisState(genesisTimestamp, validators)
-    beaconChain1 = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
-    beaconChain2 = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
+    targetBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
+    sourceBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
 
-    port1 = findFreePort()
-    port2 = findFreePort()
-    p2pNetwork1 = createNetwork(beaconChain1, key1, port1)
-    p2pNetwork2 = createNetwork(beaconChain2, key2, port2)
+    sourceNodePort = findFreePort()
+    targetNodePort = findFreePort()
+    targetP2pNetwork = createNetwork(targetBeaconChain, targetNodeKey, sourceNodePort)
+    sourceP2pNetwork = createNetwork(sourceBeaconChain, sourceNodeKey, targetNodePort)
 
     createBlocks(
-      beaconChain = beaconChain2,
+      beaconChain = sourceBeaconChain,
       genesisBeaconBlock = genesisBeaconBlock,
       genesisTimestamp = genesisBeaconBlock.beaconBlock.beaconBlockHeader.timestamp,
       validators = validators,
       signatureAlgorithm = signatureAlgorithm,
       keypair = keypair,
     )
-    peerLookup = spy(p2pNetwork1.getPeerLookup())
+    peerLookup = spy(targetP2pNetwork.getPeerLookup())
     executorService = Executors.newCachedThreadPool()
     clSyncService =
       CLSyncServiceImpl(
-        beaconChain = beaconChain1,
+        beaconChain = targetBeaconChain,
         executorService = Executors.newCachedThreadPool(),
         validatorProvider = StaticValidatorProvider(validators),
         allowEmptyBlocks = true,
@@ -132,15 +134,15 @@ class CLSyncServiceImplTest {
       )
 
     try {
-      p2pNetwork1.start()
-      p2pNetwork2.start()
-      p2pNetwork1.addStaticPeer(createPeerAddress(port2))
+      targetP2pNetwork.start()
+      sourceP2pNetwork.start()
+      targetP2pNetwork.addStaticPeer(createPeerAddress(targetNodePort))
 
-      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetwork1, peers = 1) }
-      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetwork2, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = targetP2pNetwork, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = sourceP2pNetwork, peers = 1) }
     } catch (e: Exception) {
-      p2pNetwork1.stop()
-      p2pNetwork2.stop()
+      targetP2pNetwork.stop()
+      sourceP2pNetwork.stop()
       throw IllegalStateException("Failed to start P2P networks", e)
     }
   }
@@ -148,32 +150,32 @@ class CLSyncServiceImplTest {
   @AfterEach
   fun tearDown() {
     clSyncService.stop()
-    p2pNetwork1.stop()
-    p2pNetwork2.stop()
+    targetP2pNetwork.stop()
+    sourceP2pNetwork.stop()
     executorService.shutdown()
   }
 
   @Test
   fun `chain sync downloads and imports blocks from another node`() {
     syncToTarget(BEACON_CHAIN_2_HEAD)
-    verifyChain(BEACON_CHAIN_2_HEAD, beaconChain2.getLatestBeaconState())
+    verifyChain(BEACON_CHAIN_2_HEAD, sourceBeaconChain.getLatestBeaconState())
   }
 
   @Test
   fun `sync target can be updated ahead of current target and continue downloading`() {
     // sync to block 50
     syncToTarget(50UL)
-    verifyChain(50UL, beaconChain2.getBeaconState(50uL)!!)
+    verifyChain(50UL, sourceBeaconChain.getBeaconState(50uL)!!)
 
     // update sync target to BEACON_CHAIN_2_HEAD
     synced.set(false)
     syncToTarget(BEACON_CHAIN_2_HEAD)
-    verifyChain(BEACON_CHAIN_2_HEAD, beaconChain2.getLatestBeaconState())
+    verifyChain(BEACON_CHAIN_2_HEAD, sourceBeaconChain.getLatestBeaconState())
   }
 
   @Test
   fun `chain sync download restarts on errors`() {
-    val peerLookup = spy(p2pNetwork1.getPeerLookup())
+    val peerLookup = spy(targetP2pNetwork.getPeerLookup())
 
     // Fail the first two calls to getPeers() to simulate failure getting peers and not downloading blocks
     var retries = 0
@@ -191,7 +193,7 @@ class CLSyncServiceImplTest {
     whenever(metricsFacade.createCounter(any(), any(), any(), any())).thenReturn(retriesCounter)
 
     syncToTarget(BEACON_CHAIN_2_HEAD)
-    verifyChain(BEACON_CHAIN_2_HEAD, beaconChain2.getLatestBeaconState())
+    verifyChain(BEACON_CHAIN_2_HEAD, sourceBeaconChain.getLatestBeaconState())
     verify(retriesCounter, times(retries)).increment()
   }
 
@@ -199,19 +201,19 @@ class CLSyncServiceImplTest {
   fun `sync target set to same target returns immediately`() {
     // sync to block 50
     syncToTarget(50UL)
-    verifyChain(50UL, beaconChain2.getBeaconState(50uL)!!)
+    verifyChain(50UL, sourceBeaconChain.getBeaconState(50uL)!!)
 
     // update the sync target to 50 again
     synced.set(false)
-    reset(beaconChain1, beaconChain2)
+    reset(targetBeaconChain, sourceBeaconChain)
     syncToTarget(50UL)
 
     // Ensure the state remains unchanged
-    verifyChain(50UL, beaconChain2.getBeaconState(50uL)!!)
+    verifyChain(50UL, sourceBeaconChain.getBeaconState(50uL)!!)
 
     // Verify that beaconChain for node1 was not updated, and there are no reads on node2 beaconChain
-    verify(beaconChain1, never()).newUpdater()
-    verify(beaconChain2, never()).getSealedBeaconBlocks(any(), any())
+    verify(targetBeaconChain, never()).newUpdater()
+    verify(sourceBeaconChain, never()).getSealedBeaconBlocks(any(), any())
   }
 
   @Test
@@ -222,26 +224,26 @@ class CLSyncServiceImplTest {
     clSyncService.setSyncTarget(100UL)
     awaitUntilAsserted { assertThat(synced).isTrue() }
 
-    verifyChain(100UL, beaconChain2.getBeaconState(100UL)!!)
+    verifyChain(100UL, sourceBeaconChain.getBeaconState(100UL)!!)
   }
 
   @Test
   fun `sync target set to older target returns immediately`() {
     // sync to block 50
     syncToTarget(50UL)
-    verifyChain(50UL, beaconChain2.getBeaconState(50uL)!!)
+    verifyChain(50UL, sourceBeaconChain.getBeaconState(50uL)!!)
 
     // update the sync target to 40, should return immediately
     synced.set(false)
-    reset(beaconChain1, beaconChain2)
+    reset(targetBeaconChain, sourceBeaconChain)
     syncToTarget(40uL)
 
     // Ensure the state remains unchanged
-    verifyChain(50UL, beaconChain2.getBeaconState(50uL)!!)
+    verifyChain(50UL, sourceBeaconChain.getBeaconState(50uL)!!)
 
     // Verify that beaconChain for node1 was not updated, and there are no reads on node2 beaconChain
-    verify(beaconChain1, never()).newUpdater()
-    verify(beaconChain2, never()).getSealedBeaconBlocks(any(), any())
+    verify(targetBeaconChain, never()).newUpdater()
+    verify(sourceBeaconChain, never()).getSealedBeaconBlocks(any(), any())
   }
 
   @Test
@@ -324,11 +326,13 @@ class CLSyncServiceImplTest {
     expectedHeadBlockNumber: ULong,
     expectedHeadState: BeaconState,
   ) {
-    assertThat(beaconChain1.getLatestBeaconState().latestBeaconBlockHeader.number).isEqualTo(expectedHeadBlockNumber)
-    assertThat(beaconChain1.getLatestBeaconState()).isEqualTo(expectedHeadState)
+    assertThat(
+      targetBeaconChain.getLatestBeaconState().latestBeaconBlockHeader.number,
+    ).isEqualTo(expectedHeadBlockNumber)
+    assertThat(targetBeaconChain.getLatestBeaconState()).isEqualTo(expectedHeadState)
     for (i in 1uL..expectedHeadBlockNumber) {
-      assertThat(beaconChain1.getSealedBeaconBlock(i)).isEqualTo(beaconChain2.getSealedBeaconBlock(i))
-      assertThat(beaconChain1.getBeaconState(i)).isEqualTo(beaconChain2.getBeaconState(i))
+      assertThat(targetBeaconChain.getSealedBeaconBlock(i)).isEqualTo(sourceBeaconChain.getSealedBeaconBlock(i))
+      assertThat(targetBeaconChain.getBeaconState(i)).isEqualTo(sourceBeaconChain.getBeaconState(i))
     }
   }
 
