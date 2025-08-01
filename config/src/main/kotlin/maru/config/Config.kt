@@ -51,6 +51,7 @@ data class P2P(
     val bootnodes: List<String> = emptyList(),
     val refreshInterval: Duration,
   )
+
   data class StatusUpdateConfig(
     val renewal: Duration = 5.minutes,
     val renewalLeeway: Duration = 10.seconds,
