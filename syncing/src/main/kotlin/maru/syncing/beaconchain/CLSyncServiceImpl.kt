@@ -41,7 +41,6 @@ class CLSyncServiceImpl(
   private val log: Logger = LogManager.getLogger(this::class.java)
   private var pipeline: Pipeline<*>? = null
   private val syncTarget: AtomicReference<ULong> = AtomicReference(0UL)
-  private val syncHandlerSubscriptionIds = mutableListOf<String>()
   private val syncCompleteHanders: SubscriptionManager<ULong> = InOrderFanoutSubscriptionManager()
   private val blockImporter =
     SyncSealedBlockImporterFactory()
@@ -96,7 +95,6 @@ class CLSyncServiceImpl(
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {
     val subscriptionId = handler.toString()
-    syncHandlerSubscriptionIds.add(subscriptionId)
     syncCompleteHanders.addSyncSubscriber(subscriptionId, handler)
   }
 
