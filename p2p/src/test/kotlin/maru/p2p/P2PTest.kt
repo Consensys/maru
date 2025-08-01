@@ -310,6 +310,7 @@ class P2PTest {
             ipAddress = IPV4,
             port = PORT2,
             staticPeers = listOf(PEER_ADDRESS_NODE_1),
+            reconnectDelay = 1.seconds,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -558,7 +559,6 @@ class P2PTest {
       )
     try {
       p2PNetworkImpl1.start()
-
       p2pManagerImpl2.start()
 
       awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
@@ -684,7 +684,7 @@ class P2PTest {
             ipAddress = IPV4,
             port = PORT1,
             staticPeers = emptyList(),
-            maxPeers = 2,
+            maxPeers = 25,
             discovery =
               P2P.Discovery(
                 port = PORT2,
@@ -718,7 +718,7 @@ class P2PTest {
             ipAddress = IPV4,
             port = PORT3,
             staticPeers = emptyList(),
-            maxPeers = 2,
+            maxPeers = 25,
             discovery =
               P2P.Discovery(
                 port = PORT4,
@@ -744,7 +744,7 @@ class P2PTest {
             ipAddress = IPV4,
             port = PORT5,
             staticPeers = emptyList(),
-            maxPeers = 2,
+            maxPeers = 25,
             discovery =
               P2P.Discovery(
                 port = PORT6,
@@ -814,6 +814,176 @@ class P2PTest {
       p2pNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
       p2pNetworkImpl3.stop()
+    }
+  }
+
+  @Test
+  fun `peers sending status updates do not disconnect`() {
+    val refreshInterval = 5.seconds
+    val p2pNetworkImpl1 =
+      P2PNetworkImpl(
+        privateKeyBytes = key1,
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            staticPeers = emptyList(),
+            maxPeers = 20,
+            discovery =
+              P2P.Discovery(
+                port = PORT2,
+                refreshInterval = refreshInterval,
+              ),
+            statusUpdate = P2P.StatusUpdateConfig(renewal = 2.seconds, renewalLeeway = 1.seconds, timeout = 1.seconds),
+          ),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory = statusMessageFactory,
+        metricsSystem = NoOpMetricsSystem(),
+        forkIdHashProvider = forkIdHashProvider,
+        beaconChain = beaconChain,
+        isBlockImportEnabledProvider = { true },
+      )
+
+    val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
+    val bootnodeEnrString =
+      getBootnodeEnrString(
+        privateKeyBytes = key1Only32Bytes,
+        ipv4 = IPV4,
+        discPort = PORT2.toInt(),
+        tcpPort = PORT1.toInt(),
+      )
+
+    val p2pNetworkImpl2 =
+      P2PNetworkImpl(
+        privateKeyBytes = key2,
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT3,
+            staticPeers = emptyList(),
+            maxPeers = 20,
+            discovery =
+              P2P.Discovery(
+                port = PORT4,
+                bootnodes = listOf(bootnodeEnrString),
+                refreshInterval = refreshInterval,
+              ),
+            statusUpdate = P2P.StatusUpdateConfig(renewal = 2.seconds, renewalLeeway = 1.seconds, timeout = 1.seconds),
+          ),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory = statusMessageFactory,
+        metricsSystem = NoOpMetricsSystem(),
+        forkIdHashProvider = forkIdHashProvider,
+        beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
+        isBlockImportEnabledProvider = { true },
+      )
+
+    try {
+      p2pNetworkImpl1.start()
+      p2pNetworkImpl2.start()
+
+      val awaitTimeoutInSeconds = 30L
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
+        assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
+      }
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
+        assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
+      }
+
+      // check for the next 10 seconds that the peers are still connected
+      val startTime = System.currentTimeMillis()
+      while (System.currentTimeMillis() < startTime + 10000L) {
+        assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
+        assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
+      }
+    } finally {
+      p2pNetworkImpl1.stop()
+      p2pNetworkImpl2.stop()
+    }
+  }
+
+  @Test
+  fun `peer sending status update too late is disconnected`() {
+    val p2pNetworkImpl1 =
+      P2PNetworkImpl(
+        privateKeyBytes = key1,
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT1,
+            staticPeers = emptyList(),
+            maxPeers = 2,
+            reconnectDelay = 1.seconds,
+            statusUpdate = P2P.StatusUpdateConfig(renewal = 1.seconds, renewalLeeway = 0.seconds, timeout = 1.seconds),
+          ),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory = statusMessageFactory,
+        metricsSystem = NoOpMetricsSystem(),
+        forkIdHashProvider = forkIdHashProvider,
+        beaconChain = beaconChain,
+        isBlockImportEnabledProvider = { true },
+      )
+
+    // node 2 is initiating the connection and is only sending status updates after 2 seconds, so it should be disconnected by node 1, which expects a status update within 1 second
+    // The initial status update works, because node 1 has a timeout of 1 second for the status update
+    val p2pNetworkImpl2 =
+      P2PNetworkImpl(
+        privateKeyBytes = key2,
+        p2pConfig =
+          P2P(
+            ipAddress = IPV4,
+            port = PORT3,
+            listOf(PEER_ADDRESS_NODE_1),
+            maxPeers = 2,
+            reconnectDelay = 1.seconds,
+            statusUpdate = P2P.StatusUpdateConfig(renewal = 2.seconds, renewalLeeway = 1.seconds, timeout = 1.seconds),
+          ),
+        chainId = chainId,
+        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        metricsFacade = TestMetrics.TestMetricsFacade,
+        statusMessageFactory = statusMessageFactory,
+        metricsSystem = NoOpMetricsSystem(),
+        forkIdHashProvider = forkIdHashProvider,
+        beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
+        isBlockImportEnabledProvider = { true },
+      )
+
+    try {
+      p2pNetworkImpl1.start()
+      p2pNetworkImpl2.start()
+
+      val awaitTimeoutInSeconds = 30L
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
+        assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
+      }
+      awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
+        assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
+      }
+
+      // check for the next 5 seconds that the peers are at least disconnected twice,
+      // because node 2 is reconnecting because of the static connection
+      val startTime = System.currentTimeMillis()
+      var disconnectCount = 0
+      while (System.currentTimeMillis() < startTime + 6000L) {
+        if (!p2pNetworkImpl1.isConnected(PEER_ID_NODE_2)) {
+          disconnectCount++
+          while (!p2pNetworkImpl1.isConnected(PEER_ID_NODE_2)) {
+            // wait for the peer to be connected again
+            sleep(50L)
+          }
+        }
+      }
+
+      assertThat(disconnectCount).isGreaterThanOrEqualTo(2)
+    } finally {
+      p2pNetworkImpl1.stop()
+      p2pNetworkImpl2.stop()
     }
   }
 

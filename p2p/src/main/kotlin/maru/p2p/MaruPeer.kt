@@ -27,6 +27,7 @@ import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.DisconnectRequestHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedException
 import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedSubscriber
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
@@ -92,14 +93,18 @@ class DefaultMaruPeer(
       return sendRpcMessage.thenApply { message -> message.payload }.whenComplete { status, error ->
         if (error != null) {
           disconnectImmediately(Optional.of(DisconnectReason.REMOTE_FAULT), false)
-          log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
+          if (error.cause !is PeerDisconnectedException) {
+            log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
+          }
         } else {
           updateStatus(status)
           scheduler.schedule(this::sendStatus, p2pConfig.statusUpdate.renewal.inWholeSeconds, TimeUnit.SECONDS)
         }
       }
     } catch (e: Exception) {
-      log.error("Failed to send status message to peer={}", id, e)
+      if (e.cause !is PeerDisconnectedException) {
+        log.error("Failed to send status message to peer={}", id, e)
+      }
       return SafeFuture.failedFuture(e)
     }
   }
@@ -107,7 +112,7 @@ class DefaultMaruPeer(
   override fun updateStatus(newStatus: Status) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
     status.set(newStatus)
-    log.debug("Received status update from peer={}: status={}", id, newStatus)
+    log.trace("Received status update from peer={}: status={}", id, newStatus)
     if (connectionInitiatedRemotely()) {
       scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.renewal + p2pConfig.statusUpdate.renewalLeeway)
     }

@@ -8,6 +8,8 @@
  */
 package maru.p2p
 
+import io.libp2p.core.PeerId
+import io.libp2p.crypto.keys.unmarshalSecp256k1PublicKey
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -21,7 +23,10 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
+import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
+import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
@@ -36,7 +41,7 @@ class MaruPeerManager(
   init {
     scheduler.scheduleAtFixedRate({
       logConnectedPeers()
-    }, 30, 30, TimeUnit.SECONDS)
+    }, 20000, 20000, TimeUnit.MILLISECONDS)
   }
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -72,7 +77,7 @@ class MaruPeerManager(
           .searchForPeers()
           .orTimeout(Duration.ofSeconds(30L))
           .whenComplete { availablePeers, throwable ->
-            log.debug("Finished searching for peers. Found {} peers.", availablePeers.size)
+            log.trace("Finished searching for peers. Found {} peers.", availablePeers.size)
             if (!stopCalled) {
               if (throwable != null) {
                 log.debug("Failed to discover peers: {}", throwable.message, throwable)
@@ -85,7 +90,7 @@ class MaruPeerManager(
             }
           }.whenComplete { _, _ ->
             currentlySearching.set(false)
-            log.debug("peerCount={}. maxPeers={}", p2pNetwork.peerCount, maxPeers)
+            log.trace("peerCount={}. maxPeers={}", p2pNetwork.peerCount, maxPeers)
             if (!stopCalled && p2pNetwork.peerCount < maxPeers) {
               scheduler.schedule({ searchForPeersUntilMaxReached() }, 1, TimeUnit.SECONDS)
             }
@@ -119,7 +124,7 @@ class MaruPeerManager(
 
   override fun onDisconnect(peer: Peer) {
     connectedPeers.remove(peer.id)
-    log.debug("Peer={} disconnected", peer.id)
+    log.trace("Peer={} disconnected", peer.id)
     if (!stopCalled && p2pNetwork.peerCount < maxPeers) {
       searchForPeersUntilMaxReached()
     }
@@ -131,7 +136,8 @@ class MaruPeerManager(
 
   private fun tryToConnectIfNotFull(peer: MaruDiscoveryPeer) {
     try {
-      if (stopCalled) {
+      val peerId = getNodeId(peer)
+      if (stopCalled || p2pNetwork.isConnected(PeerAddress(peerId))) {
         return
       }
       synchronized(connectionInProgress) {
@@ -141,7 +147,6 @@ class MaruPeerManager(
         connectionInProgress.add(peer.nodeIdBytes)
       }
 
-      log.debug("peer={} connecting to peer={}...", discoveryService!!.getLocalNodeRecord().nodeId, peer.nodeIdBytes)
       p2pNetwork
         .connect(p2pNetwork.createPeerAddress(peer))
         .orTimeout(30, TimeUnit.SECONDS)
@@ -162,5 +167,10 @@ class MaruPeerManager(
         connectionInProgress.remove(peer.nodeIdBytes)
       }
     }
+  }
+
+  fun getNodeId(peer: DiscoveryPeer): LibP2PNodeId {
+    val pubKey = unmarshalSecp256k1PublicKey(peer.publicKey.toArrayUnsafe())
+    return LibP2PNodeId(PeerId.fromPubKey(pubKey))
   }
 }

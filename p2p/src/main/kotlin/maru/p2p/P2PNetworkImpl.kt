@@ -228,7 +228,7 @@ class P2PNetworkImpl(
               .runAsync({ maintainPersistentConnection(peerAddress) }, delayedExecutor)
           }
         } else {
-          log.debug("Created persistent connection to {}", peerAddress)
+          log.trace("Created persistent connection to {}", peerAddress)
           reconnectWhenDisconnected(peer!!, peerAddress)
         }
       }.thenApply {}

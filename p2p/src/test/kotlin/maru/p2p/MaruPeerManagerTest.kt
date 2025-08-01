@@ -85,6 +85,7 @@ class MaruPeerManagerTest {
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(false)
     whenever(maruPeer.getStatus()).thenReturn(null)
     whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(p2pConfig.statusUpdate).thenReturn(P2P.StatusUpdateConfig())
 
     val manager = MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = p2pConfig)
     manager.start(discoveryService = null, p2pNetwork = mock())
@@ -128,6 +129,7 @@ class MaruPeerManagerTest {
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(false)
     whenever(maruPeer.getStatus()).thenReturn(null)
     whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(p2pConfig.statusUpdate).thenReturn(P2P.StatusUpdateConfig())
     doReturn(mock<ScheduledFuture<*>>()).whenever(mockScheduler).schedule(any<Runnable>(), any(), any())
 
     val manager = MaruPeerManager(mockScheduler, maruPeerFactory, p2pConfig)
