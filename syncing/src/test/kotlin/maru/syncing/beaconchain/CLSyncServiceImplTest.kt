@@ -249,6 +249,27 @@ class CLSyncServiceImplTest {
   }
 
   @Test
+  fun `onSyncComplete handler is called only once per sync after - call to same target`() {
+    var callCount = 0
+    clSyncService.start()
+    clSyncService.onSyncComplete { callCount++ }
+    clSyncService.setSyncTarget(50uL)
+    clSyncService.setSyncTarget(50uL)
+    awaitUntilAsserted { assertThat(callCount).isEqualTo(1) }
+  }
+
+  @Test
+  fun `onSyncComplete handler is called only once per sync after - call to past target`() {
+    var callCount = 0
+    clSyncService.start()
+    clSyncService.onSyncComplete { callCount++ }
+    clSyncService.setSyncTarget(50uL)
+    clSyncService.setSyncTarget(20uL)
+    awaitUntilAsserted { assertThat(callCount).isEqualTo(1) }
+  }
+
+
+  @Test
   fun `onSyncComplete handler has expected sync target`() {
     var handlerResult = 0uL
     clSyncService.start()

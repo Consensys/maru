@@ -86,9 +86,9 @@ class CLSyncServiceImpl(
         this.pipeline = null
         startSync()
       } else {
-        log.info("Sync pipeline completed successfully")
-        this.pipeline = null
         val completedSyncTarget = syncTarget.get() // Capture current target at completion
+        log.info("Sync completed syncTarget={}", completedSyncTarget)
+        this.pipeline = null
         syncCompleteHanders.notifySubscribers(completedSyncTarget)
       }
     }
