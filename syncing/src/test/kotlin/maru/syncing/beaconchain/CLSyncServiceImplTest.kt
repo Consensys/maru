@@ -108,8 +108,8 @@ class CLSyncServiceImplTest {
 
     sourceNodePort = findFreePort()
     targetNodePort = findFreePort()
-    targetP2pNetwork = createNetwork(targetBeaconChain, targetNodeKey, sourceNodePort)
-    sourceP2pNetwork = createNetwork(sourceBeaconChain, sourceNodeKey, targetNodePort)
+    targetP2pNetwork = createNetwork(targetBeaconChain, targetNodeKey, targetNodePort)
+    sourceP2pNetwork = createNetwork(sourceBeaconChain, sourceNodeKey, sourceNodePort)
 
     createBlocks(
       beaconChain = sourceBeaconChain,
