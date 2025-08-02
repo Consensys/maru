@@ -61,7 +61,6 @@ class ELSyncService(
   private val log = LogManager.getLogger(this.javaClass)
 
   private var poller: Timer? = null
-  private var lastELSyncTarget: ElBlockInfo? = null
   private var currentELSyncStatus: ELSyncStatus? = null
 
   private fun pollTask() {
@@ -69,10 +68,8 @@ class ELSyncService(
     val latestBeaconBlockNumber = latestBeaconBlockHeader.number
     if (latestBeaconBlockNumber == 0UL) {
       val newELSyncStatus = ELSyncStatus.SYNCED
-      if (currentELSyncStatus != newELSyncStatus) {
-        currentELSyncStatus = newELSyncStatus
-        onStatusChange(newELSyncStatus)
-      }
+      currentELSyncStatus = newELSyncStatus
+      onStatusChange(newELSyncStatus)
       return
     }
 
@@ -85,10 +82,7 @@ class ELSyncService(
         blockNumber = latestSealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         blockHash = latestSealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash,
       )
-    if (lastELSyncTarget != newELSyncTarget) {
-      lastELSyncTarget = newELSyncTarget
-      log.info("New EL sync target = {}", newELSyncTarget)
-    }
+    log.info("New EL sync target = {}", newELSyncTarget)
 
     val fcuResponse =
       executionLayerManager
@@ -105,10 +99,7 @@ class ELSyncService(
         else -> throw IllegalStateException("Unexpected payload status: ${fcuResponse.payloadStatus.status}")
       }
 
-    if (currentELSyncStatus != newELSyncStatus) {
-      currentELSyncStatus = newELSyncStatus
-      onStatusChange(newELSyncStatus)
-    }
+    onStatusChange(newELSyncStatus)
   }
 
   override fun start() {
@@ -138,7 +129,6 @@ class ELSyncService(
       }
       poller?.cancel()
       poller = null
-      lastELSyncTarget = null
       currentELSyncStatus = null
     }
   }

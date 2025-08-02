@@ -321,8 +321,8 @@ class PeerChainTrackerTest {
     peerChainTracker.start()
     timer.runNextTask()
 
-    // Assert - No updates should occur with empty peer list
-    assertThat(syncTargetUpdateHandler.receivedTargets).isEmpty()
+    // Assert - When there are no peers it should just set the sync target to 0
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(0UL))
 
     // Arrange - Add peers
     val peersHeads =
@@ -335,7 +335,6 @@ class PeerChainTrackerTest {
     timer.runNextTask()
 
     // Assert - Update should occur when peers are added
-    assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
-    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(100UL)
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(0UL, 100UL))
   }
 }

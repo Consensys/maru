@@ -52,9 +52,10 @@ import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
+import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.PeerChainTracker
-import maru.syncing.SyncControllerManager
+import maru.syncing.SyncController
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -145,7 +146,7 @@ class MaruAppFactory {
       )
     val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
-    var syncControllerImpl: SyncControllerManager? = null
+    var syncControllerImpl: SyncController? = null
 
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
@@ -161,20 +162,26 @@ class MaruAppFactory {
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     syncControllerImpl =
-      BeaconSyncControllerImpl.create(
-        beaconChain = beaconChain,
-        elManager = executionLayerManager,
-        peersHeadsProvider = peersHeadBlockProvider,
-        validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
-        peerLookup = p2pNetwork.getPeerLookup(),
-        besuMetrics = besuMetricsSystemAdapter,
-        metricsFacade = metricsFacade,
-        peerChainTrackerConfig =
-          PeerChainTracker.Config(
-            config.syncing.peerChainHeightPollingInterval,
-            config.syncing.peerChainHeightGranularity,
-          ),
-      )
+      if (config.p2pConfig != null) {
+        BeaconSyncControllerImpl.create(
+          beaconChain = beaconChain,
+          elManager = executionLayerManager,
+          peersHeadsProvider = peersHeadBlockProvider,
+          validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
+          peerLookup = p2pNetwork.getPeerLookup(),
+          besuMetrics = besuMetricsSystemAdapter,
+          metricsFacade = metricsFacade,
+          peerChainTrackerConfig =
+            PeerChainTracker.Config(
+              config.syncing.peerChainHeightPollingInterval,
+              config.syncing.peerChainHeightGranularity,
+            ),
+          allowEmptyBlocks = config.allowEmptyBlocks,
+        )
+      } else {
+        AlwaysSyncedController()
+      }
+
     val finalizationProvider =
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)

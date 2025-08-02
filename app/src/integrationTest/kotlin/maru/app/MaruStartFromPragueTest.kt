@@ -67,7 +67,7 @@ class MaruStartFromPragueTest {
     val besuNode = BesuFactory.buildTestBesu()
     cluster.startWithRetry(besuNode)
     maruNode =
-      maruFactory.buildTestMaruValidatorWithP2pPeering(
+      maruFactory.buildTestMaruValidatorWithoutP2pPeering(
         ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = besuNode.engineRpcUrl().get(),
         dataDir = tmpDir.toPath(),
