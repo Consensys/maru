@@ -168,6 +168,7 @@ class MaruFactory {
       port = p2pPort,
       staticPeers = staticPeers,
       reconnectDelay = defaultReconnectDelay,
+      statusUpdate = P2P.StatusUpdateConfig(renewal = 1.seconds), // For faster syncing in the tests
     )
   }
 

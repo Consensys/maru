@@ -219,6 +219,7 @@ class MaruApp(
           beaconChainInitialization = beaconChainInitialization,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
+          syncStatusProvider = syncStatusProvider,
         )
       }
     val delegatedConsensusNewBlockHandler =

@@ -26,16 +26,19 @@ import maru.core.Protocol
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
+import maru.syncing.ELSyncStatus
+import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 
 class QbftFollowerFactory(
-  val p2PNetwork: P2PNetwork,
-  val beaconChain: BeaconChain,
-  val newBlockHandler: NewBlockHandler<*>,
-  val validatorElNodeConfig: ValidatorElNode,
-  val beaconChainInitialization: BeaconChainInitialization,
-  val metricsFacade: MetricsFacade,
-  val allowEmptyBlocks: Boolean,
+  private val p2PNetwork: P2PNetwork,
+  private val beaconChain: BeaconChain,
+  private val newBlockHandler: NewBlockHandler<*>,
+  private val validatorElNodeConfig: ValidatorElNode,
+  private val beaconChainInitialization: BeaconChainInitialization,
+  private val metricsFacade: MetricsFacade,
+  private val allowEmptyBlocks: Boolean,
+  private val syncStatusProvider: SyncStatusProvider,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)
@@ -73,6 +76,13 @@ class QbftFollowerFactory(
 
     beaconChainInitialization.ensureDbIsInitialized(qbftConsensusConfig.validatorSet)
 
-    return QbftConsensusFollower(p2PNetwork, blockImporter)
+    val qbftFollowerProtocol = QbftConsensusFollower(p2PNetwork, blockImporter)
+    syncStatusProvider.onElSyncStatusUpdate {
+      when (it) {
+        ELSyncStatus.SYNCING -> qbftFollowerProtocol.stop()
+        ELSyncStatus.SYNCED -> qbftFollowerProtocol.start()
+      }
+    }
+    return qbftFollowerProtocol
   }
 }
