@@ -39,7 +39,7 @@ class CLSyncServiceImpl(
 ) : CLSyncService,
   LongRunningService {
   private val log: Logger = LogManager.getLogger(this::class.java)
-  private var pipeline: Pipeline<*>? = null
+  private val pipeline: AtomicReference<Pipeline<*>?> = AtomicReference(null)
   private val syncTarget: AtomicReference<ULong> = AtomicReference(0UL)
   private val syncCompleteHanders: SubscriptionManager<ULong> = InOrderFanoutSubscriptionManager()
   private val blockImporter =
@@ -68,7 +68,7 @@ class CLSyncServiceImpl(
     this.syncTarget.set(syncTarget)
 
     // If the pipeline is already running, we don't need to start a new one
-    if (pipeline == null) {
+    if (pipeline.get() == null) {
       startSync()
     }
   }
@@ -76,18 +76,18 @@ class CLSyncServiceImpl(
   private fun startSync() {
     val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
     val pipeline = pipelineFactory.createPipeline(startBlock)
-    this.pipeline = pipeline
+    this.pipeline.set(pipeline)
 
     pipeline.start(executorService).handle { _, ex ->
       if (ex != null && ex !is CancellationException) {
         log.error("Sync pipeline failed, restarting", ex)
         pipelineRestartCounter.increment()
-        this.pipeline = null
+        this.pipeline.set(null)
         startSync()
       } else {
         val completedSyncTarget = syncTarget.get() // Capture current target at completion
         log.info("Sync completed syncTarget={}", completedSyncTarget)
-        this.pipeline = null
+        this.pipeline.set(null)
         syncCompleteHanders.notifySubscribers(completedSyncTarget)
       }
     }
@@ -104,6 +104,6 @@ class CLSyncServiceImpl(
 
   override fun stop() {
     started.set(false)
-    pipeline?.abort()
+    pipeline.get()?.abort()
   }
 }
