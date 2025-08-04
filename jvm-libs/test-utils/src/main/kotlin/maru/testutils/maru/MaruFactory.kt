@@ -68,7 +68,7 @@ class MaruFactory(
 
   private val validatorQbftOptions =
     QbftOptions(
-      feeRecipient = validatorAddress.fromHexToByteArray(),
+      feeRecipient = qbftValidator.address.reversedArray(),
       minBlockBuildTime = 200.milliseconds,
     )
 

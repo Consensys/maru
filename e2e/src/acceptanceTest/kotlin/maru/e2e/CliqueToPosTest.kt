@@ -74,7 +74,7 @@ class CliqueToPosTest {
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
-    private lateinit var maru: MaruApp
+    private lateinit var maruValidator: MaruApp
     private var pragueSwitchTimestamp: Long = 0
     private val genesisDir = File("../docker/initialization")
     private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
@@ -114,7 +114,7 @@ class CliqueToPosTest {
       qbftCluster.before()
       pragueSwitchTimestamp = parsePragueSwitchTimestamp()
       if (!useMaruContainer) {
-        maru = buildTestMaru(pragueSwitchTimestamp)
+        maruValidator = buildTestMaru(pragueSwitchTimestamp)
       }
     }
 
@@ -170,7 +170,7 @@ class CliqueToPosTest {
         ).send()
         .block
 
-    fun buildTestMaru(pragueTime: Long): MaruApp =
+    private fun buildTestMaru(pragueTime: Long): MaruApp =
       maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = "http://localhost:8545",
         engineApiRpc = "http://localhost:8550",
@@ -204,7 +204,7 @@ class CliqueToPosTest {
   @Test
   fun networkCanBeSwitched() {
     if (!useMaruContainer) {
-      maru.start()
+      maruValidator.start()
     }
     sendCliqueTransactions()
     everyoneArePeered()
@@ -221,7 +221,7 @@ class CliqueToPosTest {
 
     waitForAllBlockHeightsToMatch()
     if (!useMaruContainer) {
-      maru.stop()
+      maruValidator.stop()
     }
   }
 
