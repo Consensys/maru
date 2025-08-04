@@ -19,11 +19,11 @@ import maru.p2p.NoOpP2PNetwork
 import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.Checks.verifyBlockTime
 import maru.testutils.Checks.verifyBlockTimeWithAGapOn
-import maru.testutils.MaruFactory
 import maru.testutils.SoleNetworkParticipantStack
 import maru.testutils.SpyingP2PNetwork
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.startWithRetry
+import maru.testutils.maru.MaruFactory
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await

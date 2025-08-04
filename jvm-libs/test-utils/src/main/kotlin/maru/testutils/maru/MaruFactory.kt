@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils
+package maru.testutils.maru
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KeyType
@@ -20,6 +20,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.kotlin.decodeHex
+import linea.kotlin.encodeHex
 import maru.api.ApiServer
 import maru.app.MaruApp
 import maru.app.MaruAppFactory
@@ -34,11 +35,14 @@ import maru.config.Persistence
 import maru.config.QbftOptions
 import maru.config.SyncingConfig
 import maru.config.ValidatorElNode
-import maru.config.consensus.Utils
+import maru.config.consensus.ElFork
+import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
+import maru.core.Validator
 import maru.crypto.Crypto
-import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
@@ -57,21 +61,7 @@ class MaruFactory {
   val qbftValidator =
     Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(validatorPrivateKeyWithPrefix.bytes()))
   val validatorAddress = qbftValidator.address.encodeHex()
-  private val genesisFileWithoutSwitch =
-    """
-    {
-      "chainId": 1337,
-      "config": {
-        "0": {
-          "type": "qbft",
-          "blockTimeSeconds": 1,
-          "validatorSet": ["$validatorAddress"],
-          "elFork": "Prague"
-        }
-      }
-    }
 
-    """.trimIndent()
   private val validatorQbftOptions =
     QbftOptions(
       feeRecipient = validatorAddress.fromHexToByteArray(),
@@ -79,9 +69,20 @@ class MaruFactory {
     )
 
   private val beaconGenesisConfig: ForksSchedule =
-    run {
-      Utils.parseBeaconChainConfig(genesisFileWithoutSwitch).domainFriendly()
-    }
+    ForksSchedule(
+      1337u,
+      setOf(
+        ForkSpec(
+          timestampSeconds = 0,
+          blockTimeSeconds = 1,
+          configuration =
+            QbftConsensusConfig(
+              validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+              elFork = ElFork.Prague,
+            ),
+        ),
+      ),
+    )
 
   private fun generatePrivateKey(): PrivKey = generateKeyPair(KeyType.SECP256K1).component1()
 
@@ -277,24 +278,27 @@ class MaruFactory {
     return buildApp(config, overridingP2PNetwork = p2pNetwork)
   }
 
-  private fun switchableGenesis(switchTimestamp: Long): String =
-    """
-    {
-      "chainId": 1337,
-      "config": {
-        "0": {
-          "type": "delegated",
-          "blockTimeSeconds": 1
-        },
-        "$switchTimestamp": {
-          "type": "qbft",
-          "blockTimeSeconds": 1,
-          "validatorSet": ["$validatorAddress"],
-          "elFork": "Prague"
-        }
-      }
-    }
-    """.trimIndent()
+  private fun switchableGenesis(switchTimestamp: Long): ForksSchedule =
+    ForksSchedule(
+      1337u,
+      setOf(
+        ForkSpec(
+          timestampSeconds = 0,
+          blockTimeSeconds = 1,
+          configuration =
+          ElDelegatedConfig,
+        ),
+        ForkSpec(
+          timestampSeconds = switchTimestamp,
+          blockTimeSeconds = 1,
+          configuration =
+            QbftConsensusConfig(
+              validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+              elFork = ElFork.Prague,
+            ),
+        ),
+      ),
+    )
 
   fun buildSwitchableTestMaruValidatorWithP2pPeering(
     ethereumJsonRpcUrl: String,
@@ -307,7 +311,7 @@ class MaruFactory {
     p2pPort: UInt = 0u,
     allowEmptyBlocks: Boolean = false,
   ): MaruApp {
-    val beaconGenesisConfig = Utils.parseBeaconChainConfig(switchableGenesis(switchTimestamp)).domainFriendly()
+    val beaconGenesisConfig = switchableGenesis(switchTimestamp)
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
     val config =
       buildMaruConfig(
@@ -341,7 +345,7 @@ class MaruFactory {
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val followersConfig = buildFollowersConfig(engineApiRpc)
-    val beaconGenesisConfig = Utils.parseBeaconChainConfig(switchableGenesis(switchTimestamp)).domainFriendly()
+    val beaconGenesisConfig = switchableGenesis(switchTimestamp)
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,

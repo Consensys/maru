@@ -12,11 +12,11 @@ import java.io.File
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.toJavaDuration
-import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.latestBlock
 import maru.testutils.besu.startWithRetry
+import maru.testutils.maru.MaruFactory
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await

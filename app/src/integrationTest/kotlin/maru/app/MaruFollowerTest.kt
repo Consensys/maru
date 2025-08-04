@@ -13,12 +13,12 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import maru.testutils.Checks.getMinedBlocks
-import maru.testutils.MaruFactory
 import maru.testutils.PeeringNetworkParticipantStack
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.ethGetBlockByNumber
 import maru.testutils.besu.startWithRetry
+import maru.testutils.maru.MaruFactory
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await

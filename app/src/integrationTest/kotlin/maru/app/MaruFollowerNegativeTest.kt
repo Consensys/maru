@@ -16,11 +16,11 @@ import maru.p2p.NoOpP2PNetwork
 import maru.p2p.ValidationResult
 import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.InjectableSealedBlocksFakeNetwork
-import maru.testutils.MaruFactory
 import maru.testutils.SoleNetworkParticipantStack
 import maru.testutils.SpyingP2PNetwork
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
+import maru.testutils.maru.MaruFactory
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
