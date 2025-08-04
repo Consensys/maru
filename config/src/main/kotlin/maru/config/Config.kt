@@ -104,6 +104,17 @@ data class QbftOptions(
     result = 31 * result + feeRecipient.contentHashCode()
     return result
   }
+
+  override fun toString(): String =
+    "QbftOptions(" +
+      "minBlockBuildTime=$minBlockBuildTime, " +
+      "messageQueueLimit=$messageQueueLimit, " +
+      "roundExpiry=$roundExpiry, " +
+      "duplicateMessageLimit=$duplicateMessageLimit, " +
+      "futureMessageMaxDistance=$futureMessageMaxDistance, " +
+      "futureMessagesLimit=$futureMessagesLimit, " +
+      "feeRecipient=0x${feeRecipient.joinToString("") { "%02x".format(it) }}" +
+      ")"
 }
 
 data class ObservabilityOptions(

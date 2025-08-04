@@ -115,6 +115,7 @@ class QbftValidatorFactory(
             signer = Signing.ULongSigner(nodeKey),
             hasher = Hashing::keccak,
           ),
+        feeRecipient = qbftOptions.feeRecipient,
       )
 
     val qbftBlockCreatorFactory =
@@ -258,6 +259,7 @@ class QbftValidatorFactory(
     stateTransition: StateTransition,
     finalizationStateProvider: FinalizationProvider,
     prevRandaoProvider: PrevRandaoProvider<ULong>,
+    feeRecipient: ByteArray,
   ): SealedBeaconBlockImporter<ValidationResult> {
     val shouldBuildNextBlock =
       { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->
@@ -272,7 +274,7 @@ class QbftValidatorFactory(
         nextBlockTimestampProvider = nextBlockTimestampProvider,
         prevRandaoProvider = prevRandaoProvider,
         shouldBuildNextBlock = shouldBuildNextBlock,
-        blockBuilderIdentity = localNodeIdentity,
+        feeRecipient = feeRecipient,
       )
     return TransactionalSealedBeaconBlockImporter(
       beaconChain = beaconChain,
