@@ -53,7 +53,7 @@ class CLSyncServiceImpl(
     BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, pipelineConfig) {
       syncTarget.get()
     }
-  internal val pipelineRestartCounter =
+  private val pipelineRestartCounter =
     metricsFacade.createCounter(
       category = MaruMetricsCategory.SYNCHRONIZER,
       name = "beaconchain.restart.counter",
