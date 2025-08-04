@@ -21,7 +21,7 @@ class BesuMetricsCategoryAdapter private constructor(
   override fun getApplicationPrefix(): Optional<String> = Optional.of("maru")
 
   companion object {
-    private val logger = LogManager.getLogger(BesuMetricsCategoryAdapter::class.java)
+    private val logger = LogManager.getLogger(this.javaClass)
 
     fun from(category: LineaMetricsCategory): BesuMetricsCategory = BesuMetricsCategoryAdapter(category)
 
