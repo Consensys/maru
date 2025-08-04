@@ -60,6 +60,7 @@ class CLSyncServiceImpl(
       description = "Count of chain pipeline restarts",
     )
   private val started = AtomicBoolean(false)
+  private val syncLock = Object()
 
   override fun setSyncTarget(syncTarget: ULong) {
     check(started.get()) { "Sync service must be started before setting sync target" }
@@ -67,28 +68,32 @@ class CLSyncServiceImpl(
     log.info("Syncing started syncTarget={}", syncTarget)
     this.syncTarget.set(syncTarget)
 
-    // If the pipeline is already running, we don't need to start a new one
-    if (beaconChainPipeline.get() == null) {
-      startSync()
+    synchronized(syncLock) {
+      // If the pipeline is already running, we don't need to start a new one
+      if (beaconChainPipeline.get() == null) {
+        startSync()
+      }
     }
   }
 
   private fun startSync() {
-    val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
-    val pipeline = pipelineFactory.createPipeline(startBlock)
-    this.beaconChainPipeline.set(pipeline)
+    synchronized(syncLock) {
+      val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
+      val pipeline = pipelineFactory.createPipeline(startBlock)
+      this.beaconChainPipeline.set(pipeline)
 
-    pipeline.pipline.start(executorService).handle { _, ex ->
-      if (ex != null && ex !is CancellationException) {
-        log.error("Sync pipeline failed, restarting", ex)
-        pipelineRestartCounter.increment()
-        this.beaconChainPipeline.set(null)
-        startSync()
-      } else {
-        val completedSyncTarget = pipeline.target()
-        log.info("Sync completed syncTarget={}", completedSyncTarget)
-        this.beaconChainPipeline.set(null)
-        syncCompleteHanders.notifySubscribers(completedSyncTarget)
+      pipeline.pipline.start(executorService).handle { _, ex ->
+        if (ex != null && ex !is CancellationException) {
+          log.error("Sync pipeline failed, restarting", ex)
+          pipelineRestartCounter.increment()
+          this.beaconChainPipeline.set(null)
+          startSync()
+        } else {
+          val completedSyncTarget = pipeline.target()
+          log.info("Sync completed syncTarget={}", completedSyncTarget)
+          this.beaconChainPipeline.set(null)
+          syncCompleteHanders.notifySubscribers(completedSyncTarget)
+        }
       }
     }
   }
