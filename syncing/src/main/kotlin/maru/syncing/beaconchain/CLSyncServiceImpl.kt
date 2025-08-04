@@ -10,8 +10,8 @@ package maru.syncing.beaconchain
 
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
@@ -39,9 +39,10 @@ class CLSyncServiceImpl(
 ) : CLSyncService,
   LongRunningService {
   private val log: Logger = LogManager.getLogger(this::class.java)
-  private val beaconChainPipeline: AtomicReference<BeaconChainPipeline?> = AtomicReference(null)
-  private val syncTarget: AtomicReference<ULong> = AtomicReference(0UL)
-  private val started = AtomicBoolean(false)
+  private val lock = ReentrantLock()
+  private var beaconChainPipeline: BeaconChainPipeline? = null
+  private var syncTarget: ULong = 0UL
+  private var started = false
   private val syncCompleteHanders: SubscriptionManager<ULong> = InOrderFanoutSubscriptionManager()
   private val blockImporter =
     SyncSealedBlockImporterFactory()
@@ -52,7 +53,7 @@ class CLSyncServiceImpl(
       )
   private var pipelineFactory =
     BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, pipelineConfig) {
-      syncTarget.get()
+      lock.withLock { syncTarget }
     }
   private val pipelineRestartCounter =
     metricsFacade.createCounter(
@@ -62,16 +63,20 @@ class CLSyncServiceImpl(
     )
 
   override fun setSyncTarget(syncTarget: ULong) {
-    check(started.get()) { "Sync service must be started before setting sync target" }
+    lock.withLock {
+      check(started) { "Sync service must be started before setting sync target" }
 
-    val oldTarget = this.syncTarget.getAndSet(syncTarget)
-    if (oldTarget != syncTarget) {
-      log.info("Syncing target updated from {} to {}", oldTarget, syncTarget)
-    }
+      val oldTarget = this.syncTarget
+      this.syncTarget = syncTarget
 
-    // If the pipeline is already running, we don't need to start a new one
-    if (beaconChainPipeline.get() == null) {
-      startSync()
+      if (oldTarget != syncTarget) {
+        log.info("Syncing target updated from {} to {}", oldTarget, syncTarget)
+      }
+
+      // If the pipeline is already running, we don't need to start a new one
+      if (beaconChainPipeline == null) {
+        startSync()
+      }
     }
   }
 
@@ -79,20 +84,28 @@ class CLSyncServiceImpl(
     val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
     val pipeline = pipelineFactory.createPipeline(startBlock)
 
-    if (this.beaconChainPipeline.compareAndSet(null, pipeline)) {
-      pipeline.pipline.start(executorService).handle { _, ex ->
-        if (ex != null && ex !is CancellationException) {
-          log.error("Sync pipeline failed, restarting", ex)
-          pipelineRestartCounter.increment()
-          // Atomically clear and restart
-          if (this.beaconChainPipeline.compareAndSet(pipeline, null)) {
-            startSync()
+    lock.withLock {
+      if (beaconChainPipeline == null) {
+        beaconChainPipeline = pipeline
+        pipeline.pipline.start(executorService).handle { _, ex ->
+          lock.withLock {
+            if (ex != null && ex !is CancellationException) {
+              log.error("Sync pipeline failed, restarting", ex)
+
+              pipelineRestartCounter.increment()
+              if (beaconChainPipeline === pipeline) {
+                beaconChainPipeline = null
+                startSync()
+              }
+            } else {
+              val completedSyncTarget = pipeline.target()
+              log.info("Sync completed syncTarget={}", completedSyncTarget)
+              if (beaconChainPipeline === pipeline) {
+                beaconChainPipeline = null
+              }
+              syncCompleteHanders.notifySubscribers(completedSyncTarget)
+            }
           }
-        } else {
-          val completedSyncTarget = pipeline.target()
-          log.info("Sync completed syncTarget={}", completedSyncTarget)
-          this.beaconChainPipeline.compareAndSet(pipeline, null)
-          syncCompleteHanders.notifySubscribers(completedSyncTarget)
         }
       }
     }
@@ -104,14 +117,22 @@ class CLSyncServiceImpl(
   }
 
   override fun start() {
-    if (!started.compareAndSet(false, true)) {
-      log.warn("Sync service is already started")
+    lock.withLock {
+      if (started) {
+        log.warn("Sync service is already started")
+        return
+      }
+      started = true
     }
   }
 
   override fun stop() {
-    if (started.compareAndSet(true, false)) {
-      beaconChainPipeline.get()?.pipline?.abort()
+    lock.withLock {
+      if (!started) {
+        return
+      }
+      started = false
+      beaconChainPipeline?.pipline?.abort()
     }
   }
 }
