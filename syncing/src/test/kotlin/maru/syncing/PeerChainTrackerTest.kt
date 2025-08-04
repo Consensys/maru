@@ -8,8 +8,6 @@
  */
 package maru.syncing
 
-import java.util.Timer
-import java.util.TimerTask
 import kotlin.time.Duration.Companion.seconds
 import maru.p2p.PeersHeadBlockProvider
 import org.assertj.core.api.Assertions.assertThat
@@ -46,37 +44,6 @@ class PeerChainTrackerTest {
 
     fun reset() {
       receivedTargets.clear()
-    }
-  }
-
-  // Test implementation that allows controlling the timer execution
-  internal class TestableTimer : Timer("test-timer", true) {
-    val scheduledTasks = mutableListOf<TimerTask>()
-    val delays = mutableListOf<Long>()
-    val periods = mutableListOf<Long>()
-
-    override fun scheduleAtFixedRate(
-      task: TimerTask,
-      delay: Long,
-      period: Long,
-    ) {
-      scheduledTasks.add(task)
-      delays.add(delay)
-      periods.add(period)
-    }
-
-    fun runNextTask() {
-      if (scheduledTasks.isNotEmpty()) {
-        scheduledTasks[0].run()
-      }
-    }
-
-    // Ensuring that cancel() works properly for cleanup
-    override fun cancel() {
-      super.cancel()
-      scheduledTasks.clear()
-      delays.clear()
-      periods.clear()
     }
   }
 
