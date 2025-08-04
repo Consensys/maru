@@ -23,6 +23,8 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 
 class BeaconBlocksByRangeHandlerTest {
   private lateinit var beaconChain: BeaconChain
@@ -119,5 +121,31 @@ class BeaconBlocksByRangeHandlerTest {
 
     // Verify that the handler limited the request to 64 blocks
     verify(beaconChain).getSealedBeaconBlocks(0UL, MAX_BLOCKS_PER_REQUEST)
+  }
+
+  @Test
+  fun `handles request with exception`() {
+    val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 1000UL)
+    val message =
+      Message(
+        type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
+        version = Version.V1,
+        payload = request,
+      )
+
+    // handler should limit to MAX_BLOCKS_PER_REQUEST
+    whenever(beaconChain.getSealedBeaconBlocks(0UL, MAX_BLOCKS_PER_REQUEST))
+      .thenThrow(
+        IllegalStateException("getSealedBeaconBlocks exception testing"),
+      )
+
+    handler.handleIncomingMessage(peer, message, callback)
+
+    verify(callback).completeWithUnexpectedError(
+      RpcException(
+        RpcResponseStatus.SERVER_ERROR_CODE,
+        "Handling request failed with unexpected error: getSealedBeaconBlocks exception testing",
+      ),
+    )
   }
 }
