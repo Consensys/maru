@@ -103,6 +103,7 @@ class ELSyncService(
         else -> throw IllegalStateException("Unexpected payload status: ${fcuResponse.payloadStatus.status}")
       }
 
+    currentELSyncStatus = newELSyncStatus
     onStatusChange(newELSyncStatus)
   }
 
