@@ -17,6 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.kotlin.assertIs20Bytes
+import maru.extensions.encodeHex
 
 data class Persistence(
   val dataPath: Path,
