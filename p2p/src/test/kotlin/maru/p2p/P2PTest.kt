@@ -33,6 +33,9 @@ import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
+import maru.syncing.CLSyncStatus
+import maru.syncing.ELSyncStatus
+import maru.syncing.SyncStatusProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -78,21 +81,53 @@ class P2PTest {
     private val key1 = "0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".fromHex()
     private val key2 = "0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".fromHex()
     private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
-    private val initialExpectedBeaconBlockNumber = 1UL
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
-    private val forkIdHashProvider =
-      createForkIdHashProvider()
+    private val forkIdHashProvider = createForkIdHashProvider()
     private val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
     private val rpcMethods = createRpcMethods()
+
+    private fun getSyncStatusProvider(): SyncStatusProvider =
+      object : SyncStatusProvider {
+        override fun getCLSyncStatus(): CLSyncStatus = CLSyncStatus.SYNCED
+
+        override fun getElSyncStatus(): ELSyncStatus = ELSyncStatus.SYNCED
+
+        override fun onClSyncStatusUpdate(handler: (newStatus: CLSyncStatus) -> Unit) {}
+
+        override fun onElSyncStatusUpdate(handler: (newStatus: ELSyncStatus) -> Unit) {}
+
+        override fun isBeaconChainSynced(): Boolean = true
+
+        override fun isELSynced(): Boolean = true
+
+        override fun onBeaconSyncComplete(handler: () -> Unit) {}
+
+        override fun onFullSyncComplete(handler: () -> Unit) {}
+
+        override fun getSyncTarget(): ULong? = null
+      }
 
     fun createRpcMethods(): RpcMethods {
       val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
       lateinit var maruPeerManager: MaruPeerManager
       val rpcMethods = RpcMethods(statusMessageFactory, rpcProtocolIdGenerator, { maruPeerManager }, beaconChain)
       val maruPeerFactory =
-        DefaultMaruPeerFactory(rpcMethods, statusMessageFactory, P2P(ipAddress = IPV4, port = PORT1))
+        DefaultMaruPeerFactory(
+          rpcMethods,
+          statusMessageFactory,
+          P2P(ipAddress = IPV4, port = PORT1),
+        )
+
+      val syncStatusProvider = getSyncStatusProvider()
+      val syncStatusProviderProvider = { syncStatusProvider }
       maruPeerManager =
-        MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = P2P(ipAddress = IPV4, port = PORT1))
+        MaruPeerManager(
+          maruPeerFactory = maruPeerFactory,
+          p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
+          forkidHashProvider = forkIdHashProvider,
+          beaconChain = beaconChain,
+          syncStatusProviderProvider = syncStatusProviderProvider,
+        )
       return rpcMethods
     }
 
@@ -136,6 +171,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -154,6 +190,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     try {
       p2PNetworkImpl1.start()
@@ -189,6 +226,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -207,6 +245,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     try {
       p2PNetworkImpl1.start()
@@ -247,6 +286,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -265,6 +305,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     try {
       p2PNetworkImpl1.start()
@@ -298,6 +339,7 @@ class P2PTest {
         beaconChain = beaconChain,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -317,6 +359,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     try {
       p2PNetworkImpl1.start()
@@ -356,6 +399,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
@@ -374,6 +418,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     try {
       p2pNetworkImpl1.start()
@@ -426,6 +471,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     val p2PNetworkImpl2 =
       P2PNetworkImpl(
@@ -444,6 +490,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     val p2PNetworkImpl3 =
       P2PNetworkImpl(
@@ -462,6 +509,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     try {
       p2PNetworkImpl1.start()
@@ -535,6 +583,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     val p2pManagerImpl2 =
       P2PNetworkImpl(
@@ -553,6 +602,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     try {
       p2PNetworkImpl1.start()
@@ -623,6 +673,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     val p2pManagerImpl2 =
       P2PNetworkImpl(
@@ -641,6 +692,7 @@ class P2PTest {
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     try {
       p2PNetworkImpl1.start()
@@ -694,6 +746,7 @@ class P2PTest {
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = beaconChain,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
 
     val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
@@ -729,6 +782,7 @@ class P2PTest {
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
 
     val p2pNetworkImpl3 =
@@ -755,6 +809,7 @@ class P2PTest {
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
 
     try {
@@ -839,6 +894,7 @@ class P2PTest {
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = beaconChain,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
 
     val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
@@ -875,6 +931,7 @@ class P2PTest {
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
 
     try {
@@ -934,6 +991,7 @@ class P2PTest {
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = beaconChain,
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
 
     // node 2 is initiating the connection and is only sending status updates after 2 seconds, so it should be disconnected by node 1, which expects a status update within 1 second
@@ -958,6 +1016,7 @@ class P2PTest {
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         isBlockImportEnabledProvider = { true },
+        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
 
     try {
@@ -1015,7 +1074,7 @@ class P2PTest {
     peer: String,
   ) {
     assertThat(
-      p2pNetwork.isConnected(peer),
+      p2pNetwork.maruPeerManager.getPeers().any { it.id.toString() == peer },
     ).isTrue()
   }
 
@@ -1027,7 +1086,6 @@ class P2PTest {
     whenever(beaconState.latestBeaconBlockHeader).thenReturn(beaconBlockHeader)
     whenever(beaconBlockHeader.hash).thenReturn(ByteArray(32))
     whenever(beaconBlockHeader.number).thenReturn(0uL, 1uL, 2uL, 3uL, 4uL, 5uL, 6uL, 7uL, 8uL, 9uL)
-    val forkIdHashProvider = createForkIdHashProvider()
 
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
     return statusMessageFactory

@@ -24,6 +24,7 @@ import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.messages.StatusMessageFactory
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
+import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
@@ -50,6 +51,7 @@ class P2PNetworkImpl(
   private val beaconChain: BeaconChain,
   private val forkIdHashProvider: ForkIdHashProvider,
   isBlockImportEnabledProvider: () -> Boolean,
+  private val syncStatusProviderProvider: () -> SyncStatusProvider,
 ) : P2PNetwork {
   lateinit var maruPeerManager: MaruPeerManager
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
@@ -84,6 +86,9 @@ class P2PNetworkImpl(
       MaruPeerManager(
         maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory, p2pConfig),
         p2pConfig = p2pConfig,
+        forkidHashProvider = forkIdHashProvider,
+        beaconChain = beaconChain,
+        syncStatusProviderProvider = syncStatusProviderProvider,
       )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(

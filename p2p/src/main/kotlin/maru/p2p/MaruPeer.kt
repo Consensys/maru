@@ -38,8 +38,6 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 interface MaruPeer : Peer {
   fun getStatus(): Status?
 
-  fun sendStatus(): SafeFuture<Unit>
-
   fun updateStatus(newStatus: Status)
 
   fun sendBeaconBlocksByRange(
@@ -47,7 +45,7 @@ interface MaruPeer : Peer {
     count: ULong,
   ): SafeFuture<BeaconBlocksByRangeResponse>
 
-  fun scheduleDisconnectIfStatusNotReceived(delay: Duration)
+  fun awaitInitialStatus(): SafeFuture<Status>
 }
 
 interface MaruPeerFactory {
@@ -85,10 +83,11 @@ class DefaultMaruPeer(
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val status = AtomicReference<Status?>(null)
   private var scheduledDisconnect: Optional<ScheduledFuture<*>> = Optional.empty()
+  private val initialStatusUpdate = SafeFuture<Status>()
 
   override fun getStatus(): Status? = status.get()
 
-  override fun sendStatus(): SafeFuture<Unit> {
+  internal fun sendStatus(): SafeFuture<Unit> {
     try {
       val statusMessage = statusMessageFactory.createStatusMessage()
       val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
@@ -117,6 +116,9 @@ class DefaultMaruPeer(
 
   override fun updateStatus(newStatus: Status) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
+    if (status.get() == null) {
+      initialStatusUpdate.complete(newStatus)
+    }
     status.set(newStatus)
     log.trace("Received status update from peer={}: status={}", id, newStatus)
     if (connectionInitiatedRemotely()) {
@@ -124,7 +126,7 @@ class DefaultMaruPeer(
     }
   }
 
-  override fun scheduleDisconnectIfStatusNotReceived(delay: Duration) {
+  fun scheduleDisconnectIfStatusNotReceived(delay: Duration) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
     scheduledDisconnect =
       Optional.of(
@@ -134,6 +136,15 @@ class DefaultMaruPeer(
           TimeUnit.SECONDS,
         ),
       )
+  }
+
+  override fun awaitInitialStatus(): SafeFuture<Status> {
+    if (connectionInitiatedLocally()) {
+      sendStatus()
+    } else {
+      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
+    }
+    return initialStatusUpdate
   }
 
   override fun sendBeaconBlocksByRange(

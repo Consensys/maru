@@ -78,6 +78,8 @@ class BeaconSyncControllerImpl(
     fullSyncCompleteHandlers.addSyncSubscriber(handler.toString()) { handler() }
   }
 
+  override fun getSyncTarget(): ULong? = lock.read { currentSyncTarget }
+
   fun updateClSyncStatus(newStatus: CLSyncStatus) {
     val callbacks: List<() -> Unit> =
       lock.write {

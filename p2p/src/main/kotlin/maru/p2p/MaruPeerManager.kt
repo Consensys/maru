@@ -17,14 +17,19 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import maru.config.P2P
+import maru.consensus.ForkIdHashProvider
+import maru.database.BeaconChain
 import maru.p2p.discovery.MaruDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService
+import maru.syncing.CLSyncStatus
+import maru.syncing.SyncStatusProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
+import tech.pegasys.teku.networking.p2p.libp2p.PeerManager
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
@@ -35,7 +40,10 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 class MaruPeerManager(
   private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(),
   private val maruPeerFactory: MaruPeerFactory,
-  private val p2pConfig: P2P,
+  p2pConfig: P2P,
+  private val forkidHashProvider: ForkIdHashProvider,
+  private val beaconChain: BeaconChain,
+  private val syncStatusProviderProvider: () -> SyncStatusProvider,
 ) : PeerHandler,
   PeerLookup {
   init {
@@ -44,14 +52,18 @@ class MaruPeerManager(
     }, 20000, 20000, TimeUnit.MILLISECONDS)
   }
 
+  val blocksBehindThreshold: ULong = 32uL
+
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val maxPeers = p2pConfig.maxPeers
   private val currentlySearching = AtomicBoolean(false)
-
   private val connectionInProgress = mutableListOf<Bytes>()
   private var discoveryService: MaruDiscoveryService? = null
+  private val statusExchangingMaruPeers = mutableMapOf<NodeId, MaruPeer>()
 
   private lateinit var p2pNetwork: P2PNetwork<Peer>
+  private lateinit var peerManager: PeerManager
+  private lateinit var syncStatusProvider: SyncStatusProvider
 
   @Volatile
   private var stopCalled = false
@@ -62,6 +74,7 @@ class MaruPeerManager(
   ) {
     this.discoveryService = discoveryService
     this.p2pNetwork = p2pNetwork
+    this.syncStatusProvider = syncStatusProviderProvider()
     searchForPeersUntilMaxReached()
   }
 
@@ -108,19 +121,53 @@ class MaruPeerManager(
   }
 
   override fun onConnect(peer: Peer) {
-    // TODO: here we could check if we want to be connected to that peer
     if (p2pNetwork.peerCount > maxPeers) {
       // TODO: We could disconnect another peer here, based on some criteria
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
+      return
     }
     val maruPeer = maruPeerFactory.createMaruPeer(peer)
-    connectedPeers.put(peer.id, maruPeer)
-    if (maruPeer.connectionInitiatedLocally()) {
-      maruPeer.sendStatus()
-    } else {
-      maruPeer.scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
-    }
+    statusExchangingMaruPeers[peer.id] = maruPeer
+    maruPeer
+      .awaitInitialStatus()
+      .thenApply { status ->
+        if (!status.forkIdHash.contentEquals(forkidHashProvider.currentForkIdHash())) {
+          log.debug(
+            "Peer={} has a different forkIdHash={} than expected={}. Disconnecting.",
+            peer.id,
+            status.forkIdHash,
+            forkidHashProvider.currentForkIdHash(),
+          )
+          maruPeer.disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
+        } else if (syncStatusProvider.getCLSyncStatus() == CLSyncStatus.SYNCING &&
+          status.latestBlockNumber < syncStatusProvider.getSyncTarget()!! - blocksBehindThreshold
+        ) {
+          log.debug(
+            "Peer={} is too far behind our target block number={} (peer's block number={}). Disconnecting.",
+            peer.id,
+            syncStatusProvider.getSyncTarget(),
+            status.latestBlockNumber,
+          )
+          maruPeer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS) // there is no better reason available
+        } else if (syncStatusProvider.getCLSyncStatus() == CLSyncStatus.SYNCED &&
+          status.latestBlockNumber < beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number &&
+          tooManyPeersBehind(beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number)
+        ) {
+          log.debug("Peer={} is behind and we already have too many peers behind. Disconnecting.", peer.id)
+          maruPeer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS) // there is no better reason available
+        } else {
+          connectedPeers.put(peer.id, maruPeer)
+          log.trace("Connected to peer={} with status={}", peer.id, status)
+        }
+      }.always {
+        statusExchangingMaruPeers.remove(peer.id)
+      }
   }
+
+  private fun tooManyPeersBehind(currentHead: ULong): Boolean =
+    connectedPeers.values.count { peer ->
+      peer.getStatus()!!.latestBlockNumber < currentHead - blocksBehindThreshold
+    } >= maxPeers / 10
 
   override fun onDisconnect(peer: Peer) {
     connectedPeers.remove(peer.id)
@@ -130,7 +177,14 @@ class MaruPeerManager(
     }
   }
 
-  override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers[nodeId]
+  override fun getPeer(nodeId: NodeId): MaruPeer? {
+    if (connectedPeers.containsKey(nodeId)) {
+      return connectedPeers[nodeId]
+    } else if (statusExchangingMaruPeers.containsKey(nodeId)) {
+      return statusExchangingMaruPeers[nodeId]
+    }
+    return null
+  }
 
   override fun getPeers(): List<MaruPeer> = connectedPeers.values.toList()
 
@@ -172,5 +226,9 @@ class MaruPeerManager(
   fun getNodeId(peer: DiscoveryPeer): LibP2PNodeId {
     val pubKey = unmarshalSecp256k1PublicKey(peer.publicKey.toArrayUnsafe())
     return LibP2PNodeId(PeerId.fromPubKey(pubKey))
+  }
+
+  fun setPeerManager(peerManager: PeerManager) {
+    this.peerManager = peerManager
   }
 }
