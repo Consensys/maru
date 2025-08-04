@@ -21,11 +21,11 @@ import maru.subscription.InOrderFanoutSubscriptionManager
 import maru.subscription.SubscriptionManager
 import maru.syncing.CLSyncService
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
+import maru.syncing.beaconchain.pipeline.BeaconChainPipeline
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
-import org.hyperledger.besu.services.pipeline.Pipeline
 
 class CLSyncServiceImpl(
   private val beaconChain: BeaconChain,
@@ -39,7 +39,7 @@ class CLSyncServiceImpl(
 ) : CLSyncService,
   LongRunningService {
   private val log: Logger = LogManager.getLogger(this::class.java)
-  private val pipeline: AtomicReference<Pipeline<*>?> = AtomicReference(null)
+  private val beaconChainPipeline: AtomicReference<BeaconChainPipeline?> = AtomicReference(null)
   private val syncTarget: AtomicReference<ULong> = AtomicReference(0UL)
   private val syncCompleteHanders: SubscriptionManager<ULong> = InOrderFanoutSubscriptionManager()
   private val blockImporter =
@@ -68,7 +68,7 @@ class CLSyncServiceImpl(
     this.syncTarget.set(syncTarget)
 
     // If the pipeline is already running, we don't need to start a new one
-    if (pipeline.get() == null) {
+    if (beaconChainPipeline.get() == null) {
       startSync()
     }
   }
@@ -76,18 +76,18 @@ class CLSyncServiceImpl(
   private fun startSync() {
     val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
     val pipeline = pipelineFactory.createPipeline(startBlock)
-    this.pipeline.set(pipeline)
+    this.beaconChainPipeline.set(pipeline)
 
-    pipeline.start(executorService).handle { _, ex ->
+    pipeline.pipline.start(executorService).handle { _, ex ->
       if (ex != null && ex !is CancellationException) {
         log.error("Sync pipeline failed, restarting", ex)
         pipelineRestartCounter.increment()
-        this.pipeline.set(null)
+        this.beaconChainPipeline.set(null)
         startSync()
       } else {
-        val completedSyncTarget = syncTarget.get() // Capture current target at completion
+        val completedSyncTarget = pipeline.target()
         log.info("Sync completed syncTarget={}", completedSyncTarget)
-        this.pipeline.set(null)
+        this.beaconChainPipeline.set(null)
         syncCompleteHanders.notifySubscribers(completedSyncTarget)
       }
     }
@@ -104,6 +104,6 @@ class CLSyncServiceImpl(
 
   override fun stop() {
     started.set(false)
-    pipeline.get()?.abort()
+    beaconChainPipeline.get()?.pipline?.abort()
   }
 }

@@ -83,13 +83,14 @@ class BeaconChainDownloadPipelineFactoryTest {
     whenever(syncTargetProvider.invoke()).thenReturn(125uL)
 
     val pipeline = factory.createPipeline(100uL)
-    val completionFuture = pipeline.start(executorService)
+    val completionFuture = pipeline.pipline.start(executorService)
 
     // Wait for completion
     completionFuture.get(5, TimeUnit.SECONDS)
 
     // Verify all blocks were imported
     val numberOfImportedBlocks = 125 - 100 + 1 // Total blocks from 100 to 125 inclusive
+    assertThat(pipeline.target()).isEqualTo(125uL)
     verify(blockImporter, times(numberOfImportedBlocks)).importBlock(any())
   }
 
@@ -118,13 +119,14 @@ class BeaconChainDownloadPipelineFactoryTest {
     whenever(syncTargetProvider.invoke()).thenReturn(119uL, 125uL, 125uL)
 
     val pipeline = factory.createPipeline(100uL)
-    val completionFuture = pipeline.start(executorService)
+    val completionFuture = pipeline.pipline.start(executorService)
 
     // Wait for completion
     completionFuture.get(5, TimeUnit.SECONDS)
 
     // Verify all blocks were imported
     val numberOfImportedBlocks = 125 - 100 + 1 // Total blocks from 100 to 125 inclusive
+    assertThat(pipeline.target()).isEqualTo(125uL)
     verify(blockImporter, times(numberOfImportedBlocks)).importBlock(any())
   }
 
@@ -144,10 +146,11 @@ class BeaconChainDownloadPipelineFactoryTest {
     whenever(syncTargetProvider.invoke()).thenReturn(42uL)
 
     val pipeline = factory.createPipeline(42uL)
-    val completionFuture = pipeline.start(executorService)
+    val completionFuture = pipeline.pipline.start(executorService)
 
     completionFuture.get(5, TimeUnit.SECONDS)
 
+    assertThat(pipeline.target()).isEqualTo(42uL)
     verify(peer).sendBeaconBlocksByRange(42uL, 1uL)
     verify(blockImporter).importBlock(blocks[0])
   }
@@ -177,7 +180,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     )
 
     val pipeline = largeRequestSizeFactory.createPipeline(0uL)
-    val completionFuture = pipeline.start(executorService)
+    val completionFuture = pipeline.pipline.start(executorService)
 
     completionFuture.get(5, TimeUnit.SECONDS)
 
@@ -233,7 +236,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     whenever(syncTargetProvider.invoke()).thenReturn(ULong.MAX_VALUE - 1uL)
 
     val pipeline = factory.createPipeline(startBlock)
-    val completionFuture = pipeline.start(executorService)
+    val completionFuture = pipeline.pipline.start(executorService)
 
     // Should complete without overflow errors
     completionFuture.get(5, TimeUnit.SECONDS)
