@@ -129,7 +129,7 @@ class QbftValidatorFactory(
             signer = Signing.ULongSigner(nodeKey),
             hasher = Hashing::keccak,
           ),
-        blockBuilderIdentity = Validator(localAddress.toArray()),
+        feeRecipient = qbftOptions.feeRecipient,
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
             qbftOptions.minBlockBuildTime,
