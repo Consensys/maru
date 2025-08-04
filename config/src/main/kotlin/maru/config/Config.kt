@@ -113,7 +113,7 @@ data class QbftOptions(
       "duplicateMessageLimit=$duplicateMessageLimit, " +
       "futureMessageMaxDistance=$futureMessageMaxDistance, " +
       "futureMessagesLimit=$futureMessagesLimit, " +
-      "feeRecipient=0x${feeRecipient.joinToString("") { "%02x".format(it) }}" +
+      "feeRecipient=${feeRecipient.encodeHex()}" +
       ")"
 }
 
