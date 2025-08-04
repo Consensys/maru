@@ -8,7 +8,6 @@
  */
 package maru.app
 
-import awaitTillMaruHasPeers
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -87,8 +86,6 @@ class MaruFollowerNegativeTest {
       }
     followerStack.maruApp.start()
 
-    followerStack.maruApp.awaitTillMaruHasPeers(1u)
-    validatorStack.maruApp.awaitTillMaruHasPeers(1u)
     val followerGenesis =
       followerStack.besuNode
         .nodeRequests()

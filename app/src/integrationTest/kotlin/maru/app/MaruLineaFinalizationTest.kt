@@ -31,7 +31,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 
 class MaruLineaFinalizationTest {
