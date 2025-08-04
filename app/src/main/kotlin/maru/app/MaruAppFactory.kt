@@ -164,6 +164,9 @@ class MaruAppFactory {
         isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
+    val finalizationProvider =
+      overridingFinalizationProvider
+        ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
     syncControllerImpl =
       if (config.p2pConfig != null) {
         BeaconSyncControllerImpl.create(
@@ -180,15 +183,12 @@ class MaruAppFactory {
               config.syncing.peerChainHeightGranularity,
             ),
           elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
+          finalizationProvider = finalizationProvider,
           allowEmptyBlocks = config.allowEmptyBlocks,
         )
       } else {
         AlwaysSyncedController()
       }
-
-    val finalizationProvider =
-      overridingFinalizationProvider
-        ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
 
     val apiServer =
       overridingApiServer
@@ -225,7 +225,7 @@ class MaruAppFactory {
   }
 
   companion object {
-    private val log = LogManager.getLogger(MaruApp)
+    private val log = LogManager.getLogger(this.javaClass)
 
     private fun setupFinalizationProvider(
       config: MaruConfig,

@@ -13,6 +13,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import maru.consensus.ValidatorProvider
+import maru.consensus.state.FinalizationProvider
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.PeerLookup
@@ -180,6 +181,7 @@ class BeaconSyncControllerImpl(
       besuMetrics: MetricsSystem,
       metricsFacade: MetricsFacade,
       elSyncServiceConfig: ELSyncService.Config,
+      finalizationProvider: FinalizationProvider,
       allowEmptyBlocks: Boolean = true,
     ): SyncController {
       val clSyncService =
@@ -204,6 +206,7 @@ class BeaconSyncControllerImpl(
           beaconChain = beaconChain,
           executionLayerManager = elManager,
           onStatusChange = controller::updateElSyncStatus,
+          finalizationProvider = finalizationProvider,
           config = elSyncServiceConfig,
         )
 

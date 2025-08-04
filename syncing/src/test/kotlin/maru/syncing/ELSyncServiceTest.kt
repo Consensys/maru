@@ -9,6 +9,8 @@
 package maru.syncing
 
 import kotlin.time.Duration.Companion.seconds
+import maru.consensus.state.FinalizationProvider
+import maru.consensus.state.FinalizationState
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -23,6 +25,9 @@ import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class ELSyncServiceTest {
+  private val finalizationProvider: FinalizationProvider =
+    { FinalizationState(it.executionPayload.blockHash, it.executionPayload.blockHash) }
+
   @Test
   fun `should set sync status to Synced for genesis block`() {
     var elSyncStatus: ELSyncStatus? = null
@@ -38,6 +43,7 @@ class ELSyncServiceTest {
         executionLayerManager = executionLayerManager,
         onStatusChange = onStatusChange,
         config = config,
+        finalizationProvider = finalizationProvider,
         timerFactory = { _, _ -> timer },
       )
 
@@ -64,6 +70,7 @@ class ELSyncServiceTest {
         executionLayerManager = executionLayerManager,
         onStatusChange = onStatusChange,
         config = config,
+        finalizationProvider = finalizationProvider,
         timerFactory = { _, _ -> timer },
       )
 

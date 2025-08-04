@@ -61,10 +61,8 @@ class MaruLineaFinalizationTest {
         besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
       )
 
-    // Start both Besu nodes together for proper peering
     PeeringNetworkParticipantStack.startBesuNodes(cluster, validatorStack, followerStack)
 
-    // Create and start validator Maru app first
     val validatorMaruApp =
       maruFactory.buildTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
@@ -75,13 +73,8 @@ class MaruLineaFinalizationTest {
     validatorStack.setMaruApp(validatorMaruApp)
     validatorStack.maruApp.start()
 
-    // Wait a bit to ensure the validator's p2p network is fully bound
-    Thread.sleep(1000)
-
-    // Get the validator's p2p port after it's started
     val validatorP2pPort = validatorStack.p2pPort
 
-    // Create follower Maru app with the validator's p2p port for static peering
     val followerMaruApp =
       maruFactory.buildTestMaruFollowerWithP2pPeering(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
