@@ -898,11 +898,12 @@ class P2PTest {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
         awaitUntilAsserted { peer1.getStatus()!!.latestBlockNumber == currentBlockNumber }
-        awaitUntilAsserted { peer2.getStatus()!!.latestBlockNumber == currentBlockNumber++ }
+        awaitUntilAsserted { peer2.getStatus()!!.latestBlockNumber == currentBlockNumber }
         if (peer1.getStatus()!!.latestBlockNumber == 5uL) {
           // we have reached the end of the blocks, so we can stop
           break
         }
+        currentBlockNumber++
       }
     } finally {
       p2pNetworkImpl1.stop()
