@@ -54,6 +54,7 @@ import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
+import maru.syncing.ELSyncService
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
 import net.consensys.linea.metrics.MetricsFacade
@@ -65,7 +66,7 @@ import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeyS
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MaruAppFactory {
-  private val log = LogManager.getLogger(MaruAppFactory::class.java)
+  private val log = LogManager.getLogger(this.javaClass)
 
   fun create(
     config: MaruConfig,
@@ -104,7 +105,9 @@ class MaruAppFactory {
           databasePath = config.persistence.dataPath,
           metricsSystem = besuMetricsSystemAdapter,
           metricCategory = BesuMetricsCategoryAdapter.from(MaruMetricsCategory.STORAGE),
-        )
+        ).also {
+          dbInitialization(beaconGenesisConfig, it)
+        }
 
     val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
     val qbftForkTimestamp = qbftFork.timestampSeconds.toULong()
@@ -176,6 +179,7 @@ class MaruAppFactory {
               config.syncing.peerChainHeightPollingInterval,
               config.syncing.peerChainHeightGranularity,
             ),
+          elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
           allowEmptyBlocks = config.allowEmptyBlocks,
         )
       } else {
@@ -305,5 +309,23 @@ class MaruAppFactory {
 
   private fun ensureDirectoryExists(path: Path) {
     if (!path.exists()) Files.createDirectories(path)
+  }
+
+  private fun dbInitialization(
+    beaconGenesisConfig: ForksSchedule,
+    beaconChain: BeaconChain,
+  ) {
+    val qbftForkConfig = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
+    val qbftForkTimestamp =
+      qbftForkConfig
+        .timestampSeconds
+        .toULong()
+    val beaconChainInitialization =
+      BeaconChainInitialization(
+        beaconChain = beaconChain,
+        genesisTimestamp = qbftForkTimestamp,
+      )
+    val qbftConsensusConfig = qbftForkConfig.configuration as QbftConsensusConfig
+    beaconChainInitialization.ensureDbIsInitialized(qbftConsensusConfig.validatorSet)
   }
 }

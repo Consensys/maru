@@ -8,6 +8,7 @@
  */
 package maru.app
 
+import awaitTillMaruHasPeers
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -17,7 +18,7 @@ import maru.p2p.ValidationResult
 import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.InjectableSealedBlocksFakeNetwork
 import maru.testutils.MaruFactory
-import maru.testutils.NetworkParticipantStack
+import maru.testutils.SoleNetworkParticipantStack
 import maru.testutils.SpyingP2PNetwork
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
@@ -49,7 +50,7 @@ class MaruFollowerNegativeTest {
   fun `Maru follower doesn't import blocks without proper signature`() {
     val spyingP2PNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
     val validatorStack =
-      NetworkParticipantStack(
+      SoleNetworkParticipantStack(
         cluster = cluster,
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
         maruFactory.buildTestMaruValidatorWithoutP2pPeering(
@@ -60,6 +61,7 @@ class MaruFollowerNegativeTest {
         )
       }
     validatorStack.maruApp.start()
+
     val validatorGenesis =
       validatorStack.besuNode
         .nodeRequests()
@@ -72,7 +74,7 @@ class MaruFollowerNegativeTest {
 
     val followerP2PNetwork = InjectableSealedBlocksFakeNetwork()
     val followerStack =
-      NetworkParticipantStack(
+      SoleNetworkParticipantStack(
         cluster = cluster,
         besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
@@ -84,6 +86,9 @@ class MaruFollowerNegativeTest {
         )
       }
     followerStack.maruApp.start()
+
+    followerStack.maruApp.awaitTillMaruHasPeers(1u)
+    validatorStack.maruApp.awaitTillMaruHasPeers(1u)
     val followerGenesis =
       followerStack.besuNode
         .nodeRequests()

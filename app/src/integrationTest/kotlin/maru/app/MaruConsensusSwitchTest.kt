@@ -8,6 +8,7 @@
  */
 package maru.app
 
+import awaitTillMaruHasPeers
 import java.io.File
 import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.Checks.verifyBlockTimeWithAGapOn
@@ -139,6 +140,8 @@ class MaruConsensusSwitchTest {
       )
     followerMaruNode.start()
 
+    followerMaruNode.awaitTillMaruHasPeers(1u)
+    validatorMaruNode.awaitTillMaruHasPeers(1u)
     log.info("Sending transactions")
     repeat(totalBlocksToProduce) {
       transactionsHelper.run {

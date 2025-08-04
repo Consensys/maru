@@ -14,7 +14,6 @@ import maru.api.ApiServer
 import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ElBlockMetadata
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestElBlockMetadataCache
@@ -34,6 +33,7 @@ import maru.crypto.Crypto
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
+import maru.p2p.PeerInfo
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.p2p.ValidationResult
 import maru.services.LongRunningService
@@ -49,7 +49,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
   val config: MaruConfig,
-  beaconGenesisConfig: ForksSchedule,
+  val beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
   private val p2pNetwork: P2PNetwork,
@@ -160,6 +160,13 @@ class MaruApp(
     beaconChain.close()
   }
 
+  fun peersConnected(): UInt =
+    p2pNetwork
+      .getPeers()
+      .filter { it.status == PeerInfo.PeerStatus.CONNECTED }
+      .size
+      .toUInt()
+
   private fun createProtocolStarter(
     config: MaruConfig,
     beaconGenesisConfig: ForksSchedule,
@@ -173,14 +180,6 @@ class MaruApp(
     val blockImportHandlers =
       NewBlockHandlerMultiplexer(followerBlockHandlers)
     val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
-
-    val qbftForkTimestamp =
-      beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class).timestampSeconds.toULong()
-    val beaconChainInitialization =
-      BeaconChainInitialization(
-        beaconChain = beaconChain,
-        genesisTimestamp = qbftForkTimestamp,
-      )
 
     val qbftFactory =
       if (config.qbftOptions != null) {
@@ -205,18 +204,16 @@ class MaruApp(
           beaconChain = beaconChain,
           clock = clock,
           p2pNetwork = p2pNetwork,
-          beaconChainInitialization = beaconChainInitialization,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
         )
       } else {
         QbftFollowerFactory(
-          p2PNetwork = p2pNetwork,
+          p2pNetwork = p2pNetwork,
           beaconChain = beaconChain,
           newBlockHandler = blockImportHandlers,
           validatorElNodeConfig = config.validatorElNode,
-          beaconChainInitialization = beaconChainInitialization,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,

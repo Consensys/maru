@@ -38,7 +38,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val newBlockHandler: SealedBeaconBlockHandler<*>,
   private val clock: Clock,
   private val p2pNetwork: P2PNetwork,
-  private val beaconChainInitialization: BeaconChainInitialization,
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
   private val syncStatusProvider: SyncStatusProvider,
@@ -62,8 +61,6 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
       JsonRpcExecutionLayerManager(
         executionLayerEngineApiClient = engineApiExecutionLayerClient,
       )
-
-    beaconChainInitialization.ensureDbIsInitialized(validatorSet = qbftConsensusConfig.validatorSet)
 
     val qbftValidatorFactory =
       QbftValidatorFactory(

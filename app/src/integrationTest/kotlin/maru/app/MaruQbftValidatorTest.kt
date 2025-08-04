@@ -20,7 +20,7 @@ import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.Checks.verifyBlockTime
 import maru.testutils.Checks.verifyBlockTimeWithAGapOn
 import maru.testutils.MaruFactory
-import maru.testutils.NetworkParticipantStack
+import maru.testutils.SoleNetworkParticipantStack
 import maru.testutils.SpyingP2PNetwork
 import maru.testutils.besu.BesuTransactionsHelper
 import maru.testutils.besu.startWithRetry
@@ -43,7 +43,7 @@ import org.junit.jupiter.api.Test
 
 class MaruQbftValidatorTest {
   private lateinit var cluster: Cluster
-  private lateinit var networkParticipantStack: NetworkParticipantStack
+  private lateinit var networkParticipantStack: SoleNetworkParticipantStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private lateinit var spyingP2pNetwork: SpyingP2PNetwork
@@ -61,7 +61,7 @@ class MaruQbftValidatorTest {
 
     spyingP2pNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
     networkParticipantStack =
-      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+      SoleNetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
         maruFactory.buildTestMaruValidatorWithoutP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,

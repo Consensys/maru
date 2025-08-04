@@ -12,7 +12,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
-import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -23,6 +22,7 @@ import maru.subscription.InOrderFanoutSubscriptionManager
 import maru.syncing.beaconchain.CLSyncServiceImpl
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
+import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.plugin.services.MetricsSystem
 
 internal data class SyncState(
@@ -179,6 +179,7 @@ class BeaconSyncControllerImpl(
       peerLookup: PeerLookup,
       besuMetrics: MetricsSystem,
       metricsFacade: MetricsFacade,
+      elSyncServiceConfig: ELSyncService.Config,
       allowEmptyBlocks: Boolean = true,
     ): SyncController {
       val clSyncService =
@@ -203,10 +204,7 @@ class BeaconSyncControllerImpl(
           beaconChain = beaconChain,
           executionLayerManager = elManager,
           onStatusChange = controller::updateElSyncStatus,
-          config =
-            ELSyncService.Config(
-              pollingInterval = 5000.milliseconds,
-            ),
+          config = elSyncServiceConfig,
         )
 
       val peerChainTracker =
@@ -238,7 +236,10 @@ class SyncControllerManager(
   val peerChainTracker: PeerChainTracker,
 ) : SyncController,
   SyncStatusProvider by syncStatusController {
+  private val log = LogManager.getLogger(this.javaClass)
+
   override fun start() {
+    log.debug("Starting {}", this::class.simpleName)
     clSyncService.start()
     elSyncService.start()
     peerChainTracker.start()

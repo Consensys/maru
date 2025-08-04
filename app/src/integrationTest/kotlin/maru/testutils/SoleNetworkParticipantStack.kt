@@ -16,16 +16,21 @@ import maru.testutils.besu.startWithRetry
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 
-class NetworkParticipantStack(
-  cluster: Cluster,
+/**
+ * Original NetworkParticipantStack implementation for single node scenarios.
+ * This class automatically starts the Besu node and creates the Maru app during instantiation.
+ */
+class SoleNetworkParticipantStack(
+  private val cluster: Cluster,
   besuBuilder: (() -> BesuNode)? = null,
-  maruBuilder: (ethereumJsonRpcBaseUrl: String, engineRpcUrl: String, tmpDir: Path) -> MaruApp,
+  private val maruBuilder: (ethereumJsonRpcBaseUrl: String, engineRpcUrl: String, tmpDir: Path) -> MaruApp,
 ) {
   val besuNode = besuBuilder?.invoke() ?: BesuFactory.buildTestBesu()
   val tmpDir: Path =
     Files.createTempDirectory("maru-app").also {
       it.toFile().deleteOnExit()
     }
+
   var maruApp: MaruApp =
     let {
       cluster.startWithRetry(besuNode)
@@ -33,11 +38,6 @@ class NetworkParticipantStack(
       val engineRpcUrl = besuNode.engineRpcUrl().get()
       maruBuilder(ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir)
     }
-
-  fun stop() {
-    maruApp.stop()
-    besuNode.stop()
-  }
 
   val p2pPort: UInt
     get() = maruApp.p2pPort()

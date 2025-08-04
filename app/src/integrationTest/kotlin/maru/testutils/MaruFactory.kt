@@ -96,6 +96,12 @@ class MaruFactory {
       ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
+    syncingConfig: SyncingConfig =
+      SyncingConfig(
+        peerChainHeightPollingInterval = 1.seconds,
+        peerChainHeightGranularity = 1u,
+        elSyncStatusRefreshInterval = 500.milliseconds,
+      ),
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
     val lineaConfig =
@@ -121,7 +127,7 @@ class MaruFactory {
       observabilityOptions = observabilityOptions,
       linea = lineaConfig,
       apiConfig = apiConfig,
-      syncing = SyncingConfig(1.seconds, 10u),
+      syncing = syncingConfig,
     )
   }
 

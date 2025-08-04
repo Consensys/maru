@@ -6,18 +6,9 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.core
+import maru.app.MaruApp
+import org.awaitility.kotlin.await
 
-interface Protocol {
-  fun start()
-
-  fun stop()
-}
-
-class NoOpProtocol : Protocol {
-  override fun start() {
-  }
-
-  override fun stop() {
-  }
+fun MaruApp.awaitTillMaruHasPeers(numberOfPeers: UInt) {
+  await.until { this.peersConnected() >= numberOfPeers }
 }
