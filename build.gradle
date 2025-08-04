@@ -148,8 +148,8 @@ allprojects {
     useJUnitPlatform {}
     testLogging {
       exceptionFormat TestExceptionFormat.FULL
-      events 'passed', 'skipped', 'failed'
-      showStandardStreams = true
+      events 'skipped', 'failed'
+      showStandardStreams = false
     }
   }
 
