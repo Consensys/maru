@@ -15,6 +15,7 @@ import com.palantir.docker.compose.configuration.ProjectName
 import com.palantir.docker.compose.connection.waiting.HealthChecks
 import java.io.File
 import java.math.BigInteger
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -25,6 +26,7 @@ import kotlin.time.toJavaDuration
 import maru.app.Helpers
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
+import maru.config.FollowersConfig
 import maru.config.consensus.ElFork
 import maru.consensus.NewBlockHandler
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
@@ -35,9 +37,11 @@ import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
 import maru.core.Validator
 import maru.extensions.encodeHex
+import maru.extensions.fromHexToByteArray
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
 import maru.testutils.Web3jTransactionsHelper
+import maru.testutils.maru.MaruFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -75,7 +79,8 @@ class CliqueToPosTest {
     private val genesisDir = File("../docker/initialization")
     private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
     private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
-    private val log: Logger = LogManager.getLogger(this.javaClass)
+    private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
+    private val maruFactory = MaruFactory(VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray())
 
     private fun parsePragueSwitchTimestamp(): Long {
       val objectMapper = ObjectMapper()
@@ -107,7 +112,7 @@ class CliqueToPosTest {
       qbftCluster.before()
       pragueSwitchTimestamp = parsePragueSwitchTimestamp()
       if (!useMaruContainer) {
-        maru = MaruFactory.buildTestMaru(pragueSwitchTimestamp)
+        maru = buildTestMaru(pragueSwitchTimestamp)
       }
     }
 
@@ -150,6 +155,47 @@ class CliqueToPosTest {
       TestEnvironment.followerExecutionClientsPostMerge.map {
         Arguments.of(it.key, it.value)
       }
+
+    private fun getBlockByNumber(
+      blockNumber: Long,
+      retreiveTransactions: Boolean = false,
+      ethClient: Web3j = TestEnvironment.sequencerL2Client,
+    ): EthBlock.Block? =
+      ethClient
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
+          retreiveTransactions,
+        ).send()
+        .block
+
+    fun buildTestMaru(pragueTime: Long): MaruApp =
+      maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
+        ethereumJsonRpcUrl = "http://localhost:8545",
+        engineApiRpc = "http://localhost:8550",
+        dataDir = Path.of("/tmp/maru-db"),
+        switchTimestamp = pragueTime,
+        followers =
+          FollowersConfig(
+            mapOf(
+              "follower-besu" to ApiEndpointConfig(URI.create("http://localhost:9550").toURL()),
+              "follower-erigon" to
+                ApiEndpointConfig(
+                  URI.create("http://localhost:11551").toURL(),
+                  jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
+                ),
+              "follower-nethermind" to
+                ApiEndpointConfig(
+                  URI.create("http://localhost:10550").toURL(),
+                  jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
+                ),
+              "follower-geth" to
+                ApiEndpointConfig(
+                  URI.create("http://localhost:8561").toURL(),
+                  jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
+                ),
+            ),
+          ),
+      )
   }
 
   @Order(1)
@@ -428,16 +474,4 @@ class CliqueToPosTest {
       }
     }
   }
-
-  private fun getBlockByNumber(
-    blockNumber: Long,
-    retreiveTransactions: Boolean = false,
-    ethClient: Web3j = TestEnvironment.sequencerL2Client,
-  ): EthBlock.Block? =
-    ethClient
-      .ethGetBlockByNumber(
-        DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
-        retreiveTransactions,
-      ).send()
-      .block
 }

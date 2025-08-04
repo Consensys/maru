@@ -10,9 +10,9 @@ package maru.testutils.maru
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KeyType
-import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.marshalPrivateKey
+import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
@@ -50,12 +50,16 @@ import maru.p2p.P2PNetwork
 /**
  * The same MaruFactory should be used per network. Otherwise, validators won't match between Maru instances
  */
-class MaruFactory {
+class MaruFactory(
+  validatorPrivateKey: ByteArray = generatePrivateKey(),
+) {
   companion object {
     val defaultReconnectDelay = 500.milliseconds
+
+    fun generatePrivateKey(): ByteArray = marshalPrivateKey(generateKeyPair(KeyType.SECP256K1).component1())
   }
 
-  private val validatorPrivateKeyWithPrefix = generatePrivateKey()
+  private val validatorPrivateKeyWithPrefix = unmarshalPrivateKey(validatorPrivateKey)
   private val validatorPrivateKeyWithPrefixString = marshalPrivateKey(validatorPrivateKeyWithPrefix).encodeHex()
   private val validatorNodeId = PeerId.fromPubKey(validatorPrivateKeyWithPrefix.publicKey())
   val qbftValidator =
@@ -83,8 +87,6 @@ class MaruFactory {
         ),
       ),
     )
-
-  private fun generatePrivateKey(): PrivKey = generateKeyPair(KeyType.SECP256K1).component1()
 
   private fun buildMaruConfig(
     ethereumJsonRpcUrl: String,
@@ -310,6 +312,7 @@ class MaruFactory {
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     p2pPort: UInt = 0u,
     allowEmptyBlocks: Boolean = false,
+    followers: FollowersConfig = FollowersConfig(emptyMap()),
   ): MaruApp {
     val beaconGenesisConfig = switchableGenesis(switchTimestamp)
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
@@ -319,7 +322,7 @@ class MaruFactory {
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
         p2pConfig = p2pConfig,
-        followers = FollowersConfig(emptyMap()),
+        followers = followers,
         qbftOptions = validatorQbftOptions,
         overridingLineaContractClient = overridingLineaContractClient,
         allowEmptyBlocks = allowEmptyBlocks,
