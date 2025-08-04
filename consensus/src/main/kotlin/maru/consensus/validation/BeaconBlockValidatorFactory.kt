@@ -18,7 +18,7 @@ fun interface BeaconBlockValidatorFactory {
   fun createValidatorForBlock(beaconBlockHeader: BeaconBlockHeader): BlockValidator
 }
 
-class BeaconBlockValidatorFactoryImpl(
+class QbftValidatorBeaconBlockValidatorFactoryImpl(
   val beaconChain: BeaconChain,
   proposerSelector: ProposerSelector,
   stateTransition: StateTransition,
@@ -47,6 +47,39 @@ class BeaconBlockValidatorFactoryImpl(
             ParentRootValidator(parentHeader),
             bodyRootValidator,
             executionPayloadValidator,
+            if (!allowEmptyBlocks) EmptyBlockValidator else null,
+          ),
+      )
+    }
+  }
+}
+
+class QbftFollowerBeaconBlockValidatorFactoryImpl(
+  val beaconChain: BeaconChain,
+  proposerSelector: ProposerSelector,
+  stateTransition: StateTransition,
+  val allowEmptyBlocks: Boolean,
+) : BeaconBlockValidatorFactory {
+  private val stateRootValidator = StateRootValidator(stateTransition)
+  private val bodyRootValidator = BodyRootValidator()
+  private val proposerValidator = ProposerValidator(proposerSelector, beaconChain)
+
+  override fun createValidatorForBlock(beaconBlockHeader: BeaconBlockHeader): BlockValidator {
+    val parentBeaconBlockNumber = beaconBlockHeader.number - 1UL
+    val parentBlock = beaconChain.getSealedBeaconBlock(parentBeaconBlockNumber)
+    if (parentBlock == null) {
+      throw IllegalArgumentException("Expected block for header number=$parentBeaconBlockNumber isn't found!")
+    } else {
+      val parentHeader = parentBlock.beaconBlock.beaconBlockHeader
+      return CompositeBlockValidator(
+        blockValidators =
+          listOfNotNull(
+            stateRootValidator,
+            BlockNumberValidator(parentHeader),
+            TimestampValidator(parentHeader),
+            proposerValidator,
+            ParentRootValidator(parentHeader),
+            bodyRootValidator,
             if (!allowEmptyBlocks) EmptyBlockValidator else null,
           ),
       )
