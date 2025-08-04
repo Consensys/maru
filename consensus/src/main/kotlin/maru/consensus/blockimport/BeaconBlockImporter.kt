@@ -14,7 +14,6 @@ import maru.consensus.PrevRandaoProvider
 import maru.consensus.state.FinalizationProvider
 import maru.core.BeaconBlock
 import maru.core.BeaconState
-import maru.core.Validator
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
