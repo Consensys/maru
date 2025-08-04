@@ -12,6 +12,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.text.get
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
@@ -41,6 +42,7 @@ class CLSyncServiceImpl(
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val beaconChainPipeline: AtomicReference<BeaconChainPipeline?> = AtomicReference(null)
   private val syncTarget: AtomicReference<ULong> = AtomicReference(0UL)
+  private val started = AtomicBoolean(false)
   private val syncCompleteHanders: SubscriptionManager<ULong> = InOrderFanoutSubscriptionManager()
   private val blockImporter =
     SyncSealedBlockImporterFactory()
@@ -59,39 +61,38 @@ class CLSyncServiceImpl(
       name = "beaconchain.restart.counter",
       description = "Count of chain pipeline restarts",
     )
-  private val started = AtomicBoolean(false)
-  private val syncLock = Object()
 
   override fun setSyncTarget(syncTarget: ULong) {
     check(started.get()) { "Sync service must be started before setting sync target" }
 
-    log.info("Syncing started syncTarget={}", syncTarget)
-    this.syncTarget.set(syncTarget)
+    val oldTarget = this.syncTarget.getAndSet(syncTarget)
+    if (oldTarget != syncTarget) {
+      log.info("Syncing target updated from {} to {}", oldTarget, syncTarget)
+    }
 
-    synchronized(syncLock) {
-      // If the pipeline is already running, we don't need to start a new one
-      if (beaconChainPipeline.get() == null) {
-        startSync()
-      }
+    // If the pipeline is already running, we don't need to start a new one
+    if (beaconChainPipeline.get() == null) {
+      startSync()
     }
   }
 
   private fun startSync() {
-    synchronized(syncLock) {
-      val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
-      val pipeline = pipelineFactory.createPipeline(startBlock)
-      this.beaconChainPipeline.set(pipeline)
+    val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
+    val pipeline = pipelineFactory.createPipeline(startBlock)
 
+    if (this.beaconChainPipeline.compareAndSet(null, pipeline)) {
       pipeline.pipline.start(executorService).handle { _, ex ->
         if (ex != null && ex !is CancellationException) {
           log.error("Sync pipeline failed, restarting", ex)
           pipelineRestartCounter.increment()
-          this.beaconChainPipeline.set(null)
-          startSync()
+          // Atomically clear and restart
+          if (this.beaconChainPipeline.compareAndSet(pipeline, null)) {
+            startSync()
+          }
         } else {
           val completedSyncTarget = pipeline.target()
           log.info("Sync completed syncTarget={}", completedSyncTarget)
-          this.beaconChainPipeline.set(null)
+          this.beaconChainPipeline.compareAndSet(pipeline, null)
           syncCompleteHanders.notifySubscribers(completedSyncTarget)
         }
       }
@@ -104,11 +105,14 @@ class CLSyncServiceImpl(
   }
 
   override fun start() {
-    started.set(true)
+    if (!started.compareAndSet(false, true)) {
+      log.warn("Sync service is already started")
+    }
   }
 
   override fun stop() {
-    started.set(false)
-    beaconChainPipeline.get()?.pipline?.abort()
+    if (started.compareAndSet(true, false)) {
+      beaconChainPipeline.get()?.pipline?.abort()
+    }
   }
 }
