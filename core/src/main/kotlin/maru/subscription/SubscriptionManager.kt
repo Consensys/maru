@@ -11,7 +11,9 @@ package maru.subscription
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.jvm.internal.CallableReference
+import kotlin.random.Random
 import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
+import maru.extensions.encodeHex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -21,9 +23,11 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * It does not work for regular lambdas, as they do not have a receiver object.
  */
 private fun findReceiverObjRef(subscriberMethodRef: Any): Any? {
-  val receiverField = CallableReference::class.java.getDeclaredField("receiver")
-  receiverField.isAccessible = true
-  return runCatching { receiverField.get(subscriberMethodRef) }.getOrNull()
+  return if (subscriberMethodRef is CallableReference) {
+    return subscriberMethodRef.boundReceiver
+  } else {
+    null
+  }
 }
 
 @OptIn(ExperimentalReflectionOnLambdas::class)
@@ -32,8 +36,13 @@ private fun <T> getSubscriberId(subscriber: (T) -> Any?): String {
     when {
       subscriber is kotlin.reflect.KFunction<*> && subscriber is CallableReference -> {
         // we need to make the reference unique, so will use receiver object hashcode
-        val receiverObj = findReceiverObjRef(subscriber)!!
+        val receiverObj = findReceiverObjRef(subscriber)
         "${subscriber.owner.toString().replace("class ", "")}.${subscriber.name}@${receiverObj.hashCode()}"
+      }
+      subscriber is kotlin.reflect.KFunction<*> -> {
+        println("is KFunction: ${subscriber.name}")
+        println("${subscriber.javaClass.name}@${subscriber.hashCode()}")
+        Random.nextBytes(8).encodeHex()
       }
 
       else -> {
@@ -223,7 +232,8 @@ class InOrderFanoutSubscriptionManager<T>(
   override fun removeSubscriber(subscriberRef: Any) {
     val removed =
       subscribers.removeIf {
-        it.syncHandler == subscriberRef || it.asyncHandler == subscriberRef ||
+        it.syncHandler == subscriberRef ||
+          it.asyncHandler == subscriberRef ||
           // reference is a CallableReference, so we need to check the receiver object
           // and remove all if it's matches
           findReceiverObjRef(it.syncHandler ?: it.asyncHandler!!)
