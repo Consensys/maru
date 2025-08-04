@@ -124,6 +124,31 @@ class BeaconBlocksByRangeHandlerTest {
   }
 
   @Test
+  fun `handles request with Rpc exception`() {
+    val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 1000UL)
+    val message =
+      Message(
+        type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
+        version = Version.V1,
+        payload = request,
+      )
+
+    whenever(beaconChain.getSealedBeaconBlocks(0UL, MAX_BLOCKS_PER_REQUEST))
+      .thenAnswer {
+        throw RpcException(RpcResponseStatus.RESOURCE_UNAVAILABLE, "getSealedBeaconBlocks exception testing")
+      }
+
+    handler.handleIncomingMessage(peer, message, callback)
+
+    verify(callback).completeWithErrorResponse(
+      RpcException(
+        RpcResponseStatus.RESOURCE_UNAVAILABLE,
+        "getSealedBeaconBlocks exception testing",
+      ),
+    )
+  }
+
+  @Test
   fun `handles request with exception`() {
     val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 1000UL)
     val message =
@@ -133,7 +158,6 @@ class BeaconBlocksByRangeHandlerTest {
         payload = request,
       )
 
-    // handler should limit to MAX_BLOCKS_PER_REQUEST
     whenever(beaconChain.getSealedBeaconBlocks(0UL, MAX_BLOCKS_PER_REQUEST))
       .thenThrow(
         IllegalStateException("getSealedBeaconBlocks exception testing"),
