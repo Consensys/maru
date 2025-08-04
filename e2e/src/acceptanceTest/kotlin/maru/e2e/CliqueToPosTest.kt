@@ -80,6 +80,8 @@ class CliqueToPosTest {
     private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
     private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
+    const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX =
+      "0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
     private val maruFactory = MaruFactory(VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray())
 
     private fun parsePragueSwitchTimestamp(): Long {
