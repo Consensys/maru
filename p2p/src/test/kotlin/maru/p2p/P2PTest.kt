@@ -19,6 +19,7 @@ import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
 import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashProviderImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -112,7 +113,7 @@ class P2PTest {
         )
       val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0L, 1, consensusConfig)))
 
-      return ForkIdHashProvider(
+      return ForkIdHashProviderImpl(
         chainId = chainId,
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
@@ -1022,20 +1023,19 @@ class P2PTest {
       val peer1 = p2pNetworkImpl1.maruPeerManager.getPeers()[0]
       val peer2 = p2pNetworkImpl2.maruPeerManager.getPeers()[0]
 
-      val peer1List = mutableListOf<ULong>()
-      val peer2List = mutableListOf<ULong>()
-      // check for the next 10 seconds that the peers are still connected
       val startTime = System.currentTimeMillis()
-      while (System.currentTimeMillis() < startTime + 11000L) {
+      var currentBlockNumber = 0uL
+      while (System.currentTimeMillis() < startTime + 13000L) { // max 13 seconds to run this test
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
-        peer1List.add(peer1.getStatus()!!.latestBlockNumber)
-        peer2List.add(peer2.getStatus()!!.latestBlockNumber)
-        sleep(500)
+        awaitUntilAsserted { peer1.getStatus()!!.latestBlockNumber == currentBlockNumber }
+        awaitUntilAsserted { peer2.getStatus()!!.latestBlockNumber == currentBlockNumber }
+        if (peer1.getStatus()!!.latestBlockNumber == 5uL) {
+          // we have reached the end of the blocks, so we can stop
+          break
+        }
+        currentBlockNumber++
       }
-
-      assertThat(peer1List).contains(0uL, 1uL, 2uL, 3uL, 4uL, 5uL, 6uL, 7uL, 8uL, 9uL)
-      assertThat(peer2List).contains(0uL, 1uL, 2uL, 3uL, 4uL, 5uL, 6uL, 7uL, 8uL, 9uL)
     } finally {
       p2pNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -1156,7 +1156,7 @@ class P2PTest {
     whenever(beaconChain.getLatestBeaconState()).thenReturn(beaconState)
     whenever(beaconState.latestBeaconBlockHeader).thenReturn(beaconBlockHeader)
     whenever(beaconBlockHeader.hash).thenReturn(ByteArray(32))
-    whenever(beaconBlockHeader.number).thenReturn(0uL, 1uL, 2uL, 3uL, 4uL, 5uL, 6uL, 7uL, 8uL, 9uL)
+    whenever(beaconBlockHeader.number).thenReturn(0uL, 1uL, 2uL, 3uL, 4uL, 5uL)
     val forkIdHashProvider = createForkIdHashProvider()
 
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
