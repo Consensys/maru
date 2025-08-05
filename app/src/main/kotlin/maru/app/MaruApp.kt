@@ -31,6 +31,7 @@ import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.BeaconChain
+import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.PeerInfo
@@ -64,6 +65,7 @@ class MaruApp(
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
+  private val engineApiClient: ExecutionLayerEngineApiClient,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
@@ -153,13 +155,14 @@ class MaruApp(
     }
     protocolStarter.stop()
     apiServer.stop()
-    ethereumJsonRpcClient.eth1Web3j.shutdown()
 
     log.info("Maru is down")
   }
 
   override fun close() {
     beaconChain.close()
+    engineApiClient.close()
+    ethereumJsonRpcClient.eth1Web3j.shutdown()
   }
 
   fun peersConnected(): UInt =

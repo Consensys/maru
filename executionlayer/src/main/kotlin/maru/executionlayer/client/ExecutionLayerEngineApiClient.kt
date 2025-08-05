@@ -8,6 +8,7 @@
  */
 package maru.executionlayer.client
 
+import java.io.Closeable
 import maru.core.ExecutionPayload
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
@@ -17,7 +18,7 @@ import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
-interface ExecutionLayerEngineApiClient {
+interface ExecutionLayerEngineApiClient : Closeable {
   fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>>
 
   fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>>

@@ -220,6 +220,7 @@ class MaruAppFactory {
         apiServer = apiServer,
         syncControllerManager = syncControllerImpl,
         syncStatusProvider = syncControllerImpl,
+        engineApiClient = engineApiClient,
       )
 
     return maru

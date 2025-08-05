@@ -189,7 +189,8 @@ class BeaconSyncControllerImpl(
           beaconChain = beaconChain,
           validatorProvider = validatorProvider,
           allowEmptyBlocks = allowEmptyBlocks,
-          executorService = Executors.newCachedThreadPool(),
+          executorService =
+            Executors.newCachedThreadPool(Thread.ofPlatform().daemon().factory()),
           pipelineConfig = BeaconChainDownloadPipelineFactory.Config(),
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,
