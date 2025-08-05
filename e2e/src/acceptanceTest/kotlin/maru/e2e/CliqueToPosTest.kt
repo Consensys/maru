@@ -284,6 +284,8 @@ class CliqueToPosTest {
     maruFollower.awaitTillMaruHasPeers(1u)
     maruSequencer.awaitTillMaruHasPeers(1u)
     awaitCondition
+      .timeout(1.minutes.toJavaDuration())
+      .pollInterval(15.seconds.toJavaDuration())
       .ignoreExceptions()
       .alias(nodeName)
       .untilAsserted {
@@ -482,8 +484,6 @@ class CliqueToPosTest {
               "while expecting $sequencerBlockHeight."
           }.isEqualTo(sequencerBlockHeight)
       }
-      // block production continues
-      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
   }
 

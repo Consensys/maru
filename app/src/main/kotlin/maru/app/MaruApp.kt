@@ -163,6 +163,8 @@ class MaruApp(
     beaconChain.close()
     engineApiClient.close()
     ethereumJsonRpcClient.eth1Web3j.shutdown()
+    p2pNetwork.close()
+    vertx.close()
   }
 
   fun peersConnected(): UInt =
