@@ -41,7 +41,7 @@ class MaruPeerManager(
   private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(),
   private val maruPeerFactory: MaruPeerFactory,
   p2pConfig: P2P,
-  private val forkidHashProvider: ForkIdHashProvider,
+  private val forkIdHashProvider: ForkIdHashProvider,
   private val beaconChain: BeaconChain,
   private val syncStatusProviderProvider: () -> SyncStatusProvider,
 ) : PeerHandler,
@@ -131,12 +131,12 @@ class MaruPeerManager(
     maruPeer
       .awaitInitialStatus()
       .thenApply { status ->
-        if (!status.forkIdHash.contentEquals(forkidHashProvider.currentForkIdHash())) {
+        if (!status.forkIdHash.contentEquals(forkIdHashProvider.currentForkIdHash())) {
           log.debug(
             "Peer={} has a different forkIdHash={} than expected={}. Disconnecting.",
             peer.id,
             status.forkIdHash,
-            forkidHashProvider.currentForkIdHash(),
+            forkIdHashProvider.currentForkIdHash(),
           )
           maruPeer.disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
         } else if (syncStatusProvider.getCLSyncStatus() == CLSyncStatus.SYNCING &&

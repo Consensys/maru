@@ -86,7 +86,7 @@ class P2PNetworkImpl(
       MaruPeerManager(
         maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory, p2pConfig),
         p2pConfig = p2pConfig,
-        forkidHashProvider = forkIdHashProvider,
+        forkIdHashProvider = forkIdHashProvider,
         beaconChain = beaconChain,
         syncStatusProviderProvider = syncStatusProviderProvider,
       )

@@ -125,7 +125,7 @@ class P2PTest {
         MaruPeerManager(
           maruPeerFactory = maruPeerFactory,
           p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
-          forkidHashProvider = forkIdHashProvider,
+          forkIdHashProvider = forkIdHashProvider,
           beaconChain = beaconChain,
           syncStatusProviderProvider = syncStatusProviderProvider,
         )
