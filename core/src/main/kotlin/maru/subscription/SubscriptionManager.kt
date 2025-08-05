@@ -52,7 +52,7 @@ private fun <T> getSubscriberId(subscriber: (T) -> Any?): String {
         "$lambdaDeclarationSite@${subscriber.hashCode()}"
       }
     }
-  return subscriberId.also { println("Subscriber ID: $it") }
+  return subscriberId
 }
 
 interface ObservableUnsubscribable {
