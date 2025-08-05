@@ -127,19 +127,6 @@ class CliqueToPosTest {
     @AfterAll
     @JvmStatic
     fun afterAll() {
-      // Clean up Web3j clients to prevent hanging threads
-      try {
-        TestEnvironment.allClients.values.forEach { web3j ->
-          try {
-            web3j.shutdown()
-          } catch (e: Exception) {
-            log.warn("Error shutting down Web3j client: ${e.message}")
-          }
-        }
-      } catch (e: Exception) {
-        log.warn("Error during Web3j clients cleanup: ${e.message}")
-      }
-
       File("docker_logs").mkdirs()
       qbftCluster.dockerExecutable().execute("ps").inputStream.use {
         Files.copy(
