@@ -58,6 +58,17 @@ class BeaconBlocksByRangeHandler(
     } catch (e: RpcException) {
       log.error("handling request failed with RpcException", e)
       callback.completeWithErrorResponse(e)
+    } catch (e: IllegalStateException) {
+      val errorMessage = "Handling request failed with IllegalStateException: " + e.message
+      if (e.message != null && e.message!!.contains("Missing sealed beacon block")) {
+        callback.completeWithErrorResponse(
+          RpcException(RpcResponseStatus.RESOURCE_UNAVAILABLE, errorMessage),
+        )
+      } else {
+        callback.completeWithUnexpectedError(
+          RpcException(RpcResponseStatus.SERVER_ERROR_CODE, errorMessage),
+        )
+      }
     } catch (th: Throwable) {
       log.error("handling request failed with unexpected error", th)
       callback.completeWithUnexpectedError(

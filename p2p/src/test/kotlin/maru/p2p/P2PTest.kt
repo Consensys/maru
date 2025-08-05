@@ -45,11 +45,13 @@ import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
+import org.mockito.Mockito.RETURNS_DEEP_STUBS
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
+import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
@@ -603,7 +605,11 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        statusMessageFactory = StatusMessageFactory(beaconChain, getMockedForkIdHashProvider()),
+        statusMessageFactory =
+          StatusMessageFactory(
+            beaconChain = beaconChain,
+            forkIdHashProvider = { throw IllegalStateException("currentForkIdHash exception testing") },
+          ),
         beaconChain = beaconChain,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
@@ -621,7 +627,11 @@ class P2PTest {
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
-        statusMessageFactory = StatusMessageFactory(beaconChain, getMockedForkIdHashProvider()),
+        statusMessageFactory =
+          StatusMessageFactory(
+            beaconChain = beaconChain,
+            forkIdHashProvider = { throw IllegalStateException("currentForkIdHash exception testing") },
+          ),
         beaconChain = beaconChain,
         metricsSystem = TestMetrics.TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
@@ -646,6 +656,7 @@ class P2PTest {
         .isInstanceOf(ExecutionException::class.java)
         .hasCauseInstanceOf(RpcException::class.java)
         .hasMessageContaining("currentForkIdHash exception testing")
+        .matches { (it.cause as RpcException).responseCode == RpcResponseStatus.SERVER_ERROR_CODE }
     } finally {
       p2PNetworkImpl1.stop()
       p2pManagerImpl2.stop()
@@ -792,7 +803,8 @@ class P2PTest {
       assertThatThrownBy { responseFuture.get() }
         .isInstanceOf(ExecutionException::class.java)
         .hasCauseInstanceOf(RpcException::class.java)
-        .hasMessageContaining("getSealedBeaconBlocks exception testing")
+        .hasMessageContaining("Missing sealed beacon block")
+        .matches { (it.cause as RpcException).responseCode == RpcResponseStatus.RESOURCE_UNAVAILABLE }
     } finally {
       p2PNetworkImpl1.stop()
       p2pManagerImpl2.stop()
@@ -1163,19 +1175,10 @@ class P2PTest {
     return statusMessageFactory
   }
 
-  private fun getMockedForkIdHashProvider(): ForkIdHashProvider {
-    val mockedForkIdHashProvider = mock<ForkIdHashProvider>()
-    whenever(mockedForkIdHashProvider.currentForkIdHash()).thenThrow(
-      IllegalStateException("currentForkIdHash exception testing"),
-    )
-
-    return mockedForkIdHashProvider
-  }
-
   private fun getMockedBeaconChain(): BeaconChain {
-    val mockedBeaconChain = mock<BeaconChain>()
+    val mockedBeaconChain = mock<BeaconChain>(RETURNS_DEEP_STUBS)
     whenever(mockedBeaconChain.getSealedBeaconBlocks(any(), any())).thenThrow(
-      IllegalStateException("getSealedBeaconBlocks exception testing"),
+      IllegalStateException("Missing sealed beacon block"),
     )
     return mockedBeaconChain
   }
