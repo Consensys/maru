@@ -81,7 +81,7 @@ class CLSyncServiceImpl(
     val pipeline = pipelineFactory.createPipeline(startBlock)
 
     if (beaconChainPipeline.compareAndSet(null, pipeline)) {
-      pipeline.pipline.start(executorService).handle { _, ex ->
+      pipeline.pipeline.start(executorService).handle { _, ex ->
         if (ex != null && ex !is CancellationException) {
           log.error("Sync pipeline failed, restarting", ex)
           pipelineRestartCounter.increment()
@@ -109,8 +109,7 @@ class CLSyncServiceImpl(
   }
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {
-    val subscriptionId = handler.toString()
-    syncCompleteHanders.addSyncSubscriber(subscriptionId, handler)
+    syncCompleteHanders.addSyncSubscriber(handler)
   }
 
   override fun start() {
@@ -121,7 +120,7 @@ class CLSyncServiceImpl(
 
   override fun stop() {
     if (started.compareAndSet(true, false)) {
-      beaconChainPipeline.get()?.pipline?.abort()
+      beaconChainPipeline.get()?.pipeline?.abort()
     }
   }
 }
