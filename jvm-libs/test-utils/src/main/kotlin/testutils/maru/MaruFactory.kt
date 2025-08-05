@@ -6,7 +6,11 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
+<<<<<<<< HEAD:jvm-libs/test-utils/src/main/kotlin/testutils/maru/MaruFactory.kt
 package testutils.maru
+========
+package testutils
+>>>>>>>> d0e2cda92b8f50679b31a2729d6b7692af0f4b60:app/src/integrationTest/kotlin/testutils/MaruFactory.kt
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KeyType
