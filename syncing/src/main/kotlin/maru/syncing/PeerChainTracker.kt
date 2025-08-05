@@ -9,6 +9,7 @@
 package maru.syncing
 
 import java.util.Timer
+import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -29,7 +30,12 @@ class PeerChainTracker(
   private val beaconSyncTargetUpdateHandler: BeaconSyncTargetUpdateHandler,
   private val targetChainHeadCalculator: SyncTargetSelector,
   private val config: Config,
-  private val timerFactory: (Boolean) -> Timer = { isDaemon -> Timer(isDaemon) },
+  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
+    Timer(
+      "$name-${UUID.randomUUID()}",
+      isDaemon,
+    )
+  },
 ) : LongRunningService {
   private val log = LogManager.getLogger(this.javaClass)
 
@@ -90,7 +96,7 @@ class PeerChainTracker(
       }
 
       // Always create a new timer when starting
-      poller = timerFactory(true)
+      poller = timerFactory("peer-chain-tracker", true)
 
       poller!!.scheduleAtFixedRate(
         /* task = */ timerTask { updatePeerView() },

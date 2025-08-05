@@ -10,6 +10,7 @@ package maru.syncing
 
 import java.lang.Exception
 import java.util.Timer
+import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import maru.consensus.state.FinalizationProvider
@@ -55,7 +56,12 @@ class ELSyncService(
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
   private val finalizationProvider: FinalizationProvider,
-  private val timerFactory: (Boolean) -> Timer = { isDaemon -> Timer(isDaemon) },
+  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
+    Timer(
+      "$name-${UUID.randomUUID()}",
+      isDaemon,
+    )
+  },
 ) : LongRunningService {
   data class Config(
     val pollingInterval: Duration,
@@ -129,7 +135,7 @@ class ELSyncService(
       if (poller != null) {
         return
       }
-      poller = timerFactory(true)
+      poller = timerFactory("ELSyncPoller", true)
       poller!!.scheduleAtFixedRate(
         timerTask {
           try {

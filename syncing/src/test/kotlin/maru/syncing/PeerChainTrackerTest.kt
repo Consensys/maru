@@ -74,7 +74,7 @@ class PeerChainTrackerTest {
         syncTargetUpdateHandler,
         targetChainHeadCalculator,
         config,
-        timerFactory = { timer },
+        timerFactory = { _, _ -> timer },
       )
   }
 
