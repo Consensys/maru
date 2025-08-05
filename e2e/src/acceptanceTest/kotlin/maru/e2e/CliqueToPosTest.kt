@@ -418,7 +418,12 @@ class CliqueToPosTest {
 
   private fun assertNodeBlockHeight(
     web3j: Web3j,
-    expectedBlockNumber: Long = 9L,
+    expectedBlockNumber: Long =
+      web3j
+        .ethBlockNumber()
+        .send()
+        .blockNumber
+        .toLong(),
   ) {
     val targetNodeBlockHeight = web3j.ethBlockNumber().send().blockNumber
     assertThat(targetNodeBlockHeight).isEqualTo(expectedBlockNumber)
@@ -427,8 +432,13 @@ class CliqueToPosTest {
   private fun assertNodeBlockPrevRandao(
     web3j: Web3j,
     lastPreMergeBlockNumber: Long = 5L,
-    lastPostMergeBlockNumber: Long = 9L,
   ) {
+    val lastPostMergeBlockNumber =
+      TestEnvironment.sequencerL2Client
+        .ethBlockNumber()
+        .send()
+        .blockNumber
+        .toLong()
     var lastMixHash: String? = null
     (lastPreMergeBlockNumber..lastPostMergeBlockNumber).forEach {
       val mixHash =
@@ -472,6 +482,8 @@ class CliqueToPosTest {
               "while expecting $sequencerBlockHeight."
           }.isEqualTo(sequencerBlockHeight)
       }
+      // block production continues
+      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
   }
 
