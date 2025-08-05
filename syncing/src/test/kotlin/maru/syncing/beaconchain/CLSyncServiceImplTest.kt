@@ -14,7 +14,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.minutes
 import maru.config.P2P
+import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
@@ -459,6 +461,7 @@ class CLSyncServiceImplTest {
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
         syncStatusProviderProvider = { getSyncStatusProvider() },
+        syncConfig = SyncingConfig(peerChainHeightGranularity = 32u, peerChainHeightPollingInterval = 1.minutes),
       )
     return p2pNetworkImpl
   }

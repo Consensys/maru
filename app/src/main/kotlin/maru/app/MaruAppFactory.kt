@@ -26,6 +26,7 @@ import maru.api.ApiServerImpl
 import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2P
+import maru.config.SyncingConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHashProviderImpl
@@ -161,6 +162,7 @@ class MaruAppFactory {
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
         syncStatusProviderProvider = { syncControllerImpl!! },
+        syncConfig = config.syncing,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     syncControllerImpl =
@@ -264,6 +266,7 @@ class MaruAppFactory {
       besuMetricsSystem: BesuMetricsSystem,
       forkIdHashProvider: ForkIdHashProvider,
       syncStatusProviderProvider: () -> SyncStatusProvider,
+      syncConfig: SyncingConfig,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -278,6 +281,7 @@ class MaruAppFactory {
           metricsSystem = besuMetricsSystem,
           forkIdHashProvider = forkIdHashProvider,
           syncStatusProviderProvider = syncStatusProviderProvider,
+          syncConfig = syncConfig,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

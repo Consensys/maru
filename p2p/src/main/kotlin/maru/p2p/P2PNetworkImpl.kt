@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2P
+import maru.config.SyncingConfig
 import maru.consensus.ForkIdHashProvider
 import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
@@ -52,6 +53,7 @@ class P2PNetworkImpl(
   private val forkIdHashProvider: ForkIdHashProvider,
   isBlockImportEnabledProvider: () -> Boolean,
   private val syncStatusProviderProvider: () -> SyncStatusProvider,
+  private val syncConfig: SyncingConfig,
 ) : P2PNetwork {
   lateinit var maruPeerManager: MaruPeerManager
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
@@ -89,6 +91,7 @@ class P2PNetworkImpl(
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = beaconChain,
         syncStatusProviderProvider = syncStatusProviderProvider,
+        syncConfig = syncConfig,
       )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
