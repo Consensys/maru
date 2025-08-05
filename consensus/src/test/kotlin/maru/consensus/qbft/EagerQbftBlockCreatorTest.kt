@@ -36,8 +36,8 @@ import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
-import maru.testutils.besu.BesuFactory
-import maru.testutils.besu.BesuTransactionsHelper
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat

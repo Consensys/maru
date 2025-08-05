@@ -37,7 +37,7 @@ import maru.core.Validator
 import maru.extensions.encodeHex
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
-import maru.testutils.Web3jTransactionsHelper
+import testutils.Web3jTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat

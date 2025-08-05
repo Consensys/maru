@@ -6,10 +6,10 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils
+package testutils
 
 import java.math.BigInteger
-import maru.testutils.besu.BesuFactory
+import testutils.besu.BesuFactory
 import org.assertj.core.api.Assertions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.web3j.protocol.core.DefaultBlockParameter

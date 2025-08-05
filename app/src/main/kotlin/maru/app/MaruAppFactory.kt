@@ -226,7 +226,7 @@ class MaruAppFactory {
   }
 
   companion object {
-    private val log = LogManager.getLogger(this::class.java)
+    private val log = LogManager.getLogger(MaruAppFactory::class.java)
 
     private fun setupFinalizationProvider(
       config: MaruConfig,

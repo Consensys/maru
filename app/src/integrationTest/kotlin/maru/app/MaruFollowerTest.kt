@@ -8,17 +8,16 @@
  */
 package maru.app
 
-import awaitTillMaruHasPeers
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
-import maru.testutils.Checks.getMinedBlocks
-import maru.testutils.MaruFactory
-import maru.testutils.PeeringNetworkParticipantStack
-import maru.testutils.besu.BesuFactory
-import maru.testutils.besu.BesuTransactionsHelper
-import maru.testutils.besu.ethGetBlockByNumber
-import maru.testutils.besu.startWithRetry
+import testutils.Checks.getMinedBlocks
+import testutils.MaruFactory
+import testutils.PeeringNodeNetworkStack
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
+import testutils.besu.ethGetBlockByNumber
+import testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -31,11 +30,12 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import testutils.maru.awaitTillMaruHasPeers
 
 class MaruFollowerTest {
   private lateinit var cluster: Cluster
-  private lateinit var validatorStack: PeeringNetworkParticipantStack
-  private lateinit var followerStack: PeeringNetworkParticipantStack
+  private lateinit var validatorStack: PeeringNodeNetworkStack
+  private lateinit var followerStack: PeeringNodeNetworkStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
@@ -50,15 +50,15 @@ class MaruFollowerTest {
         ThreadBesuNodeRunner(),
       )
 
-    validatorStack = PeeringNetworkParticipantStack()
+    validatorStack = PeeringNodeNetworkStack()
 
     followerStack =
-      PeeringNetworkParticipantStack(
+      PeeringNodeNetworkStack(
         besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
       )
 
     // Start both Besu nodes together for proper peering
-    PeeringNetworkParticipantStack.startBesuNodes(cluster, validatorStack, followerStack)
+    PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
 
     // Create and start validator Maru app first
     val validatorMaruApp =

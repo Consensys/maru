@@ -6,13 +6,13 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils
+package testutils
 
 import java.nio.file.Files
 import java.nio.file.Path
 import maru.app.MaruApp
-import maru.testutils.besu.BesuFactory
-import maru.testutils.besu.startWithRetry
+import testutils.besu.BesuFactory
+import testutils.besu.startWithRetry
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 
@@ -20,7 +20,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
  * Original NetworkParticipantStack implementation for single node scenarios.
  * This class automatically starts the Besu node and creates the Maru app during instantiation.
  */
-class SoleNetworkParticipantStack(
+class SingleNodeNetworkStack(
   private val cluster: Cluster,
   besuBuilder: (() -> BesuNode)? = null,
   private val maruBuilder: (ethereumJsonRpcBaseUrl: String, engineRpcUrl: String, tmpDir: Path) -> MaruApp,

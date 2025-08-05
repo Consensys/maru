@@ -6,13 +6,13 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils
+package testutils
 
 import java.nio.file.Files
 import java.nio.file.Path
 import maru.app.MaruApp
-import maru.testutils.besu.BesuFactory
-import maru.testutils.besu.startWithRetry
+import testutils.besu.BesuFactory
+import testutils.besu.startWithRetry
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 
@@ -21,7 +21,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
  * This class separates Besu node creation from Maru app creation to allow for
  * proper coordination between multiple nodes.
  */
-class PeeringNetworkParticipantStack(
+class PeeringNodeNetworkStack(
   besuBuilder: (() -> BesuNode)? = null,
 ) {
   val besuNode = besuBuilder?.invoke() ?: BesuFactory.buildTestBesu()
@@ -31,15 +31,15 @@ class PeeringNetworkParticipantStack(
     }
 
   val maruApp: MaruApp
-    get() = _maruApp ?: throw IllegalStateException("Maru app not created yet. Call setMaruApp() first.")
-  private var _maruApp: MaruApp? = null
+    get() = _maruApp
+  private lateinit var _maruApp: MaruApp
 
   fun setMaruApp(maruApp: MaruApp) {
     _maruApp = maruApp
   }
 
   fun stop() {
-    _maruApp?.stop()
+    _maruApp.stop()
     besuNode.stop()
   }
 
@@ -53,7 +53,7 @@ class PeeringNetworkParticipantStack(
      */
     fun startBesuNodes(
       cluster: Cluster,
-      vararg participantStacks: PeeringNetworkParticipantStack,
+      vararg participantStacks: PeeringNodeNetworkStack,
     ) {
       val allNodes = participantStacks.map { it.besuNode }.toTypedArray()
       cluster.startWithRetry(*allNodes)

@@ -17,14 +17,14 @@ import maru.consensus.validation.SCEP256SealVerifier
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
-import maru.testutils.Checks.getMinedBlocks
-import maru.testutils.Checks.verifyBlockTime
-import maru.testutils.Checks.verifyBlockTimeWithAGapOn
-import maru.testutils.MaruFactory
-import maru.testutils.SoleNetworkParticipantStack
-import maru.testutils.SpyingP2PNetwork
-import maru.testutils.besu.BesuTransactionsHelper
-import maru.testutils.besu.startWithRetry
+import testutils.Checks.getMinedBlocks
+import testutils.Checks.verifyBlockTime
+import testutils.Checks.verifyBlockTimeWithAGapOn
+import testutils.MaruFactory
+import testutils.SingleNodeNetworkStack
+import testutils.SpyingP2PNetwork
+import testutils.besu.BesuTransactionsHelper
+import testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -44,7 +44,7 @@ import org.junit.jupiter.api.Test
 
 class MaruQbftValidatorTest {
   private lateinit var cluster: Cluster
-  private lateinit var networkParticipantStack: SoleNetworkParticipantStack
+  private lateinit var networkParticipantStack: SingleNodeNetworkStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private lateinit var spyingP2pNetwork: SpyingP2PNetwork
@@ -62,7 +62,7 @@ class MaruQbftValidatorTest {
 
     spyingP2pNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
     networkParticipantStack =
-      SoleNetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+      SingleNodeNetworkStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
         maruFactory.buildTestMaruValidatorWithoutP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,

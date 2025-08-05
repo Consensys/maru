@@ -193,7 +193,7 @@ class MaruApp(
           NewSealedBeaconBlockHandlerMultiplexer<Unit>(
             handlersMap = sealedBlockHandlers,
           )
-        QbftProtocolFactoryWithBeaconChainInitialization(
+        QbftProtocolValidatorFactory(
           qbftOptions = config.qbftOptions!!,
           privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider()),
           validatorElNodeConfig = config.validatorElNode,

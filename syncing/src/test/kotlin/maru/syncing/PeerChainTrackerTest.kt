@@ -51,7 +51,7 @@ class PeerChainTrackerTest {
   private lateinit var syncTargetUpdateHandler: TestBeaconSyncTargetUpdateHandler
   private lateinit var targetChainHeadCalculator: TestSyncTargetSelector
   private lateinit var config: PeerChainTracker.Config
-  private lateinit var timer: TestableTimer
+  private lateinit var timer: TestablePeriodicTimer
   private lateinit var peerChainTracker: PeerChainTracker
 
   @BeforeEach
@@ -59,7 +59,7 @@ class PeerChainTrackerTest {
     peersHeadsProvider = TestPeersHeadBlockProvider()
     syncTargetUpdateHandler = TestBeaconSyncTargetUpdateHandler()
     targetChainHeadCalculator = TestSyncTargetSelector()
-    timer = TestableTimer()
+    timer = TestablePeriodicTimer()
 
     config =
       PeerChainTracker.Config(
@@ -89,9 +89,9 @@ class PeerChainTrackerTest {
     peerChainTracker.start()
 
     // Assert
-    assertThat(timer.scheduledTasks).hasSize(1)
-    assertThat(timer.delays[0]).isEqualTo(0L)
-    assertThat(timer.periods[0]).isEqualTo(1000L)
+    assertThat(timer.scheduledTask).isNotNull
+    assertThat(timer.delay).isEqualTo(0L)
+    assertThat(timer.period).isEqualTo(1000L)
   }
 
   @Test
@@ -103,7 +103,7 @@ class PeerChainTrackerTest {
     peerChainTracker.stop()
 
     // Assert
-    assertThat(timer.scheduledTasks).isEmpty()
+    assertThat(timer.scheduledTask).isNull()
   }
 
   @Test

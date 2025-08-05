@@ -33,7 +33,7 @@ class ELSyncServiceTest {
     var elSyncStatus: ELSyncStatus? = null
     val onStatusChange: (ELSyncStatus) -> Unit = { elSyncStatus = it }
     val config = ELSyncService.Config(pollingInterval = 1.seconds)
-    val timer = TestableTimer()
+    val timer = TestablePeriodicTimer()
     val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
     val executionLayerManager = mock<ExecutionLayerManager>()
     val finalizationProvider: FinalizationProvider = InstantFinalizationProvider
@@ -61,7 +61,7 @@ class ELSyncServiceTest {
     var elSyncStatus: ELSyncStatus? = null
     val onStatusChange: (ELSyncStatus) -> Unit = { elSyncStatus = it }
     val config = ELSyncService.Config(pollingInterval = 1.seconds)
-    val timer = TestableTimer()
+    val timer = TestablePeriodicTimer()
     val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
     val executionLayerManager = mock<ExecutionLayerManager>()
     val finalizationProvider: FinalizationProvider = InstantFinalizationProvider
@@ -108,7 +108,7 @@ class ELSyncServiceTest {
   @Test
   fun `should respect finalization provider when calling setHead`() {
     val config = ELSyncService.Config(pollingInterval = 1.seconds)
-    val timer = TestableTimer()
+    val timer = TestablePeriodicTimer()
     val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
     val executionLayerManager = mock<ExecutionLayerManager>()
 

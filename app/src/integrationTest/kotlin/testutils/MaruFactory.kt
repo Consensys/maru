@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.testutils
+package testutils
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KeyType

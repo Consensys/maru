@@ -6,9 +6,15 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-import maru.app.MaruApp
-import org.awaitility.kotlin.await
+package testutils.maru
 
-fun MaruApp.awaitTillMaruHasPeers(numberOfPeers: UInt) {
+import maru.app.MaruApp
+import org.awaitility.Awaitility.await
+import org.awaitility.core.ConditionFactory
+
+fun MaruApp.awaitTillMaruHasPeers(
+  numberOfPeers: UInt,
+  await: ConditionFactory = await(),
+) {
   await.until { this.peersConnected() >= numberOfPeers }
 }

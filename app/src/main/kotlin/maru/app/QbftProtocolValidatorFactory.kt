@@ -27,7 +27,7 @@ import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem
 
-class QbftProtocolFactoryWithBeaconChainInitialization(
+class QbftProtocolValidatorFactory(
   private val qbftOptions: QbftOptions,
   private val privateKeyBytes: ByteArray,
   private val validatorElNodeConfig: ValidatorElNode,
