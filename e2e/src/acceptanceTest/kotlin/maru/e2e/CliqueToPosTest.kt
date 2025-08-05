@@ -40,8 +40,6 @@ import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
-import maru.testutils.Web3jTransactionsHelper
-import maru.testutils.maru.MaruFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -57,6 +55,8 @@ import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import testutils.Web3jTransactionsHelper
+import testutils.maru.MaruFactory
 
 class CliqueToPosTest {
   companion object {

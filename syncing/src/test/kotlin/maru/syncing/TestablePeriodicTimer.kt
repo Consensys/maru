@@ -11,32 +11,30 @@ package maru.syncing
 import java.util.Timer
 import java.util.TimerTask
 
-// Test implementation that allows controlling the timer execution
-internal class TestableTimer : Timer("test-timer", true) {
-  val scheduledTasks = mutableListOf<TimerTask>()
-  val delays = mutableListOf<Long>()
-  val periods = mutableListOf<Long>()
+// Test implementation that allows controlling the timer execution. Supports only scheduleAtFixedRate
+internal class TestablePeriodicTimer : Timer("test-timer", true) {
+  var scheduledTask: TimerTask? = null
+  var delay: Long? = null
+  var period: Long? = null
 
   override fun scheduleAtFixedRate(
     task: TimerTask,
     delay: Long,
     period: Long,
   ) {
-    scheduledTasks.add(task)
-    delays.add(delay)
-    periods.add(period)
+    scheduledTask = task
+    this.delay = delay
+    this.period = period
   }
 
   fun runNextTask() {
-    if (scheduledTasks.isNotEmpty()) {
-      scheduledTasks[0].run()
-    }
+    scheduledTask?.run()
   }
 
   override fun cancel() {
     super.cancel()
-    scheduledTasks.clear()
-    delays.clear()
-    periods.clear()
+    scheduledTask = null
+    delay = null
+    period = null
   }
 }

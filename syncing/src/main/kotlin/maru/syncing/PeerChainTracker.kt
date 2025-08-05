@@ -78,7 +78,7 @@ class PeerChainTracker(
     log.trace("Selected best syncTarget={} lastNotifiedTarget={}", newSyncTarget, lastNotifiedTarget)
     if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change
       beaconSyncTargetUpdateHandler.onBeaconChainSyncTargetUpdated(newSyncTarget)
-      log.trace("Notified about the new syncTarget={}", newSyncTarget)
+      log.debug("Notified about the new syncTarget={}", newSyncTarget)
       lastNotifiedTarget = newSyncTarget
     }
   }

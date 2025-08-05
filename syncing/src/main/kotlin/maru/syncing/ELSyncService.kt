@@ -85,7 +85,7 @@ class ELSyncService(
         blockNumber = latestBeaconBlockBody.executionPayload.blockNumber,
         blockHash = latestBeaconBlockBody.executionPayload.blockHash,
       )
-    log.info("New EL sync target = {}", newELSyncTarget)
+    log.debug("New EL sync target = {}", newELSyncTarget)
 
     val finalizationState = finalizationProvider(latestBeaconBlockBody)
     val fcuResponse =
