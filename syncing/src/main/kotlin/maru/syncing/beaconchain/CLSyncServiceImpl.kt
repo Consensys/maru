@@ -99,8 +99,7 @@ class CLSyncServiceImpl(
   }
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {
-    val subscriptionId = handler.toString()
-    syncCompleteHanders.addSyncSubscriber(subscriptionId, handler)
+    syncCompleteHanders.addSyncSubscriber(handler)
   }
 
   override fun start() {
