@@ -170,6 +170,7 @@ class P2PNetworkImpl(
 
   override fun close() {
     asyncRunner.shutdown()
+    executor.shutdown()
   }
 
   override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*> {

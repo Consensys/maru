@@ -10,7 +10,9 @@ package maru.app
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
+import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Vertx
+import io.vertx.micrometer.MicrometerMetricsOptions
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Files
 import java.nio.file.Path
@@ -89,8 +91,8 @@ class MaruAppFactory {
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
     val metricsFacade =
       MicrometerMetricsFacade(
-        BackendRegistries.getDefaultNow(),
-        "maru",
+        registry = getMetricsRegistry(),
+        metricsPrefix = "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
       )
     val besuMetricsSystemAdapter =
@@ -228,6 +230,14 @@ class MaruAppFactory {
 
   companion object {
     private val log = LogManager.getLogger(MaruAppFactory::class.java)
+
+    // the second case can happen in case of concurrent access i.e. in the tests
+    private fun getMetricsRegistry(): MeterRegistry =
+      BackendRegistries.getDefaultNow() ?: BackendRegistries
+        .setupBackend(
+          MicrometerMetricsOptions(),
+          null,
+        ).let { BackendRegistries.getDefaultNow() }
 
     private fun setupFinalizationProvider(
       config: MaruConfig,
