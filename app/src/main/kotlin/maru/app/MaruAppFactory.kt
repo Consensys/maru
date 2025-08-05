@@ -56,6 +56,7 @@ import maru.serialization.rlp.RLPSerializers
 import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncControllerManager
+import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -159,6 +160,7 @@ class MaruAppFactory {
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
+        syncStatusProviderProvider = { syncControllerImpl!! },
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     syncControllerImpl =
@@ -261,6 +263,7 @@ class MaruAppFactory {
       statusMessageFactory: StatusMessageFactory,
       besuMetricsSystem: BesuMetricsSystem,
       forkIdHashProvider: ForkIdHashProvider,
+      syncStatusProviderProvider: () -> SyncStatusProvider,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -274,6 +277,7 @@ class MaruAppFactory {
           isBlockImportEnabledProvider = isBlockImportEnabledProvider,
           metricsSystem = besuMetricsSystem,
           forkIdHashProvider = forkIdHashProvider,
+          syncStatusProviderProvider = syncStatusProviderProvider,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

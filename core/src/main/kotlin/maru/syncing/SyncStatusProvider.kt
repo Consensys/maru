@@ -36,4 +36,6 @@ interface SyncStatusProvider {
   fun onBeaconSyncComplete(handler: () -> Unit)
 
   fun onFullSyncComplete(handler: () -> Unit)
+
+  fun getSyncTarget(): ULong?
 }

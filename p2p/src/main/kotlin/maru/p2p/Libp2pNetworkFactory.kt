@@ -108,6 +108,8 @@ class Libp2pNetworkFactory(
         { _ -> 50.0 }, // TODO: I guess we need a scoring function here
       )
 
+    maruPeerManager.setPeerManager(peerManager)
+
     val host =
       createHost(
         privateKey = privateKey,
