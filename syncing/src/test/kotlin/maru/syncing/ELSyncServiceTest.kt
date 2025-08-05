@@ -45,7 +45,7 @@ class ELSyncServiceTest {
         onStatusChange = onStatusChange,
         config = config,
         finalizationProvider = finalizationProvider,
-        timerFactory = { _, _ -> timer },
+        timerFactory = { timer },
       )
 
     elSyncService.start()
@@ -72,7 +72,7 @@ class ELSyncServiceTest {
         onStatusChange = onStatusChange,
         config = config,
         finalizationProvider = finalizationProvider,
-        timerFactory = { _, _ -> timer },
+        timerFactory = { timer },
       )
 
     elSyncService.start()
@@ -129,7 +129,7 @@ class ELSyncServiceTest {
         onStatusChange = { },
         config = config,
         finalizationProvider = finalizationProvider,
-        timerFactory = { _, _ -> timer },
+        timerFactory = { timer },
       )
 
     // Add a block to the beacon chain to trigger EL sync

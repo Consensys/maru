@@ -91,8 +91,18 @@ class CLSyncServiceImpl(
         } else {
           val completedSyncTarget = pipeline.target()
           beaconChainPipeline.compareAndSet(pipeline, null)
-          log.info("Sync completed syncTarget={}", completedSyncTarget)
-          syncCompleteHanders.notifySubscribers(completedSyncTarget)
+          log.info("Sync completed completedSyncTarget={} syncTarget={}", completedSyncTarget, syncTarget.get())
+
+          if (completedSyncTarget < syncTarget.get()) {
+            log.info(
+              "Starting new sync as current target {} is higher than completed {}",
+              syncTarget.get(),
+              completedSyncTarget,
+            )
+            startSync()
+          } else {
+            syncCompleteHanders.notifySubscribers(completedSyncTarget)
+          }
         }
       }
     }

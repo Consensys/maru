@@ -29,7 +29,7 @@ class PeerChainTracker(
   private val beaconSyncTargetUpdateHandler: BeaconSyncTargetUpdateHandler,
   private val targetChainHeadCalculator: SyncTargetSelector,
   private val config: Config,
-  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon -> Timer(name, isDaemon) },
+  private val timerFactory: (Boolean) -> Timer = { isDaemon -> Timer(isDaemon) },
 ) : LongRunningService {
   private val log = LogManager.getLogger(this.javaClass)
 
@@ -90,7 +90,7 @@ class PeerChainTracker(
       }
 
       // Always create a new timer when starting
-      poller = timerFactory("peer-chain-tracker", true)
+      poller = timerFactory(true)
 
       poller!!.scheduleAtFixedRate(
         /* task = */ timerTask { updatePeerView() },

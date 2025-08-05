@@ -67,6 +67,7 @@ class MaruPeerManager(
 
   fun stop(): SafeFuture<Unit> {
     stopCalled = true
+    scheduler.shutdown()
     return SafeFuture.completedFuture(Unit)
   }
 

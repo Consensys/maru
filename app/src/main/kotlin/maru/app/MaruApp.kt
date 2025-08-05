@@ -102,7 +102,7 @@ class MaruApp(
     followers.followers
       .mapValues {
         val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague, metricsFacade)
-        FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider) as NewBlockHandler<Unit>
+        FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider, it.key) as NewBlockHandler<Unit>
       }
 
   fun start() {
@@ -153,6 +153,8 @@ class MaruApp(
     }
     protocolStarter.stop()
     apiServer.stop()
+    ethereumJsonRpcClient.eth1Web3j.shutdown()
+
     log.info("Maru is down")
   }
 
@@ -216,7 +218,6 @@ class MaruApp(
           validatorElNodeConfig = config.validatorElNode,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
-          syncStatusProvider = syncStatusProvider,
         )
       }
     val delegatedConsensusNewBlockHandler =
