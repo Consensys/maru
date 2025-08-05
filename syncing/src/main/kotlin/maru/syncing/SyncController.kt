@@ -80,6 +80,8 @@ class BeaconSyncControllerImpl(
     fullSyncCompleteHandlers.addSyncSubscriber(handler.toString()) { handler() }
   }
 
+  override fun getBeaconSyncDistance(): ULong = clSyncService.getSyncDistance()
+
   fun updateClSyncStatus(newStatus: CLSyncStatus) {
     val callbacks: List<() -> Unit> =
       lock.write {
@@ -290,6 +292,8 @@ class AlwaysSyncedController : SyncController {
   override fun isBeaconChainSynced(): Boolean = true
 
   override fun isELSynced(): Boolean = true
+
+  override fun getBeaconSyncDistance(): ULong = 0UL
 
   override fun start() {
     elSyncHandlers.notifySubscribers(getElSyncStatus())

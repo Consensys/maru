@@ -205,6 +205,8 @@ class MaruAppFactory {
           networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(beaconChain),
+          syncStatusProvider = syncControllerImpl,
+          isElOfflineProvider = { engineApiClient.isOnline().get() },
         )
 
     val maru =

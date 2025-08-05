@@ -75,6 +75,16 @@ class CLSyncServiceImpl(
     }
   }
 
+  override fun getSyncDistance(): ULong {
+    if (!started.get()) {
+      // we need to return a number to the BeaconAPI that indicates the sync distance
+      // so we will optimistically return 0UL if the service is not started
+      return 0UL
+    }
+
+    return syncTarget.get() - beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+  }
+
   @Synchronized
   private fun startSync() {
     val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL

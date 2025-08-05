@@ -26,6 +26,8 @@ class FakeCLSyncService : CLSyncService {
     syncCompleteHandlers.add(handler)
   }
 
+  override fun getSyncDistance(): ULong = 0UL
+
   fun triggerSyncComplete(syncTarget: ULong) {
     syncCompleteHandlers.forEach { it(syncTarget) }
   }
