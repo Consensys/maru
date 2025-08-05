@@ -11,10 +11,10 @@ package testutils
 import java.nio.file.Files
 import java.nio.file.Path
 import maru.app.MaruApp
-import testutils.besu.BesuFactory
-import testutils.besu.startWithRetry
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
+import testutils.besu.BesuFactory
+import testutils.besu.startWithRetry
 
 /**
  * Original NetworkParticipantStack implementation for single node scenarios.

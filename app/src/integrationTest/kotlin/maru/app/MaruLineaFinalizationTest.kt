@@ -14,11 +14,6 @@ import kotlin.time.toJavaDuration
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
-import testutils.MaruFactory
-import testutils.PeeringNodeNetworkStack
-import testutils.besu.BesuFactory
-import testutils.besu.BesuTransactionsHelper
-import testutils.besu.ethGetBlockByNumber
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -31,6 +26,11 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import testutils.MaruFactory
+import testutils.PeeringNodeNetworkStack
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
+import testutils.besu.ethGetBlockByNumber
 import testutils.maru.awaitTillMaruHasPeers
 
 class MaruLineaFinalizationTest {

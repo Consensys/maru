@@ -9,11 +9,11 @@
 package testutils
 
 import java.math.BigInteger
-import testutils.besu.BesuFactory
 import org.assertj.core.api.Assertions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
+import testutils.besu.BesuFactory
 
 object Checks {
   fun BesuNode.getMinedBlocks(blocksMined: Int): List<EthBlock.Block> =

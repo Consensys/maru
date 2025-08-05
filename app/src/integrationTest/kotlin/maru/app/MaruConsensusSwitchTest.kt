@@ -9,13 +9,6 @@
 package maru.app
 
 import java.io.File
-import testutils.Checks.getMinedBlocks
-import testutils.Checks.verifyBlockTimeWithAGapOn
-import testutils.MaruFactory
-import testutils.besu.BesuFactory
-import testutils.besu.BesuTransactionsHelper
-import testutils.besu.ethGetBlockByNumber
-import testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -30,6 +23,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.methods.response.EthBlock
+import testutils.Checks.getMinedBlocks
+import testutils.Checks.verifyBlockTimeWithAGapOn
+import testutils.MaruFactory
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
+import testutils.besu.ethGetBlockByNumber
+import testutils.besu.startWithRetry
 import testutils.maru.awaitTillMaruHasPeers
 
 class MaruConsensusSwitchTest {

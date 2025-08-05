@@ -14,13 +14,6 @@ import kotlin.time.toJavaDuration
 import maru.core.Seal
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.ValidationResult
-import testutils.Checks.getMinedBlocks
-import testutils.InjectableSealedBlocksFakeNetwork
-import testutils.MaruFactory
-import testutils.SingleNodeNetworkStack
-import testutils.SpyingP2PNetwork
-import testutils.besu.BesuFactory
-import testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -32,6 +25,13 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
+import testutils.Checks.getMinedBlocks
+import testutils.InjectableSealedBlocksFakeNetwork
+import testutils.MaruFactory
+import testutils.SingleNodeNetworkStack
+import testutils.SpyingP2PNetwork
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
 
 class MaruFollowerNegativeTest {
   private val cluster: Cluster =

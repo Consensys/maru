@@ -11,13 +11,6 @@ package maru.app
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
-import testutils.Checks.getMinedBlocks
-import testutils.MaruFactory
-import testutils.PeeringNodeNetworkStack
-import testutils.besu.BesuFactory
-import testutils.besu.BesuTransactionsHelper
-import testutils.besu.ethGetBlockByNumber
-import testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -30,6 +23,13 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import testutils.Checks.getMinedBlocks
+import testutils.MaruFactory
+import testutils.PeeringNodeNetworkStack
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
+import testutils.besu.ethGetBlockByNumber
+import testutils.besu.startWithRetry
 import testutils.maru.awaitTillMaruHasPeers
 
 class MaruFollowerTest {
