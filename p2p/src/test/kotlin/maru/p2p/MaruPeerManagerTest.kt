@@ -8,6 +8,7 @@
  */
 package maru.p2p
 
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import maru.config.P2P
@@ -35,6 +36,8 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.network.P2PNetwork
+import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
@@ -247,6 +250,304 @@ class MaruPeerManagerTest {
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
 
+    assertThat(manager.getPeer(nodeId)).isEqualTo(maruPeer)
+  }
+
+  @Test
+  fun `onConnect successfully connects peer when all conditions are met`() {
+    val nodeId = mock<NodeId>()
+    val peer = mock<Peer>()
+    val maruPeerFactory = mock<MaruPeerFactory>()
+    val maruPeer = mock<MaruPeer>()
+    val p2pConfig = mock<P2P>()
+    val p2pNetwork = mock<P2PNetwork<Peer>>()
+
+    whenever(peer.id).thenReturn(nodeId)
+    whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
+    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusFuture) // Uses correct fork ID hash
+
+    val manager =
+      MaruPeerManager(
+        maruPeerFactory = maruPeerFactory,
+        p2pConfig = p2pConfig,
+        forkidHashProvider = forkIdHashProvider,
+        beaconChain = beaconChain,
+        syncStatusProviderProvider = { syncStatusProvider },
+      )
+    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
+    manager.onConnect(peer)
+
+    // Verify peer was not disconnected
+    verify(maruPeer, never()).disconnectCleanly(any())
+    verify(peer, never()).disconnectCleanly(any())
+
+    // Verify peer is stored and retrievable
+    assertThat(manager.getPeer(nodeId)).isEqualTo(maruPeer)
+  }
+
+  @Test
+  fun `onConnect disconnects peer when max peers limit exceeded`() {
+    val nodeId = mock<NodeId>()
+    val peer = mock<Peer>()
+    val maruPeerFactory = mock<MaruPeerFactory>()
+    val p2pConfig = mock<P2P>()
+    val p2pNetwork = mock<P2PNetwork<Peer>>()
+
+    whenever(peer.id).thenReturn(nodeId)
+    whenever(p2pConfig.maxPeers).thenReturn(5)
+
+    val manager =
+      MaruPeerManager(
+        maruPeerFactory = maruPeerFactory,
+        p2pConfig = p2pConfig,
+        forkidHashProvider = forkIdHashProvider,
+        beaconChain = beaconChain,
+        syncStatusProviderProvider = { syncStatusProvider },
+      )
+
+    // Add 6 connected peers to exceed the maxPeers limit of 5
+    addConnectedPeers(5, manager)
+
+    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
+    manager.onConnect(peer)
+
+    verify(peer).disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
+    verify(maruPeerFactory, never()).createMaruPeer(any())
+  }
+
+  @Test
+  fun `onConnect disconnects peer when fork ID hash mismatch`() {
+    val nodeId = mock<NodeId>()
+    val peer = mock<Peer>()
+    val maruPeerFactory = mock<MaruPeerFactory>()
+    val maruPeer = mock<MaruPeer>()
+    val p2pConfig = mock<P2P>()
+    val p2pNetwork = mock<P2PNetwork<Peer>>()
+
+    // Create status with different fork ID hash
+    val differentForkIdHash = ByteArray(32) { 0xFF.toByte() }
+    val statusWithDifferentForkId =
+      SafeFuture.completedFuture(
+        Status(
+          forkIdHash = differentForkIdHash,
+          latestBlockNumber = 0u,
+          latestStateRoot = ByteArray(32) { 0x00 },
+        ),
+      )
+
+    whenever(peer.id).thenReturn(nodeId)
+    whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(p2pNetwork.peerCount).thenReturn(5)
+    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
+    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusWithDifferentForkId)
+
+    val manager =
+      MaruPeerManager(
+        maruPeerFactory = maruPeerFactory,
+        p2pConfig = p2pConfig,
+        forkidHashProvider = forkIdHashProvider,
+        beaconChain = beaconChain,
+        syncStatusProviderProvider = { syncStatusProvider },
+      )
+    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
+    manager.onConnect(peer)
+
+    verify(maruPeer).disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
+    assertThat(manager.getPeer(nodeId)).isNull()
+  }
+
+  @Test
+  fun `onConnect disconnects peer when too far behind during syncing`() {
+    val nodeId = mock<NodeId>()
+    val peer = mock<Peer>()
+    val maruPeerFactory = mock<MaruPeerFactory>()
+    val maruPeer = mock<MaruPeer>()
+    val p2pConfig = mock<P2P>()
+    val p2pNetwork = mock<P2PNetwork<Peer>>()
+
+    // Create sync status provider that returns SYNCING status
+    val syncingStatusProvider =
+      object : SyncStatusProvider {
+        override fun getCLSyncStatus(): CLSyncStatus = CLSyncStatus.SYNCING
+
+        override fun getElSyncStatus(): ELSyncStatus = ELSyncStatus.SYNCED
+
+        override fun onClSyncStatusUpdate(handler: (newStatus: CLSyncStatus) -> Unit) {}
+
+        override fun onElSyncStatusUpdate(handler: (newStatus: ELSyncStatus) -> Unit) {}
+
+        override fun isBeaconChainSynced(): Boolean = false
+
+        override fun isELSynced(): Boolean = true
+
+        override fun onBeaconSyncComplete(handler: () -> Unit) {}
+
+        override fun onFullSyncComplete(handler: () -> Unit) {}
+
+        override fun getSyncTarget(): ULong? = 1000u // Target block number
+      }
+
+    // Create status with peer far behind (target - peer > blocksBehindThreshold)
+    val statusFarBehind =
+      SafeFuture.completedFuture(
+        Status(
+          forkIdHash = forkIdHashProvider.currentForkIdHash(),
+          latestBlockNumber = 900u, // 1000 - 900 = 100 > 32 (blocksBehindThreshold)
+          latestStateRoot = ByteArray(32) { 0x00 },
+        ),
+      )
+
+    whenever(peer.id).thenReturn(nodeId)
+    whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(p2pNetwork.peerCount).thenReturn(5)
+    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
+    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusFarBehind)
+
+    val manager =
+      MaruPeerManager(
+        maruPeerFactory = maruPeerFactory,
+        p2pConfig = p2pConfig,
+        forkidHashProvider = forkIdHashProvider,
+        beaconChain = beaconChain,
+        syncStatusProviderProvider = { syncingStatusProvider },
+      )
+    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
+    manager.onConnect(peer)
+
+    verify(maruPeer).disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
+    assertThat(manager.getPeer(nodeId)).isNull()
+  }
+
+  @Test
+  fun `onConnect disconnects peer when behind and too many peers behind while synced`() {
+    val nodeId = mock<NodeId>()
+    val peer = mock<Peer>()
+    val maruPeerFactory = mock<MaruPeerFactory>()
+    val maruPeer = mock<MaruPeer>()
+    val p2pConfig = mock<P2P>()
+    val p2pNetwork = mock<P2PNetwork<Peer>>()
+
+    // Create status with peer behind current head
+    val currentHead = 100uL
+    val statusBehind =
+      SafeFuture.completedFuture(
+        Status(
+          forkIdHash = forkIdHashProvider.currentForkIdHash(),
+          latestBlockNumber = 50u, // Behind current head
+          latestStateRoot = ByteArray(32) { 0x00 },
+        ),
+      )
+
+    // Mock beacon chain to return current head
+    val mockBeaconState = DataGenerators.randomBeaconState(number = currentHead, timestamp = 0uL)
+    val mockBeaconChain = mock<maru.database.BeaconChain>()
+    whenever(mockBeaconChain.getLatestBeaconState()).thenReturn(mockBeaconState)
+
+    whenever(peer.id).thenReturn(nodeId)
+    whenever(p2pConfig.maxPeers).thenReturn(10) // maxPeers / 10 = 1, so 1 peer behind is too many
+    whenever(p2pNetwork.peerCount).thenReturn(5)
+    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
+    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusBehind)
+
+    val manager =
+      MaruPeerManager(
+        maruPeerFactory = maruPeerFactory,
+        p2pConfig = p2pConfig,
+        forkidHashProvider = forkIdHashProvider,
+        beaconChain = mockBeaconChain,
+        syncStatusProviderProvider = { syncStatusProvider }, // SYNCED status
+      )
+
+    // Add one peer that's already behind to trigger "too many peers behind" condition
+    val existingPeer = mock<MaruPeer>()
+    val existingPeerStatus = mock<Status>()
+    val existingPeerNodeId = mock<NodeId>()
+
+    whenever(existingPeerStatus.latestBlockNumber).thenReturn(40u) // Behind threshold
+    whenever(existingPeer.getStatus()).thenReturn(existingPeerStatus)
+    whenever(existingPeer.id).thenReturn(existingPeerNodeId)
+
+    addConnectedPeer(manager, existingPeer)
+
+    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
+    manager.onConnect(peer)
+
+    verify(maruPeer).disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
+    assertThat(manager.getPeer(nodeId)).isNull()
+  }
+
+  private fun addConnectedPeer(
+    manager: MaruPeerManager,
+    maruPeer: MaruPeer,
+  ) {
+    // Use reflection to add the existing peer to connectedPeers
+    val connectedPeersField = MaruPeerManager::class.java.getDeclaredField("connectedPeers")
+    connectedPeersField.isAccessible = true
+    val connectedPeers = connectedPeersField.get(manager) as ConcurrentHashMap<NodeId, MaruPeer>
+    connectedPeers[maruPeer.id] = maruPeer
+  }
+
+  private fun addConnectedPeers(
+    number: Int,
+    manager: MaruPeerManager,
+  ): List<MaruPeer> {
+    val peers = mutableListOf<MaruPeer>()
+    for (i in 1..number) {
+      val peer = mock<MaruPeer>()
+      val nodeId = mock<NodeId>()
+      whenever(peer.id).thenReturn(nodeId)
+      val status = mock<Status>()
+      whenever(status.latestBlockNumber).thenReturn(i.toULong())
+      whenever(peer.getStatus()).thenReturn(status)
+      peers.add(peer)
+      addConnectedPeer(manager, peer)
+    }
+    return peers
+  }
+
+  @Test
+  fun `onConnect handles peer during status exchange phase`() {
+    val nodeId = mock<NodeId>()
+    val peer = mock<Peer>()
+    val maruPeerFactory = mock<MaruPeerFactory>()
+    val maruPeer = mock<MaruPeer>()
+    val p2pConfig = mock<P2P>()
+    val p2pNetwork = mock<P2PNetwork<Peer>>()
+
+    // Create a future that hasn't completed yet to simulate status exchange in progress
+    val pendingStatusFuture = SafeFuture<Status>()
+
+    whenever(peer.id).thenReturn(nodeId)
+    whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(p2pNetwork.peerCount).thenReturn(5)
+    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
+    whenever(maruPeer.awaitInitialStatus()).thenReturn(pendingStatusFuture)
+
+    val manager =
+      MaruPeerManager(
+        maruPeerFactory = maruPeerFactory,
+        p2pConfig = p2pConfig,
+        forkidHashProvider = forkIdHashProvider,
+        beaconChain = beaconChain,
+        syncStatusProviderProvider = { syncStatusProvider },
+      )
+    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
+    manager.onConnect(peer)
+
+    // Verify peer is in status exchanging phase
+    assertThat(manager.getPeer(nodeId)).isEqualTo(maruPeer)
+
+    // Complete the status exchange successfully
+    pendingStatusFuture.complete(
+      Status(
+        forkIdHash = forkIdHashProvider.currentForkIdHash(),
+        latestBlockNumber = 0u,
+        latestStateRoot = ByteArray(32) { 0x00 },
+      ),
+    )
+
+    // Verify peer is still available after successful status exchange
     assertThat(manager.getPeer(nodeId)).isEqualTo(maruPeer)
   }
 }

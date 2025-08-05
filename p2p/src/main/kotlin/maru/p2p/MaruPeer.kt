@@ -180,9 +180,15 @@ class DefaultMaruPeer(
   override fun disconnectImmediately(
     reason: Optional<DisconnectReason>,
     locallyInitiated: Boolean,
-  ) = delegatePeer.disconnectImmediately(reason, locallyInitiated)
+  ) {
+    scheduler.shutdown()
+    delegatePeer.disconnectImmediately(reason, locallyInitiated)
+  }
 
-  override fun disconnectCleanly(reason: DisconnectReason?): SafeFuture<Void> = delegatePeer.disconnectCleanly(reason)
+  override fun disconnectCleanly(reason: DisconnectReason?): SafeFuture<Void> {
+    scheduler.shutdown()
+    return delegatePeer.disconnectCleanly(reason)
+  }
 
   override fun setDisconnectRequestHandler(handler: DisconnectRequestHandler) =
     delegatePeer.setDisconnectRequestHandler(handler)

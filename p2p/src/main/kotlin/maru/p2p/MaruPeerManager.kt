@@ -103,8 +103,8 @@ class MaruPeerManager(
             }
           }.whenComplete { _, _ ->
             currentlySearching.set(false)
-            log.trace("peerCount={}. maxPeers={}", p2pNetwork.peerCount, maxPeers)
-            if (!stopCalled && p2pNetwork.peerCount < maxPeers) {
+            log.trace("peerCount={}. maxPeers={}", connectedPeers.size, maxPeers)
+            if (!stopCalled && connectedPeers.size < maxPeers) {
               scheduler.schedule({ searchForPeersUntilMaxReached() }, 1, TimeUnit.SECONDS)
             }
           }
@@ -121,7 +121,7 @@ class MaruPeerManager(
   }
 
   override fun onConnect(peer: Peer) {
-    if (p2pNetwork.peerCount > maxPeers) {
+    if (connectedPeers.size >= maxPeers) {
       // TODO: We could disconnect another peer here, based on some criteria
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
       return
@@ -172,7 +172,7 @@ class MaruPeerManager(
   override fun onDisconnect(peer: Peer) {
     connectedPeers.remove(peer.id)
     log.trace("Peer={} disconnected", peer.id)
-    if (!stopCalled && p2pNetwork.peerCount < maxPeers) {
+    if (!stopCalled && connectedPeers.size < maxPeers) {
       searchForPeersUntilMaxReached()
     }
   }
@@ -195,7 +195,7 @@ class MaruPeerManager(
         return
       }
       synchronized(connectionInProgress) {
-        if (p2pNetwork.peerCount >= maxPeers || connectionInProgress.contains(peer.nodeIdBytes)) {
+        if (connectedPeers.size >= maxPeers || connectionInProgress.contains(peer.nodeIdBytes)) {
           return
         }
         connectionInProgress.add(peer.nodeIdBytes)
