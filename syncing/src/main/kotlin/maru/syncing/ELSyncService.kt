@@ -77,8 +77,10 @@ class ELSyncService(
     val latestBeaconBlockNumber = latestBeaconBlockHeader.number
     if (latestBeaconBlockNumber == 0UL) {
       val newELSyncStatus = ELSyncStatus.SYNCED
-      currentELSyncStatus = newELSyncStatus
-      onStatusChange(newELSyncStatus)
+      if (currentELSyncStatus != newELSyncStatus) {
+        currentELSyncStatus = newELSyncStatus
+        onStatusChange(newELSyncStatus)
+      }
       return
     }
 
@@ -126,8 +128,10 @@ class ELSyncService(
         else -> throw IllegalStateException("Unexpected payload status: ${fcuResponse.payloadStatus.status}")
       }
 
-    currentELSyncStatus = newELSyncStatus
-    onStatusChange(newELSyncStatus)
+    if (currentELSyncStatus != newELSyncStatus) {
+      currentELSyncStatus = newELSyncStatus
+      onStatusChange(newELSyncStatus)
+    }
   }
 
   override fun start() {

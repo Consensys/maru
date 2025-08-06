@@ -8,6 +8,9 @@
  */
 package maru.syncing
 
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.time.Duration.Companion.seconds
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.FinalizationState
@@ -27,11 +30,16 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
+@OptIn(ExperimentalAtomicApi::class)
 class ELSyncServiceTest {
   @Test
   fun `should set sync status to Synced for genesis block`() {
     var elSyncStatus: ELSyncStatus? = null
-    val onStatusChange: (ELSyncStatus) -> Unit = { elSyncStatus = it }
+    val onStatusChangeCount = AtomicInt(0)
+    val onStatusChange: (ELSyncStatus) -> Unit = {
+      elSyncStatus = it
+      onStatusChangeCount.incrementAndFetch()
+    }
     val config = ELSyncService.Config(pollingInterval = 1.seconds)
     val timer = TestablePeriodicTimer()
     val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
@@ -51,15 +59,23 @@ class ELSyncServiceTest {
     elSyncService.start()
     assertThat(elSyncStatus).isNull()
     timer.runNextTask()
-
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
+
+    timer.runNextTask()
+    timer.runNextTask()
+    assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
+    assertThat(onStatusChangeCount.load()).isEqualTo(1)
     elSyncService.stop()
   }
 
   @Test
   fun `should change el sync status when el is syncing and synced`() {
     var elSyncStatus: ELSyncStatus? = null
-    val onStatusChange: (ELSyncStatus) -> Unit = { elSyncStatus = it }
+    val onStatusChangeCount = AtomicInt(0)
+    val onStatusChange: (ELSyncStatus) -> Unit = {
+      elSyncStatus = it
+      onStatusChangeCount.incrementAndFetch()
+    }
     val config = ELSyncService.Config(pollingInterval = 1.seconds)
     val timer = TestablePeriodicTimer()
     val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(0uL))
@@ -117,6 +133,12 @@ class ELSyncServiceTest {
       )
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
+    assertThat(onStatusChangeCount.load()).isEqualTo(3)
+
+    timer.runNextTask()
+    timer.runNextTask()
+    assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
+    assertThat(onStatusChangeCount.load()).isEqualTo(3)
     elSyncService.stop()
   }
 

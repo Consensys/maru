@@ -223,6 +223,7 @@ class BeaconSyncControllerImpl(
           beaconSyncTargetUpdateHandler = controller,
           targetChainHeadCalculator = targetChainHeadCalculator,
           config = peerChainTrackerConfig,
+          beaconChain = beaconChain,
         )
 
       return SyncControllerManager(
