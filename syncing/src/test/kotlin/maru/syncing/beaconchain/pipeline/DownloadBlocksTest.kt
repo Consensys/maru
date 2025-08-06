@@ -10,14 +10,12 @@ package maru.syncing.beaconchain.pipeline
 
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeoutException
-import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.messages.BeaconBlocksByRangeResponse
-import maru.p2p.messages.Status
 import maru.syncing.beaconchain.pipeline.DataGenerators.randomStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -267,5 +265,4 @@ class DownloadBlocksTest {
         SealedBlockWithPeer(it, peer)
       })
       .toList()
-
 }
