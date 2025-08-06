@@ -18,6 +18,7 @@ import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.messages.BeaconBlocksByRangeResponse
 import maru.p2p.messages.Status
+import maru.syncing.beaconchain.pipeline.DataGenerators.randomStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -267,10 +268,4 @@ class DownloadBlocksTest {
       })
       .toList()
 
-  private fun randomStatus(latestBlockNumber: ULong): Status =
-    Status(
-      forkIdHash = Random.nextBytes(32),
-      latestStateRoot = Random.nextBytes(32),
-      latestBlockNumber = latestBlockNumber,
-    )
 }
