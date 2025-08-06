@@ -236,7 +236,7 @@ class CliqueToPosTest {
 
     val postMergeBlock = getBlockByNumber(6)!!
     assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(parsePragueSwitchTimestamp())
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client)
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, 9)
 
     waitForAllBlockHeightsToMatch()
   }
@@ -249,8 +249,6 @@ class CliqueToPosTest {
     nodeName: String,
     engineApiConfig: ApiEndpointConfig,
   ) {
-    // To fail right away in case switch failed in the first place
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client)
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
     restartNodeFromScratch(nodeName, nodeEthereumClient)
     log.info("Container $nodeName restarted")
@@ -429,7 +427,7 @@ class CliqueToPosTest {
   private fun assertNodeBlockHeight(
     web3j: Web3j,
     expectedBlockNumber: Long =
-      web3j
+      TestEnvironment.sequencerL2Client
         .ethBlockNumber()
         .send()
         .blockNumber
