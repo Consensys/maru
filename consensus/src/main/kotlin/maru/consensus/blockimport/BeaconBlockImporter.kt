@@ -62,7 +62,7 @@ class FollowerBeaconBlockImporter(
       .newPayload(executionPayload)
       .handleException { e ->
         log.error(
-          "Error importing execution payload to {} for blockNumber={}",
+          "Error importing execution payload to {} for elBlockNumber={}",
           importerName,
           executionPayload.blockNumber,
           e,
