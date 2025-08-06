@@ -27,7 +27,7 @@ data class SyncingStatusData(
 
 class GetSyncingStatus(
   private val syncStatusProvider: SyncStatusProvider,
-  private val isElOfflineProvider: () -> Boolean,
+  private val isElOnlineProvider: () -> Boolean,
 ) : Handler {
   override fun handle(ctx: Context) {
     ctx.status(200).json(
@@ -38,7 +38,7 @@ class GetSyncingStatus(
             syncDistance = syncStatusProvider.getBeaconSyncDistance().toString(),
             isSyncing = !syncStatusProvider.isBeaconChainSynced(),
             isOptimistic = true, // we only support optimistic mode for now
-            elOffline = isElOfflineProvider.invoke(),
+            elOffline = !isElOnlineProvider.invoke(),
           ),
       ),
     )

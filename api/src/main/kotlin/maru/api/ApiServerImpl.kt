@@ -30,7 +30,7 @@ class ApiServerImpl(
   val versionProvider: VersionProvider,
   val chainDataProvider: ChainDataProvider,
   val syncStatusProvider: SyncStatusProvider,
-  val isElOfflineProvider: () -> Boolean,
+  val isElOnlineProvider: () -> Boolean,
 ) : ApiServer {
   data class Config(
     val port: UInt,
@@ -60,7 +60,7 @@ class ApiServerImpl(
             GetSyncingStatus.ROUTE,
             GetSyncingStatus(
               syncStatusProvider = syncStatusProvider,
-              isElOfflineProvider = isElOfflineProvider,
+              isElOnlineProvider = isElOnlineProvider,
             ),
           ).get(GetHealth.ROUTE, GetHealth())
           .get(GetBlockHeader.ROUTE, GetBlockHeader(chainDataProvider))

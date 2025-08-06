@@ -133,11 +133,11 @@ class ApiServerTest {
     }
 
   private val fakeBeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
-  private val fakeElOfflineProvider =
+  private val fakeElOnlineProvider =
     object : () -> Boolean {
-      var isElOffline: Boolean = false
+      var isElOnline: Boolean = false
 
-      override fun invoke(): Boolean = isElOffline
+      override fun invoke(): Boolean = isElOnline
     }
 
   @BeforeEach
@@ -149,7 +149,7 @@ class ApiServerTest {
         versionProvider = fakeVersionProvider,
         chainDataProvider = fakeChainDataProvider,
         syncStatusProvider = AlwaysSyncedController(beaconChain = fakeBeaconChain),
-        isElOfflineProvider = fakeElOfflineProvider,
+        isElOnlineProvider = fakeElOnlineProvider,
       )
     apiServer.start()
     apiServerUrl = "http://localhost:${apiServer.port()}"
@@ -281,7 +281,7 @@ class ApiServerTest {
       putBeaconState(DataGenerators.randomBeaconState(number = 100u, timestamp = 100u))
       commit()
     }
-    fakeElOfflineProvider.isElOffline = true
+    fakeElOnlineProvider.isElOnline = true
 
     assert200okResponse(
       GetSyncingStatus.ROUTE,
@@ -292,7 +292,7 @@ class ApiServerTest {
             syncDistance = "0",
             isSyncing = false,
             isOptimistic = true,
-            elOffline = true,
+            elOffline = false,
           ),
       ),
     )
@@ -301,7 +301,7 @@ class ApiServerTest {
       putBeaconState(DataGenerators.randomBeaconState(number = 200u, timestamp = 100u))
       commit()
     }
-    fakeElOfflineProvider.isElOffline = false
+    fakeElOnlineProvider.isElOnline = false
 
     assert200okResponse(
       GetSyncingStatus.ROUTE,
@@ -312,7 +312,7 @@ class ApiServerTest {
             syncDistance = "0",
             isSyncing = false,
             isOptimistic = true,
-            elOffline = false,
+            elOffline = true,
           ),
       ),
     )

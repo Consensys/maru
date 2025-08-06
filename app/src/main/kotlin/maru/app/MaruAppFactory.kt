@@ -206,7 +206,7 @@ class MaruAppFactory {
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(beaconChain),
           syncStatusProvider = syncControllerImpl,
-          isElOfflineProvider = { engineApiClient.isOnline().get() },
+          isElOnlineProvider = { engineApiClient.isOnline().get() },
         )
 
     val maru =
