@@ -110,12 +110,12 @@ class ELSyncService(
     val newELSyncStatus =
       when (fcuResponse.payloadStatus.status) {
         ExecutionPayloadStatus.SYNCING -> {
-          log.info("EL client went out of sync")
+          log.debug("EL client went out of sync")
           ELSyncStatus.SYNCING
         }
 
         ExecutionPayloadStatus.VALID -> {
-          log.info(
+          log.debug(
             "EL client is synced elBlockHash={} elBlockNumber={}",
             newELSyncTarget.blockHash.encodeHex(),
             latestBeaconBlockBody.executionPayload.blockNumber,

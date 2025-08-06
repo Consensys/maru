@@ -87,7 +87,7 @@ class CliqueToPosTest {
     private lateinit var maruSequencer: MaruApp
 
     // Will only be used in the sync from scratch tests
-    private lateinit var maruFollower: MaruApp
+    private var maruFollower: MaruApp? = null
 
     private fun parsePragueSwitchTimestamp(): Long {
       val objectMapper = ObjectMapper()
@@ -107,14 +107,6 @@ class CliqueToPosTest {
       nethermindGenesis.delete()
     }
 
-    @AfterEach
-    fun tearDown() {
-      if (::maruFollower.isInitialized) {
-        maruFollower.stop()
-        maruFollower.close()
-      }
-    }
-
     @BeforeAll
     @JvmStatic
     fun beforeAll() {
@@ -127,33 +119,6 @@ class CliqueToPosTest {
     @AfterAll
     @JvmStatic
     fun afterAll() {
-      File("docker_logs").mkdirs()
-      qbftCluster.dockerExecutable().execute("ps").inputStream.use {
-        Files.copy(
-          it,
-          Path.of("docker_logs/containers.txt"),
-          StandardCopyOption.REPLACE_EXISTING,
-        )
-      }
-
-      val containerShortNames =
-        TestEnvironment.allClients
-          .map { it.key }
-          .toMutableList()
-      containerShortNames.forEach { containerShortName ->
-        qbftCluster
-          .dockerExecutable()
-          .execute("logs", containerShortName)
-          .inputStream
-          .use {
-            Files.copy(
-              it,
-              Path.of("docker_logs/$containerShortName.log"),
-              StandardCopyOption.REPLACE_EXISTING,
-            )
-          }
-      }
-
       qbftCluster.after()
       if (::maruSequencer.isInitialized) {
         maruSequencer.stop()
@@ -163,6 +128,7 @@ class CliqueToPosTest {
       TestEnvironment.allClients.values.forEach { web3j ->
         web3j.shutdown()
       }
+      log.info("Test is complete")
     }
 
     @JvmStatic
@@ -210,6 +176,48 @@ class CliqueToPosTest {
             ),
           ),
       )
+
+    private var runCounter = 0u
+  }
+
+  private fun saveLogs(path: Path) {
+    qbftCluster.dockerExecutable().execute("ps").inputStream.use {
+      Files.copy(
+        it,
+        Path.of("$path/containers.txt"),
+        StandardCopyOption.REPLACE_EXISTING,
+      )
+    }
+    val containerShortNames =
+      TestEnvironment.allClients
+        .map { it.key }
+        .toMutableList()
+    containerShortNames.forEach { containerShortName ->
+      qbftCluster
+        .dockerExecutable()
+        .execute("logs", containerShortName)
+        .inputStream
+        .use {
+          Files.copy(
+            it,
+            Path.of("$path/$containerShortName.log"),
+            StandardCopyOption.REPLACE_EXISTING,
+          )
+        }
+    }
+  }
+
+  @AfterEach
+  fun tearDown() {
+    if (maruFollower != null) {
+      maruFollower!!.stop()
+      maruFollower!!.close()
+    }
+
+    val logsDestination = Path.of("docker_logs/run_$runCounter")
+    logsDestination.toFile().mkdirs()
+    saveLogs(logsDestination)
+    runCounter += 1u
   }
 
   @Order(1)
@@ -279,9 +287,9 @@ class CliqueToPosTest {
         }
     }
 
-    maruFollower.start()
+    maruFollower!!.start()
 
-    maruFollower.awaitTillMaruHasPeers(1u)
+    maruFollower!!.awaitTillMaruHasPeers(1u)
     maruSequencer.awaitTillMaruHasPeers(1u)
     awaitCondition
       .timeout(1.minutes.toJavaDuration())
