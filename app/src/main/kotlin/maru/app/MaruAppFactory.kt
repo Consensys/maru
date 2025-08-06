@@ -143,11 +143,13 @@ class MaruAppFactory {
     val latestElBlockMetadataCache =
       LatestElBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
+    val engineApiWeb3jClient =
+      Helpers.createWeb3jClient(
+        config.validatorElNode.engineApiEndpoint,
+      )
     val engineApiClient =
       PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-        Helpers.createWeb3jClient(
-          config.validatorElNode.engineApiEndpoint,
-        ),
+        engineApiWeb3jClient,
         metricsFacade,
       )
     val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
@@ -219,10 +221,10 @@ class MaruAppFactory {
         metricsSystem = besuMetricsSystemAdapter,
         lastElBlockMetadataCache = latestElBlockMetadataCache,
         ethereumJsonRpcClient = ethereumJsonRpcClient,
+        engineApiWeb3jService = engineApiWeb3jClient,
         apiServer = apiServer,
         syncControllerManager = syncControllerImpl,
         syncStatusProvider = syncControllerImpl,
-        engineApiClient = engineApiClient,
       )
 
     return maru

@@ -127,7 +127,7 @@ class MaruFactory(
       SyncingConfig(
         peerChainHeightPollingInterval = 1.seconds,
         peerChainHeightGranularity = 1u,
-        elSyncStatusRefreshInterval = 3.seconds,
+        elSyncStatusRefreshInterval = 500.milliseconds,
       ),
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {

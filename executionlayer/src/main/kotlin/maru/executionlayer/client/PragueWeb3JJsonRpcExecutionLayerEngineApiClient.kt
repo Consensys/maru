@@ -106,8 +106,4 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
       emptyList(),
       Bytes32.ZERO,
     )
-
-  override fun close() {
-    web3jClient.eth1Web3j.shutdown()
-  }
 }
