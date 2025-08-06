@@ -214,6 +214,8 @@ class SyncControllerThreadSafetyTest {
         override fun onSyncComplete(handler: (ULong) -> Unit) {}
 
         override fun getSyncDistance(): ULong = 0UL
+
+        override fun getSyncTarget(): ULong = 0UL
       }
 
     val controller = createController(50UL, trackingService)

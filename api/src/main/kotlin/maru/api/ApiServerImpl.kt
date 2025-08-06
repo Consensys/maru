@@ -61,11 +61,6 @@ class ApiServerImpl(
             GetSyncingStatus(
               syncStatusProvider = syncStatusProvider,
               isElOfflineProvider = isElOfflineProvider,
-              slotNumberProvider = {
-                chainDataProvider
-                  .getLatestBeaconBlock()
-                  .beaconBlock.beaconBlockHeader.number
-              },
             ),
           ).get(GetHealth.ROUTE, GetHealth())
           .get(GetBlockHeader.ROUTE, GetBlockHeader(chainDataProvider))

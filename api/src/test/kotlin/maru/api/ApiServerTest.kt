@@ -48,6 +48,7 @@ import maru.api.node.VersionData
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
+import maru.database.InMemoryBeaconChain
 import maru.extensions.encodeHex
 import maru.p2p.NetworkDataProvider
 import maru.p2p.PeerInfo
@@ -131,6 +132,14 @@ class ApiServerTest {
       }
     }
 
+  private val fakeBeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
+  private val fakeElOfflineProvider =
+    object : () -> Boolean {
+      var isElOffline: Boolean = false
+
+      override fun invoke(): Boolean = isElOffline
+    }
+
   @BeforeEach
   fun beforeEach() {
     apiServer =
@@ -139,8 +148,8 @@ class ApiServerTest {
         networkDataProvider = fakeNetworkDataProvider,
         versionProvider = fakeVersionProvider,
         chainDataProvider = fakeChainDataProvider,
-        syncStatusProvider = AlwaysSyncedController(),
-        isElOfflineProvider = { false },
+        syncStatusProvider = AlwaysSyncedController(beaconChain = fakeBeaconChain),
+        isElOfflineProvider = fakeElOfflineProvider,
       )
     apiServer.start()
     apiServerUrl = "http://localhost:${apiServer.port()}"
@@ -268,12 +277,38 @@ class ApiServerTest {
 
   @Test
   fun `test GetSyncingStatus method`() {
+    fakeBeaconChain.newUpdater().apply {
+      putBeaconState(DataGenerators.randomBeaconState(number = 100u, timestamp = 100u))
+      commit()
+    }
+    fakeElOfflineProvider.isElOffline = true
+
     assert200okResponse(
       GetSyncingStatus.ROUTE,
       GetSyncingStatusResponse(
         data =
           SyncingStatusData(
-            headSlot = "1",
+            headSlot = "100",
+            syncDistance = "0",
+            isSyncing = false,
+            isOptimistic = true,
+            elOffline = true,
+          ),
+      ),
+    )
+
+    fakeBeaconChain.newUpdater().apply {
+      putBeaconState(DataGenerators.randomBeaconState(number = 200u, timestamp = 100u))
+      commit()
+    }
+    fakeElOfflineProvider.isElOffline = false
+
+    assert200okResponse(
+      GetSyncingStatus.ROUTE,
+      GetSyncingStatusResponse(
+        data =
+          SyncingStatusData(
+            headSlot = "200",
             syncDistance = "0",
             isSyncing = false,
             isOptimistic = true,

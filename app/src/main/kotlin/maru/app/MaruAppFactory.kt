@@ -192,7 +192,7 @@ class MaruAppFactory {
           allowEmptyBlocks = config.allowEmptyBlocks,
         )
       } else {
-        AlwaysSyncedController()
+        AlwaysSyncedController(beaconChain)
       }
 
     val apiServer =

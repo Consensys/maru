@@ -27,5 +27,7 @@ interface CLSyncService {
    */
   fun onSyncComplete(handler: (syncTarget: ULong) -> Unit)
 
+  fun getSyncTarget(): ULong
+
   fun getSyncDistance(): ULong
 }

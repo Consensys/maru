@@ -12,6 +12,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import linea.kotlin.minusCoercingUnderflow
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
@@ -82,8 +83,12 @@ class CLSyncServiceImpl(
       return 0UL
     }
 
-    return syncTarget.get() - beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+    return syncTarget
+      .get()
+      .minusCoercingUnderflow(beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number)
   }
+
+  override fun getSyncTarget(): ULong = syncTarget.get()
 
   @Synchronized
   private fun startSync() {

@@ -28,14 +28,13 @@ data class SyncingStatusData(
 class GetSyncingStatus(
   private val syncStatusProvider: SyncStatusProvider,
   private val isElOfflineProvider: () -> Boolean,
-  private val slotNumberProvider: () -> ULong,
 ) : Handler {
   override fun handle(ctx: Context) {
     ctx.status(200).json(
       GetSyncingStatusResponse(
         data =
           SyncingStatusData(
-            headSlot = slotNumberProvider.invoke().toString(),
+            headSlot = syncStatusProvider.getCLSyncTarget().toString(),
             syncDistance = syncStatusProvider.getBeaconSyncDistance().toString(),
             isSyncing = !syncStatusProvider.isBeaconChainSynced(),
             isOptimistic = true, // we only support optimistic mode for now
