@@ -62,7 +62,7 @@ class FollowerBeaconBlockImporter(
       .newPayload(executionPayload)
       .handleException { e ->
         log.error(
-          "Error importing execution payload to {} for blockNumber={}",
+          "Error importing execution payload to {} for elBlockNumber={}",
           importerName,
           executionPayload.blockNumber,
           e,
@@ -75,7 +75,7 @@ class FollowerBeaconBlockImporter(
             safeHash = finalizationState.safeBlockHash,
             finalizedHash = finalizationState.finalizedBlockHash,
           ).thenApply {
-            log.debug("Imported blockNumber={} to {}", executionPayload.blockNumber, importerName)
+            log.debug("Imported elBlockNumber={} to {}", executionPayload.blockNumber, importerName)
             ValidationResult.fromForkChoiceUpdatedResult(it)
           }
       }
