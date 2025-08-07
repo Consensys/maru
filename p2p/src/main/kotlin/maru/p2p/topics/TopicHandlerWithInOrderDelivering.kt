@@ -96,13 +96,10 @@ class TopicHandlerWithInOrderDelivering<T>(
               sequenceNumber,
               nextExpectedSequenceNumber,
             )
-            val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
-            pendingEvents.add(deserializedMessage to delayedHandlingFuture)
-            // Note that it will be completed only when it's handled
-            delayedHandlingFuture
+            addMessageToTheQueue(deserializedMessage)
           } else {
             // Queue is full - drop the oldest message and add the new one
-            val oldestMessage = pendingEvents.poll() // Remove the oldest (lowest sequence number)
+            val oldestMessage = pendingEvents.remove()
             if (oldestMessage != null) {
               oldestMessage.second.complete(Libp2pValidationResult.Ignore)
               log.debug(
@@ -111,10 +108,7 @@ class TopicHandlerWithInOrderDelivering<T>(
                 sequenceNumber,
               )
             }
-
-            val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
-            pendingEvents.add(deserializedMessage to delayedHandlingFuture)
-            delayedHandlingFuture
+            addMessageToTheQueue(deserializedMessage)
           }
         }
 
@@ -143,22 +137,29 @@ class TopicHandlerWithInOrderDelivering<T>(
       SafeFuture.completedFuture(Libp2pValidationResult.Invalid)
     }
 
+  private fun addMessageToTheQueue(deserializedMessage: T): SafeFuture<Libp2pValidationResult> {
+    val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
+    pendingEvents.add(deserializedMessage to delayedHandlingFuture)
+    // Note that it will be completed only when it's handled
+    return delayedHandlingFuture
+  }
+
   // Not synchronized, because it's only being called from the synchronized handleMessage
   private fun cleanUpMessagesBehind(nextExpectedSequenceNumber: ULong) {
-    val (toRemove, toKeep) =
-      pendingEvents.partition { (event, _) ->
-        sequenceNumberExtractor.extractSequenceNumber(event) < nextExpectedSequenceNumber
-      }
+    val sizeBefore = pendingEvents.size
+    while (pendingEvents.isNotEmpty() &&
+      sequenceNumberExtractor.extractSequenceNumber(pendingEvents.peek().first) <
+      nextExpectedSequenceNumber
+    ) {
+      val futureToComplete = pendingEvents.remove().second
+      futureToComplete.complete(Libp2pValidationResult.Ignore)
+    }
 
-    toRemove.forEach { (_, future) -> future.complete(Libp2pValidationResult.Ignore) }
-
-    pendingEvents.clear()
-    pendingEvents.addAll(toKeep)
-
-    if (toRemove.isNotEmpty()) {
+    val eventsRemoved = sizeBefore - pendingEvents.size
+    if (eventsRemoved > 0) {
       log.debug(
         "Cleaned up {} old messages that are now behind expectedSequenceNumber={}",
-        toRemove.size,
+        eventsRemoved,
         nextExpectedSequenceNumber,
       )
     }
