@@ -838,13 +838,12 @@ class P2PTest {
         isBlockImportEnabledProvider = { true },
       )
 
-    val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
     val bootnodeEnrString =
-      getBootnodeEnrString(
-        privateKeyBytes = key1Only32Bytes,
+      ENR.enrString(
+        privateKeyBytes = key1,
         ipv4 = IPV4,
-        discPort = PORT2.toInt(),
-        tcpPort = PORT1.toInt(),
+        ipv4UdpPort = PORT2.toInt(),
+        ipv4TcpPort = PORT1.toInt(),
       )
 
     val p2pNetworkImpl2 =
@@ -988,13 +987,12 @@ class P2PTest {
         isBlockImportEnabledProvider = { true },
       )
 
-    val key1Only32Bytes = key1.slice((key1.size - 32).rangeTo(key1.size - 1)).toByteArray()
     val bootnodeEnrString =
-      getBootnodeEnrString(
-        privateKeyBytes = key1Only32Bytes,
+      ENR.enrString(
+        privateKeyBytes = key1,
         ipv4 = IPV4,
-        discPort = PORT2.toInt(),
-        tcpPort = PORT1.toInt(),
+        ipv4UdpPort = PORT2.toInt(),
+        ipv4TcpPort = PORT1.toInt(),
       )
 
     val p2pNetworkImpl2 =

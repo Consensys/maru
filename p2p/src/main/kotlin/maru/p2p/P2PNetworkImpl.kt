@@ -44,7 +44,7 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class P2PNetworkImpl(
-  privateKeyBytes: ByteArray,
+  private val privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
   private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
@@ -131,7 +131,14 @@ class P2PNetworkImpl(
 
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String> = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
-  override val enr: String? = p2pNetwork.enr.getOrNull()
+  override val enr: String =
+    ENR.enrString(
+      privateKeyBytes = privateKeyBytes,
+      seq = 0,
+      ipv4 = p2pConfig.ipAddress,
+      ipv4UdpPort = p2pConfig.port.toInt(),
+    )
+
   override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 
   override fun start(): SafeFuture<Unit> =
@@ -139,10 +146,10 @@ class P2PNetworkImpl(
       .start()
       .thenApply {
         log.info(
-          "Starting P2P network. port={}, nodeId={}, instance={}",
+          "Starting P2P network: port={}, nodeId={}, enr={}",
           port,
           p2pNetwork.nodeId,
-          p2pNetwork.toString(),
+          enr,
         )
         p2pConfig.staticPeers.forEach { peer ->
           p2pNetwork

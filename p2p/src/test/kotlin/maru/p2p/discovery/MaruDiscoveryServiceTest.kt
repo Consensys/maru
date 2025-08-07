@@ -26,8 +26,8 @@ import maru.consensus.ForksSchedule
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
+import maru.p2p.ENR
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
-import maru.p2p.getBootnodeEnrString
 import maru.serialization.ForkIdSerializers
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
@@ -200,11 +200,11 @@ class MaruDiscoveryServiceTest {
       )
 
     val enrString =
-      getBootnodeEnrString(
-        key1,
-        IPV4,
-        PORT2.toInt(),
-        PORT1.toInt(),
+      ENR.enrString(
+        privateKeyBytes = key1,
+        ipv4 = IPV4,
+        ipv4UdpPort = PORT2.toInt(),
+        ipv4TcpPort = PORT1.toInt(),
       )
 
     val discoveryService2 =
