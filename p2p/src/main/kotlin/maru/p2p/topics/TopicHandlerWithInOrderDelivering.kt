@@ -84,8 +84,7 @@ class TopicHandlerWithInOrderDelivering<T>(
       val sequenceNumber = sequenceNumberExtractor.extractSequenceNumber(deserializedMessage)
       val nextExpectedSequenceNumber = nextExpectedSequenceNumberProvider()
 
-      // Clean up old messages that are now behind the expected sequence number
-      cleanUpOldMessages(nextExpectedSequenceNumber)
+      cleanUpMessagesBehind(nextExpectedSequenceNumber)
 
       when {
         sequenceNumber >= nextExpectedSequenceNumber -> {
@@ -142,7 +141,7 @@ class TopicHandlerWithInOrderDelivering<T>(
       SafeFuture.completedFuture(Libp2pValidationResult.Invalid)
     }
 
-  private fun cleanUpOldMessages(nextExpectedSequenceNumber: ULong) {
+  private fun cleanUpMessagesBehind(nextExpectedSequenceNumber: ULong) {
     val (toRemove, toKeep) = pendingEvents.partition { (event, _) ->
       sequenceNumberExtractor.extractSequenceNumber(event) < nextExpectedSequenceNumber
     }
