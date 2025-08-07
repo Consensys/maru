@@ -132,12 +132,13 @@ class P2PNetworkImpl(
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String> = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
   override val enr: String =
-    ENR.enrString(
-      privateKeyBytes = privateKeyBytes,
-      seq = 0,
-      ipv4 = p2pConfig.ipAddress,
-      ipv4UdpPort = p2pConfig.port.toInt(),
-    )
+    discoveryService?.getLocalNodeRecord()?.asEnr()
+      ?: ENR.enrString(
+        privateKeyBytes = privateKeyBytes,
+        seq = 0,
+        ipv4 = p2pConfig.ipAddress,
+        ipv4UdpPort = p2pConfig.port.toInt(),
+      )
 
   override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 

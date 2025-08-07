@@ -8,6 +8,7 @@
  */
 package maru.p2p
 
+import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.crypto.SECP256K1
 import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
@@ -22,13 +23,7 @@ object ENR {
     ipv4UdpPort: Int,
     ipv4TcpPort: Int = ipv4UdpPort,
   ): String {
-    val keyBytes =
-      if (privateKeyBytes.size > 32) {
-        privateKeyBytes.takeLast(32).toByteArray()
-      } else {
-        privateKeyBytes
-      }
-    val secretKey = SECP256K1.SecretKey.fromBytes(Bytes32.wrap(keyBytes))
+    val secretKey = SECP256K1.SecretKey.fromBytes(Bytes32.wrap(privateKeyBytesWithoutPrefix(privateKeyBytes)))
     val nodeRecord =
       NodeRecordBuilder()
         .nodeRecordFactory(NodeRecordFactory(IdentitySchemaInterpreter.V4))
