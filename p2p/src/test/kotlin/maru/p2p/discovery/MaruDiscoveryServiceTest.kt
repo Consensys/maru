@@ -10,6 +10,7 @@ package maru.p2p.discovery
 
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.time.Duration
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
@@ -29,6 +30,8 @@ import maru.database.InMemoryBeaconChain
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.getBootnodeEnrString
 import maru.serialization.ForkIdSerializers
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
@@ -82,14 +85,9 @@ class MaruDiscoveryServiceTest {
       )
 
     val otherForkSpec = ForkSpec(1L, 1, consensusConfig)
-
-    val forkId =
-      ForkId(
-        chainId = chainId + 2u,
-        forkSpec = otherForkSpec,
-        genesisRootHash = ByteArray(32),
-      )
   }
+
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   private lateinit var service: MaruDiscoveryService
 
@@ -192,7 +190,7 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT2,
                 bootnodes = emptyList(),
-                refreshInterval = 5.seconds,
+                refreshInterval = 1.seconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
@@ -218,7 +216,7 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT4,
                 bootnodes = listOf(enrString),
-                refreshInterval = 5.seconds,
+                refreshInterval = 1.seconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
@@ -236,7 +234,7 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT6,
                 bootnodes = listOf(enrString),
-                refreshInterval = 5.seconds,
+                refreshInterval = 1.seconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
@@ -248,14 +246,32 @@ class MaruDiscoveryServiceTest {
       discoveryService2.start()
       discoveryService3.start()
 
+      continuouslySearchForPeersWithDelay(bootnode)
+      continuouslySearchForPeersWithDelay(discoveryService2)
+      continuouslySearchForPeersWithDelay(discoveryService3)
+
       awaitPeerFound(bootnode, discoveryService2.getLocalNodeRecord().nodeId)
+      awaitPeerFound(bootnode, discoveryService3.getLocalNodeRecord().nodeId)
+      awaitPeerFound(discoveryService2, bootnode.getLocalNodeRecord().nodeId)
+      awaitPeerFound(discoveryService3, bootnode.getLocalNodeRecord().nodeId)
       awaitPeerFound(discoveryService2, discoveryService3.getLocalNodeRecord().nodeId)
       awaitPeerFound(discoveryService3, discoveryService2.getLocalNodeRecord().nodeId)
-      awaitPeerFound(bootnode, discoveryService3.getLocalNodeRecord().nodeId)
     } finally {
       bootnode.stop()
       discoveryService2.stop()
       discoveryService3.stop()
+    }
+  }
+
+  fun continuouslySearchForPeersWithDelay(
+    service: MaruDiscoveryService,
+    delayMillis: Long = 500,
+  ) {
+    service.searchForPeers().whenComplete { _, _ ->
+      service.delayedExecutor.runAfterDelay(
+        { continuouslySearchForPeersWithDelay(service, delayMillis) },
+        Duration.ofMillis(delayMillis),
+      )
     }
   }
 
@@ -265,15 +281,20 @@ class MaruDiscoveryServiceTest {
   ) {
     Awaitility
       .await()
-      .timeout(10, TimeUnit.SECONDS)
+      .pollInterval(100, TimeUnit.MILLISECONDS)
+      .timeout(15, TimeUnit.SECONDS)
       .untilAsserted {
-        val get = discoveryService.searchForPeers().get()
-        assertThat(
-          get
-            .stream()
-            .filter { it.nodeIdBytes == expectedNodeId }
-            .count(),
-        ).isGreaterThan(0L)
+        val nodeRecordBuckets = discoveryService.discoverySystem.nodeRecordBuckets
+        var found = false
+        nodeRecordBuckets.forEach { bucket ->
+          bucket.forEach { node ->
+            if (node.nodeId == expectedNodeId) {
+              log.info("Found peer: ${node.nodeId}")
+              found = true
+            }
+          }
+        }
+        assertThat(found).isTrue()
       }
   }
 

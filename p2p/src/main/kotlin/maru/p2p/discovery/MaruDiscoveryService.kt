@@ -10,6 +10,7 @@ package maru.p2p.discovery
 
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
@@ -18,8 +19,8 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.units.bigints.UInt64
-import org.ethereum.beacon.discovery.DiscoverySystem
 import org.ethereum.beacon.discovery.DiscoverySystemBuilder
+import org.ethereum.beacon.discovery.MutableDiscoverySystem
 import org.ethereum.beacon.discovery.schema.EnrField
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
@@ -45,7 +46,7 @@ class MaruDiscoveryService(
   }
 
   companion object {
-    const val FORK_ID_HASH_FIELD_NAME = "mfidh"
+    const val FORK_ID_HASH_FIELD_NAME = "eth2"
     const val DISCOVERY_TIMEOUT_SECONDS = 30L
   }
 
@@ -59,15 +60,15 @@ class MaruDiscoveryService(
       .map { NodeRecordFactory.DEFAULT.fromEnr(it) }
       .toList()
 
-  private val discoverySystem: DiscoverySystem =
+  val discoverySystem: MutableDiscoverySystem =
     DiscoverySystemBuilder()
       .listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
       .secretKey(privateKey)
-      .localNodeRecord(localNodeRecord())
+      .localNodeRecord(createLocalNodeRecord())
       .bootnodes(bootnodes)
-      .build()
+      .buildMutable()
 
-  private val delayedExecutor: AsyncRunner =
+  val delayedExecutor: AsyncRunner =
     ScheduledExecutorAsyncRunner.create(
       "DiscoveryService",
       1,
@@ -80,15 +81,6 @@ class MaruDiscoveryService(
 
   fun getLocalNodeRecord(): NodeRecord = discoverySystem.getLocalNodeRecord()
 
-  init {
-    val discoveryNetworkBuilder = DiscoverySystemBuilder()
-
-    discoveryNetworkBuilder.listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
-    discoveryNetworkBuilder.secretKey(privateKey)
-    discoveryNetworkBuilder.localNodeRecord(localNodeRecord())
-    discoveryNetworkBuilder.bootnodes(bootnodes)
-  }
-
   fun start() {
     discoverySystem
       .start()
@@ -96,6 +88,7 @@ class MaruDiscoveryService(
         this.bootnodeRefreshTask =
           delayedExecutor.runWithFixedDelay(
             { this.pingBootnodes(bootnodes) },
+            0.seconds.toJavaDuration(),
             p2pConfig.discovery!!.refreshInterval.toJavaDuration(),
             { error: Throwable ->
               log.error(
@@ -139,10 +132,10 @@ class MaruDiscoveryService(
   private fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
     // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
     return MaruDiscoveryPeer(
-      (node.get(EnrField.PKEY_SECP256K1) as Bytes),
-      node.nodeId,
-      node.tcpAddress.get(),
-      node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
+      publicKeyBytes = (node.get(EnrField.PKEY_SECP256K1) as Bytes),
+      nodeIdBytes = node.nodeId,
+      addr = node.tcpAddress.get(),
+      forkIdBytes = node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
     )
   }
 
@@ -198,7 +191,7 @@ class MaruDiscoveryService(
     )
   }
 
-  private fun localNodeRecord(): NodeRecord {
+  private fun createLocalNodeRecord(): NodeRecord {
     val nodeRecordBuilder: NodeRecordBuilder =
       NodeRecordBuilder()
         .secretKey(privateKey)
