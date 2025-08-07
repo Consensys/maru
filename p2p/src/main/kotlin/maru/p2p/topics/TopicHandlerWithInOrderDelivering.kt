@@ -59,12 +59,14 @@ class TopicHandlerWithInOrderDelivering<T>(
       }
   }
 
-  private val comparator: Comparator<Pair<T, SafeFuture<Libp2pValidationResult>>> =
-    Comparator.comparing {
-      sequenceNumberExtractor.extractSequenceNumber(it.first)
+  private val pendingEvents =
+    run {
+      val comparator: Comparator<Pair<T, SafeFuture<Libp2pValidationResult>>> =
+        Comparator.comparing {
+          sequenceNumberExtractor.extractSequenceNumber(it.first)
+        }
+      PriorityQueue<Pair<T, SafeFuture<Libp2pValidationResult>>>(comparator)
     }
-
-  private val pendingEvents = PriorityQueue<Pair<T, SafeFuture<Libp2pValidationResult>>>(comparator)
 
   override fun prepareMessage(
     payload: Bytes,
@@ -141,10 +143,12 @@ class TopicHandlerWithInOrderDelivering<T>(
       SafeFuture.completedFuture(Libp2pValidationResult.Invalid)
     }
 
+  // Not synchronized, because it's only being called from the synchronized handleMessage
   private fun cleanUpMessagesBehind(nextExpectedSequenceNumber: ULong) {
-    val (toRemove, toKeep) = pendingEvents.partition { (event, _) ->
-      sequenceNumberExtractor.extractSequenceNumber(event) < nextExpectedSequenceNumber
-    }
+    val (toRemove, toKeep) =
+      pendingEvents.partition { (event, _) ->
+        sequenceNumberExtractor.extractSequenceNumber(event) < nextExpectedSequenceNumber
+      }
 
     toRemove.forEach { (_, future) -> future.complete(Libp2pValidationResult.Ignore) }
 
@@ -160,6 +164,7 @@ class TopicHandlerWithInOrderDelivering<T>(
     }
   }
 
+  @Synchronized
   private fun processPendingEvents() {
     if (pendingEvents.isNotEmpty() &&
       isHandlingEnabled() &&
