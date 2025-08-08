@@ -230,14 +230,18 @@ class MaruDiscoveryServiceTest {
       // make sure services are started and bootnodes have been pinged
       sleep(3000)
 
-      discoveryService2.searchForPeers().thenAccept { foundPeers ->
-        assertThat(foundPeers.any { it.nodeId == bootnode.getLocalNodeRecord().nodeId }).isTrue
-        assertThat(foundPeers.any { it.nodeId == discoveryService3.getLocalNodeRecord().nodeId }).isTrue
-      }
-      discoveryService3.searchForPeers().thenAccept { foundPeers ->
-        assertThat(foundPeers.any { it.nodeId == bootnode.getLocalNodeRecord().nodeId }).isTrue
-        assertThat(foundPeers.any { it.nodeId == discoveryService2.getLocalNodeRecord().nodeId }).isTrue
-      }
+      discoveryService2
+        .searchForPeers()
+        .thenAccept { foundPeers ->
+          assertThat(foundPeers.any { it.nodeId == bootnode.getLocalNodeRecord().nodeId }).isTrue
+          assertThat(foundPeers.any { it.nodeId == discoveryService3.getLocalNodeRecord().nodeId }).isTrue
+        }.join()
+      discoveryService3
+        .searchForPeers()
+        .thenAccept { foundPeers ->
+          assertThat(foundPeers.any { it.nodeId == bootnode.getLocalNodeRecord().nodeId }).isTrue
+          assertThat(foundPeers.any { it.nodeId == discoveryService2.getLocalNodeRecord().nodeId }).isTrue
+        }.join()
     } finally {
       bootnode.stop()
       discoveryService2.stop()
