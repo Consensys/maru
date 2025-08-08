@@ -213,6 +213,36 @@ class TopicHanlderWithInOrderDeliveringTest {
   }
 
   @Test
+  fun `can process multiple messages with the same sequence number`() {
+    val processed = mutableListOf<ULong>()
+    val duplicateSequenceNumber = 3UL
+    val handler =
+      createTopicHandler(onEvent = { value ->
+        val result =
+          if (value == duplicateSequenceNumber && !processed.contains(value)) {
+            nextExpectedSequenceNumber--
+            SafeFuture.completedFuture(ValidationResult.Companion.Invalid("Test failure") as ValidationResult)
+          } else {
+            SafeFuture.completedFuture(ValidationResult.Companion.Valid as ValidationResult)
+          }
+        processed.add(value)
+        nextExpectedSequenceNumber++
+        result
+      })
+
+    val futures = submitMessages(handler, (2uL..5uL).toList())
+    // 2 messages with sequence number 3
+    val duplicateFuture = handler.handleMessage(createMessage(3uL))
+
+    // Now process the first message to drain the queue
+    assertFutureResult(handler.handleMessage(createMessage(1uL)), Libp2pValidationResult.Valid)
+    assertThat(futures.map { it.awaitResult() }).allMatch { it == Libp2pValidationResult.Valid }
+
+    assertFutureResult(duplicateFuture, Libp2pValidationResult.Invalid)
+    assertThat(processed).containsExactly(1uL, 2uL, 3uL, 3uL, 4uL, 5uL)
+  }
+
+  @Test
   fun `should be resilient to failures - subscriber throws`() {
     val processed = mutableListOf<ULong>()
     val handler =

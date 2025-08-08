@@ -96,7 +96,6 @@ class TopicHandlerWithInOrderDelivering<T>(
               sequenceNumber,
               nextExpectedSequenceNumber,
             )
-            addMessageToTheQueue(deserializedMessage)
           } else {
             // Queue is full - drop the oldest message and add the new one
             val oldestMessage = pendingEvents.remove()
@@ -108,22 +107,12 @@ class TopicHandlerWithInOrderDelivering<T>(
                 sequenceNumber,
               )
             }
-            addMessageToTheQueue(deserializedMessage)
           }
+          addMessageToTheQueue(deserializedMessage)
         }
-
-        sequenceNumber < nextExpectedSequenceNumber -> {
-          log.debug(
-            "ignoring outdated message with sequenceNumber={} next expectedSequenceNumber={}",
-            sequenceNumber,
-            nextExpectedSequenceNumber,
-          )
-          SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
-        }
-
         else -> {
           log.debug(
-            "Ignoring message with sequenceNumber={}, expectedSequenceNumber={}",
+            "ignoring outdated message with sequenceNumber={} next expectedSequenceNumber={}",
             sequenceNumber,
             nextExpectedSequenceNumber,
           )
