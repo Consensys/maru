@@ -20,7 +20,7 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class BeaconBlocksByRangeResponseMessageSerDe(
   private val sealedBeaconBlockSerDe: SealedBeaconBlockSerDe,
-  private val compressor: MaruCompressor = MaruSnappyCompressor(),
+  compressor: MaruCompressor = MaruSnappyCompressor(),
 ) : MaruCompressorRLPSerDe<Message<BeaconBlocksByRangeResponse, RpcMessageType>>(compressor) {
   override fun writeTo(
     value: Message<BeaconBlocksByRangeResponse, RpcMessageType>,
