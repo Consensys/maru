@@ -262,9 +262,7 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
-      val randomBlockMessage1 =
-        maru.p2p.ext.DataGenerators
-          .randomBlockMessage()
+      val randomBlockMessage1 = P2P2DataGenerators.randomBlockMessage()
       p2pNetworkImpl1.broadcastMessage(randomBlockMessage1).get()
       val randomBlockMessage2 = P2P2DataGenerators.randomBlockMessage(2UL)
       p2pNetworkImpl1.broadcastMessage(randomBlockMessage2).get()
