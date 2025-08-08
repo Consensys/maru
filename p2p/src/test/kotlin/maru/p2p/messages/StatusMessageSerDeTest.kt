@@ -10,15 +10,23 @@ package maru.p2p.messages
 
 import kotlin.random.Random
 import kotlin.random.nextULong
+import maru.p2p.Message
+import maru.p2p.RpcMessageType
+import maru.p2p.Version
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class StatusSerDeTest {
-  private val serDe = StatusSerDe()
+class StatusMessageSerDeTest {
+  private val serDe = StatusMessageSerDe()
 
   @Test
   fun `can serialize and deserialize same value`() {
-    val testValue = Status(Random.nextBytes(32), Random.nextBytes(32), Random.nextULong())
+    val testValue =
+      Message(
+        RpcMessageType.STATUS,
+        Version.V1,
+        Status(Random.nextBytes(32), Random.nextBytes(32), Random.nextULong()),
+      )
 
     val serializedData = serDe.serialize(testValue)
     val deserializedValue = serDe.deserialize(serializedData)
