@@ -54,7 +54,7 @@ class DownloadBlocksStep(
             .filter {
               it.getStatus() != null &&
                 it.getStatus()!!.latestBlockNumber >=
-                startBlockNumber + remaining
+                targetRange.endBlock
             }.random()
         try {
           peer
