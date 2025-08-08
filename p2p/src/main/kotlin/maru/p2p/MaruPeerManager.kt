@@ -48,6 +48,7 @@ class MaruPeerManager(
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val maxPeers = p2pConfig.maxPeers
   private val currentlySearching = AtomicBoolean(false)
+  private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
 
   private val connectionInProgress = mutableListOf<Bytes>()
   private var discoveryService: MaruDiscoveryService? = null
@@ -68,6 +69,7 @@ class MaruPeerManager(
 
   fun stop(): SafeFuture<Unit> {
     stopCalled = true
+    scheduler.shutdown()
     return SafeFuture.completedFuture(Unit)
   }
 
@@ -99,8 +101,6 @@ class MaruPeerManager(
       }
     }
   }
-
-  private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
 
   private fun logConnectedPeers() {
     val peerIds = connectedPeers.keys.joinToString(", ") { it.toString() }
@@ -142,10 +142,10 @@ class MaruPeerManager(
         return
       }
       synchronized(connectionInProgress) {
-        if (p2pNetwork.peerCount >= maxPeers || connectionInProgress.contains(peer.nodeIdBytes)) {
+        if (p2pNetwork.peerCount >= maxPeers || connectionInProgress.contains(peer.nodeId)) {
           return
         }
-        connectionInProgress.add(peer.nodeIdBytes)
+        connectionInProgress.add(peer.nodeId)
       }
 
       p2pNetwork
@@ -154,18 +154,18 @@ class MaruPeerManager(
         .whenComplete { _, throwable ->
           try {
             if (throwable != null) {
-              log.error("Failed to connect to peer={}", peer.nodeIdBytes, throwable)
+              log.error("Failed to connect to peer={}", peer.nodeId, throwable)
             }
           } finally {
             synchronized(connectionInProgress) {
-              connectionInProgress.remove(peer.nodeIdBytes)
+              connectionInProgress.remove(peer.nodeId)
             }
           }
         }
     } catch (e: Exception) {
-      log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeIdBytes, e.message, e)
+      log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeId, e.message, e)
       synchronized(connectionInProgress) {
-        connectionInProgress.remove(peer.nodeIdBytes)
+        connectionInProgress.remove(peer.nodeId)
       }
     }
   }

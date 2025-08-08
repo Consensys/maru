@@ -1176,8 +1176,8 @@ class P2PTest {
     peer: String,
   ) {
     assertThat(
-      p2pNetwork.isConnected(peer),
-    ).isTrue()
+      p2pNetwork.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(peer))),
+    ).isNotNull
   }
 
   private fun getMockedStatusMessageFactory(): StatusMessageFactory {
