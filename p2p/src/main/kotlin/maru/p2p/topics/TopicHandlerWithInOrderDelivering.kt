@@ -86,8 +86,6 @@ class TopicHandlerWithInOrderDelivering<T>(
       val sequenceNumber = sequenceNumberExtractor.extractSequenceNumber(deserializedMessage)
       val nextExpectedSequenceNumber = nextExpectedSequenceNumberProvider()
 
-      cleanUpMessagesBehind(nextExpectedSequenceNumber)
-
       when {
         sequenceNumber >= nextExpectedSequenceNumber -> {
           if (pendingEvents.size < maxQueueSize) {
@@ -156,6 +154,7 @@ class TopicHandlerWithInOrderDelivering<T>(
 
   @Synchronized
   private fun processPendingEvents() {
+    cleanUpMessagesBehind(nextExpectedSequenceNumberProvider())
     if (pendingEvents.isNotEmpty() &&
       isHandlingEnabled() &&
       sequenceNumberExtractor.extractSequenceNumber(pendingEvents.peek().first) ==
