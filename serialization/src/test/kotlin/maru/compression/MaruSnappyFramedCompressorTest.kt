@@ -30,7 +30,6 @@ class MaruSnappyFramedCompressorTest {
   fun `can compress and decompress zero size payload`() {
     val payload = ByteArray(0)
     val compressedPayload = compressor.compress(payload)
-    println("JONES: ${compressedPayload.size}")
     val decompressedPayload = compressor.decompress(compressedPayload)
     Assertions.assertThat(decompressedPayload).isEqualTo(payload)
   }
@@ -39,7 +38,6 @@ class MaruSnappyFramedCompressorTest {
   fun `throw exception if compress and decompress oversized payload`() {
     val payload = Random.nextBytes(10485761)
     val compressedPayload = compressor.compress(payload)
-    println("JONES: ${compressedPayload.size}")
     assertThatThrownBy { compressor.decompress(compressedPayload) }
       .isInstanceOf(ChunkTooLongException::class.java)
   }
