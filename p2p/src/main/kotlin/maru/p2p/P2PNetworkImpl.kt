@@ -114,7 +114,6 @@ class P2PNetworkImpl(
         privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
         p2pConfig = p2pConfig,
         forkIdHashProvider = forkIdHashProvider,
-        metricsSystem = metricsSystem,
       )
     }
 
@@ -131,7 +130,7 @@ class P2PNetworkImpl(
 
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String> = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
-  override val enr: String? = p2pNetwork.enr.getOrNull()
+  override val enr: String? = discoveryService?.getLocalNodeRecord()?.asEnr()
   override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 
   override fun start(): SafeFuture<Unit> =

@@ -1157,7 +1157,7 @@ class P2PTest {
     peer: String,
   ) {
     assertThat(
-      p2pNetwork.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
+      p2pNetwork.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(peer))),
     ).isNotNull
   }
 
