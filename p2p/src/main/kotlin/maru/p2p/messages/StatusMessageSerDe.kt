@@ -14,11 +14,11 @@ import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.serialization.compression.MaruNoOpCompressor
 import maru.serialization.rlp.MaruCompressorRLPSerDe
-import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class StatusMessageSerDe(
+  private val statusSerDe: StatusSerDe,
   compressor: MaruCompressor = MaruNoOpCompressor(),
 ) : MaruCompressorRLPSerDe<Message<Status, RpcMessageType>>(compressor) {
   override fun writeTo(
@@ -27,9 +27,7 @@ class StatusMessageSerDe(
   ) {
     rlpOutput.startList()
 
-    rlpOutput.writeBytes(Bytes.wrap(value.payload.forkIdHash))
-    rlpOutput.writeBytes(Bytes.wrap(value.payload.latestStateRoot))
-    rlpOutput.writeLong(value.payload.latestBlockNumber.toLong())
+    statusSerDe.writeTo(value.payload, rlpOutput)
 
     rlpOutput.endList()
   }
@@ -37,16 +35,14 @@ class StatusMessageSerDe(
   override fun readFrom(rlpInput: RLPInput): Message<Status, RpcMessageType> {
     rlpInput.enterList()
 
-    val forkId = rlpInput.readBytes().toArray()
-    val headStateRoot = rlpInput.readBytes().toArray()
-    val headBlockNumber = rlpInput.readLong().toULong()
+    val status = statusSerDe.readFrom(rlpInput)
 
     rlpInput.leaveList()
 
     return Message(
       RpcMessageType.STATUS,
       Version.V1,
-      Status(forkIdHash = forkId, latestStateRoot = headStateRoot, latestBlockNumber = headBlockNumber),
+      status,
     )
   }
 }
