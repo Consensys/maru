@@ -48,6 +48,7 @@ class MaruPeerManager(
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val maxPeers = p2pConfig.maxPeers
   private val currentlySearching = AtomicBoolean(false)
+  private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
 
   private val connectionInProgress = mutableListOf<Bytes>()
   private var discoveryService: MaruDiscoveryService? = null
@@ -100,8 +101,6 @@ class MaruPeerManager(
       }
     }
   }
-
-  private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
 
   private fun logConnectedPeers() {
     val peerIds = connectedPeers.keys.joinToString(", ") { it.toString() }

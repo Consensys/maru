@@ -229,6 +229,7 @@ class MaruDiscoveryServiceTest {
 
       // make sure services are started and bootnodes have been pinged
       sleep(3000)
+
       discoveryService2.searchForPeers().thenAccept { foundPeers ->
         assertThat(foundPeers.any { it.nodeId == bootnode.getLocalNodeRecord().nodeId }).isTrue
         assertThat(foundPeers.any { it.nodeId == discoveryService3.getLocalNodeRecord().nodeId }).isTrue

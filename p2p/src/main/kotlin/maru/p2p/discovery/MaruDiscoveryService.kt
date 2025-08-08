@@ -49,7 +49,6 @@ class MaruDiscoveryService(
 
   companion object {
     const val FORK_ID_HASH_FIELD_NAME = "mfidh"
-    const val DISCOVERY_TIMEOUT_SECONDS = 30L
   }
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -72,8 +71,6 @@ class MaruDiscoveryService(
 
   private var poller: Timer? = null
 
-  private lateinit var bootnodeRefreshTask: Unit
-
   fun getLocalNodeRecord(): NodeRecord = discoverySystem.getLocalNodeRecord()
 
   override fun start() {
@@ -82,18 +79,18 @@ class MaruDiscoveryService(
       .thenRun {
         poller = timerFactory("boot-node-refresher", true)
 
-        this.bootnodeRefreshTask =
-          poller!!.scheduleAtFixedRate(
-            /* task = */ timerTask { pingBootnodes() },
-            /* delay = */ 2.seconds.inWholeMilliseconds,
-            /* period = */ p2pConfig.discovery!!.refreshInterval.inWholeMilliseconds,
-          )
+        poller!!.scheduleAtFixedRate(
+          /* task = */ timerTask { pingBootnodes() },
+          /* delay = */ 2.seconds.inWholeMilliseconds,
+          /* period = */ p2pConfig.discovery!!.refreshInterval.inWholeMilliseconds,
+        )
       }
     return
   }
 
   override fun stop() {
     discoverySystem.stop()
+    poller?.cancel()
   }
 
   fun updateForkIdHash(forkIdHash: Bytes) { // TODO: Need to call this when the fork id changes
