@@ -15,7 +15,6 @@ import maru.p2p.messages.BeaconBlocksByRangeResponseMessageSerDe
 import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusMessageFactory
 import maru.p2p.messages.StatusMessageSerDe
-import maru.p2p.messages.StatusSerDe
 import maru.serialization.rlp.RLPSerializers
 
 class RpcMethods(
@@ -24,7 +23,7 @@ class RpcMethods(
   private val peerLookup: () -> PeerLookup,
   beaconChain: BeaconChain,
 ) {
-  val statusMessageSerDe = StatusMessageSerDe(StatusSerDe())
+  val statusMessageSerDe = StatusMessageSerDe()
   val statusRpcMethod =
     MaruRpcMethod(
       messageType = RpcMessageType.STATUS,

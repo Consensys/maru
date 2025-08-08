@@ -8,44 +8,40 @@
  */
 package maru.p2p.messages
 
+import maru.compression.MaruCompressor
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
-import maru.serialization.SerDe
+import maru.serialization.compression.MaruSnappyCompressor
+import maru.serialization.rlp.MaruCompressorRLPSerDe
 import maru.serialization.rlp.SealedBeaconBlockSerDe
-import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.ethereum.rlp.RLP
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class BeaconBlocksByRangeResponseMessageSerDe(
   private val sealedBeaconBlockSerDe: SealedBeaconBlockSerDe,
-) : SerDe<Message<BeaconBlocksByRangeResponse, RpcMessageType>> {
-  override fun serialize(value: Message<BeaconBlocksByRangeResponse, RpcMessageType>): ByteArray =
-    RLP
-      .encode { rlpOutput ->
-        writeTo(value.payload, rlpOutput)
-      }.toArray()
-
-  override fun deserialize(bytes: ByteArray): Message<BeaconBlocksByRangeResponse, RpcMessageType> =
-    Message(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, readFrom(RLP.input(Bytes.wrap(bytes))))
-
-  private fun writeTo(
-    value: BeaconBlocksByRangeResponse,
+  private val compressor: MaruCompressor = MaruSnappyCompressor(),
+) : MaruCompressorRLPSerDe<Message<BeaconBlocksByRangeResponse, RpcMessageType>>(compressor) {
+  override fun writeTo(
+    value: Message<BeaconBlocksByRangeResponse, RpcMessageType>,
     rlpOutput: RLPOutput,
   ) {
     rlpOutput.startList()
-    rlpOutput.writeList(value.blocks) { block, output ->
+    rlpOutput.writeList(value.payload.blocks) { block, output ->
       sealedBeaconBlockSerDe.writeTo(block, output)
     }
     rlpOutput.endList()
   }
 
-  private fun readFrom(rlpInput: RLPInput): BeaconBlocksByRangeResponse {
+  override fun readFrom(rlpInput: RLPInput): Message<BeaconBlocksByRangeResponse, RpcMessageType> {
     rlpInput.enterList()
     val blocks = rlpInput.readList { sealedBeaconBlockSerDe.readFrom(it) }
     rlpInput.leaveList()
 
-    return BeaconBlocksByRangeResponse(blocks = blocks)
+    return Message(
+      RpcMessageType.BEACON_BLOCKS_BY_RANGE,
+      Version.V1,
+      BeaconBlocksByRangeResponse(blocks = blocks),
+    )
   }
 }
