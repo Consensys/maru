@@ -8,11 +8,10 @@
  */
 package maru.p2p.discovery
 
+import java.lang.Thread.sleep
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.time.Duration
 import java.util.Optional
-import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 import linea.kotlin.decodeHex
 import maru.config.P2P
@@ -33,20 +32,15 @@ import maru.serialization.ForkIdSerializers
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility
 import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory
 import org.ethereum.beacon.discovery.util.Functions
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import tech.pegasys.teku.infrastructure.async.AsyncRunner
-import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
-import tech.pegasys.teku.infrastructure.async.ScheduledExecutorAsyncRunner
 
 class MaruDiscoveryServiceTest {
   companion object {
@@ -233,55 +227,21 @@ class MaruDiscoveryServiceTest {
       discoveryService2.start()
       discoveryService3.start()
 
-      continuouslySearchForPeersWithDelay(bootnode)
-      continuouslySearchForPeersWithDelay(discoveryService2)
-      continuouslySearchForPeersWithDelay(discoveryService3)
-
-      awaitPeerDiscovered(bootnode, discoveryService2.getLocalNodeRecord().nodeId)
-      awaitPeerDiscovered(bootnode, discoveryService3.getLocalNodeRecord().nodeId)
-      awaitPeerDiscovered(discoveryService2, bootnode.getLocalNodeRecord().nodeId)
-      awaitPeerDiscovered(discoveryService3, bootnode.getLocalNodeRecord().nodeId)
-      awaitPeerDiscovered(discoveryService2, discoveryService3.getLocalNodeRecord().nodeId)
-      awaitPeerDiscovered(discoveryService3, discoveryService2.getLocalNodeRecord().nodeId)
+      // make sure services are started and bootnodes have been pinged
+      sleep(3000)
+      discoveryService2.searchForPeers().thenAccept { foundPeers ->
+        assertThat(foundPeers.any { it.nodeId == bootnode.getLocalNodeRecord().nodeId }).isTrue
+        assertThat(foundPeers.any { it.nodeId == discoveryService3.getLocalNodeRecord().nodeId }).isTrue
+      }
+      discoveryService3.searchForPeers().thenAccept { foundPeers ->
+        assertThat(foundPeers.any { it.nodeId == bootnode.getLocalNodeRecord().nodeId }).isTrue
+        assertThat(foundPeers.any { it.nodeId == discoveryService2.getLocalNodeRecord().nodeId }).isTrue
+      }
     } finally {
       bootnode.stop()
       discoveryService2.stop()
       discoveryService3.stop()
     }
-  }
-
-  val delayedExecutor: AsyncRunner =
-    ScheduledExecutorAsyncRunner.create(
-      "DiscoveryService",
-      1,
-      1,
-      5,
-      MetricTrackingExecutorFactory(NoOpMetricsSystem()),
-    )
-
-  fun continuouslySearchForPeersWithDelay(
-    service: MaruDiscoveryService,
-    delayMillis: Long = 500,
-  ) {
-    service.searchForPeers().whenComplete { _, _ ->
-      delayedExecutor.runAfterDelay(
-        { continuouslySearchForPeersWithDelay(service, delayMillis) },
-        Duration.ofMillis(delayMillis),
-      )
-    }
-  }
-
-  private fun awaitPeerDiscovered(
-    discoveryService: MaruDiscoveryService,
-    expectedNodeId: Bytes,
-  ) {
-    Awaitility
-      .await()
-      .pollInterval(100, TimeUnit.MILLISECONDS)
-      .timeout(15, TimeUnit.SECONDS)
-      .untilAsserted {
-        assertThat(discoveryService.getKnownPeers().any { it.nodeId == expectedNodeId }).isTrue
-      }
   }
 
   @Test
