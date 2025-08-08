@@ -135,7 +135,7 @@ class MaruDiscoveryServiceTest {
       }
 
     assertEquals(publicKey, peer.publicKey)
-    assertEquals(dummyAddr.get(), peer.addr)
+    assertEquals(dummyAddr.get(), peer.nodeAddress)
     assertEquals(Bytes.wrap(forkIdHashProvider.currentForkIdHash()), peer.forkIdBytes)
   }
 

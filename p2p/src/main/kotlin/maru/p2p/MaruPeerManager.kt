@@ -142,10 +142,10 @@ class MaruPeerManager(
         return
       }
       synchronized(connectionInProgress) {
-        if (p2pNetwork.peerCount >= maxPeers || connectionInProgress.contains(peer.nodeIdBytes)) {
+        if (p2pNetwork.peerCount >= maxPeers || connectionInProgress.contains(peer.nodeId)) {
           return
         }
-        connectionInProgress.add(peer.nodeIdBytes)
+        connectionInProgress.add(peer.nodeId)
       }
 
       p2pNetwork
@@ -154,18 +154,18 @@ class MaruPeerManager(
         .whenComplete { _, throwable ->
           try {
             if (throwable != null) {
-              log.error("Failed to connect to peer={}", peer.nodeIdBytes, throwable)
+              log.error("Failed to connect to peer={}", peer.nodeId, throwable)
             }
           } finally {
             synchronized(connectionInProgress) {
-              connectionInProgress.remove(peer.nodeIdBytes)
+              connectionInProgress.remove(peer.nodeId)
             }
           }
         }
     } catch (e: Exception) {
-      log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeIdBytes, e.message, e)
+      log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeId, e.message, e)
       synchronized(connectionInProgress) {
-        connectionInProgress.remove(peer.nodeIdBytes)
+        connectionInProgress.remove(peer.nodeId)
       }
     }
   }

@@ -89,8 +89,8 @@ class MaruDiscoveryService(
   }
 
   override fun stop() {
-    discoverySystem.stop()
     poller?.cancel()
+    discoverySystem.stop()
   }
 
   fun updateForkIdHash(forkIdHash: Bytes) { // TODO: Need to call this when the fork id changes
@@ -120,8 +120,8 @@ class MaruDiscoveryService(
     // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
     return MaruDiscoveryPeer(
       publicKeyBytes = (node.get(EnrField.PKEY_SECP256K1) as Bytes),
-      nodeIdBytes = node.nodeId,
-      addr = node.tcpAddress.get(),
+      nodeId = node.nodeId,
+      nodeAddress = node.tcpAddress.get(),
       forkIdBytes = node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
     )
   }
