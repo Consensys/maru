@@ -11,6 +11,7 @@ package maru.p2p.discovery
 import java.util.Timer
 import java.util.UUID
 import java.util.function.Consumer
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
@@ -71,9 +72,14 @@ class MaruDiscoveryService(
 
   private var poller: Timer? = null
 
+  private val isStarted = AtomicBoolean(false)
+
   fun getLocalNodeRecord(): NodeRecord = discoverySystem.getLocalNodeRecord()
 
   override fun start() {
+    if (!isStarted.compareAndSet(false, true)) {
+      log.warn("DiscoveryService has already been started!")
+    }
     discoverySystem
       .start()
       .thenRun {
