@@ -10,13 +10,21 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     cp -T "genesis-geth.json.template" "genesis-geth.json"
     cp -T "genesis-nethermind.json.template" "genesis-nethermind.json"
 
-    merge_timestamp=$(($(date +%s) + 60))
-    echo "Timestamp: $merge_timestamp"
-    sed -i "s/%PRAGUE_TIME%/$merge_timestamp/g" genesis-maru.json
-    sed -i "s/%SWITCH_TIME%/$merge_timestamp/g" genesis-besu.json
-    sed -i "s/%SWITCH_TIME%/$merge_timestamp/g" genesis-geth.json
-    merge_timestamp_hex=$(printf "0x%x" $merge_timestamp)
-    sed -i "s/%SWITCH_TIME%/$merge_timestamp_hex/g" genesis-nethermind.json
+    switch_timestamp=$(($(date +%s) + 60))
+    prague_timestamp=$((switch_timestamp + 60))
+    echo "Switch Timestamp: $switch_timestamp"
+    echo "Prague Timestamp: $prague_timestamp"
+    sed -i "s/%SWITCH_TIME%/$switch_timestamp/g" genesis-maru.json
+    sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-maru.json
+    sed -i "s/%SWITCH_TIME%/$switch_timestamp/g" genesis-besu.json
+    sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-besu.json
+    sed -i "s/%SWITCH_TIME%/$switch_timestamp/g" genesis-geth.json
+    sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-geth.json
+    switch_timestamp_hex=$(printf "0x%x" $switch_timestamp)
+    prague_timestamp_hex=$(printf "0x%x" $prague_timestamp)
+    sed -i "s/%SWITCH_TIME%/$switch_timestamp_hex/g" genesis-nethermind.json
+    sed -i "s/%PRAGUE_TIME%/$prague_timestamp_hex/g" genesis-nethermind.json
+
 
     CREATE_EMPTY_BLOCKS="${CREATE_EMPTY_BLOCKS:-false}"
     sed -i "s/%CREATE_EMPTY_BLOCKS%/$CREATE_EMPTY_BLOCKS/g" genesis-besu.json

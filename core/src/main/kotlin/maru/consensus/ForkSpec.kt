@@ -11,6 +11,7 @@ package maru.consensus
 import java.util.NavigableSet
 import java.util.TreeSet
 import kotlin.reflect.KClass
+import org.apache.logging.log4j.LogManager
 
 data class ForkSpec(
   val timestampSeconds: Long,
@@ -26,27 +27,25 @@ class ForksSchedule(
   val chainId: UInt,
   forks: Collection<ForkSpec>,
 ) {
+  private val log = LogManager.getLogger(this.javaClass)
   private val forks: NavigableSet<ForkSpec> =
     run {
       val newForks =
         TreeSet(
-          Comparator.comparing(ForkSpec::timestampSeconds).reversed(),
+          Comparator
+            .comparing(ForkSpec::timestampSeconds)
+            .reversed(),
         )
       newForks.addAll(forks)
+      require(newForks.size == forks.size) { "Fork timestamps must be unique" }
+      log.info("Initialized forks schedule={}", newForks)
       newForks
     }
 
-  fun getForkByTimestamp(timestamp: Long): ForkSpec {
-    for (f in forks) {
-      if (timestamp >= f.timestampSeconds) {
-        return f
-      }
-    }
-
-    throw IllegalArgumentException(
+  fun getForkByTimestamp(timestamp: Long): ForkSpec =
+    forks.firstOrNull { timestamp >= it.timestampSeconds } ?: throw IllegalArgumentException(
       "No fork found for $timestamp, first known fork is at ${forks.last.timestampSeconds}",
     )
-  }
 
   fun <T : ConsensusConfig> getForkByConfigType(configClass: KClass<T>): ForkSpec {
     // Uses findLast since the list is reversed to get the first matching fork

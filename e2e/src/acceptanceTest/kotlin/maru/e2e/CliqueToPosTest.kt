@@ -28,6 +28,7 @@ import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import maru.config.consensus.ElFork
+import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.state.InstantFinalizationProvider
@@ -36,6 +37,8 @@ import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
 import maru.core.Validator
+import maru.executionlayer.manager.ForkScheduleAwareExecutionLayerManager
+import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
 import maru.mappers.Mappers.toDomain
@@ -72,7 +75,8 @@ class CliqueToPosTest {
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
-    private var pragueSwitchTimestamp: Long = 0
+    private var switchTimestamp: Long = 0
+    private var pragueTimestamp: Long = 0
     private lateinit var maruFactory: MaruFactory
 
     @TempDir
@@ -89,10 +93,10 @@ class CliqueToPosTest {
     // Will only be used in the sync from scratch tests
     private var maruFollower: MaruApp? = null
 
-    private fun parsePragueSwitchTimestamp(): Long {
+    private fun parseTimestamp(timestampFork: String): Long {
       val objectMapper = ObjectMapper()
       val genesisTree = objectMapper.readTree(File(genesisDir, "genesis-besu.json"))
-      val switchTime = genesisTree.at("/config/pragueTime").asLong()
+      val switchTime = genesisTree.at("/config/$timestampFork").asLong()
       return if (switchTime == 0L) System.currentTimeMillis() / 1000 else switchTime
     }
 
@@ -112,8 +116,14 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      pragueSwitchTimestamp = parsePragueSwitchTimestamp()
-      maruFactory = MaruFactory(VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(), pragueSwitchTimestamp)
+      switchTimestamp = parseTimestamp("shanghaiTime")
+      pragueTimestamp = parseTimestamp("pragueTime")
+      maruFactory =
+        MaruFactory(
+          validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
+          switchTimestamp = switchTimestamp,
+          pragueTimestamp = pragueTimestamp,
+        )
     }
 
     @AfterAll
@@ -227,7 +237,7 @@ class CliqueToPosTest {
     maruSequencer.start()
     sendCliqueTransactions()
     everyoneArePeered()
-    waitTillSwitchTimestamp()
+    waitTillTimestamp(switchTimestamp, "shanghaiTime")
 
     log.info("Sequencer has switched to PoS")
     repeat(4) {
@@ -235,8 +245,15 @@ class CliqueToPosTest {
     }
 
     val postMergeBlock = getBlockByNumber(6)!!
-    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(parsePragueSwitchTimestamp())
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, 9)
+    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(switchTimestamp)
+
+    waitTillTimestamp(pragueTimestamp, "pragueTime")
+    log.info("Sequencer has switched to Prague")
+    repeat(4) {
+      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+    }
+
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, 13)
 
     waitForAllBlockHeightsToMatch()
   }
@@ -276,7 +293,12 @@ class CliqueToPosTest {
     if (nodeName.contains("besu")) {
       // Required to change validation rules from Clique to PostMerge
       // TODO: investigate this issue more. It was working happen with Dummy Consensus
-      syncTarget(engineApiConfig = engineApiConfig, headBlockNumber = 5, followerName = nodeName)
+      syncTarget(
+        forksSchedule = maruFollower!!.beaconGenesisConfig,
+        engineApiConfig = engineApiConfig,
+        headBlockNumber = 5,
+        followerName = nodeName,
+      )
       awaitCondition
         .ignoreExceptions()
         .alias(nodeName)
@@ -316,28 +338,26 @@ class CliqueToPosTest {
   }
 
   private fun buildBlockImportHandler(
-    engineApiConfig: ApiEndpointConfig,
+    executionLayerManager: ForkScheduleAwareExecutionLayerManager,
     name: String,
   ): NewBlockHandler<*> =
-    FollowerBeaconBlockImporter.create(
-      executionLayerEngineApiClient =
-        Helpers.buildExecutionEngineClient(
-          engineApiConfig,
-          ElFork.Prague,
-          TestEnvironment.testMetricsFacade,
-        ),
+    FollowerBeaconBlockImporter(
+      executionLayerManager = executionLayerManager,
       finalizationStateProvider = InstantFinalizationProvider,
       importerName = name,
     )
 
-  private fun waitTillSwitchTimestamp() {
+  private fun waitTillTimestamp(
+    timestamp: Long,
+    timestampFork: String,
+  ) {
     await.timeout(2.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
       val unixTimestamp = System.currentTimeMillis() / 1000
       log.info(
-        "Waiting {} seconds for the Prague switch at timestamp $pragueSwitchTimestamp",
-        pragueSwitchTimestamp - unixTimestamp,
+        "Waiting {} seconds for the $timestampFork at timestamp $timestamp",
+        timestamp - unixTimestamp,
       )
-      assertThat(unixTimestamp).isGreaterThanOrEqualTo(pragueSwitchTimestamp)
+      assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
     }
   }
 
@@ -390,6 +410,7 @@ class CliqueToPosTest {
   }
 
   private fun syncTarget(
+    forksSchedule: ForksSchedule,
     engineApiConfig: ApiEndpointConfig,
     headBlockNumber: Long,
     followerName: String,
@@ -411,7 +432,26 @@ class CliqueToPosTest {
         ),
         BeaconBlockBody(emptySet(), latestExecutionPayload),
       )
-    buildBlockImportHandler(engineApiConfig = engineApiConfig, name = followerName)
+    val web3jClient =
+      Helpers.createWeb3jClient(
+        apiEndpointConfig = engineApiConfig,
+      )
+    val executionLayerManagerMap =
+      ElFork.entries.associateWith {
+        val engineApiClient =
+          Helpers.buildExecutionEngineClient(
+            web3JEngineApiClient = web3jClient,
+            elFork = it,
+            metricsFacade = TestEnvironment.testMetricsFacade,
+          )
+        JsonRpcExecutionLayerManager(engineApiClient)
+      }
+    val forkScheduleAwareExecutionLayerManager =
+      ForkScheduleAwareExecutionLayerManager(
+        forksSchedule = forksSchedule,
+        executionLayerManagerMap = executionLayerManagerMap,
+      )
+    buildBlockImportHandler(forkScheduleAwareExecutionLayerManager, followerName)
       .handleNewBlock(stubBeaconBlock)
       .get()
   }
