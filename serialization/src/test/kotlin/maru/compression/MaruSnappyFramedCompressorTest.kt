@@ -9,6 +9,7 @@
 package maru.compression
 
 import kotlin.random.Random
+import maru.p2p.MAX_MESSAGE_SIZE
 import maru.serialization.compression.MaruSnappyFramedCompressor
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -20,10 +21,14 @@ class MaruSnappyFramedCompressorTest {
 
   @Test
   fun `can compress and decompress same payload`() {
-    val payload = Random.nextBytes(128)
+    var payload = ByteArray(0)
+    repeat(128) {
+      Random.nextBytes(10).let { randomBytes -> repeat(10) { payload += randomBytes } }
+    }
     val compressedPayload = compressor.compress(payload)
     val decompressedPayload = compressor.decompress(compressedPayload)
     Assertions.assertThat(decompressedPayload).isEqualTo(payload)
+    Assertions.assertThat(compressedPayload.size).isLessThan(decompressedPayload.size)
   }
 
   @Test
@@ -35,8 +40,16 @@ class MaruSnappyFramedCompressorTest {
   }
 
   @Test
+  fun `can compress and decompress payload with max size`() {
+    val payload = Random.nextBytes(MAX_MESSAGE_SIZE)
+    val compressedPayload = compressor.compress(payload)
+    val decompressedPayload = compressor.decompress(compressedPayload)
+    Assertions.assertThat(decompressedPayload).isEqualTo(payload)
+  }
+
+  @Test
   fun `throw exception if compress and decompress oversized payload`() {
-    val payload = Random.nextBytes(10485761)
+    val payload = Random.nextBytes(MAX_MESSAGE_SIZE + 1)
     val compressedPayload = compressor.compress(payload)
     assertThatThrownBy { compressor.decompress(compressedPayload) }
       .isInstanceOf(ChunkTooLongException::class.java)

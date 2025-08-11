@@ -12,8 +12,8 @@ import maru.compression.MaruCompressor
 
 abstract class MaruCompressorRLPSerDe<T>(
   private val compressor: MaruCompressor,
-) : CompressorRLPSerDe<T> {
-  override fun compress(payload: ByteArray): ByteArray = compressor.compress(payload)
+) : RLPSerDe<T> {
+  override fun serialize(value: T): ByteArray = compressor.compress(super.serialize(value))
 
-  override fun decompress(payload: ByteArray): ByteArray = compressor.decompress(payload)
+  override fun deserialize(bytes: ByteArray): T = super.deserialize(compressor.decompress(bytes))
 }
