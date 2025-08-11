@@ -18,10 +18,14 @@ class MaruSnappyCompressorTest {
 
   @Test
   fun `can compress and decompress same payload`() {
-    val payload = Random.nextBytes(128)
+    var payload = ByteArray(0)
+    repeat(128) {
+      Random.nextBytes(10).let { randomBytes -> repeat(10) { payload += randomBytes } }
+    }
     val compressedPayload = compressor.compress(payload)
     val decompressedPayload = compressor.decompress(compressedPayload)
     Assertions.assertThat(decompressedPayload).isEqualTo(payload)
+    Assertions.assertThat(compressedPayload.size).isLessThan(decompressedPayload.size)
   }
 
   @Test

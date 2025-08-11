@@ -11,6 +11,7 @@ package maru.p2p.topics
 import java.util.Optional
 import java.util.PriorityQueue
 import maru.p2p.LINEA_DOMAIN
+import maru.p2p.MAX_MESSAGE_SIZE
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
 import maru.p2p.ValidationResultCode
@@ -192,5 +193,5 @@ class TopicHandlerWithInOrderDelivering<T>(
       },
     )
 
-  override fun getMaxMessageSize(): Int = 10485760
+  override fun getMaxMessageSize(): Int = MAX_MESSAGE_SIZE
 }

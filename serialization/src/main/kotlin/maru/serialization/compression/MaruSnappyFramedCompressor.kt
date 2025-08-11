@@ -14,6 +14,7 @@ import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import java.util.Optional
 import maru.compression.MaruCompressor
+import maru.p2p.MAX_MESSAGE_SIZE
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException.ChunkTooLongException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException.DecompressFailedException
@@ -44,7 +45,7 @@ class MaruSnappyFramedCompressor : MaruCompressor {
     }
     val length: Long? = readLengthPrefixHeader(input)
     if (length != null) {
-      if (length > this.getMaxMessageSize()) {
+      if (length > MAX_MESSAGE_SIZE) {
         throw ChunkTooLongException()
       }
     } else {
@@ -99,6 +100,4 @@ class MaruSnappyFramedCompressor : MaruCompressor {
     }
     return decompressedByteBuf.toByteArray()
   }
-
-  fun getMaxMessageSize(): Long = 10485760L
 }
