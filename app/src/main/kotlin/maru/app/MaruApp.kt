@@ -31,6 +31,8 @@ import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.BeaconChain
+import maru.executionlayer.manager.ForkScheduleAwareExecutionLayerManager
+import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.PeerInfo
@@ -99,11 +101,33 @@ class MaruApp(
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
   @Suppress("UNCHECKED_CAST")
-  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
+  private fun createFollowerHandlers(
+    followers: FollowersConfig,
+    forksSchedule: ForksSchedule,
+  ): Map<String, NewBlockHandler<Unit>> =
     followers.followers
       .mapValues {
-        val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague, metricsFacade)
-        FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider, it.key) as NewBlockHandler<Unit>
+        val web3JClient = Helpers.createWeb3jClient(it.value)
+        val elManagerMap =
+          ElFork.entries.associateWith { elFork ->
+            val engineApiClient =
+              Helpers.buildExecutionEngineClient(
+                web3JEngineApiClient = web3JClient,
+                elFork = elFork,
+                metricsFacade = metricsFacade,
+              )
+            JsonRpcExecutionLayerManager(executionLayerEngineApiClient = engineApiClient)
+          }
+        val forkScheduleAwareExecutionLayerManager =
+          ForkScheduleAwareExecutionLayerManager(
+            forksSchedule = forksSchedule,
+            executionLayerManagerMap = elManagerMap,
+          )
+        FollowerBeaconBlockImporter.create(
+          forkScheduleAwareExecutionLayerManager,
+          finalizationProvider,
+          it.key,
+        ) as NewBlockHandler<Unit>
       }
 
   fun start() {
@@ -181,7 +205,7 @@ class MaruApp(
     val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
 
     val followerHandlersMap: Map<String, NewBlockHandler<Unit>> =
-      createFollowerHandlers(config.followers)
+      createFollowerHandlers(config.followers, beaconGenesisConfig)
     val followerBlockHandlers = followerHandlersMap + metadataCacheUpdaterHandlerEntry
     val blockImportHandlers =
       NewBlockHandlerMultiplexer(followerBlockHandlers)
