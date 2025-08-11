@@ -9,11 +9,11 @@
 package maru.p2p.discovery
 
 import java.util.Timer
+import java.util.TimerTask
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Consumer
 import kotlin.concurrent.timerTask
-import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
 import maru.services.LongRunningService
@@ -35,12 +35,7 @@ class MaruDiscoveryService(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
   private val forkIdHashProvider: ForkIdHashProvider,
-  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
-    Timer(
-      "$name-${UUID.randomUUID()}",
-      isDaemon,
-    )
-  },
+  private val timerFactory: (String, Boolean) -> Timer = { namePrefix, isDaemon -> createTimer(namePrefix, isDaemon) },
 ) : LongRunningService {
   init {
     require(p2pConfig.discovery != null) {
@@ -50,6 +45,15 @@ class MaruDiscoveryService(
 
   companion object {
     const val FORK_ID_HASH_FIELD_NAME = "mfidh"
+
+    fun createTimer(
+      namePrefix: String,
+      isDaemon: Boolean,
+    ): Timer =
+      Timer(
+        "$namePrefix-${UUID.randomUUID()}",
+        isDaemon,
+      )
   }
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -67,41 +71,54 @@ class MaruDiscoveryService(
       .listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
       .secretKey(privateKey)
       .localNodeRecord(createLocalNodeRecord())
-      .bootnodes(bootnodes)
       .build()
 
   private var poller: Timer? = null
 
   private val isStarted = AtomicBoolean(false)
 
-  fun getLocalNodeRecord(): NodeRecord = discoverySystem.getLocalNodeRecord()
+  fun getLocalNodeRecord(): NodeRecord = discoverySystem.localNodeRecord
 
   override fun start() {
     if (!isStarted.compareAndSet(false, true)) {
-      log.warn("DiscoveryService has already been started!")
+      log.warn("MaruDiscoveryService has already been started!")
       return
     }
     discoverySystem
       .start()
       .thenRun {
         poller = timerFactory("boot-node-refresher", true)
-
         poller!!.scheduleAtFixedRate(
-          /* task = */ timerTask { pingBootnodes() },
-          /* delay = */ 2.seconds.inWholeMilliseconds,
+          /* task = */ pingBootnodesTask(),
+          /* delay = */ 0,
           /* period = */ p2pConfig.discovery!!.refreshInterval.inWholeMilliseconds,
         )
       }
     return
   }
 
+  private fun pingBootnodesTask(): TimerTask {
+    var task: TimerTask? = null
+    try {
+      task = timerTask { pingBootnodes() }
+    } catch (e: Exception) {
+      log.warn("Failed to ping bootnodes", e)
+    }
+    return task!!
+  }
+
   override fun stop() {
+    if (!isStarted.compareAndSet(true, false)) {
+      log.warn("Calling stop on MaruDiscoveryService that has not been started!")
+      return
+    }
     poller?.cancel()
     discoverySystem.stop()
   }
 
   fun updateForkIdHash(forkIdHash: Bytes) { // TODO: Need to call this when the fork id changes
     discoverySystem.updateCustomFieldValue(
+      // TODO: needs to increment the sequence number in the local node record as well
       FORK_ID_HASH_FIELD_NAME,
       forkIdHash,
     )

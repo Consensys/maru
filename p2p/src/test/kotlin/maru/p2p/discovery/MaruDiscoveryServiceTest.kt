@@ -120,7 +120,12 @@ class MaruDiscoveryServiceTest {
             refreshInterval = 10.seconds,
           ),
       )
-    service = MaruDiscoveryService(keyPair.secretKey().bytesArray(), p2pConfig, forkIdHashProvider)
+    service =
+      MaruDiscoveryService(
+        privateKeyBytes = keyPair.secretKey().bytesArray(),
+        p2pConfig = p2pConfig,
+        forkIdHashProvider = forkIdHashProvider,
+      )
   }
 
   @Test
@@ -228,25 +233,30 @@ class MaruDiscoveryServiceTest {
       discoveryService3.start()
 
       // make sure services are started and bootnodes have been pinged
-      sleep(3000)
+      sleep(1000)
 
       discoveryService2
         .searchForPeers()
         .thenAccept { foundPeers ->
-          assertThat(foundPeers.any { it.nodeId == bootnode.getLocalNodeRecord().nodeId }).isTrue
-          assertThat(foundPeers.any { it.nodeId == discoveryService3.getLocalNodeRecord().nodeId }).isTrue
+          foundPeersContains(foundPeers, bootnode, discoveryService3)
         }.join()
       discoveryService3
         .searchForPeers()
         .thenAccept { foundPeers ->
-          assertThat(foundPeers.any { it.nodeId == bootnode.getLocalNodeRecord().nodeId }).isTrue
-          assertThat(foundPeers.any { it.nodeId == discoveryService2.getLocalNodeRecord().nodeId }).isTrue
+          foundPeersContains(foundPeers, bootnode, discoveryService2)
         }.join()
     } finally {
       bootnode.stop()
       discoveryService2.stop()
       discoveryService3.stop()
     }
+  }
+
+  private fun foundPeersContains(
+    foundPeers: Collection<MaruDiscoveryPeer>,
+    vararg nodes: MaruDiscoveryService,
+  ) {
+    nodes.forEach { node -> assertThat(foundPeers.any { it.nodeId == node.getLocalNodeRecord().nodeId }).isTrue }
   }
 
   @Test
