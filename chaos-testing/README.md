@@ -1,17 +1,21 @@
 
 # Maru test network topology
 
-- 1 maru validator: `maru-validator` -> `besu-sequencer`
-- 1 maru follower: `maru-follower-0-0` -> `besu-follower-0`
-- 1 maru follower: `maru-follower-1-0` -> `besu-follower-1`+ `besu-follower-2`
-   - `besu-follower-1` is the primary EL client
-   - `besu-follower-2` is just EL client replica
+- 1 maru validator: `maru-validator` -> `besu-sequencer` (starts with Clique then switch to QBFT)
+- 4 maru followers:
+  - `maru-follower-0-0` -> `besu-follower-0` (will also work as bootnode)
+  - `maru-follower-1-0` -> `besu-follower-1`
+  - `maru-follower-2-0` -> `besu-follower-2`
+  - `maru-follower-3-0` -> [`besu-follower-3`, `besu-follower-4`]
+     - `besu-follower-3` is the primary EL client
+     - `besu-follower-4` is just EL client replica
 
 # Quick start
 
 ### Full provisioning
 
 ```bash
+export KUBECONFIG=~/.kube/k3s-server
 make chaos-full-reload
 ```
 
