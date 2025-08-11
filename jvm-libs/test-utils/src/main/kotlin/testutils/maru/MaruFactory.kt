@@ -123,12 +123,7 @@ class MaruFactory(
       ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
-    syncingConfig: SyncingConfig =
-      SyncingConfig(
-        peerChainHeightPollingInterval = 1.seconds,
-        peerChainHeightGranularity = 1u,
-        elSyncStatusRefreshInterval = 500.milliseconds,
-      ),
+    syncingConfig: SyncingConfig,
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
     val lineaConfig =
@@ -291,6 +286,12 @@ class MaruFactory(
         dataDir = dataDir,
         qbftOptions = validatorQbftOptions,
         allowEmptyBlocks = allowEmptyBlocks,
+        syncingConfig =
+          SyncingConfig(
+            peerChainHeightPollingInterval = 1.seconds,
+            peerChainHeightGranularity = 1u,
+            elSyncStatusRefreshInterval = 500.milliseconds,
+          ),
       )
     writeValidatorPrivateKey(config)
     return buildApp(config, overridingP2PNetwork = overridingP2PNetwork)
@@ -317,6 +318,12 @@ class MaruFactory(
         qbftOptions = validatorQbftOptions,
         overridingLineaContractClient = overridingLineaContractClient,
         allowEmptyBlocks = allowEmptyBlocks,
+        syncingConfig =
+          SyncingConfig(
+            peerChainHeightPollingInterval = 1.seconds,
+            peerChainHeightGranularity = 1u,
+            elSyncStatusRefreshInterval = 500.milliseconds,
+          ),
       )
     writeValidatorPrivateKey(config)
 
@@ -336,6 +343,7 @@ class MaruFactory(
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     allowEmptyBlocks: Boolean = false,
+    syncPeerChainGranularity: UInt = 1u,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val followers = buildFollowersConfig(engineApiRpc)
@@ -348,6 +356,12 @@ class MaruFactory(
         p2pConfig = p2pConfig,
         followers = followers,
         overridingLineaContractClient = overridingLineaContractClient,
+        syncingConfig =
+          SyncingConfig(
+            peerChainHeightPollingInterval = 1.seconds,
+            peerChainHeightGranularity = syncPeerChainGranularity,
+            elSyncStatusRefreshInterval = 500.milliseconds,
+          ),
       )
     return buildApp(
       config,
@@ -369,6 +383,12 @@ class MaruFactory(
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
         followers = followers,
+        syncingConfig =
+          SyncingConfig(
+            peerChainHeightPollingInterval = 1.seconds,
+            peerChainHeightGranularity = 1u,
+            elSyncStatusRefreshInterval = 500.milliseconds,
+          ),
       )
     return buildApp(config, overridingP2PNetwork = p2pNetwork)
   }
@@ -396,6 +416,12 @@ class MaruFactory(
         qbftOptions = validatorQbftOptions,
         overridingLineaContractClient = overridingLineaContractClient,
         allowEmptyBlocks = allowEmptyBlocks,
+        syncingConfig =
+          SyncingConfig(
+            peerChainHeightPollingInterval = 1.seconds,
+            peerChainHeightGranularity = 1u,
+            elSyncStatusRefreshInterval = 500.milliseconds,
+          ),
       )
     writeValidatorPrivateKey(config)
 
@@ -425,6 +451,12 @@ class MaruFactory(
         dataDir = dataDir,
         p2pConfig = p2pConfig,
         followers = followersConfig,
+        syncingConfig =
+          SyncingConfig(
+            peerChainHeightPollingInterval = 1.seconds,
+            peerChainHeightGranularity = 1u,
+            elSyncStatusRefreshInterval = 500.milliseconds,
+          ),
       )
     return buildApp(
       config = config,

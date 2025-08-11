@@ -80,6 +80,7 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorP2pPort,
+        syncPeerChainGranularity = 10u,
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
@@ -252,7 +253,7 @@ class MaruFollowerTest {
     }
 
     // This is here mainly to wait until block propagation is complete
-    checkStackBlocks(validatorStack, blocksToProduce)
+    checkNetworkStackBlocksProduced(validatorStack, blocksToProduce)
 
     followerStack.maruApp.stop()
     followerStack.maruApp.close()
@@ -297,7 +298,7 @@ class MaruFollowerTest {
         )
       }
     }
-    checkStackBlocks(validatorStack, 2 * blocksToProduce)
+    checkNetworkStackBlocksProduced(validatorStack, 2 * blocksToProduce)
 
     followerStack.setMaruApp(
       maruFactory.buildTestMaruFollowerWithP2pPeering(
@@ -324,17 +325,16 @@ class MaruFollowerTest {
       }
   }
 
-  private fun checkStackBlocks(
+  private fun checkNetworkStackBlocksProduced(
     stack: PeeringNodeNetworkStack,
-    blocksToProduce: Int,
+    blocksProduced: Int,
   ) {
     await
       .pollDelay(100.milliseconds.toJavaDuration())
-      // we need big timeout due to CI resources sometimes being slow
       .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
-        val blocksOnStack = stack.besuNode.getMinedBlocks(blocksToProduce)
-        assertThat(blocksOnStack.size).isEqualTo(blocksToProduce)
+        val blocksOnStack = stack.besuNode.getMinedBlocks(blocksProduced)
+        assertThat(blocksOnStack.size).isEqualTo(blocksProduced)
       }
   }
 }
