@@ -255,8 +255,6 @@ class MaruFollowerTest {
     // This is here mainly to wait until block propagation is complete
     checkNetworkStackBlocksProduced(validatorStack, blocksToProduce)
 
-    followerStack.maruApp.stop()
-    followerStack.maruApp.close()
     followerStack.setMaruApp(
       maruFactory.buildTestMaruFollowerWithP2pPeering(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
