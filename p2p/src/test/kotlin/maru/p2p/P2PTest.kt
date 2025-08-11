@@ -441,6 +441,7 @@ class P2PTest {
             ipAddress = IPV4,
             port = PORT2,
             staticPeers = listOf(PEER_ADDRESS_NODE_1, PEER_ADDRESS_NODE_3),
+            reconnectDelay = 1.seconds,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
