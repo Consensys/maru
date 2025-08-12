@@ -125,7 +125,6 @@ class P2PTest {
 
     private fun createP2PNetwork(
       privateKey: ByteArray,
-      ipV4: String = IPV4,
       port: UInt,
       staticPeers: List<String> = emptyList(),
       beaconChain: BeaconChain = Companion.beaconChain,
@@ -137,7 +136,7 @@ class P2PTest {
         privateKeyBytes = privateKey,
         p2pConfig =
           P2P(
-            ipAddress = ipV4,
+            ipAddress = IPV4,
             port = port,
             staticPeers = staticPeers,
             reconnectDelay = 1.seconds,
