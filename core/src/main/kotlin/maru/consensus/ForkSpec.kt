@@ -38,7 +38,6 @@ class ForksSchedule(
         )
       newForks.addAll(forks)
       require(newForks.size == forks.size) { "Fork timestamps must be unique" }
-      log.info("Initialized forks schedule={}", newForks)
       newForks
     }
 
@@ -65,4 +64,6 @@ class ForksSchedule(
   }
 
   override fun hashCode(): Int = forks.hashCode()
+
+  override fun toString(): String = "ForksSchedule(chainId=$chainId, forks=$forks)"
 }

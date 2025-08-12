@@ -28,10 +28,10 @@ class ForkScheduleAwareExecutionLayerManager(
 
   internal fun getCurrentElFork(): ElFork {
     val currentTimestamp = clock.now().epochSeconds
-    return try {
-      (forksSchedule.getForkByTimestamp(currentTimestamp).configuration as QbftConsensusConfig).elFork
-    } catch (e: Exception) {
-      ElFork.entries.first()
+    val forkSpec = forksSchedule.getForkByTimestamp(currentTimestamp)
+    return when (val configuration = forkSpec.configuration) {
+      is QbftConsensusConfig -> configuration.elFork
+      else -> ElFork.entries.first()
     }
   }
 

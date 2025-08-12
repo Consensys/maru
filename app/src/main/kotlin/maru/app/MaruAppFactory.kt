@@ -81,7 +81,8 @@ class MaruAppFactory {
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     overridingApiServer: ApiServer? = null,
   ): MaruApp {
-    log.info("configs: {}", config)
+    log.info("configs={}", config)
+    log.info("beaconGenesisConfig={}", beaconGenesisConfig)
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val vertx =
       VertxFactory.createVertx(

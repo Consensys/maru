@@ -11,6 +11,7 @@ package maru.executionlayer.manager
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.datetime.Instant
 import maru.config.consensus.ElFork
+import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -37,14 +38,14 @@ class ForkScheduleAwareExecutionLayerManagerTest {
   }
 
   @Test
-  fun `returns first elFork when empty fork schedule`() {
+  fun `throws when when empty fork schedule`() {
     val forksSchedule = ForksSchedule(1337u, emptyList())
-    val forkScheduleAwareManager =
+    assertThrows<NoSuchElementException> {
       ForkScheduleAwareExecutionLayerManager(
         forksSchedule = forksSchedule,
         executionLayerManagerMap = elManagerMap,
-      )
-    assertThat(forkScheduleAwareManager.getCurrentElFork()).isEqualTo(ElFork.entries.first())
+      ).getCurrentElFork()
+    }
   }
 
   @Test
@@ -53,6 +54,11 @@ class ForkScheduleAwareExecutionLayerManagerTest {
       ForksSchedule(
         1337u,
         listOf(
+          ForkSpec(
+            0L,
+            1,
+            mock<ElDelegatedConfig>(),
+          ),
           ForkSpec(
             1L,
             1,
@@ -76,19 +82,14 @@ class ForkScheduleAwareExecutionLayerManagerTest {
         executionLayerManagerMap = elManagerMap,
         clock = fakeClock,
       )
-    // timestamp 0
     assertThat(forkScheduleAwareManager.getCurrentElFork()).isEqualTo(ElFork.entries.first())
     fakeClock.advanceBy(1.seconds)
-    // timestamp 1
     assertThat(forkScheduleAwareManager.getCurrentElFork()).isEqualTo(ElFork.Shanghai)
     fakeClock.advanceBy(1.seconds)
-    // timestamp 2
     assertThat(forkScheduleAwareManager.getCurrentElFork()).isEqualTo(ElFork.Shanghai)
     fakeClock.advanceBy(3.seconds)
-    // timestamp 5
     assertThat(forkScheduleAwareManager.getCurrentElFork()).isEqualTo(ElFork.Prague)
     fakeClock.advanceBy(1.seconds)
-    // timestamp 6
     assertThat(forkScheduleAwareManager.getCurrentElFork()).isEqualTo(ElFork.Prague)
   }
 }

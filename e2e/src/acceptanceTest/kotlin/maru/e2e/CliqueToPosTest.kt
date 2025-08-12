@@ -75,12 +75,13 @@ class CliqueToPosTest {
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
-    private var switchTimestamp: Long = 0
+    private var shanghaiTimestamp: Long = 0
     private var pragueTimestamp: Long = 0
     private lateinit var maruFactory: MaruFactory
 
     @TempDir
     private lateinit var sequencerMaruTmpDir: File
+
     private val genesisDir = File("../docker/initialization")
     private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
@@ -116,12 +117,12 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      switchTimestamp = parseTimestamp("shanghaiTime")
+      shanghaiTimestamp = parseTimestamp("shanghaiTime")
       pragueTimestamp = parseTimestamp("pragueTime")
       maruFactory =
         MaruFactory(
           validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
-          switchTimestamp = switchTimestamp,
+          shanghaiTimestamp = shanghaiTimestamp,
           pragueTimestamp = pragueTimestamp,
         )
     }
@@ -237,7 +238,7 @@ class CliqueToPosTest {
     maruSequencer.start()
     sendCliqueTransactions()
     everyoneArePeered()
-    waitTillTimestamp(switchTimestamp, "shanghaiTime")
+    waitTillTimestamp(shanghaiTimestamp, "shanghaiTime")
 
     log.info("Sequencer has switched to PoS")
     repeat(4) {
@@ -245,7 +246,7 @@ class CliqueToPosTest {
     }
 
     val postMergeBlock = getBlockByNumber(6)!!
-    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(switchTimestamp)
+    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(shanghaiTimestamp)
 
     waitTillTimestamp(pragueTimestamp, "pragueTime")
     log.info("Sequencer has switched to Prague")

@@ -52,7 +52,7 @@ import maru.p2p.P2PNetwork
  */
 class MaruFactory(
   validatorPrivateKey: ByteArray = generatePrivateKey(),
-  switchTimestamp: Long? = null,
+  shanghaiTimestamp: Long? = null,
   pragueTimestamp: Long? = null,
 ) {
   companion object {
@@ -75,7 +75,7 @@ class MaruFactory(
     )
 
   private val beaconGenesisConfig: ForksSchedule =
-    if (switchTimestamp != null) {
+    if (shanghaiTimestamp != null) {
       ForksSchedule(
         1337u,
         setOf(
@@ -86,7 +86,7 @@ class MaruFactory(
             ElDelegatedConfig,
           ),
           ForkSpec(
-            timestampSeconds = switchTimestamp,
+            timestampSeconds = shanghaiTimestamp,
             blockTimeSeconds = 1,
             configuration =
               QbftConsensusConfig(
