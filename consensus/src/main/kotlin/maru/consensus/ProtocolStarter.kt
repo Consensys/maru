@@ -8,51 +8,55 @@
  */
 package maru.consensus
 
+import java.time.Clock
+import java.util.Timer
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.max
-import maru.core.BeaconBlock
+import kotlin.concurrent.timerTask
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import maru.core.Protocol
 import maru.syncing.CLSyncStatus
 import maru.syncing.SyncStatusProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import tech.pegasys.teku.infrastructure.async.SafeFuture
-
-class ProtocolStarterBlockHandler(
-  private val protocolStarter: ProtocolStarter,
-) : NewBlockHandler<Unit> {
-  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
-    val elBlockMetadata =
-      ElBlockMetadata(
-        beaconBlock.beaconBlockBody.executionPayload.blockNumber,
-        beaconBlock.beaconBlockHeader.hash,
-        beaconBlock.beaconBlockHeader.timestamp.toLong(),
-      )
-    protocolStarter.handleNewElBlock(elBlockMetadata)
-    return SafeFuture.completedFuture(Unit)
-  }
-}
 
 class ProtocolStarter(
   private val forksSchedule: ForksSchedule,
   private val protocolFactory: ProtocolFactory,
-  private val elMetadataProvider: ElMetadataProvider, // TODO: we should probably replace it with BeaconChain
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
+  private val forkTransitionCheckInterval: Duration,
+  private val clock: Clock = Clock.systemUTC(),
+  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
+    Timer(
+      "$name-${UUID.randomUUID()}",
+      isDaemon,
+    )
+  },
 ) : Protocol {
   companion object {
     fun create(
       forksSchedule: ForksSchedule,
       protocolFactory: ProtocolFactory,
-      elMetadataProvider: ElMetadataProvider,
       nextBlockTimestampProvider: NextBlockTimestampProvider,
       syncStatusProvider: SyncStatusProvider,
+      forkTransitionCheckInterval: Duration = 1.seconds,
+      clock: Clock = Clock.systemUTC(),
+      timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
+        Timer(
+          "$name-${UUID.randomUUID()}",
+          isDaemon,
+        )
+      },
     ): ProtocolStarter {
       val protocolStarter =
         ProtocolStarter(
           forksSchedule = forksSchedule,
           protocolFactory = protocolFactory,
-          elMetadataProvider = elMetadataProvider,
           nextBlockTimestampProvider = nextBlockTimestampProvider,
+          forkTransitionCheckInterval = forkTransitionCheckInterval,
+          clock = clock,
+          timerFactory = timerFactory,
         )
       syncStatusProvider.onClSyncStatusUpdate {
         if (it == CLSyncStatus.SYNCING) {
@@ -80,12 +84,18 @@ class ProtocolStarter(
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   internal val currentProtocolWithForkReference: AtomicReference<ProtocolWithFork> = AtomicReference()
+  private var poller: Timer? = null
 
-  @Synchronized
-  fun handleNewElBlock(elBlock: ElBlockMetadata) {
-    log.debug("New blockNumber={} received", { elBlock.blockNumber })
+  private fun pollTask() {
+    try {
+      checkAndHandleForkTransition()
+    } catch (th: Throwable) {
+      log.error("Error during fork transition check", th)
+    }
+  }
 
-    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(elBlock.unixTimestampSeconds)
+  private fun checkAndHandleForkTransition(currentTimestamp: Long = clock.instant().epochSecond) {
+    val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(currentTimestamp)
     val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()
@@ -96,38 +106,74 @@ class ProtocolStarter(
         nextForkSpec,
         nextBlockTimestamp,
       )
-      val newProtocol: Protocol = protocolFactory.create(nextForkSpec)
 
-      val newProtocolWithFork =
-        ProtocolWithFork(
-          newProtocol,
-          nextForkSpec,
-        )
-      log.debug("switched protocol: fromProtocol={} toProtocol={}", currentProtocolWithFork, newProtocolWithFork)
-      currentProtocolWithForkReference.set(
-        newProtocolWithFork,
-      )
-      currentProtocolWithFork?.protocol?.stop()
+      // Check if we need to wait for the fork transition time
+      val currentTime = clock.instant().epochSecond
+      val forkTransitionTime = nextForkSpec.timestampSeconds
 
-      // Wait until timestamp is reached before starting new protocol
-      val timeTillFork = max((nextBlockTimestamp * 1000L) - System.currentTimeMillis(), 0)
-      log.debug("Waiting for {} ms until fork switch", timeTillFork)
-      Thread.sleep(timeTillFork)
+      if (currentTime < forkTransitionTime) {
+        val waitTime = forkTransitionTime - currentTime
+        log.debug("Fork transition scheduled for {}, waiting {} seconds", forkTransitionTime, waitTime)
+        return // Don't switch yet, wait for the scheduled time
+      }
 
-      newProtocol.start()
-      log.debug("stated new protocol {}", newProtocol)
+      performForkTransition(currentProtocolWithFork, nextForkSpec)
     } else {
-      log.trace("block {} was produced, but the fork switch isn't required", { elBlock.blockNumber })
+      log.trace("Current timestamp {}, but fork switch isn't required", currentTimestamp)
     }
   }
 
+  @Synchronized
+  private fun performForkTransition(
+    currentProtocolWithFork: ProtocolWithFork?,
+    nextForkSpec: ForkSpec,
+  ) {
+    val newProtocol: Protocol = protocolFactory.create(nextForkSpec)
+
+    val newProtocolWithFork =
+      ProtocolWithFork(
+        newProtocol,
+        nextForkSpec,
+      )
+    log.debug("switching protocol: fromProtocol={} toProtocol={}", currentProtocolWithFork, newProtocolWithFork)
+    currentProtocolWithForkReference.set(newProtocolWithFork)
+    currentProtocolWithFork?.protocol?.stop()
+
+    newProtocol.start()
+    log.debug("started new protocol {}", newProtocol)
+  }
+
   override fun start() {
-    val latestBlock = elMetadataProvider.getLatestBlockMetadata()
-    handleNewElBlock(latestBlock)
+    synchronized(this) {
+      if (poller != null) {
+        return // Already running
+      }
+
+      // Perform initial fork transition check immediately
+      checkAndHandleForkTransition()
+
+      // Start polling for future fork transitions
+      log.debug("Starting fork transition polling with interval {}", forkTransitionCheckInterval)
+      poller = timerFactory("ProtocolStarterPoller", true)
+      poller!!.scheduleAtFixedRate(
+        timerTask { pollTask() },
+        forkTransitionCheckInterval.inWholeMilliseconds,
+        forkTransitionCheckInterval.inWholeMilliseconds,
+      )
+    }
   }
 
   override fun stop() {
-    currentProtocolWithForkReference.get()?.protocol?.stop()
-    currentProtocolWithForkReference.set(null)
+    synchronized(this) {
+      if (poller == null) {
+        return
+      }
+
+      poller?.cancel()
+      poller = null
+      currentProtocolWithForkReference.get()?.protocol?.stop()
+      currentProtocolWithForkReference.set(null)
+      log.debug("Stopped fork transition polling")
+    }
   }
 }
