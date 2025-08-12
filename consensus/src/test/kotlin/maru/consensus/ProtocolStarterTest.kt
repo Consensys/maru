@@ -41,12 +41,12 @@ class ProtocolStarterTest {
   private val protocol2 = StubProtocol()
 
   private val protocolConfig1 = object : ConsensusConfig {}
-  private val forkSpec1 = ForkSpec(0, 5, protocolConfig1) // Higher block time (5 seconds)
+  private val forkSpec1 = ForkSpec(0, 5, protocolConfig1)
   private val protocolConfig2 = object : ConsensusConfig {}
   private val forkSpec2 =
     ForkSpec(
       15,
-      2, // Lower block time (2 seconds)
+      2,
       protocolConfig2,
     )
 
@@ -145,7 +145,6 @@ class ProtocolStarterTest {
         listOf(forkSpec1, forkSpec2),
       )
 
-    // Start with time where next block would still be in forkSpec1 period
     var currentTimeMillis = 8000L // Next block at ~13 seconds (before fork at 15)
     val protocolStarter =
       createProtocolStarter(
@@ -160,7 +159,6 @@ class ProtocolStarterTest {
     // Initially should be on first protocol since next block is before fork transition
     assertActiveProtocol1(protocolStarter)
 
-    // Advance time so that next block would be after fork transition
     currentTimeMillis = 12000L // Next block at ~17 seconds (after fork at 15)
     timer.runNextTask()
 
@@ -188,14 +186,11 @@ class ProtocolStarterTest {
 
     protocolStarter.start()
 
-    // Initially should be on first protocol
     assertActiveProtocol1(protocolStarter)
 
-    // Advance time but not enough so that next block is still before fork transition
     currentTimeMillis = 9000L // Next block at ~14 seconds (still before fork at 15)
     timer.runNextTask()
 
-    // Should remain on first protocol since next block still uses forkSpec1
     assertActiveProtocol1(protocolStarter)
   }
 
