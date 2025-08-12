@@ -10,14 +10,14 @@ package maru.serialization.rlp
 
 import maru.compression.MaruCompressor
 import maru.core.SealedBeaconBlock
-import maru.serialization.compression.MaruSnappyCompressor
+import maru.serialization.compression.MaruSnappyFramedCompressor
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class SealedBeaconBlockSerDe(
   private val beaconBlockSerializer: BeaconBlockSerDe,
   private val sealSerializer: SealSerDe,
-  private val compressor: MaruCompressor = MaruSnappyCompressor(),
+  private val compressor: MaruCompressor = MaruSnappyFramedCompressor(),
 ) : MaruCompressorRLPSerDe<SealedBeaconBlock>(compressor) {
   override fun writeTo(
     value: SealedBeaconBlock,

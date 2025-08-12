@@ -12,7 +12,7 @@ import maru.compression.MaruCompressor
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
-import maru.serialization.compression.MaruSnappyCompressor
+import maru.serialization.compression.MaruSnappyFramedCompressor
 import maru.serialization.rlp.MaruCompressorRLPSerDe
 import maru.serialization.rlp.SealedBeaconBlockSerDe
 import org.hyperledger.besu.ethereum.rlp.RLPInput
@@ -20,7 +20,7 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class BeaconBlocksByRangeResponseMessageSerDe(
   private val sealedBeaconBlockSerDe: SealedBeaconBlockSerDe,
-  compressor: MaruCompressor = MaruSnappyCompressor(),
+  compressor: MaruCompressor = MaruSnappyFramedCompressor(),
 ) : MaruCompressorRLPSerDe<Message<BeaconBlocksByRangeResponse, RpcMessageType>>(compressor) {
   override fun writeTo(
     value: Message<BeaconBlocksByRangeResponse, RpcMessageType>,
