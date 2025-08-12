@@ -14,6 +14,7 @@ import java.net.InetSocketAddress
 import java.util.Optional
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import linea.kotlin.decodeHex
 import maru.config.P2P
 import maru.config.consensus.ElFork
@@ -34,6 +35,7 @@ import maru.serialization.ForkIdSerializers
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
 import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
@@ -223,17 +225,26 @@ class MaruDiscoveryServiceTest {
 
       // make sure services are started and bootnodes have been pinged
       sleep(1000)
+      await
+        .timeout(10.seconds.toJavaDuration())
+        .untilAsserted {
+          val foundPeers =
+            discoveryService2
+              .searchForPeers()
+              .join()
 
-      discoveryService2
-        .searchForPeers()
-        .thenAccept { foundPeers ->
           foundPeersContains(foundPeers, bootnode, discoveryService3)
-        }.join()
-      discoveryService3
-        .searchForPeers()
-        .thenAccept { foundPeers ->
+        }
+
+      await
+        .timeout(10.seconds.toJavaDuration())
+        .untilAsserted {
+          val foundPeers =
+            discoveryService3
+              .searchForPeers()
+              .join()
           foundPeersContains(foundPeers, bootnode, discoveryService2)
-        }.join()
+        }
     } finally {
       bootnode.stop()
       discoveryService2.stop()
