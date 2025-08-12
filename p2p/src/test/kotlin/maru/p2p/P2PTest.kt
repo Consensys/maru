@@ -41,6 +41,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility.await
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
@@ -148,7 +149,7 @@ class P2PTest {
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
-        metricsSystem = TestMetrics.TestMetricsSystemAdapter,
+        metricsSystem = NoOpMetricsSystem(),
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
       )
