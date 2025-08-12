@@ -13,6 +13,15 @@ import java.net.InetAddress
 import java.net.NetworkInterface
 
 object NetworkHelper {
+  val loopBackLastComparator =
+    Comparator<InetAddress> { o1, o2 ->
+      when {
+        o1.isLoopbackAddress && !o2.isLoopbackAddress -> 1
+        !o1.isLoopbackAddress && o2.isLoopbackAddress -> -1
+        else -> 0
+      }
+    }
+
   fun listNetworkAddresses(excludeLoopback: Boolean = true): List<InetAddress> =
     NetworkInterface
       .getNetworkInterfaces()
@@ -20,7 +29,7 @@ object NetworkHelper {
       .flatMap { it.inetAddresses.toList() }
       .filter {
         if (excludeLoopback && it.isLoopbackAddress) false else true
-      }
+      }.sortedWith(loopBackLastComparator)
 
   fun listIpsV4(excludeLoopback: Boolean = true): List<String> =
     listNetworkAddresses(excludeLoopback)
@@ -29,9 +38,12 @@ object NetworkHelper {
 
   fun hasInterfaceWithIpV4(ipV4: String): Boolean = listIpsV4(excludeLoopback = false).contains(ipV4)
 
-  fun selectIpV4ForP2P(targetIpV4: String): String {
+  fun selectIpV4ForP2P(
+    targetIpV4: String,
+    excludeLoopback: Boolean = true,
+  ): String {
     require(Inet4Address.getByName(targetIpV4) != null) { "targetIpV4 address is null" }
-    val ips = listIpsV4(excludeLoopback = false)
+    val ips = listIpsV4(excludeLoopback)
     check(ips.isNotEmpty()) { "No IPv4 addresses found on the local machine." }
 
     if (ips.contains(targetIpV4)) {
@@ -39,13 +51,8 @@ object NetworkHelper {
     } else if (targetIpV4 == "0.0.0.0") {
       return ips.first()
     } else {
-      throw IllegalArgumentException(
-        "targetIpV4=$targetIpV4 not found in machine interfaces, available ips= ${
-          ips.joinToString(
-            ", ",
-          )
-        }",
-      )
+      val ipsString = ips.joinToString(separator = ",") { it }
+      throw IllegalArgumentException("targetIpV4=$targetIpV4 not found in machine interfaces, available ips=$ipsString")
     }
   }
 }

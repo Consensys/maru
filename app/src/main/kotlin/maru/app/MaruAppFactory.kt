@@ -294,8 +294,12 @@ class MaruAppFactory {
           privateKeyBytes = privateKey,
           p2pConfig =
             NetworkHelper
-              .selectIpV4ForP2P(targetIpV4 = p2pConfig.ipAddress)
-              .also { log.info("using p2p ip={}", it) }
+              .selectIpV4ForP2P(
+                targetIpV4 = p2pConfig.ipAddress,
+                excludeLoopback = false,
+                // allow loopback because of the tests,
+                // but in production loopback interface won't be used unless there is no other interface available
+              ).also { log.info("using p2p ip={}", it) }
               .let { p2pConfig.copy(ipAddress = it) },
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
