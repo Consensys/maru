@@ -68,6 +68,14 @@ class NetworkHelperTest {
   }
 
   @Test
+  fun `selectIpV4ForP2P throws if targetIpV4 is not valid ip`() {
+    val fakeIp = "192.0.A.A"
+    assertThatThrownBy { NetworkHelper.selectIpV4ForP2P(fakeIp) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+      .hasMessageContaining("Invalid targetIpV4=192.0.A.A")
+  }
+
+  @Test
   fun `selectIpV4ForP2P throws if targetIpV4 is not present`() {
     val fakeIp = "192.0.2.123" // TEST-NET-1, unlikely to exist
     assertThatThrownBy { NetworkHelper.selectIpV4ForP2P(fakeIp) }

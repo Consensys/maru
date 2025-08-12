@@ -42,7 +42,8 @@ object NetworkHelper {
     targetIpV4: String,
     excludeLoopback: Boolean = true,
   ): String {
-    require(Inet4Address.getByName(targetIpV4) != null) { "targetIpV4 address is null" }
+    runCatching { Inet4Address.getByName(targetIpV4) }
+      .onFailure { throw IllegalArgumentException("Invalid targetIpV4=$targetIpV4", it) }
     val ips = listIpsV4(excludeLoopback)
     check(ips.isNotEmpty()) { "No IPv4 addresses found on the local machine." }
 
