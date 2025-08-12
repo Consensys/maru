@@ -12,6 +12,7 @@ import java.lang.Thread.sleep
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import linea.kotlin.decodeHex
 import maru.config.P2P
@@ -204,7 +205,7 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT4,
                 bootnodes = listOf(enrString),
-                refreshInterval = 10.seconds,
+                refreshInterval = 500.milliseconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
@@ -221,7 +222,7 @@ class MaruDiscoveryServiceTest {
               P2P.Discovery(
                 port = PORT6,
                 bootnodes = listOf(enrString),
-                refreshInterval = 10.seconds,
+                refreshInterval = 500.milliseconds,
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,

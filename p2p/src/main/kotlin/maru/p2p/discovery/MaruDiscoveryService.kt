@@ -12,7 +12,6 @@ import java.util.Timer
 import java.util.TimerTask
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.function.Consumer
 import kotlin.concurrent.timerTask
 import maru.config.P2P
 import maru.consensus.ForkIdHashProvider
@@ -189,17 +188,15 @@ class MaruDiscoveryService(
 
   private fun pingBootnodes() {
     log.trace("Pinging bootnodes")
-    bootnodes.forEach(
-      Consumer { bootnode: NodeRecord? ->
-        SafeFuture
-          .of(discoverySystem.ping(bootnode))
-          .whenComplete { _, e ->
-            if (e != null) {
-              log.warn("Bootnode {} is unresponsive", bootnode)
-            }
+    bootnodes.forEach {
+      SafeFuture
+        .of(discoverySystem.ping(it))
+        .whenComplete { _, e ->
+          if (e != null) {
+            log.warn("Bootnode {} is unresponsive", it)
           }
-      },
-    )
+        }
+    }
   }
 
   private fun createLocalNodeRecord(): NodeRecord {
