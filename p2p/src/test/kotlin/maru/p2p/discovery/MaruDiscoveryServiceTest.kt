@@ -28,6 +28,8 @@ import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
+import maru.p2p.discovery.MaruDiscoveryService.Companion.convertSafeNodeRecordToDiscoveryPeer
+import maru.p2p.discovery.MaruDiscoveryService.Companion.isValidNodeRecord
 import maru.serialization.ForkIdSerializers
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
@@ -132,12 +134,7 @@ class MaruDiscoveryServiceTest {
   fun `converts node record with valid forkId`() {
     val node = createValidNodeRecord()
 
-    val peer =
-      service.run {
-        val method = this::class.java.getDeclaredMethod("convertSafeNodeRecordToDiscoveryPeer", NodeRecord::class.java)
-        method.isAccessible = true
-        method.invoke(this, node) as MaruDiscoveryPeer
-      }
+    val peer = convertSafeNodeRecordToDiscoveryPeer(node)
 
     assertEquals(publicKey, peer.publicKey)
     assertEquals(dummyAddr.get(), peer.nodeAddress)
@@ -252,43 +249,28 @@ class MaruDiscoveryServiceTest {
   }
 
   @Test
-  fun `checkNodeRecord returns true for valid node record`() {
+  fun `isValidNodeRecord returns true for valid node record`() {
     val node = createValidNodeRecord()
 
-    val result =
-      service.run {
-        val method = this::class.java.getDeclaredMethod("checkNodeRecord", NodeRecord::class.java)
-        method.isAccessible = true
-        method.invoke(this, node) as Boolean
-      }
+    val result = isValidNodeRecord(forkIdHashProvider, node)
 
     assertTrue(result)
   }
 
   @Test
-  fun `checkNodeRecord returns false when forkId field is missing`() {
+  fun `isValidNodeRecord returns false when forkId field is missing`() {
     val node = createValidNodeRecord(forkIdHash = null)
 
-    val result =
-      service.run {
-        val method = this::class.java.getDeclaredMethod("checkNodeRecord", NodeRecord::class.java)
-        method.isAccessible = true
-        method.invoke(this, node) as Boolean
-      }
+    val result = isValidNodeRecord(forkIdHashProvider, node)
 
     assertThat(result).isFalse()
   }
 
   @Test
-  fun `checkNodeRecord returns false when address is missing`() {
+  fun `isValidNodeRecord returns false when address is missing`() {
     val node = createValidNodeRecord(tcpAddress = Optional.empty())
 
-    val result =
-      service.run {
-        val method = this::class.java.getDeclaredMethod("checkNodeRecord", NodeRecord::class.java)
-        method.isAccessible = true
-        method.invoke(this, node) as Boolean
-      }
+    val result = isValidNodeRecord(forkIdHashProvider, node)
 
     assertThat(result).isFalse()
   }
