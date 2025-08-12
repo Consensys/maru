@@ -8,7 +8,6 @@
  */
 package maru.p2p.discovery
 
-import java.lang.Thread.sleep
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
@@ -48,7 +47,9 @@ import org.junit.jupiter.api.Test
 
 class MaruDiscoveryServiceTest {
   companion object {
-    private const val IPV4 = "127.0.0.1"
+    // private val IPV4 = NetworkHelper.listIpsV4(excludeLoopback = true).first()
+    // Tests seem to fail when using IP address of the machine... ¯\_(ツ)_/¯
+    private val IPV4 = "127.0.0.1"
 
     private const val PORT1 = 9334u
     private const val PORT2 = 9335u
@@ -223,8 +224,6 @@ class MaruDiscoveryServiceTest {
       discoveryService2.start()
       discoveryService3.start()
 
-      // make sure services are started and bootnodes have been pinged
-      sleep(1000)
       await
         .timeout(10.seconds.toJavaDuration())
         .untilAsserted {
