@@ -11,7 +11,7 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     cp -T "genesis-nethermind.json.template" "genesis-nethermind.json"
 
     switch_timestamp=$(($(date +%s) + 60))
-    prague_timestamp=$((switch_timestamp + 60))
+    prague_timestamp=$((switch_timestamp + 30))
     echo "Switch Timestamp: $switch_timestamp"
     echo "Prague Timestamp: $prague_timestamp"
     sed -i "s/%SWITCH_TIME%/$switch_timestamp/g" genesis-maru.json
