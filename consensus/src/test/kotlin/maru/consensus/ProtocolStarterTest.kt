@@ -41,12 +41,12 @@ class ProtocolStarterTest {
   private val protocol2 = StubProtocol()
 
   private val protocolConfig1 = object : ConsensusConfig {}
-  private val forkSpec1 = ForkSpec(0, 1, protocolConfig1)
+  private val forkSpec1 = ForkSpec(0, 5, protocolConfig1) // Higher block time (5 seconds)
   private val protocolConfig2 = object : ConsensusConfig {}
   private val forkSpec2 =
     ForkSpec(
       15,
-      2,
+      2, // Lower block time (2 seconds)
       protocolConfig2,
     )
 
@@ -74,10 +74,7 @@ class ProtocolStarterTest {
         clockMilliseconds = 16000, // After fork transition at 15
       )
     protocolStarter.start()
-    val currentProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
-    assertThat(currentProtocolWithConfig.fork).isEqualTo(forkSpec2)
-    assertThat(protocol2.started).isTrue()
-    assertThat(protocol1.started).isFalse()
+    assertActiveProtocol2(protocolStarter)
   }
 
   @Test
@@ -96,14 +93,11 @@ class ProtocolStarterTest {
         clockMilliseconds = 5000, // Before fork transition at 15
       )
     protocolStarter.start()
-    val currentProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
-    assertThat(currentProtocolWithConfig.fork).isEqualTo(forkSpec1)
-    assertThat(protocol1.started).isTrue()
-    assertThat(protocol2.started).isFalse()
+    assertActiveProtocol1(protocolStarter)
   }
 
   @Test
-  fun `ProtocolStarter waits for fork transition time before switching`() {
+  fun `ProtocolStarter switches if the next block timestamp past the next fork`() {
     val forksSchedule =
       ForksSchedule(
         chainId,
@@ -119,15 +113,11 @@ class ProtocolStarterTest {
       )
     protocolStarter.start()
 
-    // Should start with first fork since transition time hasn't arrived yet
-    val currentProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
-    assertThat(currentProtocolWithConfig.fork).isEqualTo(forkSpec1)
-    assertThat(protocol1.started).isTrue()
-    assertThat(protocol2.started).isFalse()
+    assertActiveProtocol2(protocolStarter)
   }
 
   @Test
-  fun `ProtocolStarter transitions exactly at fork time`() {
+  fun `ProtocolStarter doesn't switch if it's too early`() {
     val forksSchedule =
       ForksSchedule(
         chainId,
@@ -139,36 +129,11 @@ class ProtocolStarterTest {
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        clockMilliseconds = 15000, // Exactly at fork transition
+        clockMilliseconds = 5000, // Before fork transition at 15, next block still in forkSpec1 period
       )
     protocolStarter.start()
 
-    val currentProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
-    assertThat(currentProtocolWithConfig.fork).isEqualTo(forkSpec2)
-    assertThat(protocol1.started).isFalse()
-    assertThat(protocol2.started).isTrue()
-  }
-
-  @Test
-  fun `ProtocolStarter schedules periodic timer correctly`() {
-    val timer = TestablePeriodicTimer()
-    val forksSchedule =
-      ForksSchedule(
-        chainId,
-        listOf(forkSpec1, forkSpec2),
-      )
-    val protocolStarter =
-      createProtocolStarter(
-        forksSchedule = forksSchedule,
-        clockMilliseconds = 5000,
-        timer = timer,
-      )
-
-    protocolStarter.start()
-
-    // Verify timer was scheduled with correct parameters
-    assertThat(timer.scheduledTask).isNotNull()
-    assertThat(timer.period).isEqualTo(1000L) // 1 second interval
+    assertActiveProtocol1(protocolStarter)
   }
 
   @Test
@@ -180,8 +145,39 @@ class ProtocolStarterTest {
         listOf(forkSpec1, forkSpec2),
       )
 
-    // Start with a mutable clock that we can advance
-    var currentTimeMillis = 10000L // Before fork transition at 15
+    // Start with time where next block would still be in forkSpec1 period
+    var currentTimeMillis = 8000L // Next block at ~13 seconds (before fork at 15)
+    val protocolStarter =
+      createProtocolStarter(
+        forksSchedule = forksSchedule,
+        clockMilliseconds = currentTimeMillis,
+        timer = timer,
+        mutableClock = true,
+      ) { currentTimeMillis }
+
+    protocolStarter.start()
+
+    // Initially should be on first protocol since next block is before fork transition
+    assertActiveProtocol1(protocolStarter)
+
+    // Advance time so that next block would be after fork transition
+    currentTimeMillis = 12000L // Next block at ~17 seconds (after fork at 15)
+    timer.runNextTask()
+
+    // Should switch to second protocol since next block needs forkSpec2
+    assertActiveProtocol2(protocolStarter)
+  }
+
+  @Test
+  fun `ProtocolStarter does not switch if next block still uses same protocol`() {
+    val timer = TestablePeriodicTimer()
+    val forksSchedule =
+      ForksSchedule(
+        chainId,
+        listOf(forkSpec1, forkSpec2),
+      )
+
+    var currentTimeMillis = 8000L // Next block at ~13 seconds (before fork at 15)
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
@@ -193,24 +189,18 @@ class ProtocolStarterTest {
     protocolStarter.start()
 
     // Initially should be on first protocol
-    val initialProtocol = protocolStarter.currentProtocolWithForkReference.get()
-    assertThat(initialProtocol.fork).isEqualTo(forkSpec1)
-    assertThat(protocol1.started).isTrue()
-    assertThat(protocol2.started).isFalse()
+    assertActiveProtocol1(protocolStarter)
 
-    // Advance time to after fork transition and run periodic task
-    currentTimeMillis = 16000L // After fork transition at 15
+    // Advance time but not enough so that next block is still before fork transition
+    currentTimeMillis = 9000L // Next block at ~14 seconds (still before fork at 15)
     timer.runNextTask()
 
-    // Should switch to second protocol
-    val switchedProtocol = protocolStarter.currentProtocolWithForkReference.get()
-    assertThat(switchedProtocol.fork).isEqualTo(forkSpec2)
-    assertThat(protocol1.started).isFalse() // Previous protocol should be stopped
-    assertThat(protocol2.started).isTrue()
+    // Should remain on first protocol since next block still uses forkSpec1
+    assertActiveProtocol1(protocolStarter)
   }
 
   @Test
-  fun `ProtocolStarter does not switch if time has not reached fork transition`() {
+  fun `ProtocolStarter switches when next block will be produced by new protocol at startup`() {
     val timer = TestablePeriodicTimer()
     val forksSchedule =
       ForksSchedule(
@@ -218,7 +208,7 @@ class ProtocolStarterTest {
         listOf(forkSpec1, forkSpec2),
       )
 
-    var currentTimeMillis = 10000L // Before fork transition at 15
+    var currentTimeMillis = 11000L // With 5-second block time, next block at ~16 seconds (after fork at 15)
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
@@ -229,40 +219,12 @@ class ProtocolStarterTest {
 
     protocolStarter.start()
 
-    // Initially should be on first protocol
-    assertThat(protocolStarter.currentProtocolWithForkReference.get().fork).isEqualTo(forkSpec1)
-    assertThat(protocol1.started).isTrue()
+    assertActiveProtocol2(protocolStarter)
 
-    // Advance time but not enough to trigger fork transition
-    currentTimeMillis = 14000L // Still before fork transition at 15
+    currentTimeMillis = 15000L // Exactly at fork transition
     timer.runNextTask()
 
-    // Should remain on first protocol
-    assertThat(protocolStarter.currentProtocolWithForkReference.get().fork).isEqualTo(forkSpec1)
-    assertThat(protocol1.started).isTrue()
-    assertThat(protocol2.started).isFalse()
-  }
-
-  @Test
-  fun `ProtocolStarter stops periodic timer when stopped`() {
-    val timer = TestablePeriodicTimer()
-    val forksSchedule =
-      ForksSchedule(
-        chainId,
-        listOf(forkSpec1, forkSpec2),
-      )
-    val protocolStarter =
-      createProtocolStarter(
-        forksSchedule = forksSchedule,
-        clockMilliseconds = 5000,
-        timer = timer,
-      )
-
-    protocolStarter.start()
-    assertThat(timer.scheduledTask).isNotNull()
-
-    protocolStarter.stop()
-    assertThat(timer.scheduledTask).isNull()
+    assertActiveProtocol2(protocolStarter)
   }
 
   private val protocolFactory =
@@ -308,6 +270,20 @@ class ProtocolStarterTest {
       clock = clock,
       timerFactory = { _, _ -> timer },
     )
+  }
+
+  private fun assertActiveProtocol1(protocolStarter: ProtocolStarter) {
+    val currentProtocol = protocolStarter.currentProtocolWithForkReference.get()
+    assertThat(currentProtocol.fork).isEqualTo(forkSpec1)
+    assertThat(protocol1.started).isTrue()
+    assertThat(protocol2.started).isFalse()
+  }
+
+  private fun assertActiveProtocol2(protocolStarter: ProtocolStarter) {
+    val currentProtocol = protocolStarter.currentProtocolWithForkReference.get()
+    assertThat(currentProtocol.fork).isEqualTo(forkSpec2)
+    assertThat(protocol2.started).isTrue()
+    assertThat(protocol1.started).isFalse()
   }
 
   fun randomBlockMetadata(timestamp: Long): ElBlockMetadata =

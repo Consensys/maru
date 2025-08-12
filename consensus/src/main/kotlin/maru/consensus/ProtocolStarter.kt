@@ -94,11 +94,13 @@ class ProtocolStarter(
     }
   }
 
-  private fun checkAndHandleForkTransition(currentTimestamp: Long = clock.instant().epochSecond) {
+  private fun checkAndHandleForkTransition() {
+    val currentTimestamp = clock.instant().epochSecond
     val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(currentTimestamp)
     val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
 
     val currentProtocolWithFork = currentProtocolWithForkReference.get()
+
     if (currentProtocolWithFork?.fork != nextForkSpec) {
       log.debug(
         "switching from forkSpec={} to newForkSpec={}, nextBlockTimeStamp={}",
@@ -107,19 +109,9 @@ class ProtocolStarter(
         nextBlockTimestamp,
       )
 
-      // Check if we need to wait for the fork transition time
-      val currentTime = clock.instant().epochSecond
-      val forkTransitionTime = nextForkSpec.timestampSeconds
-
-      if (currentTime < forkTransitionTime) {
-        val waitTime = forkTransitionTime - currentTime
-        log.debug("Fork transition scheduled for {}, waiting {} seconds", forkTransitionTime, waitTime)
-        return // Don't switch yet, wait for the scheduled time
-      }
-
       performForkTransition(currentProtocolWithFork, nextForkSpec)
     } else {
-      log.trace("Current timestamp {}, but fork switch isn't required", currentTimestamp)
+      log.trace("currentTimestamp={}, but fork switch isn't required", currentTimestamp)
     }
   }
 
@@ -146,13 +138,11 @@ class ProtocolStarter(
   override fun start() {
     synchronized(this) {
       if (poller != null) {
-        return // Already running
+        return
       }
 
-      // Perform initial fork transition check immediately
       checkAndHandleForkTransition()
 
-      // Start polling for future fork transitions
       log.debug("Starting fork transition polling with interval {}", forkTransitionCheckInterval)
       poller = timerFactory("ProtocolStarterPoller", true)
       poller!!.scheduleAtFixedRate(
