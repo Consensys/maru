@@ -9,7 +9,7 @@
 package maru.compression
 
 import kotlin.random.Random
-import maru.p2p.MAX_MESSAGE_SIZE
+import maru.serialization.MAX_MESSAGE_SIZE
 import maru.serialization.compression.MaruSnappyFramedCompressor
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThatThrownBy

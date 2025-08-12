@@ -14,7 +14,7 @@ import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
 import java.util.Optional
 import maru.compression.MaruCompressor
-import maru.p2p.MAX_MESSAGE_SIZE
+import maru.serialization.MAX_MESSAGE_SIZE
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException.ChunkTooLongException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException.DecompressFailedException

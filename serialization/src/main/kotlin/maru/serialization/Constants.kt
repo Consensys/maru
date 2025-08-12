@@ -6,6 +6,6 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.p2p
+package maru.serialization
 
 const val MAX_MESSAGE_SIZE: Int = 10485760
