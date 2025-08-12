@@ -95,6 +95,9 @@ class MaruSnappyFramedCompressor : MaruCompressor {
         .toByteBuf()
     val decompressedByteBuf =
       decompress(compressedByteBuf)
+
+    compressedByteBuf.release()
+
     if (decompressedByteBuf == null) {
       throw DecompressFailedException()
     }
