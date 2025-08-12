@@ -56,6 +56,7 @@ import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.SealedBeaconBlockCompressorSerDe
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.ELSyncService
@@ -309,7 +310,7 @@ class MaruAppFactory {
               ).also { log.info("using p2p ip={}", it) }
               .let { p2pConfig.copy(ipAddress = it) },
           chainId = chainId,
-          serDe = RLPSerializers.SealedBeaconBlockSerializer,
+          serDe = SealedBeaconBlockCompressorSerDe(RLPSerializers.SealedBeaconBlockSerializer),
           metricsFacade = metricsFacade,
           statusMessageFactory = statusMessageFactory,
           beaconChain = beaconChain,
