@@ -23,6 +23,20 @@ make chaos-full-reload
 - deploys Chaos-Mesh into `chaos-mesh` namespace
 - deploys Maru and Besu network into `default` namespace
 
+### Troubleshooting & Redeploy Maru
+
+Builds Maru Locally and Deploys it with Fresh K8S Cluster and Besu Instances
+```
+export KUBECONFIG=~/.kube/k3s-server
+make chaos-full-reload-with-local-maru-image
+```
+
+Build and Redeploys Maru
+```
+export KUBECONFIG=~/.kube/k3s-server
+make build-and-redeploy-maru
+```
+
 ### Other helpful commands
 
 - `make helm-redeploy-maru-and-besu` - redeploys Maru + Besu network from genesis
