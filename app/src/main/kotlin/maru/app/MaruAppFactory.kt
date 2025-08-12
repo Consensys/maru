@@ -296,9 +296,7 @@ class MaruAppFactory {
             NetworkHelper
               .selectIpV4ForP2P(
                 targetIpV4 = p2pConfig.ipAddress,
-                excludeLoopback = false,
-                // allow loopback because of the tests,
-                // but in production loopback interface won't be used unless there is no other interface available
+                excludeLoopback = true,
               ).also { log.info("using p2p ip={}", it) }
               .let { p2pConfig.copy(ipAddress = it) },
           chainId = chainId,
