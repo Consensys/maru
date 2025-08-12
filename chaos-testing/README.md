@@ -26,15 +26,21 @@ make chaos-full-reload
 ### Troubleshooting & Redeploy Maru
 
 Builds Maru Locally and Deploys it with Fresh K8S Cluster and Besu Instances
-```
+```bash
 export KUBECONFIG=~/.kube/k3s-server
 make chaos-full-reload-with-local-maru-image
 ```
 
 Build and Redeploys Maru
-```
+```bash
 export KUBECONFIG=~/.kube/k3s-server
 make build-and-redeploy-maru
+```
+
+Check pods logs (Check list of pods with `kubectl get pods`)
+```bash
+kubectl logs maru-follower-0-0
+kubectl logs maru-follower-0-0 -f # follow logs
 ```
 
 ### Other helpful commands
