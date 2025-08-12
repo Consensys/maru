@@ -142,10 +142,10 @@ class P2PNetworkImpl(
 
   private fun logEnr(nodeRecord: NodeRecord) {
     log.info(
-      "enr={} tcpAddr={} udpAddr={}",
-      nodeRecord.asEnr(),
+      "tcpAddr={} udpAddr={} enr={} ",
       nodeRecord.tcpAddress.getOrNull(),
       nodeRecord.udpAddress.getOrNull(),
+      nodeRecord.asEnr(),
     )
   }
 
