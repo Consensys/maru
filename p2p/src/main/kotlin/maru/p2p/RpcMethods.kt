@@ -34,6 +34,7 @@ class RpcMethods(
       peerLookup = peerLookup,
       protocolIdGenerator = lineaRpcProtocolIdGenerator,
       version = Version.V1,
+      encoding = Encoding.RLP,
     )
 
   val beaconBlocksByRangeRequestMessageSerDe = BeaconBlocksByRangeRequestMessageSerDe()
@@ -49,6 +50,7 @@ class RpcMethods(
       peerLookup = peerLookup,
       protocolIdGenerator = lineaRpcProtocolIdGenerator,
       version = Version.V1,
+      encoding = Encoding.RLP_SNAPPY,
     )
 
   fun status() = statusRpcMethod
