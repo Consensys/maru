@@ -8,8 +8,7 @@
  */
 package maru.p2p.messages
 
-import kotlin.random.Random
-import kotlin.random.nextULong
+import maru.core.ext.DataGenerators.randomStatus
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
@@ -25,7 +24,7 @@ class StatusMessageSerDeTest {
       Message(
         RpcMessageType.STATUS,
         Version.V1,
-        Status(Random.nextBytes(32), Random.nextBytes(32), Random.nextULong()),
+        randomStatus(100U),
       )
 
     val serializedData = serDe.serialize(testValue)

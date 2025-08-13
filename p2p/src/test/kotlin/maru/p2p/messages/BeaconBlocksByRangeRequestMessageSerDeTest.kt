@@ -11,11 +11,18 @@ package maru.p2p.messages
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
+import maru.serialization.rlp.MaruCompressorRLPSerDe
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class BeaconBlocksByRangeRequestMessageSerDeTest {
-  private val messageSerDe = BeaconBlocksByRangeRequestMessageSerDe()
+  private val messageSerDe =
+    BeaconBlocksByRangeRequestMessageSerDe(
+      beaconBlocksByRangeRequestSerDe =
+        MaruCompressorRLPSerDe(
+          serDe = BeaconBlocksByRangeRequestSerDe(),
+        ),
+    )
 
   @Test
   fun `request message serDe serializes and deserializes correctly`() {

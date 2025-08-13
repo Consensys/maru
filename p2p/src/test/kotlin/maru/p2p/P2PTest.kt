@@ -144,7 +144,7 @@ class P2PTest {
             discovery = discovery,
           ),
         chainId = chainId,
-        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        serDe = RLPSerializers.SealedBeaconBlockCompressorSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
