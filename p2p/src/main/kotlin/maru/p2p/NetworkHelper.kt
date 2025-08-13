@@ -42,8 +42,14 @@ object NetworkHelper {
     targetIpV4: String,
     excludeLoopback: Boolean = true,
   ): String {
-    runCatching { Inet4Address.getByName(targetIpV4) }
-      .onFailure { throw IllegalArgumentException("Invalid targetIpV4=$targetIpV4", it) }
+    val address =
+      runCatching { Inet4Address.getByName(targetIpV4) }
+        .getOrElse { throw IllegalArgumentException("Invalid targetIpV4=$targetIpV4", it) }
+
+    if (address.isLoopbackAddress) {
+      return targetIpV4
+    }
+
     val ips = listIpsV4(excludeLoopback)
     check(ips.isNotEmpty()) { "No IPv4 addresses found on the local machine." }
 

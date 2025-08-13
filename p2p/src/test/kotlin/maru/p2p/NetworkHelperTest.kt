@@ -16,6 +16,22 @@ import org.junit.jupiter.api.Test
 
 class NetworkHelperTest {
   @Test
+  fun `loopBackLastComparator favours not loopback`() {
+    listOf<InetAddress>(
+      Inet4Address.getByName("127.0.0.1"),
+      Inet4Address.getByName("100.100.0.1"),
+    ).sortedWith(NetworkHelper.loopBackLastComparator)
+      .also { sorted ->
+        assertThat(sorted).isEqualTo(
+          listOf<InetAddress>(
+            Inet4Address.getByName("100.100.0.1"),
+            Inet4Address.getByName("127.0.0.1"),
+          ),
+        )
+      }
+  }
+
+  @Test
   fun `listNetworkAddresses returns network addresses`() {
     NetworkHelper.listNetworkAddresses(excludeLoopback = true).also { addresses ->
       assertThat(addresses).allMatch { !it.isLoopbackAddress }
@@ -52,19 +68,16 @@ class NetworkHelperTest {
   }
 
   @Test
-  fun `loopBackLastComparator favours not loopback`() {
-    listOf<InetAddress>(
-      Inet4Address.getByName("127.0.0.1"),
-      Inet4Address.getByName("100.100.0.1"),
-    ).sortedWith(NetworkHelper.loopBackLastComparator)
-      .also { sorted ->
-        assertThat(sorted).isEqualTo(
-          listOf<InetAddress>(
-            Inet4Address.getByName("100.100.0.1"),
-            Inet4Address.getByName("127.0.0.1"),
-          ),
-        )
-      }
+  fun `selectIpV4ForP2P allows loopback when targetIpV4 is loopback`() {
+    assertThat(NetworkHelper.selectIpV4ForP2P("127.0.0.1", excludeLoopback = true))
+      .isEqualTo("127.0.0.1")
+
+    assertThat(NetworkHelper.selectIpV4ForP2P("127.1", excludeLoopback = true))
+      .isEqualTo("127.1")
+
+    // decimal representation of loopback address, allowed by the spec
+    assertThat(NetworkHelper.selectIpV4ForP2P("2130706433", excludeLoopback = true))
+      .isEqualTo("2130706433")
   }
 
   @Test
