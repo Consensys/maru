@@ -62,7 +62,7 @@ configFiles:
     <Configuration status="INFO" monitorInterval="2">
     <Appenders>
       <Console name="Console" target="SYSTEM_OUT">
-        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS,UTC} | %-5level | %c{1} | %msg %throwable%n" />
+        <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS}{UTC} | %-5level | %c{1} | %msg %throwable%n" />
       </Console>
     </Appenders>
     <Loggers>
