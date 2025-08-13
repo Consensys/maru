@@ -69,10 +69,11 @@ class BesuTransactionsHelper {
       .timeout(Duration.ofSeconds(30))
       .ignoreExceptions()
       .untilAsserted {
-        val receipt = this.execute(ethTransactions.getTransactionReceipt(txHash.toString())).get()
-        assertThat(receipt)
+        val maybeReceipt = this.execute(ethTransactions.getTransactionReceipt(txHash.toString()))
+        assertThat(maybeReceipt)
           .withFailMessage("Transaction receipt for $txHash not found")
-          .isNotNull
+          .isPresent
+        val receipt = maybeReceipt.get()
         assertThat(receipt.status)
           .withFailMessage("Transaction $txHash failed with status: ${receipt.status}")
           .isEqualTo("0x1")
