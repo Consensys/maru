@@ -28,8 +28,6 @@ import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import maru.config.consensus.ElFork
-import maru.consensus.ForksSchedule
-import maru.consensus.NewBlockHandler
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.state.InstantFinalizationProvider
 import maru.core.BeaconBlock
@@ -37,7 +35,6 @@ import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
 import maru.core.Validator
-import maru.executionlayer.manager.ForkScheduleAwareExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
@@ -294,12 +291,7 @@ class CliqueToPosTest {
     if (nodeName.contains("besu")) {
       // Required to change validation rules from Clique to PostMerge
       // TODO: investigate this issue more. It was working happen with Dummy Consensus
-      syncTarget(
-        forksSchedule = maruFollower!!.beaconGenesisConfig,
-        engineApiConfig = engineApiConfig,
-        headBlockNumber = 5,
-        followerName = nodeName,
-      )
+      syncTarget(engineApiConfig = engineApiConfig, headBlockNumber = 5, followerName = nodeName)
       awaitCondition
         .ignoreExceptions()
         .alias(nodeName)
@@ -338,26 +330,13 @@ class CliqueToPosTest {
       }
   }
 
-  private fun buildBlockImportHandler(
-    executionLayerManager: ForkScheduleAwareExecutionLayerManager,
-    name: String,
-  ): NewBlockHandler<*> =
-    FollowerBeaconBlockImporter(
-      executionLayerManager = executionLayerManager,
-      finalizationStateProvider = InstantFinalizationProvider,
-      importerName = name,
-    )
-
   private fun waitTillTimestamp(
     timestamp: Long,
     timestampFork: String,
   ) {
     await.timeout(2.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
       val unixTimestamp = System.currentTimeMillis() / 1000
-      log.info(
-        "Waiting {} seconds for the $timestampFork at timestamp $timestamp",
-        timestamp - unixTimestamp,
-      )
+      log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
       assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
     }
   }
@@ -411,13 +390,11 @@ class CliqueToPosTest {
   }
 
   private fun syncTarget(
-    forksSchedule: ForksSchedule,
     engineApiConfig: ApiEndpointConfig,
     headBlockNumber: Long,
     followerName: String,
   ) {
     val latestBlock = getBlockByNumber(headBlockNumber, retreiveTransactions = true)!!
-
     val latestExecutionPayload = latestBlock.toDomain()
     val stubBeaconBlock =
       BeaconBlock(
@@ -433,26 +410,20 @@ class CliqueToPosTest {
         ),
         BeaconBlockBody(emptySet(), latestExecutionPayload),
       )
-    val web3jClient =
-      Helpers.createWeb3jClient(
-        apiEndpointConfig = engineApiConfig,
+    val engineApiClient =
+      Helpers.buildExecutionEngineClient(
+        endpoint = engineApiConfig,
+        elFork = ElFork.Prague,
+        metricsFacade = TestEnvironment.testMetricsFacade,
       )
-    val executionLayerManagerMap =
-      ElFork.entries.associateWith {
-        val engineApiClient =
-          Helpers.buildExecutionEngineClient(
-            web3JEngineApiClient = web3jClient,
-            elFork = it,
-            metricsFacade = TestEnvironment.testMetricsFacade,
-          )
-        JsonRpcExecutionLayerManager(engineApiClient)
-      }
-    val forkScheduleAwareExecutionLayerManager =
-      ForkScheduleAwareExecutionLayerManager(
-        forksSchedule = forksSchedule,
-        executionLayerManagerMap = executionLayerManagerMap,
+    val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
+    val blockImporter =
+      FollowerBeaconBlockImporter.create(
+        executionLayerManager = executionLayerManager,
+        finalizationStateProvider = InstantFinalizationProvider,
+        importerName = followerName,
       )
-    buildBlockImportHandler(forkScheduleAwareExecutionLayerManager, followerName)
+    blockImporter
       .handleNewBlock(stubBeaconBlock)
       .get()
   }

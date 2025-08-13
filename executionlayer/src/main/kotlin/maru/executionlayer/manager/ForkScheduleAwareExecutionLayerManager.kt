@@ -31,7 +31,7 @@ class ForkScheduleAwareExecutionLayerManager(
     val forkSpec = forksSchedule.getForkByTimestamp(currentTimestamp)
     return when (val configuration = forkSpec.configuration) {
       is QbftConsensusConfig -> configuration.elFork
-      else -> ElFork.entries.first()
+      else -> throw IllegalStateException("No ELFork configured found for $configuration")
     }
   }
 

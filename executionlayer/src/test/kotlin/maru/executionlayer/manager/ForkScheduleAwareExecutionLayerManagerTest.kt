@@ -82,7 +82,9 @@ class ForkScheduleAwareExecutionLayerManagerTest {
         executionLayerManagerMap = elManagerMap,
         clock = fakeClock,
       )
-    assertThat(forkScheduleAwareManager.getCurrentElFork()).isEqualTo(ElFork.entries.first())
+    assertThrows<IllegalStateException> {
+      forkScheduleAwareManager.getCurrentElFork()
+    }
     fakeClock.advanceBy(1.seconds)
     assertThat(forkScheduleAwareManager.getCurrentElFork()).isEqualTo(ElFork.Shanghai)
     fakeClock.advanceBy(1.seconds)

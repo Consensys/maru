@@ -151,7 +151,6 @@ class ProtocolStarterTest {
         forksSchedule = forksSchedule,
         clockMilliseconds = currentTimeMillis,
         timer = timer,
-        mutableClock = true,
       ) { currentTimeMillis }
 
     protocolStarter.start()
@@ -181,7 +180,6 @@ class ProtocolStarterTest {
         forksSchedule = forksSchedule,
         clockMilliseconds = currentTimeMillis,
         timer = timer,
-        mutableClock = true,
       ) { currentTimeMillis }
 
     protocolStarter.start()
@@ -209,7 +207,6 @@ class ProtocolStarterTest {
         forksSchedule = forksSchedule,
         clockMilliseconds = currentTimeMillis,
         timer = timer,
-        mutableClock = true,
       ) { currentTimeMillis }
 
     protocolStarter.start()
@@ -236,11 +233,10 @@ class ProtocolStarterTest {
     forksSchedule: ForksSchedule,
     clockMilliseconds: Long,
     timer: TestablePeriodicTimer = TestablePeriodicTimer(),
-    mutableClock: Boolean = false,
     timeProvider: (() -> Long)? = null,
   ): ProtocolStarter {
     val clock =
-      if (mutableClock && timeProvider != null) {
+      if (timeProvider != null) {
         object : Clock() {
           override fun getZone() = ZoneOffset.UTC
 
