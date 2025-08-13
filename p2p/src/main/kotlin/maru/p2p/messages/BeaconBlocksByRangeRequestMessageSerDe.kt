@@ -8,41 +8,27 @@
  */
 package maru.p2p.messages
 
-import maru.compression.MaruCompressor
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
-import maru.serialization.compression.MaruSnappyFramedCompressor
-import maru.serialization.rlp.MaruCompressorRLPSerDe
+import maru.serialization.rlp.RLPSerDe
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class BeaconBlocksByRangeRequestMessageSerDe(
-  compressor: MaruCompressor = MaruSnappyFramedCompressor(),
-) : MaruCompressorRLPSerDe<Message<BeaconBlocksByRangeRequest, RpcMessageType>>(compressor) {
+  private val beaconBlocksByRangeRequestSerDe: RLPSerDe<BeaconBlocksByRangeRequest>,
+) : RLPSerDe<Message<BeaconBlocksByRangeRequest, RpcMessageType>> {
   override fun writeTo(
     value: Message<BeaconBlocksByRangeRequest, RpcMessageType>,
     rlpOutput: RLPOutput,
   ) {
-    rlpOutput.startList()
-    rlpOutput.writeLong(value.payload.startBlockNumber.toLong())
-    rlpOutput.writeLong(value.payload.count.toLong())
-    rlpOutput.endList()
+    beaconBlocksByRangeRequestSerDe.writeTo(value.payload, rlpOutput)
   }
 
-  override fun readFrom(rlpInput: RLPInput): Message<BeaconBlocksByRangeRequest, RpcMessageType> {
-    rlpInput.enterList()
-    val startBlockNumber = rlpInput.readLong().toULong()
-    val count = rlpInput.readLong().toULong()
-    rlpInput.leaveList()
-
-    return Message(
+  override fun readFrom(rlpInput: RLPInput): Message<BeaconBlocksByRangeRequest, RpcMessageType> =
+    Message(
       RpcMessageType.BEACON_BLOCKS_BY_RANGE,
       Version.V1,
-      BeaconBlocksByRangeRequest(
-        startBlockNumber = startBlockNumber,
-        count = count,
-      ),
+      beaconBlocksByRangeRequestSerDe.readFrom(rlpInput),
     )
-  }
 }

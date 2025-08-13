@@ -9,11 +9,22 @@
 package maru.serialization.rlp
 
 import maru.compression.MaruCompressor
+import maru.serialization.compression.MaruSnappyFramedCompressor
+import org.hyperledger.besu.ethereum.rlp.RLPInput
+import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-abstract class MaruCompressorRLPSerDe<T>(
-  private val compressor: MaruCompressor,
+class MaruCompressorRLPSerDe<T>(
+  private val serDe: RLPSerDe<T>,
+  private val compressor: MaruCompressor = MaruSnappyFramedCompressor(),
 ) : RLPSerDe<T> {
-  override fun serialize(value: T): ByteArray = compressor.compress(super.serialize(value))
+  override fun serialize(value: T): ByteArray = compressor.compress(serDe.serialize(value))
 
-  override fun deserialize(bytes: ByteArray): T = super.deserialize(compressor.decompress(bytes))
+  override fun deserialize(bytes: ByteArray): T = serDe.deserialize(compressor.decompress(bytes))
+
+  override fun writeTo(
+    value: T,
+    rlpOutput: RLPOutput,
+  ) = serDe.writeTo(value, rlpOutput)
+
+  override fun readFrom(rlpInput: RLPInput): T = serDe.readFrom(rlpInput)
 }
