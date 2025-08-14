@@ -12,15 +12,22 @@ import maru.core.ext.DataGenerators
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
+import maru.serialization.rlp.MaruCompressorRLPSerDe
 import maru.serialization.rlp.RLPSerializers
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class BeaconBlocksByRangeResponseMessageSerDeTest {
-  private val messageSerDe = BeaconBlocksByRangeResponseMessageSerDe(RLPSerializers.SealedBeaconBlockSerializer)
-
   @Test
   fun `response message serDe serializes and deserializes correctly`() {
+    val messageSerDe =
+      BeaconBlocksByRangeResponseMessageSerDe(
+        beaconBlocksByRangeResponseSerDe =
+          MaruCompressorRLPSerDe(
+            serDe = BeaconBlocksByRangeResponseSerDe(RLPSerializers.SealedBeaconBlockSerializer),
+          ),
+      )
+
     val response =
       BeaconBlocksByRangeResponse(
         blocks = listOf(DataGenerators.randomSealedBeaconBlock(number = 5UL)),
