@@ -36,8 +36,6 @@ import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
-import maru.testutils.besu.BesuFactory
-import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
@@ -65,6 +63,8 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
 
 class EagerQbftBlockCreatorTest {
   private lateinit var cluster: Cluster
@@ -75,6 +75,7 @@ class EagerQbftBlockCreatorTest {
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
   private val clock = Mockito.mock(Clock::class.java)
   private val validator = Validator(Random.nextBytes(20))
+  private val feeRecipient = Random.nextBytes(20)
   private val prevRandaoProvider = { a: ULong, b: ByteArray -> Bytes32.random().toArray() }
   private lateinit var executionLayerManager: ExecutionLayerManager
   private val validatorSet = DataGenerators.randomValidators() + validator
@@ -145,7 +146,7 @@ class EagerQbftBlockCreatorTest {
           )
         },
         prevRandaoProvider = prevRandaoProvider,
-        blockBuilderIdentity = validator,
+        feeRecipient = feeRecipient,
         config =
           EagerQbftBlockCreator.Config(
             minBlockBuildTime = 500.milliseconds,

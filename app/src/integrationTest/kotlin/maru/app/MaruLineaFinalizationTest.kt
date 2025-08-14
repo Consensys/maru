@@ -14,14 +14,9 @@ import kotlin.time.toJavaDuration
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
-import maru.testutils.MaruFactory
-import maru.testutils.NetworkParticipantStack
-import maru.testutils.besu.BesuTransactionsHelper
-import maru.testutils.besu.ethGetBlockByNumber
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.untilAsserted
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
@@ -31,11 +26,17 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import testutils.PeeringNodeNetworkStack
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
+import testutils.besu.ethGetBlockByNumber
+import testutils.maru.MaruFactory
+import testutils.maru.awaitTillMaruHasPeers
 
 class MaruLineaFinalizationTest {
   private lateinit var cluster: Cluster
-  private lateinit var validatorStack: NetworkParticipantStack
-  private lateinit var followerStack: NetworkParticipantStack
+  private lateinit var validatorStack: PeeringNodeNetworkStack
+  private lateinit var followerStack: PeeringNodeNetworkStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
@@ -54,30 +55,39 @@ class MaruLineaFinalizationTest {
         ThreadBesuNodeRunner(),
       )
 
-    validatorStack =
-      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        maruFactory.buildTestMaruValidatorWithP2pPeering(
-          ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
-          engineApiRpc = engineRpcUrl,
-          dataDir = tmpDir,
-          overridingLineaContractClient = fakeLineaContract,
-        )
-      }
-    validatorStack.maruApp.start()
+    validatorStack = PeeringNodeNetworkStack()
     followerStack =
-      NetworkParticipantStack(
-        cluster = cluster,
-      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        maruFactory.buildTestMaruFollowerWithP2pPeering(
-          ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
-          engineApiRpc = engineRpcUrl,
-          dataDir = tmpDir,
-          validatorPortForStaticPeering = validatorStack.p2pPort,
-          overridingLineaContractClient = fakeLineaContract,
-        )
-      }
+      PeeringNodeNetworkStack(
+        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+      )
+
+    PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
+
+    val validatorMaruApp =
+      maruFactory.buildTestMaruValidatorWithP2pPeering(
+        ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
+        dataDir = validatorStack.tmpDir,
+        overridingLineaContractClient = fakeLineaContract,
+      )
+    validatorStack.setMaruApp(validatorMaruApp)
+    validatorStack.maruApp.start()
+
+    val validatorP2pPort = validatorStack.p2pPort
+
+    val followerMaruApp =
+      maruFactory.buildTestMaruFollowerWithP2pPeering(
+        ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
+        dataDir = followerStack.tmpDir,
+        validatorPortForStaticPeering = validatorP2pPort,
+        overridingLineaContractClient = fakeLineaContract,
+      )
+    followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
 
+    followerStack.maruApp.awaitTillMaruHasPeers(1u)
+    validatorStack.maruApp.awaitTillMaruHasPeers(1u)
     val validatorGenesis = validatorStack.besuNode.ethGetBlockByNumber("earliest", false)
     val followerGenesis = followerStack.besuNode.ethGetBlockByNumber("earliest", false)
 
@@ -100,7 +110,7 @@ class MaruLineaFinalizationTest {
     // wait for Besu to be fully started and synced,
     // to avoid CI flakiness due low resources sometimes
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(20.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
@@ -115,9 +125,11 @@ class MaruLineaFinalizationTest {
 
   @AfterEach
   fun tearDown() {
+    followerStack.maruApp.stop()
+    validatorStack.maruApp.stop()
+    followerStack.maruApp.close()
+    validatorStack.maruApp.close()
     cluster.close()
-    followerStack.stop()
-    validatorStack.stop()
   }
 
   @Test
@@ -165,7 +177,7 @@ class MaruLineaFinalizationTest {
     }
 
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(20.seconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number)
@@ -173,7 +185,7 @@ class MaruLineaFinalizationTest {
       }
 
     await
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(20.seconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         assertThat(

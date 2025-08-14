@@ -17,11 +17,11 @@ import maru.consensus.StaticValidatorProvider
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
 import maru.consensus.qbft.ProposerSelectorImpl
-import maru.consensus.qbft.QbftConsensusFollower
 import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
 import maru.consensus.validation.QuorumOfSealsVerifier
 import maru.consensus.validation.SCEP256SealVerifier
+import maru.core.NoOpProtocol
 import maru.core.Protocol
 import maru.database.BeaconChain
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
@@ -29,13 +29,12 @@ import maru.p2p.P2PNetwork
 import net.consensys.linea.metrics.MetricsFacade
 
 class QbftFollowerFactory(
-  val p2PNetwork: P2PNetwork,
-  val beaconChain: BeaconChain,
-  val newBlockHandler: NewBlockHandler<*>,
-  val validatorElNodeConfig: ValidatorElNode,
-  val beaconChainInitialization: BeaconChainInitialization,
-  val metricsFacade: MetricsFacade,
-  val allowEmptyBlocks: Boolean,
+  private val p2pNetwork: P2PNetwork,
+  private val beaconChain: BeaconChain,
+  private val newBlockHandler: NewBlockHandler<*>,
+  private val validatorElNodeConfig: ValidatorElNode,
+  private val metricsFacade: MetricsFacade,
+  private val allowEmptyBlocks: Boolean,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)
@@ -70,9 +69,8 @@ class QbftFollowerFactory(
         sealsVerifier = sealsVerifier,
         beaconBlockValidatorFactory = beaconBlockValidatorFactory,
       )
+    p2pNetwork.subscribeToBlocks(blockImporter::importBlock)
 
-    beaconChainInitialization.ensureDbIsInitialized(qbftConsensusConfig.validatorSet)
-
-    return QbftConsensusFollower(p2PNetwork, blockImporter)
+    return NoOpProtocol()
   }
 }

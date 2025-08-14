@@ -9,6 +9,7 @@
 package maru.app
 
 import com.github.michaelbull.result.Ok
+import linea.kotlin.decodeHex
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.consensus.validation.QuorumOfSealsVerifier
@@ -16,14 +17,6 @@ import maru.consensus.validation.SCEP256SealVerifier
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
-import maru.testutils.Checks.getMinedBlocks
-import maru.testutils.Checks.verifyBlockTime
-import maru.testutils.Checks.verifyBlockTimeWithAGapOn
-import maru.testutils.MaruFactory
-import maru.testutils.NetworkParticipantStack
-import maru.testutils.SpyingP2PNetwork
-import maru.testutils.besu.BesuTransactionsHelper
-import maru.testutils.besu.startWithRetry
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -40,10 +33,18 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import testutils.Checks.getMinedBlocks
+import testutils.Checks.verifyBlockTime
+import testutils.Checks.verifyBlockTimeWithAGapOn
+import testutils.SingleNodeNetworkStack
+import testutils.SpyingP2PNetwork
+import testutils.besu.BesuTransactionsHelper
+import testutils.besu.startWithRetry
+import testutils.maru.MaruFactory
 
 class MaruQbftValidatorTest {
   private lateinit var cluster: Cluster
-  private lateinit var networkParticipantStack: NetworkParticipantStack
+  private lateinit var networkParticipantStack: SingleNodeNetworkStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private lateinit var spyingP2pNetwork: SpyingP2PNetwork
@@ -61,7 +62,7 @@ class MaruQbftValidatorTest {
 
     spyingP2pNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
     networkParticipantStack =
-      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+      SingleNodeNetworkStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
         maruFactory.buildTestMaruValidatorWithoutP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
@@ -74,8 +75,9 @@ class MaruQbftValidatorTest {
 
   @AfterEach
   fun tearDown() {
-    cluster.close()
     networkParticipantStack.maruApp.stop()
+    networkParticipantStack.maruApp.close()
+    cluster.close()
   }
 
   @Test
@@ -93,6 +95,12 @@ class MaruQbftValidatorTest {
 
     val blocks = networkParticipantStack.besuNode.getMinedBlocks(blocksToProduce)
     blocks.verifyBlockTime()
+    blocks.forEach {
+      assertThat(it.miner.decodeHex()).isEqualTo(
+        networkParticipantStack.maruApp.config.qbftOptions!!
+          .feeRecipient,
+      )
+    }
 
     // Need to wait because otherwise not all of the messages might be emitted at the time of a block being mined
     await.untilAsserted {

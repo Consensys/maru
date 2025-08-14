@@ -8,6 +8,7 @@
  */
 package maru.config
 
+import java.net.InetAddress
 import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
@@ -16,6 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.kotlin.assertIs20Bytes
+import maru.extensions.encodeHex
 
 data class Persistence(
   val dataPath: Path,
@@ -37,16 +39,29 @@ data class FollowersConfig(
 )
 
 data class P2P(
-  val ipAddress: String,
-  val port: UInt,
+  val ipAddress: String = "127.0.0.1", // default to localhost for security
+  val port: UInt = 9000u,
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
   val maxPeers: Int = 25,
   val discovery: Discovery? = null,
+  val statusUpdate: StatusUpdateConfig = StatusUpdateConfig(),
 ) {
+  init {
+    // just a sanity check to ensure the IP address is valid
+    InetAddress.getByName(ipAddress)
+  }
+
   data class Discovery(
-    val port: UInt,
+    val port: UInt = 9000u,
     val bootnodes: List<String> = emptyList(),
+    val refreshInterval: Duration,
+  )
+
+  data class StatusUpdateConfig(
+    val refreshInterval: Duration = 30.seconds,
+    val refreshIntervalLeeway: Duration = 5.seconds,
+    val timeout: Duration = 10.seconds,
   )
 }
 
@@ -95,6 +110,17 @@ data class QbftOptions(
     result = 31 * result + feeRecipient.contentHashCode()
     return result
   }
+
+  override fun toString(): String =
+    "QbftOptions(" +
+      "minBlockBuildTime=$minBlockBuildTime, " +
+      "messageQueueLimit=$messageQueueLimit, " +
+      "roundExpiry=$roundExpiry, " +
+      "duplicateMessageLimit=$duplicateMessageLimit, " +
+      "futureMessageMaxDistance=$futureMessageMaxDistance, " +
+      "futureMessagesLimit=$futureMessagesLimit, " +
+      "feeRecipient=${feeRecipient.encodeHex()}" +
+      ")"
 }
 
 data class ObservabilityOptions(
@@ -140,7 +166,22 @@ data class ApiConfig(
   val port: UInt,
 )
 
+data class SyncingConfig(
+  val peerChainHeightPollingInterval: Duration,
+  val peerChainHeightGranularity: UInt,
+  val elSyncStatusRefreshInterval: Duration,
+  val download: Download? = Download(),
+) {
+  data class Download(
+    val blockRangeRequestTimeout: Duration = 5.seconds,
+    val blocksBatchSize: UInt = 10u,
+    val blocksParallelism: UInt = 1u,
+    val maxRetries: UInt = 5u,
+  )
+}
+
 data class MaruConfig(
+  val protocolTransitionPollingInterval: Duration = 1.seconds,
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
   val qbftOptions: QbftOptions?,
@@ -150,4 +191,5 @@ data class MaruConfig(
   val observabilityOptions: ObservabilityOptions,
   val linea: LineaConfig? = null,
   val apiConfig: ApiConfig,
+  val syncing: SyncingConfig,
 )

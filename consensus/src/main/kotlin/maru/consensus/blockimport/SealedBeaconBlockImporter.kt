@@ -13,6 +13,7 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.flatMap
 import com.github.michaelbull.result.mapError
+import java.util.concurrent.atomic.AtomicBoolean
 import maru.consensus.AsyncFunction
 import maru.consensus.CallAndForgetFutureMultiplexer
 import maru.consensus.state.StateTransition
@@ -25,6 +26,7 @@ import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.hyperledger.besu.util.log.LogUtil
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 // This is basically Chain of Responsibility design pattern, except it doesn't allow multiple children
@@ -79,7 +81,7 @@ class TransactionalSealedBeaconBlockImporter(
   private val stateTransition: StateTransition,
   private val beaconBlockImporter: BeaconBlockImporter,
 ) : SealedBeaconBlockImporter<ValidationResult> {
-  private val log: Logger = LogManager.getLogger(this::javaClass)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
 
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     val updater = beaconChain.newUpdater()
@@ -125,12 +127,18 @@ class ValidatingSealedBeaconBlockImporter(
   }
 
   private val log = LogManager.getLogger(this.javaClass)
+  private val shouldLog = AtomicBoolean(true)
 
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     try {
       val beaconBlock = sealedBeaconBlock.beaconBlock
       val beaconBlockHeader = beaconBlock.beaconBlockHeader
-      log.debug("Received beacon block blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
+      LogUtil.throttledLog(
+        log::info,
+        "block received: clBlockNumber=${beaconBlockHeader.number} elBlockNumber=${beaconBlock.beaconBlockBody.executionPayload.blockNumber} clBlockHash=${beaconBlockHeader.hash.encodeHex()}",
+        shouldLog,
+        30,
+      )
       val blockValidators =
         beaconBlockValidatorFactory
           .createValidatorForBlock(beaconBlockHeader)
@@ -143,24 +151,48 @@ class ValidatingSealedBeaconBlockImporter(
             sealsVerificationResult.flatMap { blockValidationResult.mapError { it.message } }
           when (combinedValidationResult) {
             is Ok -> {
-              log.debug("Block is validated blockNumber={} hash={}", beaconBlockHeader.number, beaconBlockHeader.hash)
+              log.debug(
+                "block validated: clBlockNumber={} elBlockNumber={} clBlockHash={}",
+                beaconBlockHeader.number,
+                sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
+                beaconBlockHeader.hash.encodeHex(),
+              )
               beaconBlockImporter.importBlock(sealedBeaconBlock).thenApply { it }
             }
 
             is Err -> {
               log.error(
-                "Validation failed for blockNumber=${sealedBeaconBlock.beaconBlock.beaconBlockHeader.number}, " +
-                  "hash=${sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash.encodeHex()}! " +
-                  "error=${combinedValidationResult.error}",
+                "block seals validation failed: clBlockNumber={} elBlockNumber={} clBlockHash={} error={}",
+                sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+                sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
+                sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+                  .encodeHex(),
+                combinedValidationResult.error,
               )
               SafeFuture.completedFuture(combinedValidationResult.toDomain())
             }
           }
         }.whenException {
-          log.error("Exception during sealed block import!", it)
+          log.error(
+            "exception during block import: clBlockNumber={} elBlockNumber={}  clBlockHash={} errorMessage={}",
+            sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+            sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
+            sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+              .encodeHex(),
+            it.message,
+            it,
+          )
         }
     } catch (ex: Throwable) {
-      log.error("Exception during sealed block import!", ex)
+      log.error(
+        "exception during block import: clBlockNumber={} elBlockNumber={} clBlockHash={} errorMessage={}",
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+        sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
+          .encodeHex(),
+        ex.message,
+        ex,
+      )
       throw ex
     }
   }

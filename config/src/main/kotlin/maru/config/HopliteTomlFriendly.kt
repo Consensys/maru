@@ -81,6 +81,7 @@ data class QbftOptionsDtoToml(
 }
 
 data class MaruConfigDtoToml(
+  private val protocolTransitionPollingInterval: Duration = 1.seconds,
   private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
   private val qbft: QbftOptionsDtoToml?,
@@ -89,9 +90,11 @@ data class MaruConfigDtoToml(
   private val followerEngineApis: Map<String, ApiEndpointDto>?,
   private val observability: ObservabilityOptions,
   private val api: ApiConfig,
+  private val syncing: SyncingConfig,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
+      protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
       qbftOptions = qbft?.toDomain(),
@@ -103,5 +106,6 @@ data class MaruConfigDtoToml(
         ),
       observabilityOptions = observability,
       apiConfig = api,
+      syncing = syncing,
     )
 }

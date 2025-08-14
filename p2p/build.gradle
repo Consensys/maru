@@ -15,6 +15,7 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
+  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -23,7 +24,7 @@ dependencies {
   implementation project(":crypto")
   implementation project(":core")
 
-  implementation "io.libp2p:jvm-libp2p"
+  api "io.libp2p:jvm-libp2p"
 
   implementation "tech.pegasys.teku.internal:p2p"
   implementation "tech.pegasys.teku.internal:eth2"
@@ -43,6 +44,10 @@ dependencies {
 
   implementation 'tech.pegasys.discovery:discovery'
 
-  testImplementation testFixtures(project(":core"))
-  testImplementation project(":serialization")
+  implementation(project(":core"))
+
+  testImplementation(testFixtures(project(":core")))
+  testImplementation(project(":serialization"))
+
+  testFixturesImplementation(testImplementation(testFixtures(project(":core"))))
 }

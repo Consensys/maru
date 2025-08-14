@@ -19,8 +19,11 @@ import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
+  private val protocolTransitionPollingInterval = 2.seconds
   private val emptyFollowersConfigToml =
     """
+    protocol-transition-polling-interval = "2s"
+
     [persistence]
     data-path="/some/path"
     private-key-path = "/private-key/path"
@@ -30,13 +33,14 @@ class HopliteFriendlinessTest {
 
     [p2p]
     port = 3322
-    ip-address = "127.0.0.1"
+    ip-address = "10.11.12.13"
     static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
-    reconnect-delay = 500milliseconds
+    reconnect-delay = "500 ms"
 
     [p2p.discovery]
     port = 3324
     bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
+    refresh-interval = "30 seconds"
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
@@ -47,6 +51,17 @@ class HopliteFriendlinessTest {
 
     [api]
     port = 8080
+
+    [syncing]
+    peer-chain-height-polling-interval = "5 seconds"
+    peer-chain-height-granularity = 10
+    el-sync-status-refresh-interval = "6 seconds"
+
+    [syncing.download]
+    block-range-request-timeout = "10 seconds"
+    blocks-batch-size = 64
+    blocks-parallelism = 10
+    max-retries = 5
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -61,7 +76,7 @@ class HopliteFriendlinessTest {
   private val persistence = Persistence(dataPath, privateKeyPath)
   private val p2pConfig =
     P2P(
-      ipAddress = "127.0.0.1",
+      ipAddress = "10.11.12.13",
       port = 3322u,
       staticPeers =
         listOf(
@@ -75,6 +90,7 @@ class HopliteFriendlinessTest {
             listOf(
               "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
             ),
+          refreshInterval = 30.seconds,
         ),
     )
   private val ethApiEndpoint =
@@ -125,12 +141,25 @@ class HopliteFriendlinessTest {
       futureMessagesLimit = 1000L,
       feeRecipient = "0xdead000000000000000000000000000000000000".decodeHex(),
     )
+  private val syncingConfig =
+    SyncingConfig(
+      peerChainHeightPollingInterval = 5.seconds,
+      peerChainHeightGranularity = 10u,
+      elSyncStatusRefreshInterval = 6.seconds,
+      SyncingConfig.Download(
+        blockRangeRequestTimeout = 10.seconds,
+        blocksBatchSize = 64u,
+        blocksParallelism = 10u,
+        maxRetries = 5u,
+      ),
+    )
 
   @Test
   fun appConfigFileIsParseable() {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbft = qbftOptions,
@@ -139,6 +168,7 @@ class HopliteFriendlinessTest {
         followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
         observability = ObservabilityOptions(port = 9090u),
         api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
       ),
     )
   }
@@ -148,6 +178,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbft = qbftOptions,
@@ -156,6 +187,7 @@ class HopliteFriendlinessTest {
         followerEngineApis = null,
         observability = ObservabilityOptions(port = 9090u),
         api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
       ),
     )
   }
@@ -165,6 +197,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         p2pConfig = p2pConfig,
@@ -177,6 +210,7 @@ class HopliteFriendlinessTest {
         followers = followersConfig,
         observabilityOptions = ObservabilityOptions(port = 9090u),
         apiConfig = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
       ),
     )
   }
@@ -186,6 +220,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbftOptions = qbftOptions.toDomain(),
@@ -198,6 +233,7 @@ class HopliteFriendlinessTest {
         followers = emptyFollowersConfig,
         observabilityOptions = ObservabilityOptions(port = 9090u),
         apiConfig = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
       ),
     )
   }
@@ -241,6 +277,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = true,
           persistence = persistence,
           qbft = qbftOptions,
@@ -249,12 +286,14 @@ class HopliteFriendlinessTest {
           followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
           observability = ObservabilityOptions(port = 9090u),
           api = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
         ),
       )
 
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = true,
           persistence = persistence,
           p2pConfig = p2pConfig,
@@ -267,6 +306,7 @@ class HopliteFriendlinessTest {
           followers = followersConfig,
           observabilityOptions = ObservabilityOptions(port = 9090u),
           apiConfig = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
         ),
       )
   }

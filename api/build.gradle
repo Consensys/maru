@@ -7,8 +7,10 @@ dependencies {
   implementation "com.fasterxml.jackson.module:jackson-module-kotlin"
   implementation "io.javalin:javalin"
   implementation project(":core")
+  implementation project(":p2p")
   implementation project(":jvm-libs:extensions")
 
   testImplementation(testFixtures(project(":core")))
+  testImplementation(project(":syncing"))
   testImplementation("com.squareup.okhttp3:okhttp")
 }
