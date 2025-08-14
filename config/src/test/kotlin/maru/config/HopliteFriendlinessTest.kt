@@ -19,8 +19,11 @@ import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
+  private val protocolTransitionPollingInterval = 2.seconds
   private val emptyFollowersConfigToml =
     """
+    protocol-transition-polling-interval = "2s"
+
     [persistence]
     data-path="/some/path"
     private-key-path = "/private-key/path"
@@ -30,7 +33,7 @@ class HopliteFriendlinessTest {
 
     [p2p]
     port = 3322
-    ip-address = "127.0.0.1"
+    ip-address = "10.11.12.13"
     static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
     reconnect-delay = "500 ms"
 
@@ -52,6 +55,7 @@ class HopliteFriendlinessTest {
     [syncing]
     peer-chain-height-polling-interval = "5 seconds"
     peer-chain-height-granularity = 10
+    el-sync-status-refresh-interval = "6 seconds"
 
     [syncing.download]
     block-range-request-timeout = "10 seconds"
@@ -72,7 +76,7 @@ class HopliteFriendlinessTest {
   private val persistence = Persistence(dataPath, privateKeyPath)
   private val p2pConfig =
     P2P(
-      ipAddress = "127.0.0.1",
+      ipAddress = "10.11.12.13",
       port = 3322u,
       staticPeers =
         listOf(
@@ -141,6 +145,7 @@ class HopliteFriendlinessTest {
     SyncingConfig(
       peerChainHeightPollingInterval = 5.seconds,
       peerChainHeightGranularity = 10u,
+      elSyncStatusRefreshInterval = 6.seconds,
       SyncingConfig.Download(
         blockRangeRequestTimeout = 10.seconds,
         blocksBatchSize = 64u,
@@ -154,6 +159,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbft = qbftOptions,
@@ -172,6 +178,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbft = qbftOptions,
@@ -190,6 +197,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         p2pConfig = p2pConfig,
@@ -212,6 +220,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbftOptions = qbftOptions.toDomain(),
@@ -268,6 +277,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = true,
           persistence = persistence,
           qbft = qbftOptions,
@@ -283,6 +293,7 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = true,
           persistence = persistence,
           p2pConfig = p2pConfig,

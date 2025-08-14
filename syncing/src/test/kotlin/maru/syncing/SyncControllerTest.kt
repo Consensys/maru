@@ -89,28 +89,6 @@ class SyncControllerTest {
   }
 
   @Test
-  fun `should automatically set EL to SYNCING when CL starts syncing`() {
-    // Given: both CL and EL are syncing (default state)
-    assertThat(syncController.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
-    assertThat(syncController.getElSyncStatus()).isEqualTo(ELSyncStatus.SYNCING)
-
-    // When: CL sync is set to synced first
-    syncController.updateClSyncStatus(CLSyncStatus.SYNCED)
-    syncController.updateElSyncStatus(ELSyncStatus.SYNCED)
-
-    // Then: both should be synced
-    assertThat(syncController.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCED)
-    assertThat(syncController.getElSyncStatus()).isEqualTo(ELSyncStatus.SYNCED)
-
-    // When: CL sync starts again
-    syncController.updateClSyncStatus(CLSyncStatus.SYNCING)
-
-    // Then: EL should also be marked as syncing
-    assertThat(syncController.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
-    assertThat(syncController.getElSyncStatus()).isEqualTo(ELSyncStatus.SYNCING)
-  }
-
-  @Test
   fun `should notify handlers when sync status changes`() {
     val clStatusUpdates = mutableListOf<CLSyncStatus>()
     val elStatusUpdates = mutableListOf<ELSyncStatus>()
@@ -156,13 +134,6 @@ class SyncControllerTest {
     // When: CL completes
     syncController.updateClSyncStatus(CLSyncStatus.SYNCED)
 
-    // Then: El sync status should follow the CL one, so CL update after EL doesn't trigger full sync message
-    assertThat(fullSyncCompleted).isFalse()
-
-    // When: EL completes again
-    syncController.updateElSyncStatus(ELSyncStatus.SYNCED)
-
-    // Then: El should trigger the full sync
     assertThat(fullSyncCompleted).isTrue()
   }
 
@@ -308,30 +279,6 @@ class SyncControllerTest {
     assertThat(fakeClSyncService.lastSyncTarget).isEqualTo(180UL)
     assertThat(controller.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
   }
-
-  @Test
-  fun `should not set redundant sync targets for same value`() {
-    val trackingClSyncService = TrackingCLSyncService()
-    val controller = createController(50UL, trackingClSyncService)
-
-    // Given: sync is triggered to target 100
-    controller.onBeaconChainSyncTargetUpdated(100UL)
-    assertThat(trackingClSyncService.setSyncTargetCalls).hasSize(1)
-    assertThat(trackingClSyncService.setSyncTargetCalls[0]).isEqualTo(100UL)
-
-    // When: same sync target is provided again
-    controller.onBeaconChainSyncTargetUpdated(100UL)
-
-    // Then: should NOT call setSyncTarget again due to early return
-    assertThat(trackingClSyncService.setSyncTargetCalls).hasSize(1)
-    assertThat(trackingClSyncService.setSyncTargetCalls[0]).isEqualTo(100UL)
-
-    // When: same target provided third time
-    controller.onBeaconChainSyncTargetUpdated(100UL)
-
-    // Then: still no additional calls
-    assertThat(trackingClSyncService.setSyncTargetCalls).hasSize(1) // Fixed: no redundant call
-  }
 }
 
 // Additional test double to track method calls
@@ -346,4 +293,8 @@ private class TrackingCLSyncService : CLSyncService {
   override fun onSyncComplete(handler: (ULong) -> Unit) {
     syncCompleteHandlers.add(handler)
   }
+
+  override fun getSyncDistance(): ULong = 0UL
+
+  override fun getSyncTarget(): ULong = 0UL
 }

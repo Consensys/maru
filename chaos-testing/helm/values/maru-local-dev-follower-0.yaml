@@ -2,7 +2,7 @@ replicaCount: 1
 fullnameOverride: maru-follower-0
 configFiles:
   privateKey: |
-    0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aa0
+    0x08021220064974d5f62a7ab9b76ea97fc6451d2dd6416cb8150625ccb15640a57b96510e
   configsToml: |
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://besu-follower-0.besu-follower.default.svc.cluster.local:8550" }
@@ -19,6 +19,7 @@ configFiles:
       <Logger name="org.hyperledger.besu" level="TRACE"/>
       <Logger name="tech.pegasys.teku" level="DEBUG"/>
       <Logger name="maru" level="DEBUG"/>
+      <Logger name="maru.syncing" level="DEBUG"/>
       <Logger name="clients" level="DEBUG"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>
