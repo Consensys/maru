@@ -80,6 +80,7 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorP2pPort,
+        syncPeerChainGranularity = 10u,
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
@@ -236,6 +237,80 @@ class MaruFollowerTest {
     checkValidatorAndFollowerBlocks(blocksToProduce * 2)
   }
 
+  @Test
+  fun `Maru follower is able to complete initial syncing`() {
+    followerStack.maruApp.stop()
+    followerStack.maruApp.close()
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    // This is here mainly to wait until block propagation is complete
+    checkNetworkStackBlocksProduced(validatorStack, blocksToProduce)
+
+    followerStack.setMaruApp(
+      maruFactory.buildTestMaruFollowerWithP2pPeering(
+        ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
+        dataDir = followerStack.tmpDir,
+        validatorPortForStaticPeering = validatorStack.p2pPort,
+      ),
+    )
+    followerStack.maruApp.start()
+
+    checkValidatorAndFollowerBlocks(blocksToProduce)
+  }
+
+  @Test
+  fun `Maru follower is able to complete syncing after restarted`() {
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    // This is here mainly to wait until block propagation is complete
+    checkValidatorAndFollowerBlocks(blocksToProduce)
+
+    followerStack.maruApp.stop()
+    followerStack.maruApp.close()
+
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+    checkNetworkStackBlocksProduced(validatorStack, 2 * blocksToProduce)
+
+    followerStack.setMaruApp(
+      maruFactory.buildTestMaruFollowerWithP2pPeering(
+        ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
+        dataDir = followerStack.tmpDir,
+        validatorPortForStaticPeering = validatorStack.p2pPort,
+      ),
+    )
+    followerStack.maruApp.start()
+
+    checkValidatorAndFollowerBlocks(2 * blocksToProduce)
+  }
+
   private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
     await
       .pollDelay(100.milliseconds.toJavaDuration())
@@ -245,6 +320,19 @@ class MaruFollowerTest {
         val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
         val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)
         assertThat(blocksImportedByFollower).isEqualTo(blocksProducedByQbftValidator)
+      }
+  }
+
+  private fun checkNetworkStackBlocksProduced(
+    stack: PeeringNodeNetworkStack,
+    blocksProduced: Int,
+  ) {
+    await
+      .pollDelay(100.milliseconds.toJavaDuration())
+      .timeout(1.minutes.toJavaDuration())
+      .untilAsserted {
+        val blocksOnStack = stack.besuNode.getMinedBlocks(blocksProduced)
+        assertThat(blocksOnStack.size).isEqualTo(blocksProduced)
       }
   }
 }
