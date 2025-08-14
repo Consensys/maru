@@ -132,11 +132,18 @@ class MaruApp(
             forksSchedule = forksSchedule,
             executionLayerManagerMap = elManagerMap,
           )
-        FollowerBeaconBlockImporter.create(
-          forkScheduleAwareExecutionLayerManager,
-          finalizationProvider,
-          it.key,
-        ) as NewBlockHandler<Unit>
+        val importer =
+          FollowerBeaconBlockImporter.create(
+            forkScheduleAwareExecutionLayerManager,
+            finalizationProvider,
+            it.key,
+          )
+        NewBlockHandler<Unit> { block ->
+          importer
+            .handleNewBlock(block)
+            .thenApply { } // Ignore output
+            .exceptionally { } // Ignore errors
+        }
       }
 
   fun start() {
