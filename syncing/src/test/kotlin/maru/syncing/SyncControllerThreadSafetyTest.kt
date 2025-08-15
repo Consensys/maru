@@ -90,8 +90,12 @@ class SyncControllerThreadSafetyTest {
       val finalElStatus = syncController.getElSyncStatus()
       val isFullInSync = syncController.isNodeFullInSync()
 
-      assertThat(isFullInSync).isEqualTo(finalClStatus == CLSyncStatus.SYNCED && finalElStatus == ELSyncStatus.SYNCED)
-      assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING).isFalse
+      assertThat(isFullInSync)
+        .withFailMessage("finalElStatus = $finalElStatus, finalClStatus = $finalClStatus")
+        .isEqualTo(finalClStatus == CLSyncStatus.SYNCED && finalElStatus == ELSyncStatus.SYNCED)
+      assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING)
+        .withFailMessage("finalElStatus = $finalElStatus, finalClStatus = $finalClStatus")
+        .isFalse
 
       // Verify we received status updates (exact count may vary due to concurrency)
       assertThat(clStatusUpdates).size().isGreaterThanOrEqualTo(iterations / 2)

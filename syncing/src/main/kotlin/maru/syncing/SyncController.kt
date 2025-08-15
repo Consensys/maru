@@ -91,9 +91,17 @@ class BeaconSyncControllerImpl(
 
         if (previousState.clStatus == newStatus) return@write emptyList()
 
-        currentState = SyncState(newStatus, previousState.elStatus)
+        currentState =
+          if (newStatus == CLSyncStatus.SYNCING && currentState.elStatus == ELSyncStatus.SYNCED) {
+            previousState.copy(clStatus = newStatus, elStatus = ELSyncStatus.SYNCING)
+          } else {
+            previousState.copy(clStatus = newStatus)
+          }
 
         buildList {
+          if (previousState.elStatus == ELSyncStatus.SYNCED && currentState.elStatus == ELSyncStatus.SYNCING) {
+            add { elSyncHandlers.notifySubscribers(currentState.elStatus) }
+          }
           add { clSyncHandlers.notifySubscribers(newStatus) }
 
           // If CL is SYNCED, beacon sync is complete
@@ -103,10 +111,7 @@ class BeaconSyncControllerImpl(
           }
 
           // Check if this makes the node fully synced
-          if (isNodeFullInSync()) {
-            log.debug("Node is fully synced now")
-            add { fullSyncCompleteHandlers.notifySubscribers(Unit) }
-          }
+          addNodeFullInSyncNotification()
         }
       }
     log.trace("firing CL sync status update callbacks: {}", callbacks.size)
@@ -125,16 +130,13 @@ class BeaconSyncControllerImpl(
           return@write emptyList()
         }
 
-        currentState = SyncState(previousState.clStatus, newStatus)
+        currentState = previousState.copy(elStatus = newStatus)
 
         buildList {
           add { elSyncHandlers.notifySubscribers(newStatus) }
 
           // Check if this makes the node fully synced
-          if (isNodeFullInSync()) {
-            log.debug("Node is fully synced now")
-            add { fullSyncCompleteHandlers.notifySubscribers(Unit) }
-          }
+          addNodeFullInSyncNotification()
         }
       }
 
@@ -142,6 +144,13 @@ class BeaconSyncControllerImpl(
 
     // Fire callbacks outside of lock
     callbacks.forEach { it() }
+  }
+
+  private fun MutableList<() -> Unit>.addNodeFullInSyncNotification() {
+    if (isNodeFullInSync()) {
+      log.debug("Node is fully synced now")
+      add { fullSyncCompleteHandlers.notifySubscribers(Unit) }
+    }
   }
 
   override fun onBeaconChainSyncTargetUpdated(syncTargetBlockNumber: ULong) {
@@ -160,9 +169,6 @@ class BeaconSyncControllerImpl(
       // If already SYNCED, do nothing
     }
   }
-
-  // Helper method for testing
-  internal fun captureStateSnapshot(): SyncState = lock.read { currentState }
 
   override fun getCLSyncTarget(): ULong = clSyncService.getSyncTarget()
 
