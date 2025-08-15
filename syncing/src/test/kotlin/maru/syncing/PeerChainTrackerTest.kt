@@ -69,7 +69,6 @@ class PeerChainTrackerTest {
     config =
       PeerChainTracker.Config(
         pollingUpdateInterval = 1.seconds,
-        granularity = 10u,
       )
 
     // Use the lambda to inject our testable timer
