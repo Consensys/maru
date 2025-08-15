@@ -1,6 +1,6 @@
 import net.ltgt.gradle.errorprone.CheckSeverity
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
   alias(libs.plugins.errorprone)
@@ -50,13 +50,16 @@ allprojects {
     // spotless check applied to build.gradle (groovy) files
     groovyGradle {
       target '*.gradle'
-      greclipse('4.31').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
+      greclipse().configFile(rootProject.file('gradle/spotless/greclipse.properties'))
       endWithNewline()
     }
   }
 
-  // suppress warnings, see https://youtrack.jetbrains.com/issue/KT-73255
-  kotlin.compilerOptions.freeCompilerArgs.add("-Xannotation-default-target=param-property")
+  tasks.withType(KotlinCompilationTask) {
+    compilerOptions {
+      freeCompilerArgs.add("-Xannotation-default-target=param-property")
+    }
+  }
 
   tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += [

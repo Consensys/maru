@@ -43,6 +43,8 @@ data class ElBlockInfo(
     result = 31 * result + blockHash.contentHashCode()
     return result
   }
+
+  override fun toString(): String = "ElBlockInfo(blockNumber=$blockNumber, blockHash=${blockHash.encodeHex()})"
 }
 
 /**
@@ -84,7 +86,7 @@ class ELSyncService(
         blockHash = latestBeaconBlockBody.executionPayload.blockHash,
       )
     if (newElSyncTarget != currentElSyncTarget) {
-      log.info("New elSyncTarget={}", newElSyncTarget)
+      log.debug("New elSyncTarget={}", newElSyncTarget)
       currentElSyncTarget = newElSyncTarget
     } else {
       log.trace("Current elSyncTarget={}", currentElSyncTarget)
@@ -121,9 +123,9 @@ class ELSyncService(
 
         ExecutionPayloadStatus.VALID -> {
           log.debug(
-            "EL client is synced elBlockHash={} elBlockNumber={}",
-            newElSyncTarget.blockHash.encodeHex(),
+            "EL client is synced elBlockNumber={} elBlockHash={}",
             latestBeaconBlockBody.executionPayload.blockNumber,
+            newElSyncTarget.blockHash.encodeHex(),
           )
           ELSyncStatus.SYNCED
         }

@@ -144,20 +144,22 @@ class DefaultMaruPeer(
 
   override fun scheduleDisconnectIfStatusNotReceived(delay: Duration) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
-    try {
-      scheduledDisconnect =
-        Optional.of(
-          scheduler.schedule(
-            {
-              log.debug("Disconnecting from peerId={} by timeout", this.id)
-              disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
-            },
-            delay.inWholeMilliseconds,
-            TimeUnit.MILLISECONDS,
-          ),
-        )
-    } catch (e: Exception) {
-      log.trace("Failed to schedule disconnect for peerId={}", this.id, e)
+    if (!scheduler.isShutdown) {
+      try {
+        scheduledDisconnect =
+          Optional.of(
+            scheduler.schedule(
+              {
+                log.debug("Disconnecting from peerId={} by timeout", this.id)
+                disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+              },
+              delay.inWholeSeconds,
+              TimeUnit.SECONDS,
+            ),
+          )
+      } catch (e: Exception) {
+        log.trace("Failed to schedule disconnect for peerId={}", this.id, e)
+      }
     }
   }
 
@@ -195,14 +197,10 @@ class DefaultMaruPeer(
     reason: Optional<DisconnectReason>,
     locallyInitiated: Boolean,
   ) {
-    reputationManager.reportDisconnection(address, reason, locallyInitiated)
     delegatePeer.disconnectImmediately(reason, locallyInitiated)
   }
 
-  override fun disconnectCleanly(reason: DisconnectReason?): SafeFuture<Void> {
-    reputationManager.reportDisconnection(address, Optional.ofNullable(reason), true)
-    return delegatePeer.disconnectCleanly(reason)
-  }
+  override fun disconnectCleanly(reason: DisconnectReason?): SafeFuture<Void> = delegatePeer.disconnectCleanly(reason)
 
   override fun setDisconnectRequestHandler(handler: DisconnectRequestHandler) =
     delegatePeer.setDisconnectRequestHandler(handler)

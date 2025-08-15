@@ -195,60 +195,6 @@ class DefaultMaruPeerTest {
   }
 
   @Test
-  fun `disconnectImmediately reports disconnection to reputation manager`() {
-    val reputationManager = mock<ReputationManager>()
-    val delegatePeer = mock<Peer>()
-    val rpcMethods = mock<RpcMethods>()
-    val statusMessageFactory = mock<StatusMessageFactory>()
-    val p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u)
-    val peerAddress = mock<PeerAddress>()
-    whenever(delegatePeer.address).thenReturn(peerAddress)
-
-    val maruPeer =
-      DefaultMaruPeer(
-        delegatePeer,
-        rpcMethods,
-        statusMessageFactory,
-        p2pConfig,
-        reputationManager,
-      )
-
-    val reason = Optional.of(DisconnectReason.REMOTE_FAULT)
-    maruPeer.disconnectImmediately(reason, true)
-
-    verify(reputationManager).reportDisconnection(peerAddress, reason, true)
-    verify(delegatePeer).disconnectImmediately(reason, true)
-  }
-
-  @Test
-  fun `disconnectCleanly reports disconnection to reputation manager`() {
-    val reputationManager = mock<ReputationManager>()
-    val delegatePeer = mock<Peer>()
-    val rpcMethods = mock<RpcMethods>()
-    val statusMessageFactory = mock<StatusMessageFactory>()
-    val p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u)
-    val peerAddress = mock<PeerAddress>()
-    whenever(delegatePeer.address).thenReturn(peerAddress)
-    val expectedFuture = SafeFuture.completedFuture<Void>(null)
-    whenever(delegatePeer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)).thenReturn(expectedFuture)
-
-    val maruPeer =
-      DefaultMaruPeer(
-        delegatePeer,
-        rpcMethods,
-        statusMessageFactory,
-        p2pConfig,
-        reputationManager,
-      )
-
-    val result = maruPeer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)
-
-    verify(reputationManager).reportDisconnection(peerAddress, Optional.ofNullable(DisconnectReason.REMOTE_FAULT), true)
-    verify(delegatePeer).disconnectCleanly(DisconnectReason.REMOTE_FAULT)
-    assertThat(result).isEqualTo(expectedFuture)
-  }
-
-  @Test
   fun `adjustReputation disconnects peer if rep manager returns true`() {
     val reputationManager = mock<ReputationManager>()
     val delegatePeer = mock<Peer>()

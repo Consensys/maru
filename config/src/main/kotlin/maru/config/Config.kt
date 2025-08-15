@@ -8,6 +8,7 @@
  */
 package maru.config
 
+import java.net.InetAddress
 import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
@@ -38,8 +39,8 @@ data class FollowersConfig(
 )
 
 data class P2P(
-  val ipAddress: String,
-  val port: UInt,
+  val ipAddress: String = "127.0.0.1", // default to localhost for security
+  val port: UInt = 9000u,
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
   val maxPeers: Int = 25,
@@ -47,8 +48,13 @@ data class P2P(
   val statusUpdate: StatusUpdateConfig = StatusUpdateConfig(),
   val reputationManagerCapacity: Int = 1024,
 ) {
+  init {
+    // just a sanity check to ensure the IP address is valid
+    InetAddress.getByName(ipAddress)
+  }
+
   data class Discovery(
-    val port: UInt,
+    val port: UInt = 9000u,
     val bootnodes: List<String> = emptyList(),
     val refreshInterval: Duration,
   )
@@ -176,6 +182,7 @@ data class SyncingConfig(
 }
 
 data class MaruConfig(
+  val protocolTransitionPollingInterval: Duration = 1.seconds,
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
   val qbftOptions: QbftOptions?,
