@@ -26,7 +26,6 @@ import org.hyperledger.besu.datatypes.Address
 class QbftFinalStateAdapter(
   private val localAddress: Address,
   private val nodeKey: NodeKey,
-  private val validatorProvider: QbftValidatorProvider,
   private val proposerSelector: ProposerSelector,
   private val validatorMulticaster: ValidatorMulticaster,
   private val roundTimer: RoundTimer,
