@@ -205,6 +205,7 @@ class MaruDiscoveryServiceTest {
         IPV4,
         PORT2.toInt(),
         PORT1.toInt(),
+        forkIdHashProvider,
       )
 
     val discoveryService2 =

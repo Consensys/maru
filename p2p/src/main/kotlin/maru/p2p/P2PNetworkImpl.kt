@@ -34,6 +34,8 @@ import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
+import tech.pegasys.teku.networking.p2p.connection.PeerPools
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
@@ -41,6 +43,7 @@ import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import tech.pegasys.teku.networking.p2p.reputation.DefaultReputationManager
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class P2PNetworkImpl(
@@ -86,11 +89,20 @@ class P2PNetworkImpl(
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
     val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
 
+    val reputationManager = DefaultReputationManager(besuMetricsSystem, SystemTimeProvider(), 1024, PeerPools())
+
     val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
     maruPeerManager =
       MaruPeerManager(
-        maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory, p2pConfig),
+        maruPeerFactory =
+          DefaultMaruPeerFactory(
+            rpcMethods,
+            statusMessageFactory,
+            p2pConfig,
+            reputationManager,
+          ),
         p2pConfig = p2pConfig,
+        reputationManager = reputationManager,
       )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(

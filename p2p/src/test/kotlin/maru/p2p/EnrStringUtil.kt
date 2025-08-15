@@ -9,6 +9,9 @@
 package maru.p2p
 
 import java.util.Base64
+import maru.consensus.ForkIdHashProvider
+import maru.p2p.discovery.MaruDiscoveryService
+import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.crypto.SECP256K1
 import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
@@ -20,6 +23,7 @@ fun getBootnodeEnrString(
   ipv4: String,
   discPort: Int,
   tcpPort: Int,
+  forkIdHashProvider: ForkIdHashProvider,
 ): String {
   val secretKey = SECP256K1.SecretKey.fromBytes(Bytes32.wrap(privateKeyBytes))
   val bootnodeNR =
@@ -28,6 +32,7 @@ fun getBootnodeEnrString(
       .seq(1)
       .secretKey(secretKey)
       .address(ipv4, discPort, tcpPort)
+      .customField(MaruDiscoveryService.FORK_ID_HASH_FIELD_NAME, Bytes.wrap(forkIdHashProvider.currentForkIdHash()))
       .build()
   val enr = bootnodeNR.serialize()
   val encoded = Base64.getUrlEncoder().encode(enr.toArray())

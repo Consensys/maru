@@ -9,25 +9,30 @@
 package maru.p2p
 
 import java.util.Optional
-import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
-import maru.p2p.MaruOutgoingRpcRequestHandler
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import org.assertj.core.api.Assertions.assertThat
+import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
+import tech.pegasys.teku.networking.p2p.connection.PeerPools
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.DisconnectRequestHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedSubscriber
+import tech.pegasys.teku.networking.p2p.reputation.DefaultReputationManager
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
+import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
@@ -37,13 +42,14 @@ class DefaultMaruPeerTest {
   private val delegatePeer = mock<Peer>()
   private val rpcMethods = mock<RpcMethods>()
   private val statusMessageFactory = mock<StatusMessageFactory>()
-  private val scheduler = mock<ScheduledExecutorService>()
+
   private val maruPeer =
     DefaultMaruPeer(
       delegatePeer,
       rpcMethods,
       statusMessageFactory,
       p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u),
+      reputationManager = DefaultReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), 1024, PeerPools()),
     )
 
   @Test
@@ -99,6 +105,7 @@ class DefaultMaruPeerTest {
 
   @Test
   fun `disconnectImmediately delegates to underlying peer`() {
+    whenever(delegatePeer.address).thenReturn(mock())
     val reason = Optional.of(DisconnectReason.REMOTE_FAULT)
 
     maruPeer.disconnectImmediately(reason, true)
@@ -112,6 +119,7 @@ class DefaultMaruPeerTest {
     val expectedFuture = SafeFuture.completedFuture<Void>(null)
 
     whenever(delegatePeer.disconnectCleanly(reason)).thenReturn(expectedFuture)
+    whenever(delegatePeer.address).thenReturn(mock())
 
     val result = maruPeer.disconnectCleanly(reason)
 
@@ -164,25 +172,6 @@ class DefaultMaruPeerTest {
   }
 
   @Test
-  fun `connectionInitiatedRemotely delegates to connectionInitiatedRemotely on underlying peer`() {
-    whenever(delegatePeer.connectionInitiatedRemotely()).thenReturn(true)
-
-    val result = maruPeer.connectionInitiatedRemotely()
-
-    assertThat(result).isTrue()
-    verify(delegatePeer).connectionInitiatedRemotely()
-  }
-
-  @Test
-  fun `adjustReputation delegates to underlying peer`() {
-    val adjustment = mock<ReputationAdjustment>()
-
-    maruPeer.adjustReputation(adjustment)
-
-    verify(delegatePeer).adjustReputation(adjustment)
-  }
-
-  @Test
   fun `sendStatus returns failed future when exception is thrown`() {
     whenever(statusMessageFactory.createStatusMessage()).thenThrow(RuntimeException("fail"))
     whenever(delegatePeer.address).thenReturn(mock())
@@ -203,5 +192,115 @@ class DefaultMaruPeerTest {
     field.isAccessible = true
     val value = field.get(maruPeer) as? Optional<ScheduledFuture<*>>
     assertThat(value!!.get().isCancelled).isTrue()
+  }
+
+  @Test
+  fun `disconnectImmediately reports disconnection to reputation manager`() {
+    val reputationManager = mock<ReputationManager>()
+    val delegatePeer = mock<Peer>()
+    val rpcMethods = mock<RpcMethods>()
+    val statusMessageFactory = mock<StatusMessageFactory>()
+    val p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u)
+    val peerAddress = mock<PeerAddress>()
+    whenever(delegatePeer.address).thenReturn(peerAddress)
+
+    val maruPeer =
+      DefaultMaruPeer(
+        delegatePeer,
+        rpcMethods,
+        statusMessageFactory,
+        p2pConfig,
+        reputationManager,
+      )
+
+    val reason = Optional.of(DisconnectReason.REMOTE_FAULT)
+    maruPeer.disconnectImmediately(reason, true)
+
+    verify(reputationManager).reportDisconnection(peerAddress, reason, true)
+    verify(delegatePeer).disconnectImmediately(reason, true)
+  }
+
+  @Test
+  fun `disconnectCleanly reports disconnection to reputation manager`() {
+    val reputationManager = mock<ReputationManager>()
+    val delegatePeer = mock<Peer>()
+    val rpcMethods = mock<RpcMethods>()
+    val statusMessageFactory = mock<StatusMessageFactory>()
+    val p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u)
+    val peerAddress = mock<PeerAddress>()
+    whenever(delegatePeer.address).thenReturn(peerAddress)
+    val expectedFuture = SafeFuture.completedFuture<Void>(null)
+    whenever(delegatePeer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)).thenReturn(expectedFuture)
+
+    val maruPeer =
+      DefaultMaruPeer(
+        delegatePeer,
+        rpcMethods,
+        statusMessageFactory,
+        p2pConfig,
+        reputationManager,
+      )
+
+    val result = maruPeer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+
+    verify(reputationManager).reportDisconnection(peerAddress, Optional.ofNullable(DisconnectReason.REMOTE_FAULT), true)
+    verify(delegatePeer).disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+    assertThat(result).isEqualTo(expectedFuture)
+  }
+
+  @Test
+  fun `adjustReputation disconnects peer if rep manager returns true`() {
+    val reputationManager = mock<ReputationManager>()
+    val delegatePeer = mock<Peer>()
+    val rpcMethods = mock<RpcMethods>()
+    val statusMessageFactory = mock<StatusMessageFactory>()
+    val p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u)
+    val peerAddress = mock<PeerAddress>()
+    whenever(delegatePeer.address).thenReturn(peerAddress)
+    whenever(reputationManager.adjustReputation(peerAddress, ReputationAdjustment.LARGE_PENALTY))
+      .thenReturn(true) // should trigger disconnect
+    whenever(delegatePeer.disconnectCleanly(DisconnectReason.REMOTE_FAULT))
+      .thenReturn(SafeFuture.completedFuture<Void>(null))
+
+    val maruPeer =
+      DefaultMaruPeer(
+        delegatePeer,
+        rpcMethods,
+        statusMessageFactory,
+        p2pConfig,
+        reputationManager,
+      )
+
+    maruPeer.adjustReputation(ReputationAdjustment.LARGE_PENALTY)
+
+    verify(delegatePeer).disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+    verify(reputationManager).adjustReputation(peerAddress, ReputationAdjustment.LARGE_PENALTY)
+  }
+
+  @Test
+  fun `adjustReputation should not disconnect peer if rep manager returns false`() {
+    val reputationManager = mock<ReputationManager>()
+    val delegatePeer = mock<Peer>()
+    val rpcMethods = mock<RpcMethods>()
+    val statusMessageFactory = mock<StatusMessageFactory>()
+    val p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u)
+    val peerAddress = mock<PeerAddress>()
+    whenever(delegatePeer.address).thenReturn(peerAddress)
+    whenever(reputationManager.adjustReputation(peerAddress, ReputationAdjustment.SMALL_PENALTY))
+      .thenReturn(false) // should not trigger disconnect
+
+    val maruPeer =
+      DefaultMaruPeer(
+        delegatePeer,
+        rpcMethods,
+        statusMessageFactory,
+        p2pConfig,
+        reputationManager,
+      )
+
+    maruPeer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
+
+    verify(delegatePeer, never()).disconnectCleanly(any())
+    verify(reputationManager).adjustReputation(peerAddress, ReputationAdjustment.SMALL_PENALTY)
   }
 }

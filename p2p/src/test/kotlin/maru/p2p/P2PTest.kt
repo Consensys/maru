@@ -13,6 +13,7 @@ import io.libp2p.etc.types.fromHex
 import java.lang.Thread.sleep
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
 import maru.config.consensus.ElFork
@@ -50,11 +51,14 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
+import tech.pegasys.teku.networking.p2p.connection.PeerPools
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
+import tech.pegasys.teku.networking.p2p.reputation.DefaultReputationManager
 import maru.p2p.ext.DataGenerators as P2P2DataGenerators
 
 @Execution(ExecutionMode.SAME_THREAD)
@@ -95,10 +99,20 @@ class P2PTest {
       val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
       lateinit var maruPeerManager: MaruPeerManager
       val rpcMethods = RpcMethods(statusMessageFactory, rpcProtocolIdGenerator, { maruPeerManager }, beaconChain)
+      val reputationManager = DefaultReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), 1024, PeerPools())
       val maruPeerFactory =
-        DefaultMaruPeerFactory(rpcMethods, statusMessageFactory, P2P(ipAddress = IPV4, port = PORT1))
+        DefaultMaruPeerFactory(
+          rpcMethods,
+          statusMessageFactory,
+          P2P(ipAddress = IPV4, port = PORT1),
+          reputationManager,
+        )
       maruPeerManager =
-        MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = P2P(ipAddress = IPV4, port = PORT1))
+        MaruPeerManager(
+          maruPeerFactory = maruPeerFactory,
+          p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
+          reputationManager = reputationManager,
+        )
       return rpcMethods
     }
 
@@ -578,7 +592,13 @@ class P2PTest {
         p2pManagerImpl2.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
       val maruPeer1 =
-        DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory, p2pConfig = P2P(ipAddress = IPV4, port = PORT1))
+        DefaultMaruPeer(
+          peer1,
+          rpcMethods,
+          statusMessageFactory,
+          p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
+          reputationManager = DefaultReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), 1024, PeerPools()),
+        )
 
       val responseFuture = maruPeer1.sendStatus()
 
@@ -647,7 +667,13 @@ class P2PTest {
         p2pManagerImpl2.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pManagerImpl2")
       val maruPeer1 =
-        DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory, p2pConfig = P2P(ipAddress = IPV4, port = PORT1))
+        DefaultMaruPeer(
+          delegatePeer = peer1,
+          rpcMethods = rpcMethods,
+          statusMessageFactory = statusMessageFactory,
+          p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
+          reputationManager = DefaultReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), 1024, PeerPools()),
+        )
 
       val responseFuture = maruPeer1.sendStatus()
 
@@ -733,6 +759,7 @@ class P2PTest {
 
       val startBlockNumber = 3UL
       val count = 5UL
+
       val responseFuture = peer1.sendBeaconBlocksByRange(startBlockNumber, count)
 
       val response = responseFuture.get(5, TimeUnit.SECONDS)
@@ -845,6 +872,7 @@ class P2PTest {
         ipv4 = IPV4,
         discPort = PORT2.toInt(),
         tcpPort = PORT1.toInt(),
+        forkIdHashProvider = forkIdHashProvider,
       )
 
     val p2pNetworkImpl2 =
@@ -995,6 +1023,7 @@ class P2PTest {
         ipv4 = IPV4,
         discPort = PORT2.toInt(),
         tcpPort = PORT1.toInt(),
+        forkIdHashProvider = forkIdHashProvider,
       )
 
     val p2pNetworkImpl2 =
@@ -1073,7 +1102,7 @@ class P2PTest {
             ipAddress = IPV4,
             port = PORT1,
             staticPeers = emptyList(),
-            maxPeers = 2,
+            maxPeers = 20,
             reconnectDelay = 1.seconds,
             statusUpdate =
               P2P.StatusUpdateConfig(
@@ -1092,8 +1121,9 @@ class P2PTest {
         isBlockImportEnabledProvider = { true },
       )
 
-    // node 2 is initiating the connection and is only sending status updates after 2 seconds, so it should be disconnected by node 1, which expects a status update within 1 second
-    // The initial status update works, because node 1 has a timeout of 1 second for the status update
+    // Node 2 is initiating the connection and is only sending status updates after 2 seconds.
+    // It should be disconnected by node 1, which expects a status update within 1 second.
+    // The initial status update works because node 1 has a timeout of 1 second for the status update.
     val p2pNetworkImpl2 =
       P2PNetworkImpl(
         privateKeyBytes = key2,
@@ -1102,8 +1132,8 @@ class P2PTest {
             ipAddress = IPV4,
             port = PORT3,
             listOf(PEER_ADDRESS_NODE_1),
-            maxPeers = 2,
-            reconnectDelay = 1.seconds,
+            maxPeers = 20,
+            reconnectDelay = 100.milliseconds,
             statusUpdate =
               P2P.StatusUpdateConfig(
                 refreshInterval = 2.seconds,
@@ -1133,17 +1163,17 @@ class P2PTest {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
       }
 
-      // check for the next 5 seconds that the peers are at least disconnected twice,
-      // because node 2 is reconnecting because of the static connection
-      val startTime = System.currentTimeMillis()
+      // Check for up to 6 seconds that the peers are at least disconnected twice.
+      // Node 2 is reconnecting because of the static connection
+      val endTime = System.currentTimeMillis() + 6000L
       var disconnectCount = 0
-      while (System.currentTimeMillis() < startTime + 6000L) {
+      while ((System.currentTimeMillis() < endTime) && disconnectCount < 2) {
         if (!p2pNetworkImpl1.isConnected(PEER_ID_NODE_2)) {
           disconnectCount++
-          while (!p2pNetworkImpl1.isConnected(PEER_ID_NODE_2)) {
+          do {
             // wait for the peer to be connected again
             sleep(50L)
-          }
+          } while (!p2pNetworkImpl1.isConnected(PEER_ID_NODE_2) && (System.currentTimeMillis() < endTime))
         }
       }
 

@@ -45,6 +45,7 @@ data class P2P(
   val maxPeers: Int = 25,
   val discovery: Discovery? = null,
   val statusUpdate: StatusUpdateConfig = StatusUpdateConfig(),
+  val reputationManagerCapacity: Int = 1024,
 ) {
   data class Discovery(
     val port: UInt,
