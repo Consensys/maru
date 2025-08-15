@@ -11,7 +11,7 @@ package maru.app
 import io.vertx.core.Vertx
 import java.time.Clock
 import maru.api.ApiServer
-import maru.config.FollowersConfig
+import maru.config.ApiEndpointConfig
 import maru.config.MaruConfig
 import maru.config.consensus.ElFork
 import maru.consensus.ElBlockMetadata
@@ -110,11 +110,11 @@ class MaruApp(
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
   @Suppress("UNCHECKED_CAST")
-  private fun createFollowerHandlers(
-    followers: FollowersConfig,
+  private fun createElNodeHandlers(
+    engineApiConfigMap: Map<String, ApiEndpointConfig>,
     forksSchedule: ForksSchedule,
   ): Map<String, NewBlockHandler<Unit>> =
-    followers.followers
+    engineApiConfigMap
       .mapValues {
         val web3JClient = Helpers.createWeb3jClient(it.value)
         val elManagerMap =
@@ -212,16 +212,16 @@ class MaruApp(
     clock: Clock,
   ): Protocol {
     val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
-
-    val followerHandlersMap: Map<String, NewBlockHandler<Unit>> =
-      createFollowerHandlers(config.followers, beaconGenesisConfig)
-    val followerBlockHandlers = followerHandlersMap + metadataCacheUpdaterHandlerEntry
-    val blockImportHandlers =
-      NewBlockHandlerMultiplexer(followerBlockHandlers)
-    val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
+    val elFollowerHandlersMap: Map<String, NewBlockHandler<Unit>> =
+      createElNodeHandlers(config.followers.followers, beaconGenesisConfig)
 
     val qbftFactory =
       if (config.qbftOptions != null) {
+        val elFollowerBlockHandlers = elFollowerHandlersMap + metadataCacheUpdaterHandlerEntry
+        val blockImportHandlers =
+          NewBlockHandlerMultiplexer(elFollowerBlockHandlers)
+        val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
+
         val sealedBlockHandlers =
           mutableMapOf(
             "beacon block handlers" to adaptedBeaconBlockImporter,
@@ -248,10 +248,21 @@ class MaruApp(
           syncStatusProvider = syncStatusProvider,
         )
       } else {
+        val elPayloadValidatorHandler =
+          createElNodeHandlers(
+            mapOf("payload-validator" to config.validatorElNode.engineApiEndpoint),
+            beaconGenesisConfig,
+          )
+        val elPayloadValidatorNewBlockHandler =
+          NewBlockHandlerMultiplexer(elPayloadValidatorHandler + metadataCacheUpdaterHandlerEntry)
+        val elFollowersNewBlockHandler =
+          NewBlockHandlerMultiplexer(elFollowerHandlersMap)
+
         QbftFollowerFactory(
           p2pNetwork = p2pNetwork,
           beaconChain = beaconChain,
-          newBlockHandler = blockImportHandlers,
+          elPayloadValidatorNewBlockHandler = elPayloadValidatorNewBlockHandler,
+          elFollowerNewBlockHandler = elFollowersNewBlockHandler,
           validatorElNodeConfig = config.validatorElNode,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,

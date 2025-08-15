@@ -32,7 +32,8 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class QbftFollowerFactory(
   private val p2pNetwork: P2PNetwork,
   private val beaconChain: BeaconChain,
-  private val newBlockHandler: NewBlockHandler<*>,
+  private val elPayloadValidatorNewBlockHandler: NewBlockHandler<*>,
+  private val elFollowerNewBlockHandler: NewBlockHandler<*>,
   private val validatorElNodeConfig: ValidatorElNode,
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
@@ -43,8 +44,12 @@ class QbftFollowerFactory(
     val stateTransition = StateTransitionImpl(validatorProvider)
     val transactionalSealedBeaconBlockImporter =
       TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition) { _, beaconBlock ->
-        newBlockHandler.handleNewBlock(beaconBlock) // Don't wait for the result
-        SafeFuture.completedFuture(Unit)
+        elPayloadValidatorNewBlockHandler
+          .handleNewBlock(beaconBlock)
+          .thenCompose {
+            elFollowerNewBlockHandler.handleNewBlock(beaconBlock) // Don't wait for the result
+            SafeFuture.completedFuture(Unit)
+          }
       }
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())
     val engineApiExecutionLayerClient =
@@ -65,13 +70,13 @@ class QbftFollowerFactory(
         executionLayerManager = executionLayerManager,
         allowEmptyBlocks = allowEmptyBlocks,
       )
-    val blockImporter =
+    val payloadValidatorNewBlockImporter =
       ValidatingSealedBeaconBlockImporter(
         beaconBlockImporter = transactionalSealedBeaconBlockImporter,
         sealsVerifier = sealsVerifier,
         beaconBlockValidatorFactory = beaconBlockValidatorFactory,
       )
-    p2pNetwork.subscribeToBlocks(blockImporter::importBlock)
+    p2pNetwork.subscribeToBlocks(payloadValidatorNewBlockImporter::importBlock)
 
     return NoOpProtocol()
   }
