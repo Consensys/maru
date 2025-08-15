@@ -103,7 +103,7 @@ class Libp2pNetworkFactory(
         ReputationManager.NOOP,
         listOf<PeerHandler>(maruPeerManager),
         rpcHandlers,
-        { _ -> 50.0 }, // TODO: I guess we need a scoring function here
+        { gossip.getGossipScore(it) },
       )
 
     val host =

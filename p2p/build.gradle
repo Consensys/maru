@@ -31,6 +31,7 @@ dependencies {
   implementation "tech.pegasys.teku.internal:spec"
   implementation "tech.pegasys.teku.internal:storage"
   implementation "tech.pegasys.teku.internal:unsigned"
+  implementation "tech.pegasys.teku.internal:time"
 
   implementation "org.hyperledger.besu:besu-plugin-api"
   implementation "org.hyperledger.besu.internal:besu-metrics-core"
