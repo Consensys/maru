@@ -113,11 +113,13 @@ class DefaultMaruPeer(
           } else {
             updateStatus(status)
             try {
-              scheduler.schedule(
-                this::sendStatus,
-                p2pConfig.statusUpdate.refreshInterval.inWholeSeconds,
-                TimeUnit.SECONDS,
-              )
+              if (!scheduler.isShutdown) {
+                scheduler.schedule(
+                  this::sendStatus,
+                  p2pConfig.statusUpdate.refreshInterval.inWholeSeconds,
+                  TimeUnit.SECONDS,
+                )
+              }
             } catch (e: Exception) {
               log.trace("Failed to schedule disconnect for peerId={}", this.id, e)
             }
