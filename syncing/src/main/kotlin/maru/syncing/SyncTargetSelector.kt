@@ -8,6 +8,8 @@
  */
 package maru.syncing
 
+import maru.syncing.PeerChainTracker.Config
+
 /**
  * Responsible to keep track of peer's STATUS and select the head of the chain
  */
@@ -15,11 +17,46 @@ fun interface SyncTargetSelector {
   fun selectBestSyncTarget(peerHeads: List<ULong>): ULong
 }
 
-class MostFrequentHeadTargetSelector : SyncTargetSelector {
+class SyncTargetSelectorFactory {
+  data class Config(
+    val granularity: UInt = 1U,
+  ) {
+    init {
+      require(granularity > 0U) { "Granularity should not be 0!" }
+    }
+  }
+
+  companion object {
+    fun create(config: Config): SyncTargetSelector =
+      if (config.granularity > 1U) {
+        MostFrequentHeadTargetSelector(config.granularity)
+      } else {
+        HighestHeadTargetSelector()
+      }
+  }
+}
+
+class MostFrequentHeadTargetSelector(
+  // Resolution of the peer heights
+  val granularity: UInt,
+) : SyncTargetSelector {
+  init {
+    require(granularity >= 1U) { "Granularity should be >= 1!" }
+  }
+
+  /**
+   * Rounds the block height according to the configured granularity
+   */
+  private fun roundHeight(height: ULong): ULong {
+    if (granularity <= 1u) return height
+    return (height / granularity.toULong()) * granularity.toULong()
+  }
+
   override fun selectBestSyncTarget(peerHeads: List<ULong>): ULong {
     require(peerHeads.isNotEmpty()) { "Peer heads list cannot be empty" }
 
-    val frequencyMap = peerHeads.groupingBy { it }.eachCount()
+    val roundedPeerHeads = peerHeads.map(::roundHeight)
+    val frequencyMap = roundedPeerHeads.groupingBy { it }.eachCount()
     val maxFrequency = frequencyMap.values.max()
 
     // Among all heads with max frequency, return the highest value

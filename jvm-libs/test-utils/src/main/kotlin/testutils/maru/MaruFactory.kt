@@ -147,6 +147,7 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         peerChainHeightGranularity = 1u,
         elSyncStatusRefreshInterval = 500.milliseconds,
+        useUnconditionalRandomDownloadPeer = false,
       ),
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
@@ -216,6 +217,7 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         peerChainHeightGranularity = 1u,
         elSyncStatusRefreshInterval = 500.milliseconds,
+        useUnconditionalRandomDownloadPeer = false,
       ),
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
