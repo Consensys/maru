@@ -61,6 +61,7 @@ import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.ELSyncService
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
+import maru.syncing.SyncTargetSelectorFactory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -188,6 +189,10 @@ class MaruAppFactory {
           forksSchedule = beaconGenesisConfig,
           elManagerMap = elManagerMap,
           peersHeadsProvider = peersHeadBlockProvider,
+          targetChainHeadCalculator =
+            SyncTargetSelectorFactory.create(
+              SyncTargetSelectorFactory.Config(granularity = config.syncing.peerChainHeightGranularity),
+            ),
           validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
           peerLookup = p2pNetwork.getPeerLookup(),
           besuMetrics = besuMetricsSystemAdapter,
@@ -195,11 +200,11 @@ class MaruAppFactory {
           peerChainTrackerConfig =
             PeerChainTracker.Config(
               config.syncing.peerChainHeightPollingInterval,
-              config.syncing.peerChainHeightGranularity,
             ),
           elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
           finalizationProvider = finalizationProvider,
           allowEmptyBlocks = config.allowEmptyBlocks,
+          useUnconditionalRandomDownloadPeer = config.syncing.useUnconditionalRandomDownloadPeer,
         )
       } else {
         AlwaysSyncedController(beaconChain)
