@@ -59,7 +59,7 @@ class HopliteFriendlinessTest {
     peer-chain-height-polling-interval = "5 seconds"
     peer-chain-height-granularity = 1
     el-sync-status-refresh-interval = "6 seconds"
-    use-unconditonal-random-download-peer = false
+    use-unconditional-random-download-peer = false
 
     [syncing.download]
     block-range-request-timeout = "10 seconds"
