@@ -124,7 +124,7 @@ class MaruPeerManager(
 
   override fun onConnect(peer: Peer) {
     // TODO: here we could check if we want to be connected to that peer
-    if (peerCount > maxPeers) {
+    if (peerCount >= maxPeers) {
       // TODO: We could disconnect another peer here, based on some criteria
       reputationManager.reportInitiatedConnectionFailed(peer.address)
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
