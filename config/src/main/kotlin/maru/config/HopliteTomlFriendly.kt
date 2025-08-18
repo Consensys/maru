@@ -12,6 +12,8 @@ import java.net.URL
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import linea.domain.BlockParameter
+import linea.kotlin.assertIs20Bytes
 
 data class PayloadValidatorDto(
   val engineApiEndpoint: ApiEndpointDto,
@@ -80,7 +82,49 @@ data class QbftOptionsDtoToml(
   }
 }
 
+data class LineaConfigDtoToml(
+  val contractAddress: ByteArray,
+  val l1EthApi: ApiEndpointConfig,
+  val l1PollingInterval: Duration = 6.seconds,
+  val l1HighestBlockTag: String = "finalized",
+) {
+  init {
+    contractAddress.assertIs20Bytes("contractAddress")
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as LineaConfigDtoToml
+
+    if (!contractAddress.contentEquals(other.contractAddress)) return false
+    if (l1EthApi != other.l1EthApi) return false
+    if (l1PollingInterval != other.l1PollingInterval) return false
+    if (l1HighestBlockTag != other.l1HighestBlockTag) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = contractAddress.contentHashCode()
+    result = 31 * result + l1EthApi.hashCode()
+    result = 31 * result + l1PollingInterval.hashCode()
+    result = 31 * result + l1HighestBlockTag.hashCode()
+    return result
+  }
+
+  fun toDomain(): LineaConfig =
+    LineaConfig(
+      contractAddress = contractAddress,
+      l1EthApi = l1EthApi,
+      l1PollingInterval = l1PollingInterval,
+      l1HighestBlockTag = BlockParameter.parse(l1HighestBlockTag),
+    )
+}
+
 data class MaruConfigDtoToml(
+  private val linea: LineaConfigDtoToml? = null,
   private val protocolTransitionPollingInterval: Duration = 1.seconds,
   private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
@@ -94,6 +138,7 @@ data class MaruConfigDtoToml(
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
+      linea = linea?.toDomain(),
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
