@@ -13,6 +13,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
+import linea.domain.RetryConfig
 import linea.kotlin.assertIs20Bytes
 
 data class PayloadValidatorDto(
@@ -21,8 +22,8 @@ data class PayloadValidatorDto(
 ) {
   fun domainFriendly(): ValidatorElNode =
     ValidatorElNode(
-      ethApiEndpoint = ethApiEndpoint.domainFriendly(),
-      engineApiEndpoint = engineApiEndpoint.domainFriendly(),
+      ethApiEndpoint = ethApiEndpoint.domainFriendly(endlessRetries = true),
+      engineApiEndpoint = engineApiEndpoint.domainFriendly(endlessRetries = true),
     )
 }
 
@@ -30,7 +31,24 @@ data class ApiEndpointDto(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
 ) {
-  fun domainFriendly(): ApiEndpointConfig = ApiEndpointConfig(endpoint = endpoint, jwtSecretPath = jwtSecretPath)
+  fun domainFriendly(endlessRetries: Boolean = false): ApiEndpointConfig =
+    if (endlessRetries) {
+      ApiEndpointConfig(
+        endpoint = endpoint,
+        jwtSecretPath = jwtSecretPath,
+        requestRetries =
+          RetryConfig.endlessRetry(
+            backoffDelay = 1.seconds,
+            failuresWarningThreshold = 3u,
+          ),
+      )
+    } else {
+      ApiEndpointConfig(
+        endpoint = endpoint,
+        jwtSecretPath = jwtSecretPath,
+        requestRetries = RetryConfig.noRetries,
+      )
+    }
 }
 
 data class QbftOptionsDtoToml(
