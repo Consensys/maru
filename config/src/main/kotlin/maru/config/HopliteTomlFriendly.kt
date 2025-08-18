@@ -102,7 +102,7 @@ data class QbftOptionsDtoToml(
 
 data class LineaConfigDtoToml(
   val contractAddress: ByteArray,
-  val l1EthApi: ApiEndpointConfig,
+  val l1EthApi: ApiEndpointDto,
   val l1PollingInterval: Duration = 6.seconds,
   val l1HighestBlockTag: String = "finalized",
 ) {
@@ -132,10 +132,10 @@ data class LineaConfigDtoToml(
     return result
   }
 
-  fun toDomain(): LineaConfig =
+  fun domainFriendly(): LineaConfig =
     LineaConfig(
       contractAddress = contractAddress,
-      l1EthApi = l1EthApi,
+      l1EthApi = l1EthApi.domainFriendly(),
       l1PollingInterval = l1PollingInterval,
       l1HighestBlockTag = BlockParameter.parse(l1HighestBlockTag),
     )
@@ -156,7 +156,7 @@ data class MaruConfigDtoToml(
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
-      linea = linea?.toDomain(),
+      linea = linea?.domainFriendly(),
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,

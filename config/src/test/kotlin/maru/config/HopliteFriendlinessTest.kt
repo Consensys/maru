@@ -340,7 +340,7 @@ class HopliteFriendlinessTest {
       l1-highest-block-tag = "$l1HighestBlockTag"
       """.trimIndent()
     val l1EthApiEndpoint =
-      ApiEndpointConfig(
+      ApiEndpointDto(
         endpoint = URI.create("http://ethereum-mainnet").toURL(),
       )
     val contractAddressBytes = contractAddress.decodeHex()
@@ -354,8 +354,7 @@ class HopliteFriendlinessTest {
     val expectedLineaConfig =
       LineaConfig(
         contractAddress = contractAddressBytes,
-        l1EthApi =
-        l1EthApiEndpoint,
+        l1EthApi = l1EthApiEndpoint.domainFriendly(),
         l1PollingInterval = l1PollingInterval,
         l1HighestBlockTag = BlockParameter.Tag.LATEST,
       )
