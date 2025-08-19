@@ -34,6 +34,7 @@ import maru.config.P2P
 import maru.config.Persistence
 import maru.config.QbftOptions
 import maru.config.SyncingConfig
+import maru.config.SyncingConfig.SyncTargetSelectionConfig
 import maru.config.ValidatorElNode
 import maru.config.consensus.ElFork
 import maru.config.consensus.delegated.ElDelegatedConfig
@@ -46,6 +47,7 @@ import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
+import testutils.maru.MaruFactory.Companion.defaultSyncingConfig
 
 /**
  * The same MaruFactory should be used per network. Otherwise, validators won't match between Maru instances
@@ -57,6 +59,50 @@ class MaruFactory(
 ) {
   companion object {
     val defaultReconnectDelay = 500.milliseconds
+    val defaultSyncingConfig =
+      SyncingConfig(
+        peerChainHeightPollingInterval = 1.seconds,
+        syncTargetSelection =
+          SyncTargetSelectionConfig(
+            type = SyncTargetSelectionConfig.SyncTargetSelectorType.HIGHEST,
+          ),
+        elSyncStatusRefreshInterval = 500.milliseconds,
+        useUnconditionalRandomDownloadPeer = false,
+      )
+
+    fun enumeratingSyncingConfigs(): List<SyncingConfig> {
+      val syncTargetSelectionForHighest =
+        SyncTargetSelectionConfig(
+          type = SyncTargetSelectionConfig.SyncTargetSelectorType.HIGHEST,
+        )
+      val syncTargetSelectionForMostFrequent =
+        SyncTargetSelectionConfig(
+          type = SyncTargetSelectionConfig.SyncTargetSelectorType.MOST_FREQUENT,
+          mostFrequentSelector =
+            SyncTargetSelectionConfig.MostFrequentSelectorConfig(
+              peerChainHeightGranularity = 10U,
+            ),
+        )
+
+      return listOf(
+        defaultSyncingConfig.copy(
+          syncTargetSelection = syncTargetSelectionForHighest,
+          useUnconditionalRandomDownloadPeer = true,
+        ),
+        defaultSyncingConfig.copy(
+          syncTargetSelection = syncTargetSelectionForHighest,
+          useUnconditionalRandomDownloadPeer = false,
+        ),
+        defaultSyncingConfig.copy(
+          syncTargetSelection = syncTargetSelectionForMostFrequent,
+          useUnconditionalRandomDownloadPeer = true,
+        ),
+        defaultSyncingConfig.copy(
+          syncTargetSelection = syncTargetSelectionForMostFrequent,
+          useUnconditionalRandomDownloadPeer = false,
+        ),
+      )
+    }
 
     fun generatePrivateKey(): ByteArray = marshalPrivateKey(generateKeyPair(KeyType.SECP256K1).component1())
   }
@@ -142,13 +188,7 @@ class MaruFactory(
       ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
-    syncingConfig: SyncingConfig =
-      SyncingConfig(
-        peerChainHeightPollingInterval = 1.seconds,
-        peerChainHeightGranularity = 1u,
-        elSyncStatusRefreshInterval = 500.milliseconds,
-        useUnconditionalRandomDownloadPeer = false,
-      ),
+    syncingConfig: SyncingConfig = defaultSyncingConfig,
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
     val lineaConfig =
@@ -212,13 +252,7 @@ class MaruFactory(
       ObservabilityOptions(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
-    syncingConfig: SyncingConfig =
-      SyncingConfig(
-        peerChainHeightPollingInterval = 1.seconds,
-        peerChainHeightGranularity = 1u,
-        elSyncStatusRefreshInterval = 500.milliseconds,
-        useUnconditionalRandomDownloadPeer = false,
-      ),
+    syncingConfig: SyncingConfig = defaultSyncingConfig,
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
     val lineaConfig =
@@ -305,6 +339,7 @@ class MaruFactory(
     dataDir: Path,
     overridingP2PNetwork: P2PNetwork? = null,
     allowEmptyBlocks: Boolean = false,
+    syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
     val config =
       buildMaruConfig(
@@ -313,6 +348,7 @@ class MaruFactory(
         dataDir = dataDir,
         qbftOptions = validatorQbftOptions,
         allowEmptyBlocks = allowEmptyBlocks,
+        syncingConfig = syncingConfig,
       )
     writeValidatorPrivateKey(config)
     return buildApp(config, overridingP2PNetwork = overridingP2PNetwork)
@@ -327,6 +363,7 @@ class MaruFactory(
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     p2pPort: UInt = 0u,
     allowEmptyBlocks: Boolean = false,
+    syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
     val config =
@@ -339,6 +376,7 @@ class MaruFactory(
         qbftOptions = validatorQbftOptions,
         overridingLineaContractClient = overridingLineaContractClient,
         allowEmptyBlocks = allowEmptyBlocks,
+        syncingConfig = syncingConfig,
       )
     writeValidatorPrivateKey(config)
 
@@ -358,6 +396,7 @@ class MaruFactory(
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     allowEmptyBlocks: Boolean = false,
+    syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val followers = buildFollowersConfig(engineApiRpc)
@@ -370,6 +409,7 @@ class MaruFactory(
         p2pConfig = p2pConfig,
         followers = followers,
         overridingLineaContractClient = overridingLineaContractClient,
+        syncingConfig = syncingConfig,
       )
     return buildApp(
       config,
@@ -383,6 +423,7 @@ class MaruFactory(
     engineApiRpc: String,
     dataDir: Path,
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+    syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
     val followers = buildFollowersConfig(engineApiRpc)
     val config =
@@ -391,6 +432,7 @@ class MaruFactory(
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
         followers = followers,
+        syncingConfig = syncingConfig,
       )
     return buildApp(config, overridingP2PNetwork = p2pNetwork)
   }
@@ -405,6 +447,7 @@ class MaruFactory(
     p2pPort: UInt = 0u,
     allowEmptyBlocks: Boolean = false,
     followers: FollowersConfig = FollowersConfig(emptyMap()),
+    syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
     val beaconGenesisConfig = beaconGenesisConfig
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
@@ -418,6 +461,7 @@ class MaruFactory(
         qbftOptions = validatorQbftOptions,
         overridingLineaContractClient = overridingLineaContractClient,
         allowEmptyBlocks = allowEmptyBlocks,
+        syncingConfig = syncingConfig,
       )
     writeValidatorPrivateKey(config)
 
@@ -436,6 +480,7 @@ class MaruFactory(
     dataDir: Path,
     validatorPortForStaticPeering: UInt? = null,
     overridingP2PNetwork: P2PNetwork? = null,
+    syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val followersConfig = buildFollowersConfig(engineApiRpc)
@@ -447,6 +492,7 @@ class MaruFactory(
         dataDir = dataDir,
         p2pConfig = p2pConfig,
         followers = followersConfig,
+        syncingConfig = syncingConfig,
       )
     return buildApp(
       config = config,
