@@ -21,7 +21,12 @@ dependencies {
   implementation "tech.pegasys.teku.internal:ethereum-events"
   implementation "tech.pegasys.teku.internal:spec"
 
-  implementation ("org.web3j:core")
+  implementation("org.web3j:core")
+
+  implementation("org.http4k:http4k-core:6.15.1.0")
+  implementation("org.http4k:http4k-client-okhttp:6.15.1.0")
+  implementation("org.http4k:http4k-format-jackson:6.15.1.0")
+  implementation("org.http4k:http4k-connect-openai:5.47.0.0")
 }
 
 sourceSets {

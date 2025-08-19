@@ -84,6 +84,13 @@ dependencyManagement {
       entry 'tuweni-units'
     }
 
+    dependencySet(group: 'org.http4k', version: '4.48.0.0') {
+      entry 'http4k-core'
+      entry 'http4k-client-okhttp'
+      entry 'http4k-format-jackson'
+      entry 'http4k-openapi'
+    }
+
     imports {
       mavenBom("io.vertx:vertx-stack-depchain:4.5.11")
     }

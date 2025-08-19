@@ -11,6 +11,7 @@ package chaos
 import chaos.SetupHelper.getNodesUrlsFromFile
 import linea.kotlin.toULong
 import linea.web3j.createWeb3jHttpClient
+import maru.clients.beacon.Http4kBeaconChainClient
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.testing.filesystem.getPathTo
 import org.apache.logging.log4j.LogManager
@@ -20,7 +21,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class NodesSyncTest {
   private val log = LogManager.getLogger(NodesSyncTest::class.java)
 
-  fun getNodeChainHead(elApiUrl: String): SafeFuture<ULong> {
+  fun getElNodeChainHead(elApiUrl: String): SafeFuture<ULong> {
     // createEthApiClient(elApiUrl, vertx = null, requestRetryConfig = null)
     //   .findBlockByNumber(B)
     return createWeb3jHttpClient(elApiUrl)
@@ -30,10 +31,27 @@ class NodesSyncTest {
       .thenApply { it.blockNumber.toULong() }
   }
 
-  private fun getNodeChainHeads(nodes: List<NodeInfo<String>>): SafeFuture<List<NodeInfo<ULong>>> =
+  private fun getElNodeChainHeads(nodes: List<NodeInfo<String>>): SafeFuture<List<NodeInfo<ULong>>> =
     nodes
       .map { node ->
-        getNodeChainHead(node.value)
+        getElNodeChainHead(node.value)
+          .thenApply { blockNumber -> node.map(blockNumber) }
+      }.let { futures: List<SafeFuture<NodeInfo<ULong>>> ->
+        SafeFuture.collectAll(futures.stream())
+      }
+
+  private fun getClBeaconChainHead(clApiUrl: String): SafeFuture<ULong> =
+    Http4kBeaconChainClient(clApiUrl)
+      .getBlock("head")
+      .thenApply {
+        it.data.message.slot
+          .toULong()
+      }
+
+  private fun getClNodeChainHeads(nodes: List<NodeInfo<String>>): SafeFuture<List<NodeInfo<ULong>>> =
+    nodes
+      .map { node ->
+        getClBeaconChainHead(node.value)
           .thenApply { blockNumber -> node.map(blockNumber) }
       }.let { futures: List<SafeFuture<NodeInfo<ULong>>> ->
         SafeFuture.collectAll(futures.stream())
@@ -68,12 +86,22 @@ class NodesSyncTest {
   }
 
   @Test
-  fun `nodes should be in sync`() {
+  fun `el nodes should be in sync`() {
     val nodesUrls =
       getNodesUrlsFromFile(
         getPathTo("tmp/port-forward-besu-8545.txt"),
       )
-    val nodesHeads = getNodeChainHeads(nodesUrls).get()
+    val nodesHeads = getElNodeChainHeads(nodesUrls).get()
+    assertNodesAreInSync(nodesHeads, outOfSyncLeniency = 3)
+  }
+
+  @Test
+  fun `cl nodes should be in sync`() {
+    val nodesUrls =
+      getNodesUrlsFromFile(
+        getPathTo("tmp/port-forward-maru-8080.txt"),
+      )
+    val nodesHeads = getClNodeChainHeads(nodesUrls).get()
     assertNodesAreInSync(nodesHeads, outOfSyncLeniency = 3)
   }
 }
