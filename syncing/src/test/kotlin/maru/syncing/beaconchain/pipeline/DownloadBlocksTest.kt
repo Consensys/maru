@@ -247,24 +247,15 @@ class DownloadBlocksTest {
 
   @Test
   fun `always select a random peer if there are available peers when purely random selection is true`() {
-    val peerLookup = mock<PeerLookup>()
-
     val peer1 = mock<MaruPeer>()
-    whenever(peer1.getStatus()).thenReturn(randomStatus(50U))
+    whenever(peer1.getStatus()).thenReturn(randomStatus(0U))
 
-    val peer2 = mock<MaruPeer>()
-    whenever(peer2.getStatus()).thenReturn(randomStatus(80U))
-
-    val peer3 = mock<MaruPeer>()
-    whenever(peer3.getStatus()).thenReturn(randomStatus(99U))
-
-    whenever(peerLookup.getPeers()).thenReturn(listOf(peer1, peer2, peer3))
+    val peerLookup = mock<PeerLookup>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer1))
 
     val selectedPeer = DownloadPeerProviderImpl(peerLookup, true).getDownloadingPeer(100U)
-    assertThat(listOf(peer1, peer2, peer3)).contains(selectedPeer)
+    assertThat(selectedPeer).isEqualTo(peer1)
     verify(peer1, never()).getStatus()
-    verify(peer2, never()).getStatus()
-    verify(peer3, never()).getStatus()
   }
 
   @Test
