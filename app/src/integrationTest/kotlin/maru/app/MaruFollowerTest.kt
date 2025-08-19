@@ -11,6 +11,7 @@ package maru.app
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
+import maru.config.SyncingConfig
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -22,7 +23,8 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.MethodSource
 import testutils.Checks.getMinedBlocks
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
@@ -33,12 +35,75 @@ import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
 class MaruFollowerTest {
+  companion object {
+    @JvmStatic
+    fun enumeratingSyncingConfigs(): List<SyncingConfig> = MaruFactory.enumeratingSyncingConfigs()
+  }
+
   private lateinit var cluster: Cluster
   private lateinit var validatorStack: PeeringNodeNetworkStack
   private lateinit var followerStack: PeeringNodeNetworkStack
+  private lateinit var followerStacks: List<PeeringNodeNetworkStack>
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
+
+  private fun setupMaruHelper(syncingConfig: SyncingConfig) {
+    followerStacks =
+      (1..4).map {
+        PeeringNodeNetworkStack(
+          besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+        )
+      }
+
+    // Start all Besu nodes together for proper peering
+    PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, *followerStacks.toTypedArray())
+
+    // Create and start validator Maru app first
+    val validatorMaruApp =
+      maruFactory.buildTestMaruValidatorWithP2pPeering(
+        ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
+        dataDir = validatorStack.tmpDir,
+        syncingConfig = syncingConfig,
+      )
+    validatorStack.setMaruApp(validatorMaruApp)
+    validatorStack.maruApp.start()
+
+    // Get the validator's p2p port after it's started
+    val validatorP2pPort = validatorStack.p2pPort
+
+    // Create follower Maru apps with the validator's p2p port for static peering
+    val followerMaruApps: MutableList<MaruApp> = mutableListOf()
+    followerStacks.zip(enumeratingSyncingConfigs()).forEach { (followerStack, syncingConfig) ->
+      val followerMaruApp =
+        maruFactory.buildTestMaruFollowerWithP2pPeering(
+          ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+          engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
+          dataDir = followerStack.tmpDir,
+          validatorPortForStaticPeering = validatorP2pPort,
+          syncingConfig = syncingConfig,
+        )
+      followerStack.setMaruApp(followerMaruApp)
+      followerStack.maruApp.start()
+      followerMaruApps.add(followerMaruApp)
+    }
+
+    log.info("Nodes are peered")
+    followerStacks.forEach {
+      it.maruApp.awaitTillMaruHasPeers(1u)
+    }
+    validatorStack.maruApp.awaitTillMaruHasPeers(1u)
+    val validatorGenesis = validatorStack.besuNode.ethGetBlockByNumber("earliest", false)
+    val followerGenesisList =
+      followerStacks.map {
+        it.besuNode.ethGetBlockByNumber("earliest", false)
+      }
+
+    followerGenesisList.forEach {
+      assertThat(validatorGenesis).isEqualTo(it)
+    }
+  }
 
   @BeforeEach
   fun setUp() {
@@ -51,58 +116,26 @@ class MaruFollowerTest {
       )
 
     validatorStack = PeeringNodeNetworkStack()
-
-    followerStack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
-
-    // Start both Besu nodes together for proper peering
-    PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
-
-    // Create and start validator Maru app first
-    val validatorMaruApp =
-      maruFactory.buildTestMaruValidatorWithP2pPeering(
-        ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
-        engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
-        dataDir = validatorStack.tmpDir,
-      )
-    validatorStack.setMaruApp(validatorMaruApp)
-    validatorStack.maruApp.start()
-
-    // Get the validator's p2p port after it's started
-    val validatorP2pPort = validatorStack.p2pPort
-
-    // Create follower Maru app with the validator's p2p port for static peering
-    val followerMaruApp =
-      maruFactory.buildTestMaruFollowerWithP2pPeering(
-        ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
-        engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
-        dataDir = followerStack.tmpDir,
-        validatorPortForStaticPeering = validatorP2pPort,
-      )
-    followerStack.setMaruApp(followerMaruApp)
-    followerStack.maruApp.start()
-
-    log.info("Nodes are peered")
-    followerStack.maruApp.awaitTillMaruHasPeers(1u)
-    validatorStack.maruApp.awaitTillMaruHasPeers(1u)
-    val validatorGenesis = validatorStack.besuNode.ethGetBlockByNumber("earliest", false)
-    val followerGenesis = followerStack.besuNode.ethGetBlockByNumber("earliest", false)
-    assertThat(validatorGenesis).isEqualTo(followerGenesis)
   }
 
   @AfterEach
   fun tearDown() {
-    followerStack.maruApp.stop()
+    followerStacks.forEach {
+      it.maruApp.stop()
+    }
     validatorStack.maruApp.stop()
-    followerStack.maruApp.close()
+    followerStacks.forEach {
+      it.maruApp.close()
+    }
     validatorStack.maruApp.close()
     cluster.close()
   }
 
-  @Test
-  fun `Maru follower is able to import blocks`() {
+  @ParameterizedTest
+  @MethodSource("enumeratingSyncingConfigs")
+  fun `Maru follower is able to import blocks`(syncingConfig: SyncingConfig) {
+    setupMaruHelper(syncingConfig)
+
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -117,8 +150,11 @@ class MaruFollowerTest {
     checkValidatorAndFollowerBlocks(blocksToProduce)
   }
 
-  @Test
-  fun `Maru follower is able to import blocks after going down`() {
+  @ParameterizedTest
+  @MethodSource("enumeratingSyncingConfigs")
+  fun `Maru follower is able to import blocks after going down`(syncingConfig: SyncingConfig) {
+    setupMaruHelper(syncingConfig)
+
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -133,19 +169,24 @@ class MaruFollowerTest {
     // This is here mainly to wait until block propagation is complete
     checkValidatorAndFollowerBlocks(blocksToProduce)
 
-    followerStack.maruApp.stop()
-    followerStack.maruApp.close()
-    followerStack.setMaruApp(
-      maruFactory.buildTestMaruFollowerWithP2pPeering(
-        ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
-        engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
-        dataDir = followerStack.tmpDir,
-        validatorPortForStaticPeering = validatorStack.p2pPort,
-      ),
-    )
-    followerStack.maruApp.start()
+    followerStacks.zip(enumeratingSyncingConfigs()).forEach { (followerStack, syncingConfig) ->
+      followerStack.maruApp.stop()
+      followerStack.maruApp.close()
+      followerStack.setMaruApp(
+        maruFactory.buildTestMaruFollowerWithP2pPeering(
+          ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+          engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
+          dataDir = followerStack.tmpDir,
+          validatorPortForStaticPeering = validatorStack.p2pPort,
+          syncingConfig = syncingConfig,
+        ),
+      )
+      followerStack.maruApp.start()
+    }
 
-    followerStack.maruApp.awaitTillMaruHasPeers(1u)
+    followerStacks.forEach {
+      it.maruApp.awaitTillMaruHasPeers(1u)
+    }
     validatorStack.maruApp.awaitTillMaruHasPeers(1u)
 
     repeat(blocksToProduce) {
@@ -161,8 +202,11 @@ class MaruFollowerTest {
     checkValidatorAndFollowerBlocks(blocksToProduce * 2)
   }
 
-  @Test
-  fun `Maru follower is able to import blocks after Validator stack goes down`() {
+  @ParameterizedTest
+  @MethodSource("enumeratingSyncingConfigs")
+  fun `Maru follower is able to import blocks after Validator stack goes down`(syncingConfig: SyncingConfig) {
+    setupMaruHelper(syncingConfig)
+
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -186,6 +230,7 @@ class MaruFollowerTest {
         engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
         dataDir = validatorStack.tmpDir,
         p2pPort = validatorP2pPort,
+        syncingConfig = syncingConfig,
       ),
     )
     validatorStack.maruApp.start()
@@ -203,8 +248,11 @@ class MaruFollowerTest {
     checkValidatorAndFollowerBlocks(blocksToProduce * 2)
   }
 
-  @Test
-  fun `Maru follower is able to import blocks after its validator el node goes down`() {
+  @ParameterizedTest
+  @MethodSource("enumeratingSyncingConfigs")
+  fun `Maru follower is able to import blocks after its validator el node goes down`(syncingConfig: SyncingConfig) {
+    setupMaruHelper(syncingConfig)
+
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -243,8 +291,9 @@ class MaruFollowerTest {
       .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
         val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
-        val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)
-        assertThat(blocksImportedByFollower).isEqualTo(blocksProducedByQbftValidator)
+        followerStacks.forEach {
+          assertThat(it.besuNode.getMinedBlocks(blocksToProduce)).isEqualTo(blocksProducedByQbftValidator)
+        }
       }
   }
 }
