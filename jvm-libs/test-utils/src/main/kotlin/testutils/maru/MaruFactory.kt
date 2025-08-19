@@ -79,7 +79,7 @@ class MaruFactory(
               type = SyncTargetSelectionConfig.SyncTargetSelectorType.MOST_FREQUENT,
               mostFrequentSelector =
                 SyncTargetSelectionConfig.MostFrequentSelectorConfig(
-                  peerChainHeightGranularity = 10U,
+                  peerChainHeightGranularity = 1U,
                 ),
             ),
           useUnconditionalRandomDownloadPeer = true,
