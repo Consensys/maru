@@ -68,29 +68,15 @@ class MaruFactory(
       )
 
     fun enumeratingSyncingConfigs(): List<SyncingConfig> {
-      val syncTargetSelectionForHighest =
-        SyncTargetSelection.Highest
       val syncTargetSelectionForMostFrequent =
         SyncTargetSelection.MostFrequent(
-          peerChainHeightGranularity = 10U,
+          peerChainHeightGranularity = 1U,
         )
-
       return listOf(
-        defaultSyncingConfig.copy(
-          syncTargetSelection = syncTargetSelectionForHighest,
-          useUnconditionalRandomDownloadPeer = true,
-        ),
-        defaultSyncingConfig.copy(
-          syncTargetSelection = syncTargetSelectionForHighest,
-          useUnconditionalRandomDownloadPeer = false,
-        ),
+        defaultSyncingConfig,
         defaultSyncingConfig.copy(
           syncTargetSelection = syncTargetSelectionForMostFrequent,
           useUnconditionalRandomDownloadPeer = true,
-        ),
-        defaultSyncingConfig.copy(
-          syncTargetSelection = syncTargetSelectionForMostFrequent,
-          useUnconditionalRandomDownloadPeer = false,
         ),
       )
     }
