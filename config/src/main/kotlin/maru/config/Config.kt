@@ -164,47 +164,17 @@ data class ApiConfig(
 
 data class SyncingConfig(
   val peerChainHeightPollingInterval: Duration,
-  val syncTargetSelection: SyncTargetSelectionConfig,
+  val syncTargetSelection: SyncTargetSelection,
   val elSyncStatusRefreshInterval: Duration,
   val useUnconditionalRandomDownloadPeer: Boolean = false,
   val download: Download? = Download(),
 ) {
-  data class Download(
-    val blockRangeRequestTimeout: Duration = 5.seconds,
-    val blocksBatchSize: UInt = 10u,
-    val blocksParallelism: UInt = 1u,
-    val maxRetries: UInt = 5u,
-  )
+  sealed class SyncTargetSelection {
+    data object Highest : SyncTargetSelection()
 
-  data class SyncTargetSelectionConfig(
-    val type: SyncTargetSelectorType = SyncTargetSelectorType.HIGHEST,
-    val mostFrequentSelector: MostFrequentSelectorConfig? = null,
-  ) {
-    init {
-      if (type == SyncTargetSelectorType.MOST_FREQUENT) {
-        require(mostFrequentSelector != null) {
-          "SyncTargetSelectorType=$type requires mostFrequentSelector config"
-        }
-      }
-    }
-
-    enum class SyncTargetSelectorType(
-      val enumName: String,
-    ) {
-      HIGHEST("Highest"),
-      MOST_FREQUENT("MostFrequent"),
-      ;
-
-      companion object {
-        fun valueOfIgnoreCase(name: String): SyncTargetSelectorType =
-          SyncTargetSelectorType.entries.firstOrNull { it.enumName.equals(name, ignoreCase = true) }
-            ?: throw IllegalArgumentException("Unknown sync target selector type: $name")
-      }
-    }
-
-    data class MostFrequentSelectorConfig(
+    data class MostFrequent(
       val peerChainHeightGranularity: UInt,
-    ) {
+    ) : SyncTargetSelection() {
       init {
         require(peerChainHeightGranularity > 0U) {
           "peerChainHeightGranularity must be higher than 0"
@@ -212,6 +182,13 @@ data class SyncingConfig(
       }
     }
   }
+
+  data class Download(
+    val blockRangeRequestTimeout: Duration = 5.seconds,
+    val blocksBatchSize: UInt = 10u,
+    val blocksParallelism: UInt = 1u,
+    val maxRetries: UInt = 5u,
+  )
 }
 
 data class MaruConfig(

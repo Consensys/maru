@@ -8,6 +8,7 @@
  */
 package maru.config
 
+import com.sksamuel.hoplite.ConfigException
 import com.sksamuel.hoplite.ExperimentalHoplite
 import java.net.URI
 import kotlin.io.path.Path
@@ -15,7 +16,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import linea.domain.RetryConfig
 import linea.kotlin.decodeHex
-import maru.config.SyncingConfig.SyncTargetSelectionConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -59,10 +59,7 @@ class HopliteFriendlinessTest {
     peer-chain-height-polling-interval = "5 seconds"
     el-sync-status-refresh-interval = "6 seconds"
     use-unconditional-random-download-peer = false
-    [syncing.sync-target-selection]
-    type = "MostFrequent"
-    [syncing.sync-target-selection.most-frequent-selector]
-    peer-chain-height-granularity = 10
+    sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
 
     [syncing.download]
     block-range-request-timeout = "10 seconds"
@@ -162,12 +159,8 @@ class HopliteFriendlinessTest {
     SyncingConfig(
       peerChainHeightPollingInterval = 5.seconds,
       syncTargetSelection =
-        SyncTargetSelectionConfig(
-          type = SyncTargetSelectionConfig.SyncTargetSelectorType.MOST_FREQUENT,
-          mostFrequentSelector =
-            SyncTargetSelectionConfig.MostFrequentSelectorConfig(
-              peerChainHeightGranularity = 10U,
-            ),
+        SyncingConfig.SyncTargetSelection.MostFrequent(
+          peerChainHeightGranularity = 10U,
         ),
       elSyncStatusRefreshInterval = 6.seconds,
       useUnconditionalRandomDownloadPeer = false,
@@ -290,81 +283,75 @@ class HopliteFriendlinessTest {
     )
   }
 
+  data class SyncTargetSelectionWrapper(
+    val syncTargetSelection: SyncingConfig.SyncTargetSelection,
+  )
+
   private val syncTargetSelectorForMostFrequentToml =
     """
-    type = "mostfrequent"
-    [most-frequent-selector]
-    peer-chain-height-granularity = 10
+    sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
     """.trimIndent()
 
   @Test
   fun syncTargetSelectorForMostFrequentIsParseable() {
-    val config = parseConfig<SyncTargetSelectionConfig>(syncTargetSelectorForMostFrequentToml)
-    assertThat(config).isEqualTo(
-      SyncTargetSelectionConfig(
-        type = SyncTargetSelectionConfig.SyncTargetSelectorType.MOST_FREQUENT,
-        mostFrequentSelector =
-          SyncTargetSelectionConfig.MostFrequentSelectorConfig(
-            peerChainHeightGranularity = 10U,
-          ),
+    val config = parseConfig<SyncTargetSelectionWrapper>(syncTargetSelectorForMostFrequentToml)
+    assertThat(config.syncTargetSelection).isEqualTo(
+      SyncingConfig.SyncTargetSelection.MostFrequent(
+        peerChainHeightGranularity = 10U,
       ),
     )
   }
 
   private val syncTargetSelectorMostFrequentWithInvalidGranularityToml =
     """
-    type = "mostfrequent"
-    [most-frequent-selector]
-    peer-chain-height-granularity = 0
+    sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 0 }
     """.trimIndent()
 
   @Test
   fun syncTargetSelectorForMostFrequentWithInvalidGranularityIsNotParseable() {
     assertThatThrownBy {
-      parseConfig<SyncTargetSelectionConfig>(syncTargetSelectorMostFrequentWithInvalidGranularityToml)
-    }.isInstanceOf(com.sksamuel.hoplite.ConfigException::class.java)
+      parseConfig<SyncTargetSelectionWrapper>(syncTargetSelectorMostFrequentWithInvalidGranularityToml)
+    }.isInstanceOf(ConfigException::class.java)
       .hasMessageContaining("peerChainHeightGranularity must be higher than 0")
   }
 
   private val syncTargetSelectorMostFrequentWithoutGranularityToml =
     """
-    type = "mostfrequent"
+    _type = "MostFrequent"
     """.trimIndent()
 
   @Test
   fun syncTargetSelectorForMostFrequentWithoutGranularityIsNotParseable() {
     assertThatThrownBy {
-      parseConfig<SyncTargetSelectionConfig>(syncTargetSelectorMostFrequentWithoutGranularityToml)
-    }.isInstanceOf(com.sksamuel.hoplite.ConfigException::class.java)
-      .hasMessageContaining("SyncTargetSelectorType=MOST_FREQUENT requires mostFrequentSelector config")
+      parseConfig<SyncingConfig.SyncTargetSelection.MostFrequent>(syncTargetSelectorMostFrequentWithoutGranularityToml)
+    }.isInstanceOf(ConfigException::class.java)
+      .hasMessageContaining("Missing class kotlin.UInt from config")
   }
 
   private val syncTargetSelectorInvalidTypeToml =
     """
-    type = "leastFrequent"
+    sync-target-selection = { _type = "leastFrequent" }
     """.trimIndent()
 
   @Test
   fun syncTargetSelectorWithInvalidTypeIsNotParseable() {
     assertThatThrownBy {
-      parseConfig<SyncTargetSelectionConfig>(syncTargetSelectorInvalidTypeToml)
-    }.isInstanceOf(com.sksamuel.hoplite.ConfigException::class.java)
-      .hasMessageContaining("could not be decoded from a String value: leastFrequent")
+      parseConfig<SyncTargetSelectionWrapper>(syncTargetSelectorInvalidTypeToml)
+    }.isInstanceOf(ConfigException::class.java)
+      .hasMessageContaining("No sealed subtype of ")
+      .hasMessageContaining(" was found using the discriminator value `leastFrequent`")
   }
 
   private val syncTargetSelectorForHighestToml =
     """
-    type = "highest"
+    sync-target-selection = "Highest"
     """.trimIndent()
 
   @Test
   fun syncTargetSelectorForHighestIsParseable() {
-    val config = parseConfig<SyncTargetSelectionConfig>(syncTargetSelectorForHighestToml)
-    assertThat(config).isEqualTo(
-      SyncTargetSelectionConfig(
-        type = SyncTargetSelectionConfig.SyncTargetSelectorType.HIGHEST,
-        mostFrequentSelector = null,
-      ),
+    val config = parseConfig<SyncTargetSelectionWrapper>(syncTargetSelectorForHighestToml)
+    assertThat(config.syncTargetSelection).isEqualTo(
+      SyncingConfig.SyncTargetSelection.Highest,
     )
   }
 

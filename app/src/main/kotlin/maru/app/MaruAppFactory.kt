@@ -331,12 +331,12 @@ class MaruAppFactory {
         NoOpP2PNetwork
       }
 
-    private fun setupSyncTargetSelector(config: SyncingConfig.SyncTargetSelectionConfig): SyncTargetSelector =
-      when (config.type) {
-        SyncingConfig.SyncTargetSelectionConfig.SyncTargetSelectorType.HIGHEST ->
+    private fun setupSyncTargetSelector(config: SyncingConfig.SyncTargetSelection): SyncTargetSelector =
+      when (config) {
+        is SyncingConfig.SyncTargetSelection.Highest ->
           HighestHeadTargetSelector()
-        SyncingConfig.SyncTargetSelectionConfig.SyncTargetSelectorType.MOST_FREQUENT ->
-          MostFrequentHeadTargetSelector(config.mostFrequentSelector!!.peerChainHeightGranularity)
+        is SyncingConfig.SyncTargetSelection.MostFrequent ->
+          MostFrequentHeadTargetSelector(config.peerChainHeightGranularity)
       }
 
     private fun getOrGeneratePrivateKey(privateKeyPath: Path): ByteArray {
