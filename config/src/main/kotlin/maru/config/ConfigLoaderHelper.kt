@@ -21,6 +21,7 @@ import com.sksamuel.hoplite.toml.TomlPropertySource
 import java.nio.file.Path
 import maru.config.consensus.ForkConfigDecoder
 import maru.config.decoders.TomlByteArrayHexDecoder
+import maru.config.decoders.TomlSyncTargetSelectorTypeDecoder
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -28,6 +29,7 @@ import org.apache.logging.log4j.Logger
 fun ConfigLoaderBuilder.addTomlDecoders(strict: Boolean): ConfigLoaderBuilder =
   this
     .addDecoder(TomlByteArrayHexDecoder())
+    .addDecoder(TomlSyncTargetSelectorTypeDecoder())
     .addDecoder(ForkConfigDecoder)
     .apply { if (strict) this.strict() }
 
