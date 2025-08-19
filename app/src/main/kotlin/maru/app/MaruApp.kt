@@ -161,7 +161,7 @@ class MaruApp(
     beaconChain.close()
     validatorELNodeEngineApiWeb3JClient.eth1Web3j.shutdown()
     validatorELNodeEthJsonRpcClient.eth1Web3j.shutdown()
-    followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.close() }
+    followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
     p2pNetwork.close()
     vertx.close()
   }
@@ -196,7 +196,6 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
           metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
-          finalizationProvider = finalizationProvider,
         )
       } else {
         QbftFollowerFactory(
@@ -207,7 +206,7 @@ class MaruApp(
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
           metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
-          finalizationProvider = finalizationProvider,
+          finalizationStateProvider = finalizationProvider,
         )
       }
 

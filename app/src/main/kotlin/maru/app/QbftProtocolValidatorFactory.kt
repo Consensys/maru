@@ -46,7 +46,6 @@ class QbftProtocolValidatorFactory(
   private val allowEmptyBlocks: Boolean,
   private val syncStatusProvider: SyncStatusProvider,
   private val metadataCacheUpdaterHandlerEntry: Pair<String, NewBlockHandler<*>>,
-  private val finalizationProvider: FinalizationProvider,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
@@ -73,7 +72,7 @@ class QbftProtocolValidatorFactory(
           )
         FollowerBeaconBlockImporter.create(
           executionLayerManager = elFollowerExecutionLayerManager,
-          finalizationStateProvider = finalizationProvider,
+          finalizationStateProvider = finalizationStateProvider,
           importerName = followerName,
         )
       }

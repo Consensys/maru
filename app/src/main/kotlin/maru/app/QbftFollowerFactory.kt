@@ -39,7 +39,7 @@ class QbftFollowerFactory(
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
   private val metadataCacheUpdaterHandlerEntry: Pair<String, NewBlockHandler<*>>,
-  private val finalizationProvider: FinalizationProvider,
+  private val finalizationStateProvider: FinalizationProvider,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)
@@ -52,7 +52,7 @@ class QbftFollowerFactory(
     val elPayloadValidatorNewBlockHandler =
       FollowerBeaconBlockImporter.create(
         executionLayerManager = payloadValidatorExecutionLayerManger,
-        finalizationStateProvider = finalizationProvider,
+        finalizationStateProvider = finalizationStateProvider,
         importerName = "payload-validator",
       )
     val elFollowersNewBlockHandlerMap =
@@ -65,7 +65,7 @@ class QbftFollowerFactory(
           )
         FollowerBeaconBlockImporter.create(
           executionLayerManager = elFollowerExecutionLayerManager,
-          finalizationStateProvider = finalizationProvider,
+          finalizationStateProvider = finalizationStateProvider,
           importerName = followerName,
         )
       }
