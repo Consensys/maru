@@ -34,7 +34,7 @@ import maru.config.P2P
 import maru.config.Persistence
 import maru.config.QbftOptions
 import maru.config.SyncingConfig
-import maru.config.SyncingConfig.SyncTargetSelectionConfig
+import maru.config.SyncingConfig.SyncTargetSelection
 import maru.config.ValidatorElNode
 import maru.config.consensus.ElFork
 import maru.config.consensus.delegated.ElDelegatedConfig
@@ -47,7 +47,6 @@ import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
-import testutils.maru.MaruFactory.Companion.defaultSyncingConfig
 
 /**
  * The same MaruFactory should be used per network. Otherwise, validators won't match between Maru instances
@@ -63,28 +62,24 @@ class MaruFactory(
       SyncingConfig(
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection =
-          SyncTargetSelectionConfig(
-            type = SyncTargetSelectionConfig.SyncTargetSelectorType.HIGHEST,
-          ),
+          SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
         useUnconditionalRandomDownloadPeer = false,
       )
 
-    fun enumeratingSyncingConfigs(): List<SyncingConfig> =
-      listOf(
+    fun enumeratingSyncingConfigs(): List<SyncingConfig> {
+      val syncTargetSelectionForMostFrequent =
+        SyncTargetSelection.MostFrequent(
+          peerChainHeightGranularity = 1U,
+        )
+      return listOf(
         defaultSyncingConfig,
         defaultSyncingConfig.copy(
-          syncTargetSelection =
-            SyncTargetSelectionConfig(
-              type = SyncTargetSelectionConfig.SyncTargetSelectorType.MOST_FREQUENT,
-              mostFrequentSelector =
-                SyncTargetSelectionConfig.MostFrequentSelectorConfig(
-                  peerChainHeightGranularity = 1U,
-                ),
-            ),
+          syncTargetSelection = syncTargetSelectionForMostFrequent,
           useUnconditionalRandomDownloadPeer = true,
         ),
       )
+    }
 
     fun generatePrivateKey(): ByteArray = marshalPrivateKey(generateKeyPair(KeyType.SECP256K1).component1())
   }
