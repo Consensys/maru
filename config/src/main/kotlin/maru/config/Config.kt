@@ -166,7 +166,7 @@ data class ApiConfig(
 
 data class SyncingConfig(
   val peerChainHeightPollingInterval: Duration,
-  val peerChainHeightGranularity: UInt,
+  val syncTargetSelection: SyncTargetSelectionConfig,
   val elSyncStatusRefreshInterval: Duration,
   val useUnconditionalRandomDownloadPeer: Boolean = false,
   val download: Download? = Download(),
@@ -177,6 +177,43 @@ data class SyncingConfig(
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
   )
+
+  data class SyncTargetSelectionConfig(
+    val type: SyncTargetSelectorType = SyncTargetSelectorType.HIGHEST,
+    val mostFrequentSelector: MostFrequentSelectorConfig? = null,
+  ) {
+    init {
+      if (type == SyncTargetSelectorType.MOST_FREQUENT) {
+        require(mostFrequentSelector != null) {
+          "SyncTargetSelectorType=$type requires mostFrequentSelector config"
+        }
+      }
+    }
+
+    enum class SyncTargetSelectorType(
+      val enumName: String,
+    ) {
+      HIGHEST("Highest"),
+      MOST_FREQUENT("MostFrequent"),
+      ;
+
+      companion object {
+        fun valueOfIgnoreCase(name: String): SyncTargetSelectorType =
+          SyncTargetSelectorType.entries.firstOrNull { it.enumName.equals(name, ignoreCase = true) }
+            ?: throw IllegalArgumentException("Unknown sync target selector type: $name")
+      }
+    }
+
+    data class MostFrequentSelectorConfig(
+      val peerChainHeightGranularity: UInt,
+    ) {
+      init {
+        require(peerChainHeightGranularity > 0U) {
+          "peerChainHeightGranularity must be higher than 0"
+        }
+      }
+    }
+  }
 }
 
 data class MaruConfig(

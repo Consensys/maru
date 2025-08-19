@@ -8,32 +8,11 @@
  */
 package maru.syncing
 
-import maru.syncing.PeerChainTracker.Config
-
 /**
  * Responsible to keep track of peer's STATUS and select the head of the chain
  */
 fun interface SyncTargetSelector {
   fun selectBestSyncTarget(peerHeads: List<ULong>): ULong
-}
-
-class SyncTargetSelectorFactory {
-  data class Config(
-    val granularity: UInt = 1U,
-  ) {
-    init {
-      require(granularity > 0U) { "Granularity should not be 0!" }
-    }
-  }
-
-  companion object {
-    fun create(config: Config): SyncTargetSelector =
-      if (config.granularity > 1U) {
-        MostFrequentHeadTargetSelector(config.granularity)
-      } else {
-        HighestHeadTargetSelector()
-      }
-  }
 }
 
 class MostFrequentHeadTargetSelector(
