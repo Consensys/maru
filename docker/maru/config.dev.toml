@@ -40,5 +40,5 @@ port = 8080
 peer-chain-height-polling-interval = "5 seconds"
 el-sync-status-refresh-interval = "5 seconds"
 use-unconditional-random-download-peer = false
-sync-target-selector = "Highest"
+sync-target-selection = "Highest"
 # sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
