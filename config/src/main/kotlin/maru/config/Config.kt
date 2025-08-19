@@ -169,12 +169,12 @@ data class SyncingConfig(
   val useUnconditionalRandomDownloadPeer: Boolean = false,
   val download: Download? = Download(),
 ) {
-  sealed class SyncTargetSelection {
-    data object Highest : SyncTargetSelection()
+  sealed interface SyncTargetSelection {
+    data object Highest : SyncTargetSelection
 
     data class MostFrequent(
       val peerChainHeightGranularity: UInt,
-    ) : SyncTargetSelection() {
+    ) : SyncTargetSelection {
       init {
         require(peerChainHeightGranularity > 0U) {
           "peerChainHeightGranularity must be higher than 0"
