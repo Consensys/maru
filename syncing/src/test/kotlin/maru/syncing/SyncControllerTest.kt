@@ -134,6 +134,13 @@ class SyncControllerTest {
     // When: CL completes
     syncController.updateClSyncStatus(CLSyncStatus.SYNCED)
 
+    // It needs another update from the EL sync service
+    assertThat(fullSyncCompleted).isFalse()
+
+    // When: CL completes
+    syncController.updateElSyncStatus(ELSyncStatus.SYNCED)
+
+    // It needs another update from the EL sync service
     assertThat(fullSyncCompleted).isTrue()
   }
 
