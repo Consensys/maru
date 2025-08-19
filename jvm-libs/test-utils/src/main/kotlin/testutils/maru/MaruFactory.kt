@@ -70,39 +70,21 @@ class MaruFactory(
         useUnconditionalRandomDownloadPeer = false,
       )
 
-    fun enumeratingSyncingConfigs(): List<SyncingConfig> {
-      val syncTargetSelectionForHighest =
-        SyncTargetSelectionConfig(
-          type = SyncTargetSelectionConfig.SyncTargetSelectorType.HIGHEST,
-        )
-      val syncTargetSelectionForMostFrequent =
-        SyncTargetSelectionConfig(
-          type = SyncTargetSelectionConfig.SyncTargetSelectorType.MOST_FREQUENT,
-          mostFrequentSelector =
-            SyncTargetSelectionConfig.MostFrequentSelectorConfig(
-              peerChainHeightGranularity = 10U,
+    fun enumeratingSyncingConfigs(): List<SyncingConfig> =
+      listOf(
+        defaultSyncingConfig,
+        defaultSyncingConfig.copy(
+          syncTargetSelection =
+            SyncTargetSelectionConfig(
+              type = SyncTargetSelectionConfig.SyncTargetSelectorType.MOST_FREQUENT,
+              mostFrequentSelector =
+                SyncTargetSelectionConfig.MostFrequentSelectorConfig(
+                  peerChainHeightGranularity = 10U,
+                ),
             ),
-        )
-
-      return listOf(
-        defaultSyncingConfig.copy(
-          syncTargetSelection = syncTargetSelectionForHighest,
           useUnconditionalRandomDownloadPeer = true,
-        ),
-        defaultSyncingConfig.copy(
-          syncTargetSelection = syncTargetSelectionForHighest,
-          useUnconditionalRandomDownloadPeer = false,
-        ),
-        defaultSyncingConfig.copy(
-          syncTargetSelection = syncTargetSelectionForMostFrequent,
-          useUnconditionalRandomDownloadPeer = true,
-        ),
-        defaultSyncingConfig.copy(
-          syncTargetSelection = syncTargetSelectionForMostFrequent,
-          useUnconditionalRandomDownloadPeer = false,
         ),
       )
-    }
 
     fun generatePrivateKey(): ByteArray = marshalPrivateKey(generateKeyPair(KeyType.SECP256K1).component1())
   }
