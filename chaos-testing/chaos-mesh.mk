@@ -35,6 +35,10 @@ chaos-experiment-podkill-besu-nodes:
 	@kubectl apply -f experiments/podkill-besu-once.yaml
 	@kubectl get pods -l app.kubernetes.io/component=besu
 
+chaos-experiment-workflow:
+	-@kubectl delete -f experiments/workflow-network-clients.yaml
+	@kubectl apply -f experiments/workflow-network-clients.yaml
+
 .PHONY: chaos-mesh-install-with-curl \
 	chaos-mesh-install \
 	chaos-mesh-uninstall \
