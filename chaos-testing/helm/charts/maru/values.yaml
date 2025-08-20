@@ -35,14 +35,14 @@ configFiles:
 
     [syncing]
     peer-chain-height-polling-interval = "5 seconds"
-    peer-chain-height-granularity = 10
+    peer-chain-height-granularity = 1
     el-sync-status-refresh-interval = "5 seconds"
 
     [observability]
     port = 9545
 
     [api]
-    port = 8080
+    port = 5060
   configsToml: |
   genesisJson: |
     {

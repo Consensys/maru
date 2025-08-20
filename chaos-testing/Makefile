@@ -37,7 +37,7 @@ chaos-health-check:
 	@echo "Creating port-forward besu and maru nodes"
 	-@$(MAKE) port-forward-stop-all
 	@$(MAKE) port-forward-all component=besu port=8545
-	@$(MAKE) port-forward-all component=maru port=8080
+	@$(MAKE) port-forward-all component=maru port=5060
 	@cd .. && ./gradlew :chaos-testing:health-check:acceptanceTest
 
 chaos-redeploy-and-run-experiment:

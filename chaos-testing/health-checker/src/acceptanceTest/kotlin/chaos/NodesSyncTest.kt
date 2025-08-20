@@ -110,7 +110,7 @@ class NodesSyncTest {
   fun `cl nodes should be in sync`() {
     val nodesUrls =
       getNodesUrlsFromFile(
-        getPathTo("tmp/port-forward-maru-8080.txt"),
+        getPathTo("tmp/port-forward-maru-5060.txt"),
       )
     val nodesHeads = getClNodeChainHeads(nodesUrls).get()
     assertNodesAreInSync(nodesHeads, outOfSyncLeniency = 3)
