@@ -11,7 +11,6 @@ package maru.app
 import java.util.Optional
 import java.util.UUID
 import kotlin.io.path.Path
-import kotlin.time.Duration
 import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
 import maru.config.consensus.ElFork
@@ -37,12 +36,9 @@ object Helpers {
     )
   }
 
-  fun createWeb3jClient(
-    apiEndpointConfig: ApiEndpointConfig,
-    timeout: Duration,
-  ): Web3JClient =
+  fun createWeb3jClient(apiEndpointConfig: ApiEndpointConfig): Web3JClient =
     Web3jClientBuilder()
-      .timeout(timeout.toJavaDuration())
+      .timeout(apiEndpointConfig.timeout.toJavaDuration())
       .endpoint(apiEndpointConfig.endpoint.toString())
       .jwtConfigOpt(wrapJwtPath(apiEndpointConfig.jwtSecretPath))
       .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
