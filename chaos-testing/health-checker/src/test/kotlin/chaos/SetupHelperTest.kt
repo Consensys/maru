@@ -20,8 +20,9 @@ class SetupHelperTest {
         "besu-follower-0 = http://127.0.0.1:18545",
         "http://127.0.0.1:28545", // should use url as label if label is empty
         " = http://127.0.0.1:38545", // should use url as label if label is empty
-        "  ", // should ignore empty lines
+        "    ", // should ignore empty lines
         "  besu-sequencer-0 = http://127.0.0.1:58545",
+        "  =  ",
       )
 
     assertThat(parseLines(lines)).isEqualTo(
