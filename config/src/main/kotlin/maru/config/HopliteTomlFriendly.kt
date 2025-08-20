@@ -11,6 +11,7 @@ package maru.config
 import java.net.URL
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
@@ -30,6 +31,7 @@ data class PayloadValidatorDto(
 data class ApiEndpointDto(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
+  val timeout: Duration = 1.minutes,
 ) {
   fun domainFriendly(endlessRetries: Boolean = false): ApiEndpointConfig =
     if (endlessRetries) {
