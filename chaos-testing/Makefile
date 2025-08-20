@@ -12,23 +12,34 @@ include k3s.mk
 	helm-redeploy-besu \
 	helm-redeploy-maru \
 
+chaos-deploy-linea-and-chaos-mesh:
+	@set -e; \
+	$(MAKE) helm-redeploy-maru-and-besu & pid1=$$!; \
+	$(MAKE) chaos-mesh-install & pid2=$$!; \
+	wait $$pid1 || exit 1; \
+	wait $$pid2 || exit 1; \
+
+chaos-deploy-linea-and-chaos-mesh-with-local-maru-image:
+	@set -e; \
+	$(MAKE) build-and-import-maru-image & pid1=$$!; \
+	$(MAKE) chaos-mesh-install & pid2=$$!; \
+	$(MAKE) helm-redeploy-besu & pid3=$$!; \
+	wait $$pid1 || exit 1; \
+	wait $$pid2 || exit 1; \
+	wait $$pid3 || exit 1; \
+	$(MAKE) helm-redeploy-maru;
+
 chaos-full-reload:
 	@$(MAKE) k3s-reload
-	@sleep 5
-	@$(MAKE) helm-redeploy-maru-and-besu
-	@$(MAKE) chaos-mesh-install
-	@$(MAKE) wait-maru-follower-is-syncing
-	@sleep 30 # wait for some time to ensure nodes are cruising and ready for chaos experiments
-	@$(MAKE) chaos-experiment-podkill-besu-nodes
-	@echo "Chaos testing environment is ready. You can now run your chaos experiments."
+	@sleep 3
+	@$(MAKE) chaos-deploy-linea-and-chaos-mesh
+	@$(MAKE) chaos-experiment-workflow-and-wait # runs workflow-linea-resilience.yaml and waits for it to finish
+	@$(MAKE) chaos-health-check
 
 chaos-full-reload-with-local-maru-image:
 	@$(MAKE) k3s-reload
 	@sleep 3
-	@$(MAKE) chaos-mesh-install
-	@sleep 2
-	@$(MAKE) build-and-import-maru-image
-	@$(MAKE) helm-redeploy-maru-and-besu
+	@$(MAKE) chaos-deploy-linea-and-chaos-mesh-with-local-maru-image
 	@$(MAKE) chaos-experiment-workflow-and-wait # runs workflow-linea-resilience.yaml and waits for it to finish
 	@$(MAKE) chaos-health-check
 
@@ -58,3 +69,18 @@ build-and-import-maru-image:
 build-and-redeploy-maru:
 	@$(MAKE) build-and-import-maru-image
 	@$(MAKE) helm-redeploy-maru
+
+
+stepA:
+	@echo "Running step A"; sleep 2
+
+stepB:
+	@echo "Running step B"; sleep 3
+
+parallel-two-steps:
+	@set -e; \
+	$(MAKE) stepA & pid1=$$!; \
+	$(MAKE) stepB & pid2=$$!; \
+	wait $$pid1 || exit 1; \
+	wait $$pid2 || exit 1; \
+	echo "Both steps completed successfully"

@@ -67,13 +67,13 @@ helm-redeploy-maru:
 	@$(MAKE) wait_pods pod_name=maru-validator pod_count=1
 
 helm-redeploy-maru-and-besu:
-	@echo "Redeploying Besu and Maru"
+	@echo "Redeploying Besu and Maru (maru_image=$(maru_image))"
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-releases
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-deploy-besu
 	# Wait for Besu to be fully deployed,
 	# otherwise Maru will fail to start because it cannot connect to Besu
 	# then will miss P2P messages from validator
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-redeploy-maru
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-redeploy-maru $(if $(maru_image),maru_image=$(maru_image))
 
 wait-maru-follower-is-syncing:
 	@echo "Waiting for Maru follower to be ready..."
