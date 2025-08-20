@@ -106,7 +106,9 @@ class ELSyncService(
     val elFork =
       when (forkSpec.configuration) {
         is QbftConsensusConfig -> (forkSpec.configuration as QbftConsensusConfig).elFork
-        else -> throw IllegalStateException("No ELFork configured found in $forkSpec")
+        else -> throw IllegalStateException(
+          "Current fork isn't QBFT, this case is not supported yet! forkSpec=$forkSpec",
+        )
       }
     val executionLayerManager =
       elManagerMap[elFork]
