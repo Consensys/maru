@@ -10,16 +10,19 @@ package chaos
 
 import chaos.SetupHelper.getNodesUrlsFromFile
 import linea.kotlin.toULong
+import linea.log4j.configureLoggers
 import linea.web3j.createWeb3jHttpClient
 import maru.clients.beacon.Http4kBeaconChainClient
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.testing.filesystem.getPathTo
+import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class NodesSyncTest {
-  private val log = LogManager.getLogger(NodesSyncTest::class.java)
+  private val log = LogManager.getLogger("maru.chaos.NodesSyncTest")
 
   fun getElNodeChainHead(elApiUrl: String): SafeFuture<ULong> {
     // createEthApiClient(elApiUrl, vertx = null, requestRetryConfig = null)
@@ -67,7 +70,7 @@ class NodesSyncTest {
     if (maxHead - minHead > outOfSyncLeniency.toULong()) {
       val nodeWithMinHead = nodesHeads.minBy { it.value }
       log.error(
-        "Nodes are out of sync: maxHead{}, minHead={}, diff={}, leniency={}, nodeWithMinHead={}",
+        "Nodes are out of sync: maxHead={}, minHead={}, diff={}, leniency={}, nodeWithMinHead={}",
         maxHead,
         minHead,
         maxHead - minHead,
@@ -83,6 +86,14 @@ class NodesSyncTest {
 
       throw IllegalStateException("Nodes are out of sync: max head $maxHead, min head $minHead")
     }
+  }
+
+  @BeforeEach
+  fun beforeEach() {
+    configureLoggers(
+      rootLevel = Level.INFO,
+      "maru.chaos.NodesSyncTest" to Level.DEBUG,
+    )
   }
 
   @Test

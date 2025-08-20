@@ -24,9 +24,21 @@ chaos-full-reload:
 
 chaos-full-reload-with-local-maru-image:
 	@$(MAKE) k3s-reload
-	@sleep 5
+	@sleep 3
+	@$(MAKE) chaos-mesh-install
+	@sleep 2
 	@$(MAKE) build-and-import-maru-image
 	@$(MAKE) helm-redeploy-maru-and-besu
+	@$(MAKE) chaos-experiment-workflow-and-wait # runs workflow-linea-resilience.yaml and waits for it to finish
+	@$(MAKE) chaos-health-check
+
+chaos-health-check:
+	@echo "Running health check for chaos testing environment"
+	@echo "Creating port-forward besu and maru nodes"
+	-@$(MAKE) port-forward-stop-all
+	@$(MAKE) port-forward-all component=besu port=8545
+	@$(MAKE) port-forward-all component=maru port=8080
+	@cd .. && ./gradlew :chaos-testing:health-check:acceptanceTest
 
 chaos-redeploy-and-run-experiment:
 	@$(MAKE) helm-redeploy-maru-and-besu

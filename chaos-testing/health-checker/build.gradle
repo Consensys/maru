@@ -61,6 +61,6 @@ tasks.register('acceptanceTest', Test) { test ->
     showExceptions true
     showStackTraces true
     // set showStandardStreams if you need to see test logs
-    showStandardStreams false
+    showStandardStreams true
   }
 }
