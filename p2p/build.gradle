@@ -23,6 +23,7 @@ dependencies {
   implementation project(":serialization")
   implementation project(":crypto")
   implementation project(":core")
+  implementation project(":observability")
 
   api "io.libp2p:jvm-libp2p"
 

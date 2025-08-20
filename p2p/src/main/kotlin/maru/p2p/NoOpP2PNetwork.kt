@@ -69,6 +69,8 @@ object NoOpP2PNetwork : P2PNetwork {
     }
   }
 
+  override fun isStaticPeer(nodeId: NodeId): Boolean = false
+
   override fun close() {
   }
 }

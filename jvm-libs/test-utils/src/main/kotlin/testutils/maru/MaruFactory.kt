@@ -291,6 +291,7 @@ class MaruFactory(
       staticPeers = staticPeers,
       reconnectDelay = defaultReconnectDelay,
       statusUpdate = P2P.StatusUpdateConfig(refreshInterval = 1.seconds), // For faster syncing in the tests
+      reputationConfig = P2P.ReputationConfig(cooldownPeriod = 250.milliseconds), // For faster reconnection
     )
   }
 

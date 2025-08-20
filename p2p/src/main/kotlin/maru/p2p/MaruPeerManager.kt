@@ -32,12 +32,13 @@ import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
-import tech.pegasys.teku.networking.p2p.reputation.DefaultReputationManager
+import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 
 class MaruPeerManager(
   private val maruPeerFactory: MaruPeerFactory,
   private val p2pConfig: P2P,
-  private val reputationManager: DefaultReputationManager,
+  private val reputationManager: ReputationManager,
+  private val isStaticPeer: (NodeId) -> Boolean,
 ) : PeerHandler,
   PeerLookup {
   var scheduler: ScheduledExecutorService? = null
@@ -124,13 +125,15 @@ class MaruPeerManager(
 
   override fun onConnect(peer: Peer) {
     // TODO: here we could check if we want to be connected to that peer
-    if (peerCount >= maxPeers) {
+    val isAStaticPeer = isStaticPeer(peer.id)
+    if (!isAStaticPeer && peerCount >= maxPeers) {
       // TODO: We could disconnect another peer here, based on some criteria
       reputationManager.reportInitiatedConnectionFailed(peer.address)
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
       return
     }
-    if (reputationManager.isConnectionInitiationAllowed(peer.address)) {
+    println("is allowed: ${reputationManager.isConnectionInitiationAllowed(peer.address)}")
+    if (isAStaticPeer || reputationManager.isConnectionInitiationAllowed(peer.address)) {
       val maruPeer = maruPeerFactory.createMaruPeer(peer)
       reputationManager.reportInitiatedConnectionSuccessful(maruPeer.address)
       connectedPeers[peer.id] = maruPeer
@@ -140,6 +143,7 @@ class MaruPeerManager(
         maruPeer.scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
       }
     } else {
+      println("disconnecting")
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
     }
   }

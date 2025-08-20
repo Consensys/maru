@@ -107,13 +107,13 @@ class P2PTest {
           rpcMethods,
           statusMessageFactory,
           P2P(ipAddress = IPV4, port = PORT1),
-          reputationManager,
         )
       maruPeerManager =
         MaruPeerManager(
           maruPeerFactory = maruPeerFactory,
           p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
           reputationManager = reputationManager,
+          isStaticPeer = { false },
         )
       return rpcMethods
     }
@@ -147,6 +147,7 @@ class P2PTest {
       statusMessageFactory: StatusMessageFactory = Companion.statusMessageFactory,
       statusUpdate: P2P.StatusUpdateConfig = P2P.StatusUpdateConfig(),
       discovery: P2P.Discovery? = null,
+      reputationConfig: P2P.ReputationConfig = P2P.ReputationConfig(),
     ): P2PNetworkImpl =
       P2PNetworkImpl(
         privateKeyBytes = privateKey,
@@ -158,6 +159,7 @@ class P2PTest {
             reconnectDelay = reconnectDelay,
             statusUpdate = statusUpdate,
             discovery = discovery,
+            reputationConfig = reputationConfig,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
@@ -232,8 +234,19 @@ class P2PTest {
 
   @Test
   fun `static peers reconnect`() {
-    val p2pNetworkImpl1 = createP2PNetwork(privateKey = key1, port = PORT1)
-    val p2pNetworkImpl2 = createP2PNetwork(privateKey = key2, port = PORT2, staticPeers = listOf(PEER_ADDRESS_NODE_1))
+    val p2pNetworkImpl1 =
+      createP2PNetwork(
+        privateKey = key1,
+        port = PORT1,
+        reputationConfig = P2P.ReputationConfig(cooldownPeriod = 1.seconds),
+      )
+    val p2pNetworkImpl2 =
+      createP2PNetwork(
+        privateKey = key2,
+        port = PORT2,
+        staticPeers = listOf(PEER_ADDRESS_NODE_1),
+        reconnectDelay = 2.seconds,
+      )
 
     try {
       p2pNetworkImpl1.start()
@@ -387,7 +400,6 @@ class P2PTest {
           rpcMethods,
           statusMessageFactory,
           p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
-          reputationManager = DefaultReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), 1024, PeerPools()),
         )
 
       val responseFuture = maruPeer1.sendStatus()
@@ -440,7 +452,6 @@ class P2PTest {
           rpcMethods = rpcMethods,
           statusMessageFactory = statusMessageFactory,
           p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
-          reputationManager = DefaultReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), 1024, PeerPools()),
         )
 
       val responseFuture = maruPeer1.sendStatus()
@@ -771,6 +782,10 @@ class P2PTest {
             refreshIntervalLeeway = 0.seconds,
             timeout = 1.seconds,
           ),
+        reputationConfig =
+          P2P.ReputationConfig(
+            cooldownPeriod = 50.milliseconds,
+          ),
       )
 
     // Node 2 is initiating the connection and is only sending status updates after 2 seconds.
@@ -809,12 +824,12 @@ class P2PTest {
       var disconnectCount = 0
       while ((System.currentTimeMillis() < endTime) && disconnectCount < 2) {
         sleep(50L)
-        if (!p2pNetworkImpl1.isConnected(PEER_ID_NODE_2)) {
+        if (p2pNetworkImpl1.getPeer(PEER_ID_NODE_2) == null) {
           disconnectCount++
           do {
             // wait for the peer to be connected again
             sleep(50L)
-          } while (!p2pNetworkImpl1.isConnected(PEER_ID_NODE_2) && (System.currentTimeMillis() < endTime))
+          } while (p2pNetworkImpl1.getPeer(PEER_ID_NODE_2) == null && (System.currentTimeMillis() < endTime))
         }
       }
 
@@ -833,7 +848,7 @@ class P2PTest {
   }
 
   private fun awaitUntilAsserted(
-    timeout: Long = 10000L,
+    timeout: Long = 130000L,
     timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
     condition: () -> Unit,
   ) {
@@ -847,7 +862,7 @@ class P2PTest {
     peer: String,
   ) {
     assertThat(
-      p2pNetwork.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(peer))),
+      p2pNetwork.getPeer(peer),
     ).isNotNull
   }
 

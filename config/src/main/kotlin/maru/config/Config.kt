@@ -12,7 +12,9 @@ import java.net.InetAddress
 import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
@@ -42,7 +44,7 @@ data class P2P(
   val maxPeers: Int = 25,
   val discovery: Discovery? = null,
   val statusUpdate: StatusUpdateConfig = StatusUpdateConfig(),
-  val reputationManagerCapacity: Int = 1024,
+  val reputationConfig: ReputationConfig = ReputationConfig(),
 ) {
   init {
     // just a sanity check to ensure the IP address is valid
@@ -59,6 +61,16 @@ data class P2P(
     val refreshInterval: Duration = 30.seconds,
     val refreshIntervalLeeway: Duration = 5.seconds,
     val timeout: Duration = 10.seconds,
+  )
+
+  data class ReputationConfig(
+    val capacity: Int = 1024,
+    val largeChange: Int = 10,
+    val smallChange: Int = 3,
+    val disconnectThreshold: Int = -largeChange,
+    val maxReputation: Int = 2 * largeChange,
+    val cooldownPeriod: Duration = 2.minutes,
+    val banPeriod: Duration = 12.hours,
   )
 }
 

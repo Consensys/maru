@@ -53,6 +53,7 @@ class MaruPeerManagerTest {
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
+        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
@@ -84,6 +85,7 @@ class MaruPeerManagerTest {
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
+        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
@@ -110,7 +112,12 @@ class MaruPeerManagerTest {
     whenever(p2pConfig.statusUpdate).thenReturn(P2P.StatusUpdateConfig())
 
     val manager =
-      MaruPeerManager(maruPeerFactory = maruPeerFactory, p2pConfig = p2pConfig, reputationManager = reputationManager)
+      MaruPeerManager(
+        maruPeerFactory = maruPeerFactory,
+        p2pConfig = p2pConfig,
+        reputationManager = reputationManager,
+        isStaticPeer = { false },
+      )
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
 
@@ -137,6 +144,7 @@ class MaruPeerManagerTest {
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
+        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
@@ -166,6 +174,7 @@ class MaruPeerManagerTest {
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
+        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
@@ -198,6 +207,7 @@ class MaruPeerManagerTest {
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
+        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
@@ -228,6 +238,7 @@ class MaruPeerManagerTest {
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
+        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
@@ -261,6 +272,7 @@ class MaruPeerManagerTest {
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
+        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
@@ -297,6 +309,7 @@ class MaruPeerManagerTest {
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
+        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer1)

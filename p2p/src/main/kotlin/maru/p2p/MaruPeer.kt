@@ -30,7 +30,6 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedException
 import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedSubscriber
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
-import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
@@ -59,7 +58,6 @@ class DefaultMaruPeerFactory(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
   private val p2pConfig: P2P,
-  private val reputationManager: ReputationManager,
 ) : MaruPeerFactory {
   override fun createMaruPeer(delegatePeer: Peer): MaruPeer =
     DefaultMaruPeer(
@@ -67,7 +65,6 @@ class DefaultMaruPeerFactory(
       rpcMethods = rpcMethods,
       statusMessageFactory = statusMessageFactory,
       p2pConfig = p2pConfig,
-      reputationManager = reputationManager,
     )
 }
 
@@ -76,7 +73,6 @@ class DefaultMaruPeer(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
   private val p2pConfig: P2P,
-  private val reputationManager: ReputationManager,
 ) : MaruPeer {
   private val scheduler: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor(
@@ -106,7 +102,7 @@ class DefaultMaruPeer(
         .thenApply { message -> message.payload }
         .whenComplete { status, error ->
           if (error != null) {
-            disconnectImmediately(Optional.of(DisconnectReason.REMOTE_FAULT), false)
+            disconnectImmediately(Optional.of(DisconnectReason.TOO_MANY_PEERS), false)
             if (error.cause !is PeerDisconnectedException) {
               log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
             }
@@ -153,7 +149,7 @@ class DefaultMaruPeer(
             scheduler.schedule(
               {
                 log.debug("Disconnecting from peerId={} by timeout", this.id)
-                disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+                disconnectCleanly(DisconnectReason.UNRESPONSIVE)
               },
               delay.inWholeSeconds,
               TimeUnit.SECONDS,
@@ -220,12 +216,7 @@ class DefaultMaruPeer(
 
   override fun connectionInitiatedRemotely(): Boolean = delegatePeer.connectionInitiatedRemotely()
 
-  override fun adjustReputation(adjustment: ReputationAdjustment) {
-    val shouldDisconnect = reputationManager.adjustReputation(getAddress(), adjustment)
-    if (shouldDisconnect) {
-      disconnectCleanly(DisconnectReason.REMOTE_FAULT).ifExceptionGetsHereRaiseABug()
-    }
-  }
+  override fun adjustReputation(adjustment: ReputationAdjustment) = delegatePeer.adjustReputation(adjustment)
 
   override fun toString(): String =
     "DefaultMaruPeer(id=${id.toBase58()}, status=${status.get()}, address=${getAddress()}, " +
