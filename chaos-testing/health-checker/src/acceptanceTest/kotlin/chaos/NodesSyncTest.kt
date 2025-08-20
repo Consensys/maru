@@ -9,6 +9,8 @@
 package chaos
 
 import chaos.SetupHelper.getNodesUrlsFromFile
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import linea.kotlin.toULong
 import linea.log4j.configureLoggers
 import linea.web3j.createWeb3jHttpClient
@@ -17,6 +19,7 @@ import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.testing.filesystem.getPathTo
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
+import org.awaitility.kotlin.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -102,17 +105,27 @@ class NodesSyncTest {
       getNodesUrlsFromFile(
         getPathTo("tmp/port-forward-besu-8545.txt"),
       )
-    val nodesHeads = getElNodeChainHeads(nodesUrls).get()
-    assertNodesAreInSync(nodesHeads, outOfSyncLeniency = 3)
+    await
+      .pollInterval(5.seconds.toJavaDuration())
+      .atMost(60.seconds.toJavaDuration())
+      .untilAsserted {
+        val nodesHeads = getElNodeChainHeads(nodesUrls).get()
+        assertNodesAreInSync(nodesHeads, outOfSyncLeniency = 3)
+      }
   }
 
   @Test
-  fun `cl nodes should be in sync`() {
+  fun `maru nodes should be in sync`() {
     val nodesUrls =
       getNodesUrlsFromFile(
         getPathTo("tmp/port-forward-maru-5060.txt"),
       )
-    val nodesHeads = getClNodeChainHeads(nodesUrls).get()
-    assertNodesAreInSync(nodesHeads, outOfSyncLeniency = 3)
+    await
+      .pollInterval(5.seconds.toJavaDuration())
+      .atMost(60.seconds.toJavaDuration())
+      .untilAsserted {
+        val nodesHeads = getClNodeChainHeads(nodesUrls).get()
+        assertNodesAreInSync(nodesHeads, outOfSyncLeniency = 3)
+      }
   }
 }
