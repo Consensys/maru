@@ -31,4 +31,14 @@ class BeaconBlocksByRangeRequestMessageSerDe(
       Version.V1,
       beaconBlocksByRangeRequestSerDe.readFrom(rlpInput),
     )
+
+  override fun serialize(value: Message<BeaconBlocksByRangeRequest, RpcMessageType>): ByteArray =
+    beaconBlocksByRangeRequestSerDe.serialize(value.payload)
+
+  override fun deserialize(bytes: ByteArray): Message<BeaconBlocksByRangeRequest, RpcMessageType> =
+    Message(
+      RpcMessageType.BEACON_BLOCKS_BY_RANGE,
+      Version.V1,
+      beaconBlocksByRangeRequestSerDe.deserialize(bytes),
+    )
 }
