@@ -12,34 +12,40 @@ include k3s.mk
 	helm-redeploy-besu \
 	helm-redeploy-maru \
 
-chaos-deploy-linea-and-chaos-mesh:
+chaos-deploy-chaos-mesh-and-linea:
 	@set -e; \
-	$(MAKE) helm-redeploy-maru-and-besu & pid1=$$!; \
-	$(MAKE) chaos-mesh-install & pid2=$$!; \
-	wait $$pid1 || exit 1; \
-	wait $$pid2 || exit 1; \
-
-chaos-deploy-linea-and-chaos-mesh-with-local-maru-image:
-	@set -e; \
-	$(MAKE) build-and-import-maru-image & pid1=$$!; \
+	if [ -z "$(maru_image)" ]; then \
+		pid1=""; \
+	else \
+		case "$(maru_image)" in \
+					*local) \
+						echo "maru_image ends with 'local' -> build/import local image"; \
+						$(MAKE) build-and-import-maru-image & pid1=$$!; \
+						;; \
+					*) \
+						echo "Using provided maru_image=$$maru_image"; \
+						pid1=""; \
+						;; \
+				esac; \
+	fi; \
 	$(MAKE) chaos-mesh-install & pid2=$$!; \
 	$(MAKE) helm-redeploy-besu & pid3=$$!; \
-	wait $$pid1 || exit 1; \
+	if [ -n "$$pid1" ]; then wait $$pid1 || exit 1; fi; \
 	wait $$pid2 || exit 1; \
 	wait $$pid3 || exit 1; \
-	$(MAKE) helm-redeploy-maru;
+	$(MAKE) helm-redeploy-maru maru_image=$(if $(maru_image),$(maru_image))
 
 chaos-full-reload:
 	@$(MAKE) k3s-reload
 	@sleep 3
-	@$(MAKE) chaos-deploy-linea-and-chaos-mesh
+	@$(MAKE) chaos-deploy-chaos-mesh-and-linea
 	@$(MAKE) chaos-experiment-workflow-and-wait # runs workflow-linea-resilience.yaml and waits for it to finish
 	@$(MAKE) chaos-health-check
 
 chaos-full-reload-with-local-maru-image:
 	@$(MAKE) k3s-reload
 	@sleep 3
-	@$(MAKE) chaos-deploy-linea-and-chaos-mesh-with-local-maru-image
+	@$(MAKE) chaos-deploy-chaos-mesh-and-linea maru_image=consensys/maru:local
 	@$(MAKE) chaos-experiment-workflow-and-wait # runs workflow-linea-resilience.yaml and waits for it to finish
 	@$(MAKE) chaos-health-check
 
