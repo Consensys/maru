@@ -22,7 +22,7 @@ chaos-deploy-chaos-mesh-and-linea:
 				$(MAKE) build-and-import-maru-image & pid1=$$!; \
 				;; \
 			*) \
-				echo "Using provided maru_image=$$maru_image"; \
+				echo "Using provided maru_image=$(maru_image)"; \
 				;; \
 		esac; \
 	fi; \
