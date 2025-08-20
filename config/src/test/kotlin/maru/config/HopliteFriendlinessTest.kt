@@ -13,14 +13,19 @@ import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import linea.domain.BlockParameter
+import linea.domain.RetryConfig
 import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
+  private val protocolTransitionPollingInterval = 2.seconds
   private val emptyFollowersConfigToml =
     """
+    protocol-transition-polling-interval = "2s"
+
     [persistence]
     data-path="/some/path"
     private-key-path = "/private-key/path"
@@ -30,7 +35,7 @@ class HopliteFriendlinessTest {
 
     [p2p]
     port = 3322
-    ip-address = "127.0.0.1"
+    ip-address = "10.11.12.13"
     static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
     reconnect-delay = "500 ms"
 
@@ -73,7 +78,7 @@ class HopliteFriendlinessTest {
   private val persistence = Persistence(dataPath, privateKeyPath)
   private val p2pConfig =
     P2P(
-      ipAddress = "127.0.0.1",
+      ipAddress = "10.11.12.13",
       port = 3322u,
       staticPeers =
         listOf(
@@ -93,11 +98,21 @@ class HopliteFriendlinessTest {
   private val ethApiEndpoint =
     ApiEndpointConfig(
       endpoint = URI.create("http://localhost:8545").toURL(),
+      requestRetries =
+        RetryConfig.endlessRetry(
+          backoffDelay = 1.seconds,
+          failuresWarningThreshold = 3u,
+        ),
     )
   private val engineApiEndpoint =
     ApiEndpointConfig(
       endpoint = URI.create("http://localhost:8555").toURL(),
       jwtSecretPath = "/secret/path",
+      requestRetries =
+        RetryConfig.endlessRetry(
+          backoffDelay = 1.seconds,
+          failuresWarningThreshold = 3u,
+        ),
     )
   private val payloadValidator =
     PayloadValidatorDto(
@@ -156,6 +171,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbft = qbftOptions,
@@ -174,6 +190,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config).isEqualTo(
       MaruConfigDtoToml(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbft = qbftOptions,
@@ -192,6 +209,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         p2pConfig = p2pConfig,
@@ -214,6 +232,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
         qbftOptions = qbftOptions.toDomain(),
@@ -263,19 +282,20 @@ class HopliteFriendlinessTest {
     val configToml =
       """
       allow-empty-blocks = true
-      $rawConfigToml
+      $emptyFollowersConfigToml
       """.trimIndent()
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = true,
           persistence = persistence,
           qbft = qbftOptions,
           p2p = p2pConfig,
           payloadValidator = payloadValidator,
-          followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
+          followerEngineApis = null,
           observability = ObservabilityOptions(port = 9090u),
           api = ApiConfig(port = 8080u),
           syncing = syncingConfig,
@@ -285,6 +305,7 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = true,
           persistence = persistence,
           p2pConfig = p2pConfig,
@@ -294,7 +315,81 @@ class HopliteFriendlinessTest {
               ethApiEndpoint = ethApiEndpoint,
             ),
           qbftOptions = qbftOptions.toDomain(),
-          followers = followersConfig,
+          followers = emptyFollowersConfig,
+          observabilityOptions = ObservabilityOptions(port = 9090u),
+          apiConfig = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
+        ),
+      )
+  }
+
+  @Test
+  fun `should parse config with linea settings`() {
+    val contractAddress = "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5"
+    val l1EthApi = "http://ethereum-mainnet"
+    val l1PollingInterval = 6.seconds
+    val l1HighestBlockTag = "latest"
+    val configToml =
+      """
+      $emptyFollowersConfigToml
+
+      [linea]
+      contract-address = "$contractAddress"
+      l1-eth-api = { endpoint = "$l1EthApi" }
+      l1-polling-interval = "6 seconds"
+      l1-highest-block-tag = "$l1HighestBlockTag"
+      """.trimIndent()
+    val l1EthApiEndpoint =
+      ApiEndpointDto(
+        endpoint = URI.create("http://ethereum-mainnet").toURL(),
+      )
+    val contractAddressBytes = contractAddress.decodeHex()
+    val expectedTomlConfig =
+      LineaConfigDtoToml(
+        contractAddress = contractAddressBytes,
+        l1EthApi = l1EthApiEndpoint,
+        l1PollingInterval,
+        l1HighestBlockTag = l1HighestBlockTag,
+      )
+    val expectedLineaConfig =
+      LineaConfig(
+        contractAddress = contractAddressBytes,
+        l1EthApi = l1EthApiEndpoint.domainFriendly(),
+        l1PollingInterval = l1PollingInterval,
+        l1HighestBlockTag = BlockParameter.Tag.LATEST,
+      )
+    val config = parseConfig<MaruConfigDtoToml>(configToml)
+
+    assertThat(config)
+      .isEqualTo(
+        MaruConfigDtoToml(
+          linea = expectedTomlConfig,
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+          persistence = persistence,
+          qbft = qbftOptions,
+          p2p = p2pConfig,
+          payloadValidator = payloadValidator,
+          observability = ObservabilityOptions(port = 9090u),
+          api = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
+          followerEngineApis = null,
+        ),
+      )
+
+    assertThat(config.domainFriendly())
+      .isEqualTo(
+        MaruConfig(
+          linea = expectedLineaConfig,
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+          persistence = persistence,
+          p2pConfig = p2pConfig,
+          validatorElNode =
+            ValidatorElNode(
+              engineApiEndpoint = engineApiEndpoint,
+              ethApiEndpoint = ethApiEndpoint,
+            ),
+          qbftOptions = qbftOptions.toDomain(),
+          followers = emptyFollowersConfig,
           observabilityOptions = ObservabilityOptions(port = 9090u),
           apiConfig = ApiConfig(port = 8080u),
           syncing = syncingConfig,

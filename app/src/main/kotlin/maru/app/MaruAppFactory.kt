@@ -28,6 +28,7 @@ import maru.api.ApiServerImpl
 import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2P
+import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHashProviderImpl
@@ -41,12 +42,13 @@ import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.kv.KvDatabaseFactory
-import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
+import maru.executionlayer.manager.ForkScheduleAwareExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.finalization.LineaFinalizationProvider
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.BesuMetricsSystemAdapter
 import maru.metrics.MaruMetricsCategory
+import maru.p2p.NetworkHelper
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
@@ -80,7 +82,8 @@ class MaruAppFactory {
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     overridingApiServer: ApiServer? = null,
   ): MaruApp {
-    log.info("configs: {}", config)
+    log.info("configs={}", config)
+    log.info("beaconGenesisConfig={}", beaconGenesisConfig)
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val vertx =
       VertxFactory.createVertx(
@@ -143,16 +146,27 @@ class MaruAppFactory {
     val latestElBlockMetadataCache =
       LatestElBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
+
     val engineApiWeb3jClient =
       Helpers.createWeb3jClient(
-        config.validatorElNode.engineApiEndpoint,
+        apiEndpointConfig = config.validatorElNode.engineApiEndpoint,
       )
-    val engineApiClient =
-      PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-        engineApiWeb3jClient,
-        metricsFacade,
+
+    val elManagerMap =
+      ElFork.entries.associateWith {
+        val engineApiClient =
+          Helpers.buildExecutionEngineClient(
+            web3JEngineApiClient = engineApiWeb3jClient,
+            elFork = it,
+            metricsFacade = metricsFacade,
+          )
+        JsonRpcExecutionLayerManager(engineApiClient)
+      }
+    val forkScheduleAwareExecutionLayerManager =
+      ForkScheduleAwareExecutionLayerManager(
+        forksSchedule = beaconGenesisConfig,
+        executionLayerManagerMap = elManagerMap,
       )
-    val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
     var syncControllerImpl: SyncController? = null
 
@@ -176,7 +190,7 @@ class MaruAppFactory {
       if (config.p2pConfig != null) {
         BeaconSyncControllerImpl.create(
           beaconChain = beaconChain,
-          elManager = executionLayerManager,
+          elManager = forkScheduleAwareExecutionLayerManager,
           peersHeadsProvider = peersHeadBlockProvider,
           validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
           peerLookup = p2pNetwork.getPeerLookup(),
@@ -206,7 +220,7 @@ class MaruAppFactory {
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(beaconChain),
           syncStatusProvider = syncControllerImpl,
-          isElOnlineProvider = { engineApiClient.isOnline().get() },
+          isElOnlineProvider = { forkScheduleAwareExecutionLayerManager.isOnline().get() },
         )
 
     val maru =
@@ -291,7 +305,13 @@ class MaruAppFactory {
       p2pConfig?.let {
         P2PNetworkImpl(
           privateKeyBytes = privateKey,
-          p2pConfig = p2pConfig,
+          p2pConfig =
+            NetworkHelper
+              .selectIpV4ForP2P(
+                targetIpV4 = p2pConfig.ipAddress,
+                excludeLoopback = true,
+              ).also { log.info("using p2p ip={}", it) }
+              .let { p2pConfig.copy(ipAddress = it) },
           chainId = chainId,
           serDe = RLPSerializers.SealedBeaconBlockSerializer,
           metricsFacade = metricsFacade,

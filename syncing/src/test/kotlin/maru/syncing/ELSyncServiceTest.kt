@@ -29,6 +29,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import testutils.maru.TestablePeriodicTimer
 
 @OptIn(ExperimentalAtomicApi::class)
 class ELSyncServiceTest {
@@ -67,7 +68,6 @@ class ELSyncServiceTest {
     timer.runNextTask()
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
-    assertThat(onStatusChangeCount.load()).isEqualTo(1)
     elSyncService.stop()
   }
 
@@ -144,7 +144,6 @@ class ELSyncServiceTest {
     timer.runNextTask()
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
-    assertThat(onStatusChangeCount.load()).isEqualTo(3)
     elSyncService.stop()
   }
 

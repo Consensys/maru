@@ -26,7 +26,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
   const val MIN_BLOCK_TIME = 1L
-  const val BLOCK_REBUILD_TIME = 50L
+  const val BLOCK_REBUILD_TIME = 100L
 
   fun buildTestBesu(
     genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS),
@@ -77,6 +77,7 @@ object BesuFactory {
 
   fun buildSwitchableBesu(
     switchTimestamp: Long = 0,
+    pragueTimestamp: Long = 0,
     expectedBlocksInClique: Int = 0,
     validator: Boolean,
   ): BesuNode {
@@ -91,8 +92,8 @@ object BesuFactory {
     val genesisFile =
       genesisContent
         .replace("\"shanghaiTime\": 0", "\"shanghaiTime\": $switchTimestamp")
-        .replace("\"cancunTime\": 0", "\"cancunTime\": $switchTimestamp")
-        .replace("\"pragueTime\": 0", "\"pragueTime\": $switchTimestamp")
+        .replace("\"cancunTime\": 0", "\"cancunTime\": $pragueTimestamp")
+        .replace("\"pragueTime\": 0", "\"pragueTime\": $pragueTimestamp")
         .replace("\"terminalTotalDifficulty\": 0", "\"terminalTotalDifficulty\": $ttd")
     return buildTestBesu(genesisFile = genesisFile, validator = validator)
   }
