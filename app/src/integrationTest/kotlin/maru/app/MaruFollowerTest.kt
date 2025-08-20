@@ -9,7 +9,7 @@
 package maru.app
 
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -80,7 +80,7 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorP2pPort,
-        syncPeerChainGranularity = 10u,
+        syncPeerChainGranularity = 1u,
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
@@ -241,7 +241,7 @@ class MaruFollowerTest {
   fun `Maru follower is able to complete initial syncing`() {
     followerStack.maruApp.stop()
     followerStack.maruApp.close()
-    val blocksToProduce = 5
+    val blocksToProduce = 20
     repeat(blocksToProduce) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(
@@ -270,7 +270,7 @@ class MaruFollowerTest {
 
   @Test
   fun `Maru follower is able to complete syncing after restarted`() {
-    val blocksToProduce = 5
+    val blocksToProduce = 20
     repeat(blocksToProduce) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(
@@ -311,11 +311,49 @@ class MaruFollowerTest {
     checkValidatorAndFollowerBlocks(2 * blocksToProduce)
   }
 
+  @Test
+  fun `Maru follower is able to complete syncing after disconnect peers`() {
+    val blocksToProduce = 20
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    // This is here mainly to wait until block propagation is complete
+    checkValidatorAndFollowerBlocks(blocksToProduce)
+
+    val followerP2PNetwork = followerStack.maruApp.p2pNetwork()
+    val peers = followerP2PNetwork.getPeers()
+    peers.forEach {
+      followerP2PNetwork.dropPeer(it)
+    }
+
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+    checkNetworkStackBlocksProduced(validatorStack, 2 * blocksToProduce)
+    checkNetworkStackBlocksProduced(followerStack, blocksToProduce)
+    peers.forEach {
+      followerP2PNetwork.addPeer("${it.address}/p2p/${it.nodeId}")
+    }
+    checkNetworkStackBlocksProduced(followerStack, 2 * blocksToProduce)
+  }
+
   private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
     await
       .pollDelay(100.milliseconds.toJavaDuration())
-      // we need big timeout due to CI resources sometimes being slow
-      .timeout(1.minutes.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
       .untilAsserted {
         val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
         val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)
@@ -329,7 +367,7 @@ class MaruFollowerTest {
   ) {
     await
       .pollDelay(100.milliseconds.toJavaDuration())
-      .timeout(1.minutes.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
       .untilAsserted {
         val blocksOnStack = stack.besuNode.getMinedBlocks(blocksProduced)
         assertThat(blocksOnStack.size).isEqualTo(blocksProduced)
