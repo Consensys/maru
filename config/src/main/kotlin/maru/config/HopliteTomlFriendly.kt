@@ -33,24 +33,23 @@ data class ApiEndpointDto(
   val jwtSecretPath: String? = null,
   val timeout: Duration = 1.minutes,
 ) {
-  fun domainFriendly(endlessRetries: Boolean = false): ApiEndpointConfig =
-    if (endlessRetries) {
-      ApiEndpointConfig(
-        endpoint = endpoint,
-        jwtSecretPath = jwtSecretPath,
-        requestRetries =
-          RetryConfig.endlessRetry(
-            backoffDelay = 1.seconds,
-            failuresWarningThreshold = 3u,
-          ),
-      )
-    } else {
-      ApiEndpointConfig(
-        endpoint = endpoint,
-        jwtSecretPath = jwtSecretPath,
-        requestRetries = RetryConfig.noRetries,
-      )
-    }
+  fun domainFriendly(endlessRetries: Boolean = false): ApiEndpointConfig {
+    val retries =
+      if (endlessRetries) {
+        RetryConfig.endlessRetry(
+          backoffDelay = 1.seconds,
+          failuresWarningThreshold = 3u,
+        )
+      } else {
+        RetryConfig.noRetries
+      }
+    return ApiEndpointConfig(
+      endpoint = endpoint,
+      jwtSecretPath = jwtSecretPath,
+      requestRetries = retries,
+      timeout = timeout,
+    )
+  }
 }
 
 data class QbftOptionsDtoToml(

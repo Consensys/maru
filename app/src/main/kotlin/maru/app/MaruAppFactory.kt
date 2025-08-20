@@ -18,6 +18,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
 import kotlin.io.path.exists
+import kotlin.time.Duration.Companion.minutes
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.kotlin.encodeHex
@@ -72,6 +73,7 @@ import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MaruAppFactory {
   private val log = LogManager.getLogger(this.javaClass)
+  private val defaultTimeout = 1.minutes
 
   fun create(
     config: MaruConfig,
@@ -140,7 +142,8 @@ class MaruAppFactory {
       )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
-        config.validatorElNode.ethApiEndpoint,
+        apiEndpointConfig = config.validatorElNode.ethApiEndpoint,
+        timeout = defaultTimeout,
       )
     val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
     val latestElBlockMetadataCache =
@@ -150,6 +153,7 @@ class MaruAppFactory {
     val engineApiWeb3jClient =
       Helpers.createWeb3jClient(
         apiEndpointConfig = config.validatorElNode.engineApiEndpoint,
+        timeout = defaultTimeout,
       )
 
     val elManagerMap =

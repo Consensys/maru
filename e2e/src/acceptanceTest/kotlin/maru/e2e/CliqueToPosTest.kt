@@ -413,6 +413,7 @@ class CliqueToPosTest {
     val web3JEngineApiClient =
       Helpers.createWeb3jClient(
         apiEndpointConfig = engineApiConfig,
+        timeout = 1.minutes,
       )
     val engineApiClient =
       Helpers.buildExecutionEngineClient(

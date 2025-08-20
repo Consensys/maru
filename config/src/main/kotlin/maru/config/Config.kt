@@ -29,7 +29,7 @@ data class ApiEndpointConfig(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
   val requestRetries: RetryConfig = RetryConfig.noRetries,
-  val timeout: Duration = 1.minutes
+  val timeout: Duration = 1.minutes,
 )
 
 data class FollowersConfig(

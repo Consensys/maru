@@ -139,8 +139,16 @@ class HopliteFriendlinessTest {
   private val followersConfig =
     FollowersConfig(
       mapOf(
-        "follower1" to ApiEndpointConfig(URI.create("http://localhost:1234").toURL(), "/secret/path"),
-        "follower2" to ApiEndpointConfig(URI.create("http://localhost:4321").toURL()),
+        "follower1" to
+          ApiEndpointConfig(
+            endpoint = URI.create("http://localhost:1234").toURL(),
+            jwtSecretPath = "/secret/path",
+          ),
+        "follower2" to
+          ApiEndpointConfig(
+            endpoint = URI.create("http://localhost:4321").toURL(),
+            timeout = 25.seconds,
+          ),
       ),
     )
   private val emptyFollowersConfig = FollowersConfig(emptyMap())
