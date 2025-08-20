@@ -31,7 +31,7 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-large ]
-    name: Consensus client tests
+    name: chaos tests
     # useful for debugging flaky tests.
     #    strategy:
     #      matrix:
