@@ -14,19 +14,17 @@ include k3s.mk
 
 chaos-deploy-chaos-mesh-and-linea:
 	@set -e; \
-	if [ -z "$(maru_image)" ]; then \
-		pid1=""; \
-	else \
+	pid1=""; \
+	if [ "$(maru_image)" ]; then \
 		case "$(maru_image)" in \
-					*local) \
-						echo "maru_image ends with 'local' -> build/import local image"; \
-						$(MAKE) build-and-import-maru-image & pid1=$$!; \
-						;; \
-					*) \
-						echo "Using provided maru_image=$$maru_image"; \
-						pid1=""; \
-						;; \
-				esac; \
+			*local) \
+				echo "maru_image ends with 'local' -> build/import local image"; \
+				$(MAKE) build-and-import-maru-image & pid1=$$!; \
+				;; \
+			*) \
+				echo "Using provided maru_image=$$maru_image"; \
+				;; \
+		esac; \
 	fi; \
 	$(MAKE) chaos-mesh-install & pid2=$$!; \
 	$(MAKE) helm-redeploy-besu & pid3=$$!; \
@@ -75,18 +73,3 @@ build-and-import-maru-image:
 build-and-redeploy-maru:
 	@$(MAKE) build-and-import-maru-image
 	@$(MAKE) helm-redeploy-maru
-
-
-stepA:
-	@echo "Running step A"; sleep 2
-
-stepB:
-	@echo "Running step B"; sleep 3
-
-parallel-two-steps:
-	@set -e; \
-	$(MAKE) stepA & pid1=$$!; \
-	$(MAKE) stepB & pid2=$$!; \
-	wait $$pid1 || exit 1; \
-	wait $$pid2 || exit 1; \
-	echo "Both steps completed successfully"
