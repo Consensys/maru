@@ -18,6 +18,7 @@ import linea.domain.RetryConfig
 import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
@@ -71,7 +72,7 @@ class HopliteFriendlinessTest {
 
     [follower-engine-apis]
     follower1 = { endpoint = "http://localhost:1234", jwt-secret-path = "/secret/path" }
-    follower2 = { endpoint = "http://localhost:4321" }
+    follower2 = { endpoint = "http://localhost:4321", timeout = "25 seconds" }
     """.trimIndent()
   private val dataPath = Path("/some/path")
   private val privateKeyPath = Path("/private-key/path")
@@ -128,18 +129,27 @@ class HopliteFriendlinessTest {
     )
   private val follower1 =
     ApiEndpointDto(
-      URI.create("http://localhost:1234").toURL(),
+      endpoint = URI.create("http://localhost:1234").toURL(),
       jwtSecretPath = "/secret/path",
     )
   private val follower2 =
     ApiEndpointDto(
-      URI.create("http://localhost:4321").toURL(),
+      endpoint = URI.create("http://localhost:4321").toURL(),
+      timeout = 25.seconds,
     )
   private val followersConfig =
     FollowersConfig(
       mapOf(
-        "follower1" to ApiEndpointConfig(URI.create("http://localhost:1234").toURL(), "/secret/path"),
-        "follower2" to ApiEndpointConfig(URI.create("http://localhost:4321").toURL()),
+        "follower1" to
+          ApiEndpointConfig(
+            endpoint = URI.create("http://localhost:1234").toURL(),
+            jwtSecretPath = "/secret/path",
+          ),
+        "follower2" to
+          ApiEndpointConfig(
+            endpoint = URI.create("http://localhost:4321").toURL(),
+            timeout = 25.seconds,
+          ),
       ),
     )
   private val emptyFollowersConfig = FollowersConfig(emptyMap())
@@ -202,6 +212,27 @@ class HopliteFriendlinessTest {
         syncing = syncingConfig,
       ),
     )
+  }
+
+  @Test
+  fun `throws when el validator is also specified as follower`() {
+    val exception =
+      assertThrows<IllegalArgumentException> {
+        MaruConfig(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+          allowEmptyBlocks = false,
+          persistence = persistence,
+          qbftOptions = qbftOptions.toDomain(),
+          p2pConfig = p2pConfig,
+          validatorElNode = payloadValidator.domainFriendly(),
+          followers = FollowersConfig(mapOf("el-validator" to payloadValidator.engineApiEndpoint.domainFriendly())),
+          observabilityOptions = ObservabilityOptions(port = 9090u),
+          linea = null,
+          apiConfig = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
+        )
+      }
+    assertThat(exception.message).isEqualTo("Validator EL node cannot be defined as a follower")
   }
 
   @Test
