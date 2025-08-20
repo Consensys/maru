@@ -6,11 +6,13 @@ service:
   type: ClusterIP
   ports:
     - name: api
-      port: 8080
+      port: 5060
     - name: p2p
-      port: 3322
+      port: 9000
+      protocol: TCP
     - name: discovery
-      port: 3323
+      port: 9000
+      protocol: UDP
     - name: metrics
       port: 9545
 persistence:

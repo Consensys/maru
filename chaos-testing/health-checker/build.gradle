@@ -23,10 +23,9 @@ dependencies {
 
   implementation("org.web3j:core")
 
-  implementation("org.http4k:http4k-core:6.15.1.0")
-  implementation("org.http4k:http4k-client-okhttp:6.15.1.0")
-  implementation("org.http4k:http4k-format-jackson:6.15.1.0")
-  implementation("org.http4k:http4k-connect-openai:5.47.0.0")
+  implementation("org.http4k:http4k-core")
+  implementation("org.http4k:http4k-client-okhttp")
+  implementation("org.http4k:http4k-format-jackson")
 }
 
 sourceSets {
