@@ -35,14 +35,12 @@ chaos-deploy-chaos-mesh-and-linea:
 
 chaos-full-reload:
 	@$(MAKE) k3s-reload
-	@sleep 3
 	@$(MAKE) chaos-deploy-chaos-mesh-and-linea
 	@$(MAKE) chaos-experiment-workflow-and-wait # runs workflow-linea-resilience.yaml and waits for it to finish
 	@$(MAKE) chaos-health-check
 
 chaos-full-reload-with-local-maru-image:
 	@$(MAKE) k3s-reload
-	@sleep 3
 	@$(MAKE) chaos-deploy-chaos-mesh-and-linea maru_image=consensys/maru:local
 	@$(MAKE) chaos-experiment-workflow-and-wait # runs workflow-linea-resilience.yaml and waits for it to finish
 	@$(MAKE) chaos-health-check
@@ -60,6 +58,10 @@ chaos-redeploy-and-run-experiment:
 	@$(MAKE) wait-maru-follower-is-syncing
 	@sleep 20 # wait for some time to ensure nodes are cruising and ready for chaos experiments
 	@$(MAKE) chaos-experiment-podkill-besu-nodes
+
+chaos-experiment-workflow-and-health-check:
+	@$(MAKE) chaos-experiment-workflow-and-wait
+	@$(MAKE) chaos-health-check
 
 build-maru-image:
 	@echo "Building Maru image"

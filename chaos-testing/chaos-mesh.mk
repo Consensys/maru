@@ -52,10 +52,6 @@ wait-experiment-done:
 	done; \
 	echo "Timeout ($$timeout s) waiting for workflow $(experiment_name)."; exit 1
 
-chaos-experiment-workflow-2:
-	-@kubectl delete -f experiments/workflow-linea-resilience-2.yaml
-	@kubectl apply -f experiments/workflow-linea-resilience-2.yaml
-
 chaos-experiment-workflow-and-wait:
 	@$(MAKE) chaos-experiment-workflow
 	@$(MAKE) wait-experiment-done experiment_name=linea-resilience
