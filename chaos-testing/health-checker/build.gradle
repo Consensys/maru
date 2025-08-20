@@ -6,22 +6,12 @@ plugins {
 }
 
 dependencies {
-  implementation project(":executionlayer")
-  // For the syncing logic
-  implementation project(":jvm-libs:mappers")
   implementation(project(":jvm-libs:extensions"))
   implementation project(":jvm-libs:test-utils")
+  implementation("build.linea.internal:file-system")
   implementation("build.linea.internal:web3j-extensions") {
     exclude group: "build.linea", module: "besu-libs"
   }
-  implementation("build.linea.internal:file-system")
-
-  implementation "tech.pegasys.teku.internal:executionclient"
-  implementation "tech.pegasys.teku.internal:time"
-  implementation "tech.pegasys.teku.internal:ethereum-events"
-  implementation "tech.pegasys.teku.internal:spec"
-
-  implementation("org.web3j:core")
 
   implementation("org.http4k:http4k-core")
   implementation("org.http4k:http4k-client-okhttp")
