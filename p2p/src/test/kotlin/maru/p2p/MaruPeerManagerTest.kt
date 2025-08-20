@@ -21,10 +21,11 @@ import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.networking.p2p.connection.PeerPools
-import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
+import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.reputation.DefaultReputationManager
+import tech.pegasys.teku.networking.p2p.network.P2PNetwork as TekuP2PNetwork
 
 class MaruPeerManagerTest {
   companion object {
@@ -190,8 +191,8 @@ class MaruPeerManagerTest {
     val maruPeer = mock<MaruPeer>()
     val p2pConfig = mock<P2P>()
     val reputationManager = mock<DefaultReputationManager>()
-    val p2pNetwork = mock<tech.pegasys.teku.networking.p2p.network.P2PNetwork<Peer>>()
-    val address = mock<tech.pegasys.teku.networking.p2p.network.PeerAddress>()
+    val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
+    val address = mock<PeerAddress>()
 
     whenever(peer.id).thenReturn(nodeId)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
@@ -223,8 +224,8 @@ class MaruPeerManagerTest {
     val maruPeer = mock<MaruPeer>()
     val p2pConfig = mock<P2P>()
     val reputationManager = mock<DefaultReputationManager>()
-    val p2pNetwork = mock<tech.pegasys.teku.networking.p2p.network.P2PNetwork<Peer>>()
-    val address = mock<tech.pegasys.teku.networking.p2p.network.PeerAddress>()
+    val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
+    val address = mock<PeerAddress>()
 
     whenever(peer.id).thenReturn(nodeId)
     whenever(peer.address).thenReturn(address)
@@ -256,8 +257,8 @@ class MaruPeerManagerTest {
     val maruPeer = mock<MaruPeer>()
     val p2pConfig = mock<P2P>()
     val reputationManager = mock<DefaultReputationManager>()
-    val p2pNetwork = mock<tech.pegasys.teku.networking.p2p.network.P2PNetwork<Peer>>()
-    val address = mock<tech.pegasys.teku.networking.p2p.network.PeerAddress>()
+    val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
+    val address = mock<PeerAddress>()
 
     whenever(peer.id).thenReturn(nodeId)
     whenever(peer.address).thenReturn(address)
@@ -279,44 +280,5 @@ class MaruPeerManagerTest {
 
     verify(maruPeerFactory).createMaruPeer(peer)
     assertThat(manager.getPeer(nodeId)).isEqualTo(maruPeer)
-  }
-
-  @Test
-  fun `reports failed connection to reputation manager when too many peers`() {
-    val nodeId1 = mock<NodeId>()
-    val nodeId2 = mock<NodeId>()
-    val peer1 = mock<Peer>()
-    val peer2 = mock<Peer>()
-    val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
-    val p2pConfig = mock<P2P>()
-    val reputationManager = mock<DefaultReputationManager>()
-    val address = mock<tech.pegasys.teku.networking.p2p.network.PeerAddress>()
-    val p2pNetwork = mock<tech.pegasys.teku.networking.p2p.network.P2PNetwork<Peer>>()
-
-    whenever(peer1.id).thenReturn(nodeId1)
-    whenever(peer2.id).thenReturn(nodeId2)
-    whenever(peer1.address).thenReturn(address)
-    whenever(peer2.address).thenReturn(address)
-    whenever(maruPeerFactory.createMaruPeer(any())).thenReturn(maruPeer)
-    whenever(p2pConfig.maxPeers).thenReturn(1)
-    whenever(p2pConfig.statusUpdate).thenReturn(mock<P2P.StatusUpdateConfig>())
-    whenever(reputationManager.isConnectionInitiationAllowed(address)).thenReturn(true)
-    whenever(p2pNetwork.peerCount).thenReturn(2) // Simulate too many peers
-
-    val manager =
-      MaruPeerManager(
-        maruPeerFactory = maruPeerFactory,
-        p2pConfig = p2pConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
-      )
-    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
-    manager.onConnect(peer1)
-    manager.onConnect(peer2)
-
-    verify(reputationManager).reportInitiatedConnectionFailed(address)
-    verify(peer2).disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
-    verify(maruPeerFactory, never()).createMaruPeer(peer2)
   }
 }

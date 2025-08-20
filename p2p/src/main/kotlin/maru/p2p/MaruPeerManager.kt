@@ -128,7 +128,6 @@ class MaruPeerManager(
     val isAStaticPeer = isStaticPeer(peer.id)
     if (!isAStaticPeer && peerCount >= maxPeers) {
       // TODO: We could disconnect another peer here, based on some criteria
-      reputationManager.reportInitiatedConnectionFailed(peer.address)
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
       return
     }

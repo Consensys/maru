@@ -396,9 +396,9 @@ class P2PTest {
           ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pNetworkImpl2")
       val maruPeer1 =
         DefaultMaruPeer(
-          peer1,
-          rpcMethods,
-          statusMessageFactory,
+          delegatePeer = peer1,
+          rpcMethods = rpcMethods,
+          statusMessageFactory = statusMessageFactory,
           p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
         )
 
