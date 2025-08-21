@@ -64,7 +64,7 @@ class MaruFollowerTest {
     // Get the validator's p2p port after it's started
     val validatorP2pPort = validatorStack.p2pPort
 
-    // Create follower Maru apps with the validator's p2p port for static peering
+    // Create follower Maru app with the validator's p2p port for static peering
     val followerMaruApp =
       maruFactory.buildTestMaruFollowerWithP2pPeering(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
