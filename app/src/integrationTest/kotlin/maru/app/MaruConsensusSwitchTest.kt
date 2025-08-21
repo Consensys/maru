@@ -9,7 +9,6 @@
 package maru.app
 
 import java.io.File
-import maru.config.SyncingConfig
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -21,9 +20,8 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.MethodSource
 import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTime
@@ -37,9 +35,6 @@ import testutils.maru.awaitTillMaruHasPeers
 class MaruConsensusSwitchTest {
   companion object {
     private const val VANILLA_EXTRA_DATA_LENGTH = 32
-
-    @JvmStatic
-    fun enumeratingSyncingConfigs(): List<SyncingConfig> = MaruFactory.enumeratingSyncingConfigs()
   }
 
   private lateinit var cluster: Cluster
@@ -98,11 +93,8 @@ class MaruConsensusSwitchTest {
     blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
   }
 
-  @ParameterizedTest
-  @MethodSource("enumeratingSyncingConfigs")
-  fun `Follower node correctly switches from Clique to POS after peering with Sequencer validator`(
-    syncingConfig: SyncingConfig,
-  ) {
+  @Test
+  fun `Follower node correctly switches from Clique to POS after peering with Sequencer validator`() {
     val stackStartupMargin = 30
     val expectedBlocksInClique = 5
     val totalBlocksToProduce = expectedBlocksInClique * 4
@@ -153,7 +145,6 @@ class MaruConsensusSwitchTest {
         engineApiRpc = followerEngineRpcUrl,
         dataDir = followerMaruTmpDir.toPath(),
         validatorPortForStaticPeering = validatorMaruNode.p2pPort(),
-        syncingConfig = syncingConfig,
       )
     followerMaruNode.start()
 

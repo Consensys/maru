@@ -192,7 +192,7 @@ class MaruAppFactory {
           forksSchedule = beaconGenesisConfig,
           elManagerMap = elManagerMap,
           peersHeadsProvider = peersHeadBlockProvider,
-          targetChainHeadCalculator = setupSyncTargetSelector(config.syncing.syncTargetSelection),
+          targetChainHeadCalculator = createSyncTargetSelector(config.syncing.syncTargetSelection),
           validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
           peerLookup = p2pNetwork.getPeerLookup(),
           besuMetrics = besuMetricsSystemAdapter,
@@ -327,7 +327,7 @@ class MaruAppFactory {
         NoOpP2PNetwork
       }
 
-    private fun setupSyncTargetSelector(config: SyncingConfig.SyncTargetSelection): SyncTargetSelector =
+    private fun createSyncTargetSelector(config: SyncingConfig.SyncTargetSelection): SyncTargetSelector =
       when (config) {
         is SyncingConfig.SyncTargetSelection.Highest ->
           HighestHeadTargetSelector()

@@ -61,8 +61,7 @@ class MaruFactory(
     val defaultSyncingConfig =
       SyncingConfig(
         peerChainHeightPollingInterval = 1.seconds,
-        syncTargetSelection =
-          SyncTargetSelection.Highest,
+        syncTargetSelection = SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
         useUnconditionalRandomDownloadPeer = false,
       )
@@ -70,7 +69,7 @@ class MaruFactory(
     fun enumeratingSyncingConfigs(): List<SyncingConfig> {
       val syncTargetSelectionForMostFrequent =
         SyncTargetSelection.MostFrequent(
-          peerChainHeightGranularity = 1U,
+          peerChainHeightGranularity = 10U,
         )
       return listOf(
         defaultSyncingConfig,
@@ -412,8 +411,11 @@ class MaruFactory(
     engineApiRpc: String,
     dataDir: Path,
     overridingP2PNetwork: P2PNetwork? = null,
+    overridingFinalizationProvider: FinalizationProvider? = null,
+    overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     p2pPort: UInt = 0u,
     allowEmptyBlocks: Boolean = false,
+    followers: FollowersConfig = FollowersConfig(emptyMap()),
     syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
     val beaconGenesisConfig = beaconGenesisConfig

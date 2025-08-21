@@ -24,14 +24,14 @@ import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
 interface DownloadPeerProvider {
-  fun getDownloadingPeer(targetBlockNumber: ULong): MaruPeer
+  fun getDownloadingPeer(downloadRangeEndBlockNumber: ULong): MaruPeer
 }
 
 class DownloadPeerProviderImpl(
   private val peerLookup: PeerLookup,
   private val useUnconditionalRandomSelection: Boolean,
 ) : DownloadPeerProvider {
-  override fun getDownloadingPeer(targetBlockNumber: ULong): MaruPeer =
+  override fun getDownloadingPeer(downloadRangeEndBlockNumber: ULong): MaruPeer =
     peerLookup
       .getPeers()
       .let {
@@ -39,7 +39,7 @@ class DownloadPeerProviderImpl(
           it.filter { peer ->
             peer.getStatus() != null &&
               peer.getStatus()!!.latestBlockNumber >=
-              targetBlockNumber
+              downloadRangeEndBlockNumber
           }
         } else {
           it
