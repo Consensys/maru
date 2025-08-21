@@ -1,16 +1,28 @@
 .SILENT:
 
-helm-clean-releases:
-	@echo "Cleaning up Helm releases"
+helm-clean-pvcs:
+	@echo "Cleaning up Persistent Volumes Claims and correspondent PV"
+	-@KUBECONFIG=$(KUBECONFIG) kubectl delete pvc -l app.kubernetes.io/component=$(component) >/dev/null 2>&1
+	-@KUBECONFIG=$(KUBECONFIG) kubectl get pv --no-headers 2>/dev/null | awk '$$5=="Available" {print $$1}' | xargs -r kubectl delete pv >/dev/null 2>&1
+
+helm-clean-besu-releases:
+	@echo "Cleaning up Besu Helm releases"
 	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-sequencer >/dev/null 2>&1
 	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower >/dev/null 2>&1
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-pvcs component=besu
+
+helm-clean-maru-releases:
+	@echo "Cleaning up MARU releases"
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator >/dev/null 2>&1
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-bootnode-0 >/dev/null 2>&1
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1 >/dev/null 2>&1
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2 >/dev/null 2>&1
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3 >/dev/null 2>&1
-	KUBECONFIG=$(KUBECONFIG) kubectl delete pvc --all
-	KUBECONFIG=$(KUBECONFIG) kubectl delete pv --all
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-pvcs component=maru
+
+helm-clean-linea-releases:
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-besu-releases
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-maru-releases
 
 wait_pods:
 	@if [ -z "$(pod_name)" ] || [ -z "$(pod_count)" ]; then \
@@ -43,18 +55,18 @@ helm-deploy-besu:
 		@$(MAKE) wait_pods pod_name=besu-follower pod_count=3
 
 helm-redeploy-besu:
-		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-sequencer
-		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower
+		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-sequencer >/dev/null 2>&1
+		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower >/dev/null 2>&1
 		@sleep 3 # Wait for a second to ensure the previous release is fully uninstalled
 		@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-deploy-besu
 
 IMAGE_ARG=$(if $(maru_image),--set image.name=$(maru_image),)
 helm-redeploy-maru:
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-0
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-0 >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1 >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2 >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3 >/dev/null 2>&1
 	@sleep 2 # Wait for a second to ensure the previous release is fully uninstalled
 	@echo "Deploying Maru Nodes: IMAGE_ARG='$(IMAGE_ARG)'"
 	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-bootnode-0 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-bootnode-0.yaml --namespace default $(IMAGE_ARG);
@@ -68,14 +80,25 @@ helm-redeploy-maru:
 	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-3 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-3.yaml --namespace default --set bootnodes=$$BOOTNODE_ENR $(IMAGE_ARG)
 	@$(MAKE) wait_pods pod_name=maru-validator pod_count=1
 
-helm-redeploy-maru-and-besu:
-	@echo "Redeploying Besu and Maru (maru_image=$(maru_image))"
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-releases
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-deploy-besu
-	# Wait for Besu to be fully deployed,
-	# otherwise Maru will fail to start because it cannot connect to Besu
-	# then will miss P2P messages from validator
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-redeploy-maru $(if $(maru_image),maru_image=$(maru_image))
+helm-redeploy-linea:
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-linea-releases
+	@set -e; \
+	pid1=""; \
+	if [ "$(maru_image)" ]; then \
+		case "$(maru_image)" in \
+			*local) \
+				echo "maru_image ends with 'local' -> build/import local image"; \
+				$(MAKE) build-and-import-maru-image & pid1=$$!; \
+				;; \
+			*) \
+				echo "Using provided maru_image=$(maru_image)"; \
+				;; \
+		esac; \
+	fi; \
+	$(MAKE) helm-redeploy-besu & pid2=$$!; \
+	if [ -n "$$pid1" ]; then wait $$pid1 || exit 1; fi; \
+	wait $$pid2 || exit 1; \
+	$(MAKE) helm-redeploy-maru maru_image=$(if $(maru_image),$(maru_image))
 
 wait-maru-follower-is-syncing:
 	@echo "Waiting for Maru follower to be ready..."
@@ -87,6 +110,19 @@ wait-maru-follower-is-syncing:
 	@until kubectl logs -n default -l app.kubernetes.io/instance=maru-bootnode-0 | grep -q 'block received'; do \
 		sleep 1; \
 	done
+
+build-maru-image:
+	@echo "Building Maru image"
+	cd .. && ./gradlew :app:installDist
+	cd .. && docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./app/build/libs/ -t consensys/maru:local
+
+build-and-import-maru-image:
+	@$(MAKE) build-maru-image
+	@$(MAKE) k3s-import-local-maru-image
+
+build-and-redeploy-maru:
+	@$(MAKE) build-and-import-maru-image
+	@$(MAKE) helm-redeploy-maru
 
 # Port-forward component pods exposing each pod's <port> on incremental local ports
 # Usage:

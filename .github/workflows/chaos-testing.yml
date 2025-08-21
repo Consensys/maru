@@ -90,8 +90,9 @@ jobs:
           cd chaos-testing
           mkdir -p ~/.kube
           export KUBECONFIG=~/.kube/k3s-server
+          make k3s-reload    # installs k3s K8S implementation
           kubectl config set-context --current --namespace=default
-          make chaos-full-reload-with-local-maru-image
+          make chaos-redeploy-linea-and-run-experiment maru_image=consensys/maru:local
 
       # SSH debugging session - on failure (if requested)
       - name: Setup tmate session (on failure)

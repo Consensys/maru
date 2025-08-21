@@ -1,5 +1,4 @@
 chaos-mesh-install:
-	#TODO: refactor to run helm once
 	@helm repo add chaos-mesh https://charts.chaos-mesh.org
 	@helm repo update
 	@helm install chaos-mesh chaos-mesh/chaos-mesh \
@@ -13,7 +12,6 @@ chaos-mesh-install:
 		--set dashboard.create=true \
 		--set dashboard.securityMode=false \
 		--set dashboard.service.type=NodePort
-	@kubectl get pods -n chaos-mesh -l app.kubernetes.io/instance=chaos-mesh
 
 chaos-mesh-uninstall:
 	@kubectl delete ns chaos-mesh
