@@ -88,7 +88,7 @@ class NodesSyncTest {
         logLevel = Level.INFO,
       )
 
-      fail("Nodes are out of sync: maxHead=$maxHead, minHead=$minHead nodeWithMinHead=${nodeWithMinHead.label}")
+      fail { "Nodes are out of sync: maxHead=$maxHead, minHead=$minHead nodeWithMinHead=${nodeWithMinHead.label}" }
     } else {
       logNodesHeads(
         nodesHeads,
