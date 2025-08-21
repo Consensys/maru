@@ -53,12 +53,11 @@ helm-redeploy-maru:
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2
 	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3
 	@sleep 2 # Wait for a second to ensure the previous release is fully uninstalled
-	@echo "Deploying Maru Nodes"
-	@echo "IMAGE_ARG='$(IMAGE_ARG)'";
-	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-0 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-0.yaml $(IMAGE_ARG);
-	@$(MAKE) wait_pods pod_name=maru-follower-0 pod_count=1
-	@$(MAKE) wait-for-log-entry pod_name=maru-follower-0-0 log_entry="enr"
-	@BOOTNODE_ENR=$$(kubectl logs maru-follower-0-0 | grep -Ev '0.0.0.0|127.0.0.1' | grep -o 'enr=[^ ]*' | head -1 | cut -d= -f2); \
+	@echo "Deploying Maru Nodes: IMAGE_ARG='$(IMAGE_ARG)'"
+	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-bootnode-0 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-bootnode-0.yaml $(IMAGE_ARG);
+	@$(MAKE) wait_pods pod_name=maru-bootnode-0 pod_count=1
+	@$(MAKE) wait-for-log-entry pod_name=maru-bootnode-0-0 log_entry="enr"
+	@BOOTNODE_ENR=$$(kubectl logs maru-bootnode-0-0 | grep -Ev '0.0.0.0|127.0.0.1' | grep -o 'enr=[^ ]*' | head -1 | cut -d= -f2); \
 	echo "Bootnode ENR: $$BOOTNODE_ENR"; \
 	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-validator ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-validator.yaml --set bootnodes=$$BOOTNODE_ENR $(IMAGE_ARG) ; \
 	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-1.yaml --set bootnodes=$$BOOTNODE_ENR $(IMAGE_ARG) ; \
@@ -77,12 +76,12 @@ helm-redeploy-maru-and-besu:
 
 wait-maru-follower-is-syncing:
 	@echo "Waiting for Maru follower to be ready..."
-	@until kubectl get pods -n default -l app.kubernetes.io/instance=maru-follower-0 | grep -q '1/1'; do \
+	@until kubectl get pods -n default -l app.kubernetes.io/instance=maru-bootnode-0 | grep -q '1/1'; do \
 		sleep 1; \
 	done
 	@echo "Maru follower is ready."
-	@echo "Waiting for 'block received' message in maru-follower-0 pod..."
-	@until kubectl logs -n default -l app.kubernetes.io/instance=maru-follower-0 | grep -q 'block received'; do \
+	@echo "Waiting for 'block received' message in maru-bootnode-0 pod..."
+	@until kubectl logs -n default -l app.kubernetes.io/instance=maru-bootnode-0 | grep -q 'block received'; do \
 		sleep 1; \
 	done
 
