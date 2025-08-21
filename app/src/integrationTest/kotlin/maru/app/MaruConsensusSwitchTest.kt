@@ -89,6 +89,7 @@ class MaruConsensusSwitchTest {
     val shanghaiSwitchBlock = blocks.findSwitchBlock(shanghaiTimestamp)!!
     blocks.subList(0, shanghaiSwitchBlock).verifyBlockTime()
     val pragueSwitchBlock = blocks.findSwitchBlock(pragueTimestamp)!!
+    blocks.subList(shanghaiSwitchBlock, pragueSwitchBlock).verifyBlockTime()
     blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
   }
 
