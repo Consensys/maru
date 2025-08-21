@@ -8,11 +8,29 @@ on:
         type: string
         default: 'true'
         description: 'when false, skips the job'
+      enable_ssh_debug:
+        required: false
+        type: boolean
+        default: false
+        description: 'Enable SSH debugging via tmate'
+      ssh_debug_on_failure:
+        required: false
+        type: boolean
+        default: false
+        description: 'Enable SSH debugging on test failure'
   workflow_call:
     inputs:
       consensus-client-changed:
         required: true
         type: string
+      enable_ssh_debug:
+        required: false
+        type: boolean
+        default: false
+      ssh_debug_on_failure:
+        required: false
+        type: boolean
+        default: false
     secrets:
       DOCKERHUB_USERNAME:
         required: false
@@ -56,12 +74,31 @@ jobs:
         with:
           version: 'v3.18.3'
         id: install
+
+      # SSH debugging session - before tests (if explicitly requested)
+      - name: Setup tmate session (pre-test)
+        if: ${{ inputs.enable_ssh_debug == true }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 30
+        with:
+          limit-access-to-actor: true
+
       - name: Run chaos tests
+        id: chaos-tests
+        continue-on-error: ${{ inputs.ssh_debug_on_failure == true }}
         run: |
           cd chaos-testing
           mkdir -p ~/.kube
           export KUBECONFIG=~/.kube/k3s-server
           make chaos-full-reload-with-local-maru-image
+
+      # SSH debugging session - on failure (if requested)
+      - name: Setup tmate session (on failure)
+        if: ${{ failure() && inputs.ssh_debug_on_failure == true }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 30
+        with:
+          limit-access-to-actor: true
 
       - name: Store reports
         if: failure()
