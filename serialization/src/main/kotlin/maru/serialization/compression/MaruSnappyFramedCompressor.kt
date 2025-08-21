@@ -91,8 +91,9 @@ class MaruSnappyFramedCompressor : MaruCompressor {
 
   override fun decompress(payload: ByteArray): ByteArray {
     val compressedByteBuf = payload.toByteBuf()
+    var decompressedByteBuf: ByteBuf? = null
     try {
-      val decompressedByteBuf =
+      decompressedByteBuf =
         decompress(compressedByteBuf)
 
       if (decompressedByteBuf == null) {
@@ -101,6 +102,7 @@ class MaruSnappyFramedCompressor : MaruCompressor {
       return decompressedByteBuf.toByteArray()
     } finally {
       compressedByteBuf.release()
+      decompressedByteBuf?.release()
     }
   }
 }
