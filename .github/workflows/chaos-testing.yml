@@ -80,7 +80,7 @@ jobs:
         if: ${{ inputs.enable_ssh_debug }}
         uses: lhotari/action-upterm@v1
         with:
-          ## If no one connects after 5 minutes, shut down server.
+          ## If no one connects shut down ssh server after timeout.
           wait-timeout-minutes: 20
 
       - name: Run chaos tests
@@ -100,7 +100,7 @@ jobs:
         if: ${{ failure() && inputs.ssh_debug_on_failure == true }}
         uses: lhotari/action-upterm@v1
         with:
-          ## If no one connects after 5 minutes, shut down server.
+          ## If no one connects shut down ssh server after timeout.
           wait-timeout-minutes: 20
 
       - name: Store reports
