@@ -54,6 +54,8 @@ jobs:
       - name: Run chaos tests
         run: |
           cd chaos-testing
+          mkdir -p ~/.kube
+          export KUBECONFIG=~/.kube/k3s-server
           make chaos-full-reload-with-local-maru-image
 
       - name: Store reports
