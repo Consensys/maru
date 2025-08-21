@@ -9,10 +9,10 @@ on:
         default: 'true'
         description: 'when false, skips the job'
       enable_ssh_debug:
+        description: 'Enable SSH debugging before tests start'
         required: false
         type: boolean
         default: false
-        description: 'Enable SSH debugging via tmate'
       ssh_debug_on_failure:
         required: false
         type: boolean
@@ -76,12 +76,12 @@ jobs:
         id: install
 
       # SSH debugging session - before tests (if explicitly requested)
-      - name: Setup tmate session (pre-test)
-        if: ${{ inputs.enable_ssh_debug == true }}
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 30
+      - name: Setup upterm session (pre-test)
+        if: ${{ inputs.enable_ssh_debug }}
+        uses: lhotari/action-upterm@v1
         with:
-          limit-access-to-actor: true
+          ## If no one connects after 5 minutes, shut down server.
+          wait-timeout-minutes: 20
 
       - name: Run chaos tests
         id: chaos-tests
@@ -96,12 +96,12 @@ jobs:
           make chaos-experiment-workflow-and-health-check
 
       # SSH debugging session - on failure (if requested)
-      - name: Setup tmate session (on failure)
+      - name: Setup upterm session (pre-test)
         if: ${{ failure() && inputs.ssh_debug_on_failure == true }}
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 30
+        uses: lhotari/action-upterm@v1
         with:
-          limit-access-to-actor: true
+          ## If no one connects after 5 minutes, shut down server.
+          wait-timeout-minutes: 20
 
       - name: Store reports
         if: failure()
