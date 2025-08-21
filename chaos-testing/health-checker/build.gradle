@@ -30,7 +30,6 @@ sourceSets {
   }
 }
 
-
 build.dependsOn compileAcceptanceTestKotlin
 
 tasks.register('acceptanceTest', Test) { test ->

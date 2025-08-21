@@ -35,7 +35,7 @@ chaos-deploy-chaos-mesh-and-linea:
 
 chaos-full-reload:
 	@$(MAKE) k3s-reload
-	@$(MAKE) chaos-deploy-chaos-mesh-and-linea
+	@$(MAKE) chaos-deploy-chaos-mesh-and-linea maru_image=$(if $(maru_image),$(maru_image))
 	@$(MAKE) chaos-experiment-workflow-and-wait # runs workflow-linea-resilience.yaml and waits for it to finish
 	@$(MAKE) chaos-health-check
 
