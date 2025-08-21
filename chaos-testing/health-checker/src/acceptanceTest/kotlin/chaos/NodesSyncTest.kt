@@ -14,11 +14,13 @@ import kotlin.time.toJavaDuration
 import linea.kotlin.toULong
 import linea.log4j.configureLoggers
 import linea.web3j.createWeb3jHttpClient
+import maru.api.beacon.SignedBeaconBlock
 import maru.clients.beacon.Http4kBeaconChainClient
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.testing.filesystem.getPathTo
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
+import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -46,18 +48,18 @@ class NodesSyncTest {
         SafeFuture.collectAll(futures.stream())
       }
 
-  private fun getClBeaconChainHead(clApiUrl: String): SafeFuture<ULong> =
+  private fun getClBeaconChainHead(clApiUrl: String): SafeFuture<SignedBeaconBlock> =
     Http4kBeaconChainClient(clApiUrl)
       .getBlock("head")
-      .thenApply {
-        it.data.message.slot
-          .toULong()
-      }
+      .thenApply { it.data }
+
+  private fun getClBeaconChainHeadBlockNumber(clApiUrl: String): SafeFuture<ULong> =
+    getClBeaconChainHead(clApiUrl).thenApply { it.message.slot.toULong() }
 
   private fun getClNodeChainHeads(nodes: List<NodeInfo<String>>): SafeFuture<List<NodeInfo<ULong>>> =
     nodes
       .map { node ->
-        getClBeaconChainHead(node.value)
+        getClBeaconChainHeadBlockNumber(node.value)
           .thenApply { blockNumber -> node.map(blockNumber) }
       }.let { futures: List<SafeFuture<NodeInfo<ULong>>> ->
         SafeFuture.collectAll(futures.stream())
@@ -80,15 +82,30 @@ class NodesSyncTest {
         outOfSyncLeniency,
         nodeWithMinHead.label,
       )
-      nodesHeads
-        .sortedBy { it.value }
-        .reversed()
-        .forEach { (node, headBlock) ->
-          log.info("node={} headBlock={}", node, headBlock)
-        }
+      logNodesHeads(
+        nodesHeads,
+        logLevel = Level.INFO,
+      )
 
       throw IllegalStateException("Nodes are out of sync: max head $maxHead, min head $minHead")
+    } else {
+      logNodesHeads(
+        nodesHeads,
+        logLevel = Level.DEBUG,
+      )
     }
+  }
+
+  private fun logNodesHeads(
+    nodesHeads: List<NodeInfo<ULong>>,
+    logLevel: Level = Level.INFO,
+  ) {
+    nodesHeads
+      .sortedBy { it.value }
+      .reversed()
+      .forEach { (node, headBlock) ->
+        log.log(logLevel, "node={} headBlock={}", node, headBlock)
+      }
   }
 
   @BeforeEach
@@ -126,6 +143,41 @@ class NodesSyncTest {
       .untilAsserted {
         val nodesHeads = getClNodeChainHeads(nodesUrls).get()
         assertNodesAreInSync(nodesHeads, outOfSyncLeniency = 3)
+      }
+  }
+
+  @Test
+  fun `sequencer should continue to produce blocks`() {
+    fun isSequencer(node: NodeInfo<String>): Boolean =
+      node.label.contains("sequencer") || node.label.contains("validator")
+
+    val elSequencer =
+      getNodesUrlsFromFile(
+        getPathTo("tmp/port-forward-besu-8545.txt"),
+      ).first(::isSequencer)
+    val maruSequencer =
+      getNodesUrlsFromFile(
+        getPathTo("tmp/port-forward-maru-5060.txt"),
+      ).first(::isSequencer)
+
+    val highestMaruBlock = getClBeaconChainHead(maruSequencer.value).get()
+    val highestExpectedElBlock =
+      highestMaruBlock.message.body.executionPayload.blockNumber
+        .toULong() + 1uL
+
+    await
+      .atMost(12.seconds.toJavaDuration()) // unlikely to have block time lower than 10 seconds
+      .untilAsserted {
+        assertThat(getClBeaconChainHeadBlockNumber(maruSequencer.value).get())
+          .withFailMessage {
+            "Maru sequencer stopped producing beacon blocks at height ${highestMaruBlock.message.body.executionPayload.blockNumber}"
+          }.isGreaterThan(highestMaruBlock.message.slot.toULong())
+      }
+
+    await
+      .atMost(3.seconds.toJavaDuration()) // 3s must be more that enough for Maru -> EL sync
+      .untilAsserted {
+        assertThat(getElNodeChainHead(elSequencer.value).get()).isGreaterThan(highestExpectedElBlock)
       }
   }
 }
