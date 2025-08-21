@@ -97,7 +97,7 @@ jobs:
           make chaos-experiment-workflow-and-health-check
 
       # SSH debugging session - on failure (if requested)
-      - name: Setup upterm session (pre-test)
+      - name: Setup upterm session after failure
         if: ${{ failure() && inputs.ssh_debug_on_failure == true }}
         uses: lhotari/action-upterm@v1
         with:
