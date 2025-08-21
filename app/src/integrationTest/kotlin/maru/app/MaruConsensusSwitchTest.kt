@@ -25,7 +25,6 @@ import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTime
-import testutils.Checks.verifyBlockTimeWithAGapOn
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
@@ -87,9 +86,9 @@ class MaruConsensusSwitchTest {
     assertThat(blockProducedByPrague.extraData.length).isEqualTo(24)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
-    val shanghaiSwitchBlock = blocks.findSwitchBlockBlock(shanghaiTimestamp)!!
+    val shanghaiSwitchBlock = blocks.findSwitchBlock(shanghaiTimestamp)!!
     blocks.subList(0, shanghaiSwitchBlock).verifyBlockTime()
-    val pragueSwitchBlock = blocks.findSwitchBlockBlock(pragueTimestamp)!!
+    val pragueSwitchBlock = blocks.findSwitchBlock(pragueTimestamp)!!
     blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
   }
 
@@ -171,7 +170,7 @@ class MaruConsensusSwitchTest {
     verifyConsensusSwitch(followerBesuNode, totalBlocksToProduce, shanghaiTimestamp, pragueTimestamp)
   }
 
-  private fun List<EthBlock.Block>.findSwitchBlockBlock(expectedSwitchTimestamp: Long): Int? =
+  private fun List<EthBlock.Block>.findSwitchBlock(expectedSwitchTimestamp: Long): Int? =
     this
       .indexOfFirst {
         it.timestamp.toLong() >= expectedSwitchTimestamp
