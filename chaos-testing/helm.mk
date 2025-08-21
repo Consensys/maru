@@ -3,7 +3,7 @@
 helm-clean-pvcs:
 	@echo "Cleaning up Persistent Volumes Claims and correspondent PV"
 	-@KUBECONFIG=$(KUBECONFIG) kubectl delete pvc -l app.kubernetes.io/component=$(component) >/dev/null 2>&1
-	-@KUBECONFIG=$(KUBECONFIG) kubectl get pv --no-headers 2>/dev/null | awk '$$5=="Available" {print $$1}' | xargs -r kubectl delete pv >/dev/null 2>&1
+	-@KUBECONFIG=$(KUBECONFIG) kubectl get pv --no-headers 2>/dev/null | awk '$$5=="Available" {print $$1}' | xargs -r -I {} env KUBECONFIG=$(KUBECONFIG) kubectl delete pv {} >/dev/null 2>&1
 
 helm-clean-besu-releases:
 	@echo "Cleaning up Besu Helm releases"
