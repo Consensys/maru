@@ -14,7 +14,7 @@ chaos-mesh-install:
 		--set dashboard.service.type=NodePort
 
 chaos-mesh-uninstall:
-	@kubectl delete ns chaos-mesh
+	-@kubectl delete ns chaos-mesh >/dev/null 2>&1
 
 chaos-mesh-reinstall:
 	-@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-uninstall

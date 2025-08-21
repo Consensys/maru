@@ -136,7 +136,7 @@ start_index ?= 1
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 TMP_DIR := $(MAKEFILE_DIR)/tmp
 
-port-forward-all:
+port-forward-component:
 	@echo "Using tmp dir: $(TMP_DIR)"; \
 	mkdir -p $(TMP_DIR); \
 	summary_file="$(TMP_DIR)/port-forward-$(component)-$(port).txt"; \
@@ -169,34 +169,38 @@ port-forward-all:
 	[ -n "$$pids_files" ] && ps -o pid,command -p $$(cat $$pids_files | tr '\n' ' ') 2>/dev/null || true; \
 	echo "URL list written to $$summary_file";
 
-port-forward-stop:
-	@echo "Stopping pod port-forwards (tracked in $(TMP_DIR))..."; \
-	for f in $(TMP_DIR)/port-forward-*.pid; do \
-		[ -f "$$f" ] || continue; \
-		pid=$$(cat $$f); \
-		if kill -0 $$pid >/dev/null 2>&1; then \
-			echo "Killing $$pid ($$f)"; \
-			kill $$pid || true; \
-		else \
-			echo "Process $$pid already exited"; \
-		fi; \
-		rm -f $$f; \
-	done; \
-	echo "Done.";
+port-forward-linea:
+	$(MAKE) port-forward-component component=maru port=5060 start_index=1
+	$(MAKE) port-forward-component component=besu port=8545 start_index=1
 
-# Stop ALL kubectl port-forward processes (regardless of PID files) and clean up stored PID/log files
-# Usage: make port-forward-stop-all
-port-forward-stop-all:
+port-forward-stop-component:
 	@echo "Scanning for all kubectl port-forward processes..."; \
-	pids=$$(ps -o pid= -o command= -ax | grep '[k]ubectl port-forward' | awk '{print $$1}'); \
+	pids=$$(ps -o pid= -o command= -ax | grep 'kubectl port-forward' | grep -v grep | grep $(component) | awk '{print $$1}'); \
 	if [ -z "$$pids" ]; then \
 		echo "No kubectl port-forward processes found."; \
 	else \
-		echo "Killing PIDs: $$pids"; \
-		kill $$pids || true; \
+		for pid in $$pids; do \
+			if kill -0 $$pid >/dev/null 2>&1; then \
+				echo "Killing PID $$pid"; \
+				kill $$pid 2>/dev/null || echo "Failed to kill $$pid with SIGTERM"; \
+			fi; \
+		done; \
 		sleep 1; \
-		for p in $$pids; do kill -0 $$p 2>/dev/null && echo "Force killing $$p" && kill -9 $$p || true; done; \
+		for pid in $$pids; do \
+			if kill -0 $$pid >/dev/null 2>&1; then \
+				echo "Force killing PID $$pid"; \
+				kill -9 $$pid 2>/dev/null || echo "Failed to force kill $$pid"; \
+			fi; \
+		done; \
 	fi; \
 	echo "Removing tracked PID files in $(TMP_DIR)"; \
 	rm -f $(TMP_DIR)/port-forward-*.pid 2>/dev/null || true; \
 	echo "Done.";
+
+port-forward-stop-all-linea:
+	$(MAKE) port-forward-stop-component component=maru;
+	$(MAKE) port-forward-stop-component component=besu;
+
+port-forward-restart-all-linea:
+	-$(MAKE) port-forward-stop-all-linea
+	$(MAKE) port-forward-linea

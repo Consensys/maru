@@ -1,6 +1,6 @@
 replicaCount: 1
 image:
-  name: consensys/maru:1b02f6f
+  name: consensys/maru:develop
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
@@ -11,7 +11,7 @@ service:
       port: 9000
       protocol: TCP
     - name: discovery
-      port: 9000
+      port: 9001
       protocol: UDP
     - name: metrics
       port: 9545
@@ -30,9 +30,11 @@ configFiles:
     private-key-path="/opt/consensys/maru/configs/private-key.txt"
 
     [p2p]
+    port = 9000
     ip-address = "0.0.0.0"
 
     [p2p.discovery]
+    port = 9001
     refresh-interval = "5 seconds"
 
     [syncing]

@@ -26,6 +26,11 @@ chaos-reload-k3s-and-chaos-mesh:
 chaos-full-reload:
 	@$(MAKE) k3s-reload
 	@$(MAKE) chaos-redeploy-chaos-mesh-and-linea maru_image=$(if $(maru_image),$(maru_image))
+	@if [ "$(skip_initial_health_check)" != "true" ]; then \
+		$(MAKE) chaos-health-check; \
+	else \
+		echo "Skipping initial health check"; \
+	fi
 	@$(MAKE) chaos-experiment-workflow-and-wait # runs workflow-linea-resilience.yaml and waits for it to finish
 	@$(MAKE) chaos-health-check
 
@@ -34,10 +39,7 @@ chaos-full-reload-with-local-maru-image:
 
 chaos-health-check:
 	@echo "Running health check for chaos testing environment"
-	@echo "Creating port-forward besu and maru nodes"
-	-@$(MAKE) port-forward-stop-all
-	@$(MAKE) port-forward-all component=besu port=8545
-	@$(MAKE) port-forward-all component=maru port=5060
+	@$(MAKE) port-forward-restart-all-linea
 	@cd .. && ./gradlew :chaos-testing:health-check:acceptanceTest
 
 chaos-redeploy-linea-and-run-experiment:

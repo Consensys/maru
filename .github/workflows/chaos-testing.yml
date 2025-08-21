@@ -93,6 +93,7 @@ jobs:
           make k3s-reload    # installs k3s K8S implementation
           kubectl config set-context --current --namespace=default
           make chaos-redeploy-chaos-mesh-and-linea maru_image=consensys/maru:local
+          make chaos-health-check # just make sure that the cluster is healthy before starting the chaos tests
           make chaos-experiment-workflow-and-health-check
 
       # SSH debugging session - on failure (if requested)
