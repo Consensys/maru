@@ -1,12 +1,14 @@
+.SILENT:
+
 helm-clean-releases:
 	@echo "Cleaning up Helm releases"
-	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-sequencer
-	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-0
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3
+	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-sequencer >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-bootnode-0 >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1 >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2 >/dev/null 2>&1
+	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3 >/dev/null 2>&1
 	KUBECONFIG=$(KUBECONFIG) kubectl delete pvc --all
 	KUBECONFIG=$(KUBECONFIG) kubectl delete pv --all
 
