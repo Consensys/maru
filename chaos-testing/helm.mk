@@ -35,6 +35,7 @@ wait-for-log-entry:
 
 helm-deploy-besu:
 		@echo "Deploying Besu"
+		@kubectl config current-context && kubectl config view --minify | grep namespace
 		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-sequencer ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-sequencer.yaml
 		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-follower ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-follower.yaml
 		@echo "Waiting for Besu to be ready..."
