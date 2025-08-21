@@ -13,6 +13,7 @@ import maru.core.SealedBeaconBlock
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.peer.NodeId
 
 const val LINEA_DOMAIN = "linea"
 
@@ -106,6 +107,8 @@ interface P2PNetwork : Closeable {
   fun getPeer(peerId: String): PeerInfo?
 
   fun getPeerLookup(): PeerLookup
+
+  fun isStaticPeer(nodeId: NodeId): Boolean
 }
 
 data class PeerInfo(

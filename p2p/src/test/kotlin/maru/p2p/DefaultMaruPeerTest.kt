@@ -12,7 +12,6 @@ import java.util.Optional
 import java.util.concurrent.ScheduledFuture
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
-import maru.p2p.MaruOutgoingRpcRequestHandler
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import org.assertj.core.api.Assertions.assertThat
@@ -36,6 +35,7 @@ class DefaultMaruPeerTest {
   private val delegatePeer = mock<Peer>()
   private val rpcMethods = mock<RpcMethods>()
   private val statusMessageFactory = mock<StatusMessageFactory>()
+
   private val maruPeer =
     DefaultMaruPeer(
       delegatePeer,
@@ -97,6 +97,7 @@ class DefaultMaruPeerTest {
 
   @Test
   fun `disconnectImmediately delegates to underlying peer`() {
+    whenever(delegatePeer.address).thenReturn(mock())
     val reason = Optional.of(DisconnectReason.REMOTE_FAULT)
 
     maruPeer.disconnectImmediately(reason, true)
@@ -110,6 +111,7 @@ class DefaultMaruPeerTest {
     val expectedFuture = SafeFuture.completedFuture<Void>(null)
 
     whenever(delegatePeer.disconnectCleanly(reason)).thenReturn(expectedFuture)
+    whenever(delegatePeer.address).thenReturn(mock())
 
     val result = maruPeer.disconnectCleanly(reason)
 
@@ -162,22 +164,10 @@ class DefaultMaruPeerTest {
   }
 
   @Test
-  fun `connectionInitiatedRemotely delegates to connectionInitiatedRemotely on underlying peer`() {
-    whenever(delegatePeer.connectionInitiatedRemotely()).thenReturn(true)
-
-    val result = maruPeer.connectionInitiatedRemotely()
-
-    assertThat(result).isTrue()
-    verify(delegatePeer).connectionInitiatedRemotely()
-  }
-
-  @Test
   fun `adjustReputation delegates to underlying peer`() {
-    val adjustment = mock<ReputationAdjustment>()
+    maruPeer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
 
-    maruPeer.adjustReputation(adjustment)
-
-    verify(delegatePeer).adjustReputation(adjustment)
+    verify(delegatePeer).adjustReputation(ReputationAdjustment.SMALL_PENALTY)
   }
 
   @Test

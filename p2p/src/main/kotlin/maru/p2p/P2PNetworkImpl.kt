@@ -36,6 +36,7 @@ import org.ethereum.beacon.discovery.schema.NodeRecord
 import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
@@ -94,11 +95,21 @@ class P2PNetworkImpl(
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
     val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
 
+    val reputationManager =
+      MaruReputationManager(besuMetricsSystem, SystemTimeProvider(), this::isStaticPeer, p2pConfig.reputationConfig)
+
     val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
     maruPeerManager =
       MaruPeerManager(
-        maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory, p2pConfig),
+        maruPeerFactory =
+          DefaultMaruPeerFactory(
+            rpcMethods,
+            statusMessageFactory,
+            p2pConfig,
+          ),
         p2pConfig = p2pConfig,
+        reputationManager = reputationManager,
+        isStaticPeer = this::isStaticPeer,
       )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
@@ -111,6 +122,7 @@ class P2PNetworkImpl(
       maruPeerManager = maruPeerManager,
       metricsSystem = besuMetricsSystem,
       asyncRunner = asyncRunner,
+      reputationManager = reputationManager,
     )
   }
 
@@ -264,6 +276,14 @@ class P2PNetworkImpl(
     maintainPersistentConnection(peerAddress)
   }
 
+  override fun isStaticPeer(nodeId: NodeId): Boolean {
+    println("Has ${staticPeerMap.size} static peers")
+    staticPeerMap.forEach { (k, v) -> println("has static peer: $k") }
+    val containsKey = staticPeerMap.containsKey(nodeId)
+    println("isStaticPeer: $containsKey")
+    return containsKey
+  }
+
   fun removeStaticPeer(peerAddress: PeerAddress) {
     synchronized(this) {
       staticPeerMap.remove(peerAddress.id)
@@ -276,11 +296,11 @@ class P2PNetworkImpl(
       .connect(peerAddress)
       .whenComplete { peer: Peer?, t: Throwable? ->
         if (t != null) {
-          if (t is PeerAlreadyConnectedException) {
-            log.debug("Already connected to peer {}. Error: {}", peerAddress, t.message)
+          if (t.cause is PeerAlreadyConnectedException) {
+            log.trace("Already connected to peer {}. Error: {}", peerAddress, t.message)
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
-            log.trace(
+            log.debug(
               "Failed to connect to static peer={}, retrying after {} ms. Error: {}",
               peerAddress,
               p2pConfig.reconnectDelay,
@@ -320,19 +340,7 @@ class P2PNetworkImpl(
         .toUInt()
 
   internal val peerCount: Int
-    get() = maruPeerManager.getPeers().size
-
-  internal fun isConnected(peer: String): Boolean {
-    val peerAddress =
-      PeerAddress(
-        LibP2PNodeId(
-          PeerId.fromBase58(
-            peer,
-          ),
-        ),
-      )
-    return p2pNetwork.isConnected(peerAddress)
-  }
+    get() = maruPeerManager.peerCount
 
   internal fun dropPeer(
     peer: String,
