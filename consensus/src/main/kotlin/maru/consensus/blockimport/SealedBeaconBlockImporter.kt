@@ -88,7 +88,7 @@ class TransactionalSealedBeaconBlockImporter(
     val clBlockNumber = sealedBeaconBlock.beaconBlock.beaconBlockHeader.number
     val elBLockNumber = sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber
     try {
-      log.debug(
+      log.trace(
         "Importing clBlockNumber={} elBlockNumber={}",
         clBlockNumber,
         elBLockNumber,
@@ -103,14 +103,14 @@ class TransactionalSealedBeaconBlockImporter(
             .importBlock(resultingState, sealedBeaconBlock.beaconBlock)
         }.thenApply {
           updater.commit()
-          log.debug(
+          log.trace(
             "Import complete clBlockNumber={} elBlockNumber={}",
             clBlockNumber,
             elBLockNumber,
           )
           ValidationResult.Companion.Valid as ValidationResult
         }.exceptionally { ex ->
-          log.debug(
+          log.trace(
             "Import reverted clBlockNumber={} elBlockNumber={}",
             clBlockNumber,
             elBLockNumber,
