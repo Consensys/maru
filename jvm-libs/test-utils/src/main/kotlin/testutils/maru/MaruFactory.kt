@@ -184,15 +184,25 @@ class MaruFactory(
     ethereumApiConfig: ApiEndpointConfig,
     validatorPortForStaticPeering: UInt? = null,
     overridingP2PNetwork: P2PNetwork? = null,
+    desyncTolerance: ULong = 10UL,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val beaconGenesisConfig = beaconGenesisConfig
+
+    val syncingConfig =
+      SyncingConfig(
+        peerChainHeightPollingInterval = 1.seconds,
+        peerChainHeightGranularity = 1u,
+        elSyncStatusRefreshInterval = 500.milliseconds,
+        desyncTolerance = desyncTolerance,
+      )
     val config =
       buildMaruConfig(
         engineApiEndpointConfig = engineApiConfig,
         ethereumApiEndpointConfig = ethereumApiConfig,
         dataDir = dataDir,
         p2pConfig = p2pConfig,
+        syncingConfig = syncingConfig,
       )
     return buildApp(
       config = config,
@@ -217,7 +227,7 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         peerChainHeightGranularity = 1u,
         elSyncStatusRefreshInterval = 500.milliseconds,
-        desyncTolerance = 10UL,
+        desyncTolerance = 0UL,
       ),
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
@@ -438,20 +448,14 @@ class MaruFactory(
     dataDir: Path,
     validatorPortForStaticPeering: UInt? = null,
     overridingP2PNetwork: P2PNetwork? = null,
-  ): MaruApp {
-    val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
-    val beaconGenesisConfig = beaconGenesisConfig
-    val config =
-      buildMaruConfig(
-        ethereumJsonRpcUrl = ethereumJsonRpcUrl,
-        engineApiRpc = engineApiRpc,
-        dataDir = dataDir,
-        p2pConfig = p2pConfig,
-      )
-    return buildApp(
-      config = config,
-      beaconGenesisConfig = beaconGenesisConfig,
+    desyncTolerance: ULong = 10UL,
+  ): MaruApp =
+    buildTestMaruFollowerWithConsensusSwitch(
+      ethereumApiConfig = ApiEndpointConfig(endpoint = URI.create(ethereumJsonRpcUrl).toURL()),
+      engineApiConfig = ApiEndpointConfig(endpoint = URI.create(engineApiRpc).toURL()),
+      dataDir = dataDir,
+      validatorPortForStaticPeering = validatorPortForStaticPeering,
       overridingP2PNetwork = overridingP2PNetwork,
+      desyncTolerance = desyncTolerance,
     )
-  }
 }
