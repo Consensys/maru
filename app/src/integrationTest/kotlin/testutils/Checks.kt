@@ -28,6 +28,15 @@ object Checks {
           ).sendAsync()
       }.mapNotNull { it?.get()?.block }
 
+  fun BesuNode.getBlockNumber(): BigInteger =
+    this
+      .nodeRequests()
+      .eth()
+      .ethBlockNumber()
+      .sendAsync()
+      .get()
+      .blockNumber
+
   // Checks that all block times in the list are exactly BesuFactory.MIN_BLOCK_TIME (1 second)
   // First block is skipped, because after startup block time is sometimes floating above 1 second
   fun List<EthBlock.Block>.verifyBlockTime() {
