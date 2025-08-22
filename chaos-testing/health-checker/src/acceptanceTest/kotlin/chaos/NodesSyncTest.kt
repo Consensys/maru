@@ -24,7 +24,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.fail
+import org.opentest4j.AssertionFailedError
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class NodesSyncTest {
@@ -88,7 +88,9 @@ class NodesSyncTest {
         logLevel = Level.INFO,
       )
 
-      fail { "Nodes are out of sync: maxHead=$maxHead, minHead=$minHead nodeWithMinHead=${nodeWithMinHead.label}" }
+      throw AssertionFailedError(
+        "Nodes are out of sync: maxHead=$maxHead, minHead=$minHead nodeWithMinHead=${nodeWithMinHead.label}",
+      )
     } else {
       logNodesHeads(
         nodesHeads,
