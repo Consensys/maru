@@ -8,7 +8,6 @@
  */
 package maru.app
 
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import org.apache.logging.log4j.LogManager
@@ -23,6 +22,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.Checks.getMinedBlocks
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
@@ -39,6 +39,7 @@ class MaruFollowerTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
+  private val desyncTolerance = 3
 
   @BeforeEach
   fun setUp() {
@@ -81,6 +82,7 @@ class MaruFollowerTest {
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorP2pPort,
         syncPeerChainGranularity = 1u,
+        desyncTolerance = desyncTolerance.toULong(),
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
@@ -142,6 +144,7 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorStack.p2pPort,
+        desyncTolerance = desyncTolerance.toULong(),
       ),
     )
     followerStack.maruApp.start()
@@ -149,7 +152,7 @@ class MaruFollowerTest {
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
     validatorStack.maruApp.awaitTillMaruHasPeers(1u)
 
-    repeat(blocksToProduce) {
+    repeat(desyncTolerance.inc()) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(
           logger = log,
@@ -159,7 +162,7 @@ class MaruFollowerTest {
       }
     }
 
-    checkValidatorAndFollowerBlocks(blocksToProduce * 2)
+    checkValidatorAndFollowerBlocks(blocksToProduce + desyncTolerance.inc())
   }
 
   @Test
@@ -261,6 +264,7 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorStack.p2pPort,
+        desyncTolerance = desyncTolerance.toULong(),
       ),
     )
     followerStack.maruApp.start()
@@ -304,6 +308,7 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorStack.p2pPort,
+        desyncTolerance = desyncTolerance.toULong(),
       ),
     )
     followerStack.maruApp.start()
@@ -352,13 +357,31 @@ class MaruFollowerTest {
 
   private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
     await
-      .pollDelay(100.milliseconds.toJavaDuration())
+      .pollDelay(1.seconds.toJavaDuration())
       .timeout(30.seconds.toJavaDuration())
       .untilAsserted {
         val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
         val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)
-        assertThat(blocksImportedByFollower).isEqualTo(blocksProducedByQbftValidator)
+        assertThat(blocksImportedByFollower)
+          .withFailMessage(generateFailMessage(blocksImportedByFollower, blocksProducedByQbftValidator))
+          .hasSize(blocksToProduce)
+        assertThat(blocksProducedByQbftValidator)
+          .withFailMessage(generateFailMessage(blocksImportedByFollower, blocksProducedByQbftValidator))
+          .hasSize(blocksToProduce)
+        assertThat(blocksImportedByFollower)
+          .withFailMessage(generateFailMessage(blocksImportedByFollower, blocksProducedByQbftValidator))
+          .isEqualTo(blocksProducedByQbftValidator)
       }
+  }
+
+  private fun generateFailMessage(
+    followerBlocks: List<EthBlock.Block>,
+    validatorBlocks: List<EthBlock.Block>,
+  ): String {
+    val followerBlockHashes = followerBlocks.map { it.hash }
+    val validatorBlocks = validatorBlocks.map { it.hash }
+    return "Follower blocks: $followerBlockHashes " +
+      "Validator blocks: $validatorBlocks"
   }
 
   private fun checkNetworkStackBlocksProduced(
@@ -366,7 +389,7 @@ class MaruFollowerTest {
     blocksProduced: Int,
   ) {
     await
-      .pollDelay(100.milliseconds.toJavaDuration())
+      .pollDelay(1.seconds.toJavaDuration())
       .timeout(30.seconds.toJavaDuration())
       .untilAsserted {
         val blocksOnStack = stack.besuNode.getMinedBlocks(blocksProduced)

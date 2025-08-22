@@ -212,6 +212,7 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
           metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
+          forksSchedule = beaconGenesisConfig,
         )
       } else {
         QbftFollowerFactory(

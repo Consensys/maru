@@ -147,6 +147,7 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         peerChainHeightGranularity = 1u,
         elSyncStatusRefreshInterval = 500.milliseconds,
+        desyncTolerance = 10UL,
       ),
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
@@ -216,6 +217,7 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         peerChainHeightGranularity = 1u,
         elSyncStatusRefreshInterval = 500.milliseconds,
+        desyncTolerance = 10UL,
       ),
     allowEmptyBlocks: Boolean = false,
   ): MaruConfig {
@@ -354,6 +356,7 @@ class MaruFactory(
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     allowEmptyBlocks: Boolean = false,
     syncPeerChainGranularity: UInt = 1u,
+    desyncTolerance: ULong = 10UL,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val config =
@@ -369,6 +372,7 @@ class MaruFactory(
             peerChainHeightPollingInterval = 1.seconds,
             peerChainHeightGranularity = syncPeerChainGranularity,
             elSyncStatusRefreshInterval = 500.milliseconds,
+            desyncTolerance = desyncTolerance,
           ),
       )
     return buildApp(

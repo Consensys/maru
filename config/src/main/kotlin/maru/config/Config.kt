@@ -168,6 +168,7 @@ data class SyncingConfig(
   val peerChainHeightPollingInterval: Duration,
   val peerChainHeightGranularity: UInt,
   val elSyncStatusRefreshInterval: Duration,
+  val desyncTolerance: ULong,
   val download: Download? = Download(),
 ) {
   data class Download(

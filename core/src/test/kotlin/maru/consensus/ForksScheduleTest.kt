@@ -125,4 +125,83 @@ class ForksScheduleTest {
     val result = schedule.getForkByConfigType(qbftConsensusConfig::class)
     assertThat(result).isEqualTo(qbftFork1)
   }
+
+  @Test
+  fun `getNextForkByTimestamp returns next fork when one exists`() {
+    val fork1 = ForkSpec(1000L, 10, consensusConfig)
+    val fork2 = ForkSpec(2000L, 20, qbftConsensusConfig)
+    val fork3 = ForkSpec(3000L, 30, otherConsensusConfig)
+    val forks = listOf(fork1, fork2, fork3)
+
+    val schedule = ForksSchedule(expectedChainId, forks)
+
+    // Test getting next fork from before first fork
+    assertThat(schedule.getNextForkByTimestamp(500L)).isEqualTo(fork1)
+
+    // Test getting next fork from first fork timestamp
+    assertThat(schedule.getNextForkByTimestamp(1000L)).isEqualTo(fork2)
+
+    // Test getting next fork from between first and second fork
+    assertThat(schedule.getNextForkByTimestamp(1500L)).isEqualTo(fork2)
+
+    // Test getting next fork from second fork timestamp
+    assertThat(schedule.getNextForkByTimestamp(2000L)).isEqualTo(fork3)
+
+    // Test getting next fork from between second and third fork
+    assertThat(schedule.getNextForkByTimestamp(2500L)).isEqualTo(fork3)
+  }
+
+  @Test
+  fun `getNextForkByTimestamp returns null when no next fork exists`() {
+    val fork1 = ForkSpec(1000L, 10, consensusConfig)
+    val fork2 = ForkSpec(2000L, 20, qbftConsensusConfig)
+    val fork3 = ForkSpec(3000L, 30, otherConsensusConfig)
+    val forks = listOf(fork1, fork2, fork3)
+
+    val schedule = ForksSchedule(expectedChainId, forks)
+
+    // Test getting next fork from last fork timestamp
+    assertThat(schedule.getNextForkByTimestamp(3000L)).isNull()
+
+    // Test getting next fork from after last fork
+    assertThat(schedule.getNextForkByTimestamp(4000L)).isNull()
+  }
+
+  @Test
+  fun `getNextForkByTimestamp works with single fork`() {
+    val fork1 = ForkSpec(1000L, 10, consensusConfig)
+    val forks = listOf(fork1)
+
+    val schedule = ForksSchedule(expectedChainId, forks)
+
+    // Test getting next fork from before the only fork
+    assertThat(schedule.getNextForkByTimestamp(500L)).isEqualTo(fork1)
+
+    // Test getting next fork from the only fork timestamp
+    assertThat(schedule.getNextForkByTimestamp(1000L)).isNull()
+
+    // Test getting next fork from after the only fork
+    assertThat(schedule.getNextForkByTimestamp(1500L)).isNull()
+  }
+
+  @Test
+  fun `getNextForkByTimestamp with edge case timestamps`() {
+    val fork1 = ForkSpec(1000L, 10, consensusConfig)
+    val fork2 = ForkSpec(2000L, 20, qbftConsensusConfig)
+    val forks = listOf(fork1, fork2)
+
+    val schedule = ForksSchedule(expectedChainId, forks)
+
+    // Test with timestamp exactly one less than first fork
+    assertThat(schedule.getNextForkByTimestamp(999L)).isEqualTo(fork1)
+
+    // Test with timestamp exactly one more than first fork
+    assertThat(schedule.getNextForkByTimestamp(1001L)).isEqualTo(fork2)
+
+    // Test with timestamp exactly one less than second fork
+    assertThat(schedule.getNextForkByTimestamp(1999L)).isEqualTo(fork2)
+
+    // Test with timestamp exactly one more than second fork
+    assertThat(schedule.getNextForkByTimestamp(2001L)).isNull()
+  }
 }

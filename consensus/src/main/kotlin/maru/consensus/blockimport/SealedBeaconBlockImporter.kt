@@ -86,6 +86,11 @@ class TransactionalSealedBeaconBlockImporter(
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     val updater = beaconChain.newUpdater()
     try {
+      log.debug(
+        "Importing block number={} elPayloadBlockNumber={}",
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+        sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
+      )
       return stateTransition
         .processBlock(sealedBeaconBlock.beaconBlock)
         .thenCompose { resultingState ->
@@ -96,6 +101,7 @@ class TransactionalSealedBeaconBlockImporter(
             .importBlock(resultingState, sealedBeaconBlock.beaconBlock)
         }.thenApply {
           updater.commit()
+          log.debug("Import complete")
           ValidationResult.Companion.Valid as ValidationResult
         }.exceptionally { ex ->
           updater.rollback()

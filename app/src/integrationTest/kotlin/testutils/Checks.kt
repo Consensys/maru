@@ -26,7 +26,7 @@ object Checks {
             DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
             false,
           ).sendAsync()
-      }.map { it.get().block }
+      }.mapNotNull { it?.get()?.block }
 
   // Checks that all block times in the list are exactly BesuFactory.MIN_BLOCK_TIME (1 second)
   // First block is skipped, because after startup block time is sometimes floating above 1 second
