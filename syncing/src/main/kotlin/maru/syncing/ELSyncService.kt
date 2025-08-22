@@ -138,7 +138,12 @@ class ELSyncService(
             latestBeaconBlockBody.executionPayload.blockNumber,
             newElSyncTarget.blockHash.encodeHex(),
           )
-          ELSyncStatus.SYNCED
+          // Sync target might have changed by this point
+          if (newElSyncTarget == currentElSyncTarget) {
+            ELSyncStatus.SYNCED
+          } else {
+            ELSyncStatus.SYNCING
+          }
         }
 
         else -> throw IllegalStateException("Unexpected payload status: ${fcuResponse.payloadStatus.status}")
