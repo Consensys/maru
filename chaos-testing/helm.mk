@@ -49,8 +49,12 @@ helm-deploy-besu:
 		@echo "Deploying Besu"
 		@kubectl config current-context
 		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-sequencer ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-sequencer.yaml --namespace default
-		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-follower ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-follower.yaml --namespace default
-		@echo "Waiting for Besu to be ready..."
+		@$(MAKE) wait-for-log-entry pod_name=besu-sequencer-0 log_entry="enode"
+		@BOOTNODE_IP=$$(kubectl describe pod besu-sequencer-0 | grep -E '^IP:' | awk '{print $$2}'); \
+		echo "Pod IP: $$BOOTNODE_IP"; \
+		BOOTNODE=$$(kubectl logs besu-sequencer-0 | grep -o 'enode://[^[:space:]]*' | sed "s/127\.0\.0\.1/$$BOOTNODE_IP/"); \
+		echo "Bootnode: $$BOOTNODE"; \
+		helm --kubeconfig $(KUBECONFIG) upgrade --install besu-follower ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-follower.yaml --namespace default --set bootnodes=$$BOOTNODE
 		@$(MAKE) wait_pods pod_name=besu-sequencer pod_count=1
 		@$(MAKE) wait_pods pod_name=besu-follower pod_count=3
 
