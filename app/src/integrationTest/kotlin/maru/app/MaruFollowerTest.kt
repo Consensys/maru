@@ -379,9 +379,9 @@ class MaruFollowerTest {
     validatorBlocks: List<EthBlock.Block>,
   ): String {
     val followerBlockHashes = followerBlocks.map { it.hash }
-    val validatorBlocks = validatorBlocks.map { it.hash }
+    val validatorBlockHashes = validatorBlocks.map { it.hash }
     return "Follower blocks: $followerBlockHashes " +
-      "Validator blocks: $validatorBlocks"
+      "Validator blocks: $validatorBlockHashes"
   }
 
   private fun checkNetworkStackBlocksProduced(
