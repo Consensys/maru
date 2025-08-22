@@ -74,10 +74,10 @@ class MaruFactory(
         )
       return listOf(
         defaultSyncingConfig,
-//        defaultSyncingConfig.copy(
-//          syncTargetSelection = syncTargetSelectionForMostFrequent,
-//          useUnconditionalRandomDownloadPeer = true,
-//        ),
+        defaultSyncingConfig.copy(
+          syncTargetSelection = syncTargetSelectionForMostFrequent,
+          useUnconditionalRandomDownloadPeer = true,
+        ),
       )
     }
 
