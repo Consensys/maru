@@ -85,7 +85,6 @@ jobs:
 
       - name: Run chaos tests
         id: chaos-tests
-        continue-on-error: ${{ inputs.ssh_debug_on_failure == true }}
         run: |
           cd chaos-testing
           mkdir -p ~/.kube
@@ -98,7 +97,7 @@ jobs:
 
       # SSH debugging session - on failure (if requested)
       - name: Setup upterm session after failure
-        if: ${{ failure() && inputs.ssh_debug_on_failure == true }}
+        if: ${{ (failure() || steps.chaos-tests.outcome == 'failure') && inputs.ssh_debug_on_failure == true }}
         uses: lhotari/action-upterm@v1
         with:
           ## If no one connects shut down ssh server after timeout.
