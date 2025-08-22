@@ -168,7 +168,7 @@ class ValidatingSealedBeaconBlockImporter(
 
             is Err -> {
               log.error(
-                "block seals validation failed: clBlockNumber={} elBlockNumber={} clBlockHash={} error={}",
+                "validation failed: clBlockNumber={} elBlockNumber={} clBlockHash={} error={}",
                 sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
                 sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
                 sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
