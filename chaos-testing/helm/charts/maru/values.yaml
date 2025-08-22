@@ -11,7 +11,7 @@ service:
       port: 9000
       protocol: TCP
     - name: discovery
-      port: 9001
+      port: 9000
       protocol: UDP
     - name: metrics
       port: 9545
@@ -34,7 +34,7 @@ configFiles:
     ip-address = "0.0.0.0"
 
     [p2p.discovery]
-    port = 9001
+    port = 9000
     refresh-interval = "5 seconds"
 
     [syncing]
