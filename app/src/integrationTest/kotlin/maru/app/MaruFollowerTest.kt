@@ -443,16 +443,6 @@ class MaruFollowerTest {
       }
   }
 
-  private fun generateFailMessage(
-    checkedBlocks: List<Pair<BigInteger, String>>,
-    referenceBlocks: List<Pair<BigInteger, String>>,
-  ): String {
-    val difference = referenceBlocks - checkedBlocks.toSet()
-    return "Checked blocks: $checkedBlocks " +
-      "Reference blocks: $referenceBlocks " +
-      "Difference: $difference"
-  }
-
   private fun blocksToMetadata(blocks: List<EthBlock.Block>): List<Pair<BigInteger, String>> =
     blocks.map {
       it.number to it.hash
