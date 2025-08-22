@@ -39,7 +39,7 @@ class MaruFollowerTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
-  private val desyncTolerance = 3
+  private val desyncTolerance = 0
 
   @BeforeEach
   fun setUp() {
@@ -152,7 +152,7 @@ class MaruFollowerTest {
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
     validatorStack.maruApp.awaitTillMaruHasPeers(1u)
 
-    repeat(desyncTolerance.inc()) {
+    repeat(blocksToProduce) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(
           logger = log,
@@ -162,7 +162,7 @@ class MaruFollowerTest {
       }
     }
 
-    checkValidatorAndFollowerBlocks(blocksToProduce + desyncTolerance.inc())
+    checkValidatorAndFollowerBlocks(blocksToProduce * 2)
   }
 
   @Test
