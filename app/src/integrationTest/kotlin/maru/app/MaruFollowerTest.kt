@@ -39,7 +39,7 @@ class MaruFollowerTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
-  private val desyncTolerance = 0
+  private val desyncTolerance = 0UL
 
   @BeforeEach
   fun setUp() {
@@ -82,7 +82,7 @@ class MaruFollowerTest {
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorP2pPort,
         syncPeerChainGranularity = 1u,
-        desyncTolerance = desyncTolerance.toULong(),
+        desyncTolerance = desyncTolerance,
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
@@ -144,7 +144,7 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorStack.p2pPort,
-        desyncTolerance = desyncTolerance.toULong(),
+        desyncTolerance = desyncTolerance,
       ),
     )
     followerStack.maruApp.start()
@@ -264,7 +264,7 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorStack.p2pPort,
-        desyncTolerance = desyncTolerance.toULong(),
+        desyncTolerance = desyncTolerance,
       ),
     )
     followerStack.maruApp.start()
@@ -308,7 +308,7 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorStack.p2pPort,
-        desyncTolerance = desyncTolerance.toULong(),
+        desyncTolerance = desyncTolerance,
       ),
     )
     followerStack.maruApp.start()
@@ -378,10 +378,12 @@ class MaruFollowerTest {
     followerBlocks: List<EthBlock.Block>,
     validatorBlocks: List<EthBlock.Block>,
   ): String {
-    val followerBlockHashes = followerBlocks.map { it.hash }
-    val validatorBlockHashes = validatorBlocks.map { it.hash }
-    return "Follower blocks: $followerBlockHashes " +
-      "Validator blocks: $validatorBlockHashes"
+    val followerBlocksMetadata = followerBlocks.map { it.number to it.hash }
+    val validatorBlockBlocksMetadata = validatorBlocks.map { it.number to it.hash }
+    val difference = validatorBlockBlocksMetadata - followerBlocksMetadata.toSet()
+    return "Follower blocks: $followerBlocksMetadata " +
+      "Validator blocks: $validatorBlockBlocksMetadata " +
+      "Difference: $difference"
   }
 
   private fun checkNetworkStackBlocksProduced(

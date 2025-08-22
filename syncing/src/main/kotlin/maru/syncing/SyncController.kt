@@ -172,7 +172,7 @@ class BeaconSyncControllerImpl(
     if (currentClStatus == CLSyncStatus.SYNCING) {
       // If already syncing, always update the sync target regardless of tolerance
       log.debug(
-        "Updating target while node is syncing sync_target={} current_head={}",
+        "Updating target while node is syncing syncTarget={} currentHead={}",
         syncTargetBlockNumber,
         currentHead,
       )
@@ -180,7 +180,7 @@ class BeaconSyncControllerImpl(
     } else if (blockDifference > desyncTolerance) {
       // Only start new sync if difference exceeds tolerance
       log.debug(
-        "Node got desynced updating sync target sync_target={} block_difference={} current_head={} desync_tolerance={}",
+        "Node got desynced updating sync target syncTarget={} blockDifference={} currentHead={} desyncTolerance={}",
         syncTargetBlockNumber,
         blockDifference,
         currentHead,
