@@ -162,7 +162,6 @@ class MaruFollowerTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorStack.p2pPort,
-        syncingConfig = MaruFactory.defaultSyncingConfig.copy(desyncTolerance = desyncTolerance),
       ),
     )
     followerStack.maruApp.start()
