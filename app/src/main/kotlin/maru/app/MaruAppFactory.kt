@@ -175,7 +175,7 @@ class MaruAppFactory {
         statusMessageFactory = statusMessageFactory,
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
-        isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
+        isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =
