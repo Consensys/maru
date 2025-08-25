@@ -60,7 +60,6 @@ jobs:
           # this is to debug flaky tests
           ./gradlew build --rerun-tasks
       - name: Store reports
-        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test reports
@@ -79,10 +78,14 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          fail_ci_if_error: true
           files: ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
           flags: kotlin
           os: linux
           name: codecov
           verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
           token: ${{ secrets.CODECOV_TOKEN }}
