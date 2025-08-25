@@ -177,13 +177,15 @@ class HopliteFriendlinessTest {
         ),
       elSyncStatusRefreshInterval = 6.seconds,
       desyncTolerance = 10UL,
-      SyncingConfig.Download(
-        blockRangeRequestTimeout = 10.seconds,
-        blocksBatchSize = 64u,
-        blocksParallelism = 10u,
-        maxRetries = 5u,
-        pauseBetweenAttempts = 10.seconds,
-      ),
+      download =
+        SyncingConfig.Download(
+          blockRangeRequestTimeout = 10.seconds,
+          blocksBatchSize = 64u,
+          blocksParallelism = 10u,
+          maxRetries = 5u,
+          pauseBetweenAttempts = 10.seconds,
+          useUnconditionalRandomDownloadPeer = false,
+        ),
     )
 
   @Test
