@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.seconds
 import maru.config.P2P
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -77,6 +78,7 @@ class CLSyncServiceImplTest {
     private val sourceNodeKey =
       "0x0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
         .fromHexToByteArray()
+    private val pauseBetweenAttempts = 1.seconds
   }
 
   private var sourceNodePort: UInt = 0u
@@ -128,7 +130,12 @@ class CLSyncServiceImplTest {
         peerLookup = peerLookup,
         besuMetrics = TestMetricsSystemAdapter,
         metricsFacade = TestMetricsFacade,
-        pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
+        pipelineConfig =
+          Config(
+            blocksBatchSize = 10u,
+            blocksParallelism = 1u,
+            pauseBetweenAttempts = pauseBetweenAttempts,
+          ),
       )
 
     try {
@@ -200,7 +207,12 @@ class CLSyncServiceImplTest {
         peerLookup = peerLookup,
         besuMetrics = TestMetricsSystemAdapter,
         metricsFacade = metricsFacade,
-        pipelineConfig = Config(blocksBatchSize = 10u, blocksParallelism = 1u),
+        pipelineConfig =
+          Config(
+            blocksBatchSize = 10u,
+            blocksParallelism = 1u,
+            pauseBetweenAttempts = pauseBetweenAttempts,
+          ),
       )
 
     syncToTarget(BEACON_CHAIN_2_HEAD, restartClSyncService)

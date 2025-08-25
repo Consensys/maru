@@ -11,6 +11,7 @@ package maru.syncing.beaconchain.pipeline
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
@@ -38,6 +39,7 @@ class BeaconChainDownloadPipelineFactoryTest {
   private lateinit var factory: BeaconChainDownloadPipelineFactory
   private lateinit var executorService: ExecutorService
   private lateinit var syncTargetProvider: () -> ULong
+  private val defaultPauseBetweenAttempts = 1.seconds
 
   @BeforeEach
   fun setUp() {
@@ -50,7 +52,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(),
+        config = BeaconChainDownloadPipelineFactory.Config(pauseBetweenAttempts = defaultPauseBetweenAttempts),
         syncTargetProvider = syncTargetProvider,
       )
   }
@@ -166,7 +168,11 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 100u),
+        config =
+          BeaconChainDownloadPipelineFactory.Config(
+            blocksBatchSize = 100u,
+            pauseBetweenAttempts = defaultPauseBetweenAttempts,
+          ),
         syncTargetProvider = { 50uL },
       )
 
@@ -210,7 +216,11 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 0u),
+        config =
+          BeaconChainDownloadPipelineFactory.Config(
+            blocksBatchSize = 0u,
+            pauseBetweenAttempts = defaultPauseBetweenAttempts,
+          ),
         syncTargetProvider = { 0uL },
       )
     }.isInstanceOf(IllegalArgumentException::class.java)

@@ -29,7 +29,7 @@ class BeaconChainDownloadPipelineFactory(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
   private val metricsSystem: MetricsSystem,
   private val peerLookup: PeerLookup,
-  private val config: Config = Config(),
+  private val config: Config,
   private val syncTargetProvider: () -> ULong,
 ) {
   init {
@@ -44,6 +44,7 @@ class BeaconChainDownloadPipelineFactory(
 
   data class Config(
     val blockRangeRequestTimeout: Duration = 5.seconds,
+    val pauseBetweenAttempts: Duration,
     val blocksBatchSize: UInt = 10u,
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
@@ -76,8 +77,12 @@ class BeaconChainDownloadPipelineFactory(
             peerLookup = peerLookup,
             useUnconditionalRandomSelection = config.useUnconditionalRandomDownloadPeer,
           ),
-        maxRetries = config.maxRetries,
-        blockRangeRequestTimeout = config.blockRangeRequestTimeout,
+        config =
+          DownloadBlocksStep.Config(
+            maxRetries = config.maxRetries,
+            blockRangeRequestTimeout = config.blockRangeRequestTimeout,
+            pauseBetweenAttempts = config.pauseBetweenAttempts,
+          ),
       )
     val importBlocksStep = ImportBlocksStep(blockImporter)
 

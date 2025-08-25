@@ -8,6 +8,7 @@
  */
 package maru.syncing.beaconchain.pipeline
 
+import java.lang.Thread.sleep
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -24,34 +25,46 @@ import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
 interface DownloadPeerProvider {
-  fun getDownloadingPeer(downloadRangeEndBlockNumber: ULong): MaruPeer
+  fun getDownloadingPeer(downloadRangeEndBlockNumber: ULong): MaruPeer?
 }
 
 class DownloadPeerProviderImpl(
   private val peerLookup: PeerLookup,
   private val useUnconditionalRandomSelection: Boolean,
 ) : DownloadPeerProvider {
-  override fun getDownloadingPeer(downloadRangeEndBlockNumber: ULong): MaruPeer =
-    peerLookup
-      .getPeers()
-      .let {
-        if (!useUnconditionalRandomSelection) {
-          it.filter { peer ->
-            peer.getStatus() != null &&
-              peer.getStatus()!!.latestBlockNumber >=
-              downloadRangeEndBlockNumber
+  override fun getDownloadingPeer(downloadRangeEndBlockNumber: ULong): MaruPeer? {
+    val eligiblePeers =
+      peerLookup
+        .getPeers()
+        .let {
+          if (!useUnconditionalRandomSelection) {
+            it.filter { peer ->
+              peer.getStatus() != null &&
+                peer.getStatus()!!.latestBlockNumber >=
+                downloadRangeEndBlockNumber
+            }
+          } else {
+            it
           }
-        } else {
-          it
         }
-      }.random()
+    return if (eligiblePeers.isNotEmpty()) {
+      eligiblePeers.random()
+    } else {
+      null
+    }
+  }
 }
 
 class DownloadBlocksStep(
   private val downloadPeerProvider: DownloadPeerProvider,
-  private val maxRetries: UInt,
-  private val blockRangeRequestTimeout: Duration,
+  private val config: Config,
 ) : Function<SyncTargetRange, CompletableFuture<List<SealedBlockWithPeer>>> {
+  data class Config(
+    val maxRetries: UInt,
+    val blockRangeRequestTimeout: Duration,
+    val pauseBetweenAttempts: Duration,
+  )
+
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val shouldLog = AtomicBoolean(true)
 
@@ -60,9 +73,8 @@ class DownloadBlocksStep(
       var startBlockNumber = targetRange.startBlock
       val count = targetRange.endBlock - targetRange.startBlock + 1uL
       var remaining = count
-      val downloadedBlocks = mutableListOf<SealedBlockWithPeer>()
       var retries = 0u
-      var peer: MaruPeer?
+      val downloadedBlocks = mutableListOf<SealedBlockWithPeer>()
 
       LogUtil.throttledLog(
         log::info,
@@ -72,11 +84,12 @@ class DownloadBlocksStep(
       )
 
       do {
-        peer = downloadPeerProvider.getDownloadingPeer(targetRange.endBlock)
+        val peer = downloadPeerProvider.getDownloadingPeer(targetRange.endBlock)
         try {
+          require(peer != null) { "No suitable downloading peer" }
           peer
             .sendBeaconBlocksByRange(startBlockNumber, remaining)
-            .orTimeout(blockRangeRequestTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
+            .orTimeout(config.blockRangeRequestTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
             .thenApply { response ->
               if (response.blocks.isEmpty()) {
                 peer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
@@ -105,20 +118,23 @@ class DownloadBlocksStep(
         } catch (e: Exception) {
           when (e.cause) {
             is TimeoutException -> {
-              log.debug("Timed out while downloading blocks from peer: {}", peer.id)
+              log.debug("Timed out while downloading blocks from peer: {}", peer!!.id)
               peer.adjustReputation(ReputationAdjustment.LARGE_PENALTY)
             }
 
             is RpcException -> {
-              log.warn("RpcException while downloading blocks from peer: {}", peer.id, e.cause)
+              log.warn("RpcException while downloading blocks from peer: {}", peer!!.id, e.cause)
               peer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
             }
 
-            else -> log.debug("Failed to download blocks from peer: {}", peer.id, e)
+            else -> {
+              log.debug("Failed to download blocks from peer: {}", peer?.id, e)
+              sleep(config.pauseBetweenAttempts.inWholeMilliseconds)
+            }
           }
           retries++
         }
-        if (retries >= maxRetries) {
+        if (retries >= config.maxRetries) {
           log.debug("Maximum retries reached.")
           throw Exception("Maximum retries reached.")
         }

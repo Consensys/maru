@@ -203,8 +203,9 @@ class MaruAppFactory {
             ),
           elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
           finalizationProvider = finalizationProvider,
-          allowEmptyBlocks = config.allowEmptyBlocks,
           desyncTolerance = config.syncing.desyncTolerance,
+          pauseBetweenDownloadAttempts = config.syncing.download.pauseBetweenAttempts,
+          allowEmptyBlocks = config.allowEmptyBlocks,
           useUnconditionalRandomDownloadPeer = config.syncing.useUnconditionalRandomDownloadPeer,
         )
       } else {
