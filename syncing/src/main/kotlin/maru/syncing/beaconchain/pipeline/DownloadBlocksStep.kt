@@ -178,13 +178,13 @@ class DownloadBlocksStep(
     peer: MaruPeer,
     state: DownloadState,
   ): DownloadState {
-    when (e.cause) {
-      is TimeoutException -> {
+    when {
+      e is TimeoutException || e.cause is TimeoutException -> {
         log.debug("Timed out while downloading blocks from peer: {}", peer.id)
         peer.adjustReputation(ReputationAdjustment.LARGE_PENALTY)
       }
 
-      is RpcException -> {
+      e.cause is RpcException -> {
         log.warn("RpcException while downloading blocks from peer: {}", peer.id, e.cause)
         peer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
       }

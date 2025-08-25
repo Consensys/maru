@@ -140,6 +140,27 @@ class DownloadBlocksTest {
   }
 
   @Test
+  fun `applies large penalty if the request future times out`() {
+    val endBlock = 1uL
+    val peer = mock<MaruPeer>()
+    val peerLookup = mock<PeerLookup>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
+    val future = SafeFuture<BeaconBlocksByRangeResponse>() // leave it uncompleted
+    whenever(peer.getStatus()).thenReturn(randomStatus(endBlock))
+    whenever(peer.sendBeaconBlocksByRange(1uL, 1uL)).thenReturn(future)
+
+    val task =
+      DownloadBlocksStep(
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig.copy(blockRangeRequestTimeout = 50.milliseconds),
+      )
+    val range = SyncTargetRange(1uL, endBlock)
+
+    assertThrows<Exception> { task.apply(range).get() }
+    verify(peer, atLeastOnce()).adjustReputation(ReputationAdjustment.LARGE_PENALTY)
+  }
+
+  @Test
   fun `throws after exceeding max retries`() {
     val endBlock = 1uL
     val nodeId = mock<NodeId>()
