@@ -32,7 +32,6 @@ import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
-import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
@@ -122,27 +121,6 @@ class MaruApp(
     }
     log.info("Maru is up")
   }
-
-  private fun runAction(
-    serviceName: String,
-    actionName: String,
-    logLevel: Level,
-    action: () -> Unit,
-  ) {
-    runCatching(action)
-      .onFailure { log.log(logLevel, "Failed to {} {}, errorMessage={}", actionName, serviceName, it.message, it) }
-      .getOrThrow()
-  }
-
-  private fun start(
-    serviceName: String,
-    action: () -> Unit,
-  ) = runAction(serviceName, "start", Level.ERROR, action)
-
-  private fun stop(
-    serviceName: String,
-    action: () -> Unit,
-  ) = runAction(serviceName, "stop", Level.WARN, action)
 
   fun stop() {
     stop("Sync service", syncControllerManager::stop)
