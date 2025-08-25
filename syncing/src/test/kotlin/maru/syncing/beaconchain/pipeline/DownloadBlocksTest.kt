@@ -281,7 +281,7 @@ class DownloadBlocksTest {
       catchThrowable {
         step.apply(range).get()
       }
-    assertThat(throwable).cause().hasMessageContaining("Maximum retries reached")
+    assertThat(throwable.cause).isInstanceOf(DownloadBlocksStep.MaxRetriesReachedException::class.java)
   }
 
   @Test
