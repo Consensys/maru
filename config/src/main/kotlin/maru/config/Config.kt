@@ -168,7 +168,7 @@ data class SyncingConfig(
   val peerChainHeightPollingInterval: Duration,
   val syncTargetSelection: SyncTargetSelection,
   val elSyncStatusRefreshInterval: Duration,
-  val desyncTolerance: ULong,
+  val desyncTolerance: ULong = 5UL,
   val download: Download,
 ) {
   sealed interface SyncTargetSelection {
