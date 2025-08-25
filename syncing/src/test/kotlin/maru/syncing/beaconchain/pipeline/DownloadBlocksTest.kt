@@ -181,7 +181,7 @@ class DownloadBlocksTest {
     val range = SyncTargetRange(1uL, endBlock)
 
     val ex = assertThrows<Exception> { task.apply(range).get() }
-    assertThat(ex.message).contains("Maximum retries reached.")
+    assertThat(ex.cause).isInstanceOf(DownloadBlocksStep.MaxRetriesReachedException::class.java)
   }
 
   @Test
@@ -196,7 +196,8 @@ class DownloadBlocksTest {
       )
     val range = SyncTargetRange(1uL, 1uL)
 
-    assertThrows<ExecutionException> { task.apply(range).get() }
+    val ex = assertThrows<ExecutionException> { task.apply(range).get() }
+    assertThat(ex.cause).isInstanceOf(DownloadBlocksStep.MaxRetriesReachedException::class.java)
   }
 
   @Test
@@ -281,7 +282,7 @@ class DownloadBlocksTest {
   }
 
   @Test
-  fun `throws if no peers have latest block number higher or equal to 100U when purely random selection is false`() {
+  fun `returns null if no peers have latest block number more or equal to 100U with filter enabled`() {
     val peerLookup = mock<PeerLookup>()
 
     val peer1 = mock<MaruPeer>()
@@ -300,7 +301,7 @@ class DownloadBlocksTest {
   }
 
   @Test
-  fun `throws if no peers are available regardless of purely random selection or not`() {
+  fun `returns null if no peers are available regardless of purely random selection or not`() {
     val peerLookup = mock<PeerLookup>()
     whenever(peerLookup.getPeers()).thenReturn(emptyList())
     val peerWithFilter = DownloadPeerProviderImpl(peerLookup, false).getDownloadingPeer(100U)
