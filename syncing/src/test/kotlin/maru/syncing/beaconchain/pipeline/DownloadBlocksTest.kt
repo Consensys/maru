@@ -37,6 +37,13 @@ class DownloadBlocksTest {
   private val defaultEndBlock = 11UL
   private val defaultPauseBetweenAttempts = 15.milliseconds
 
+  private val defaultConfig =
+    DownloadBlocksStep.Config(
+      maxRetries = 5u,
+      blockRangeRequestTimeout = 5.seconds,
+      pauseBetweenAttempts = defaultPauseBetweenAttempts,
+    )
+
   @Test
   fun `downloads blocks successfully from peer`() {
     val peer = mock<MaruPeer>()
@@ -49,12 +56,7 @@ class DownloadBlocksTest {
     val task =
       DownloadBlocksStep(
         downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = 5u,
-            blockRangeRequestTimeout = 5.seconds,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(10uL, defaultEndBlock)
     val result = task.apply(range).get()
@@ -83,12 +85,7 @@ class DownloadBlocksTest {
     val task =
       DownloadBlocksStep(
         downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = 5u,
-            blockRangeRequestTimeout = 5.seconds,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(10uL, endBlock)
     val result = task.apply(range).get()
@@ -112,12 +109,7 @@ class DownloadBlocksTest {
     val task =
       DownloadBlocksStep(
         downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = 5u,
-            blockRangeRequestTimeout = 5.seconds,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(1uL, endBlock)
 
@@ -139,12 +131,7 @@ class DownloadBlocksTest {
     val task =
       DownloadBlocksStep(
         downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = 5u,
-            blockRangeRequestTimeout = 5.seconds,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(1uL, endBlock)
 
@@ -168,12 +155,7 @@ class DownloadBlocksTest {
     val task =
       DownloadBlocksStep(
         downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = 5u,
-            blockRangeRequestTimeout = 5.seconds,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(1uL, endBlock)
 
@@ -189,12 +171,7 @@ class DownloadBlocksTest {
     val task =
       DownloadBlocksStep(
         downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = 5u,
-            blockRangeRequestTimeout = 5.seconds,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(1uL, 1uL)
 
@@ -215,12 +192,7 @@ class DownloadBlocksTest {
     val step =
       DownloadBlocksStep(
         downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = 5u,
-            blockRangeRequestTimeout = 5.seconds,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(10u, defaultEndBlock)
     val result = step.apply(range).get()
@@ -248,12 +220,7 @@ class DownloadBlocksTest {
     val step =
       DownloadBlocksStep(
         downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = 5u,
-            blockRangeRequestTimeout = 5.seconds,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(10u, defaultEndBlock)
     val result = step.apply(range).get()
@@ -268,12 +235,7 @@ class DownloadBlocksTest {
     val step =
       DownloadBlocksStep(
         downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = 5u,
-            blockRangeRequestTimeout = 5.seconds,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(0u, 0u)
 
