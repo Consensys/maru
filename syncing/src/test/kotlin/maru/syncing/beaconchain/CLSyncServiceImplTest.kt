@@ -94,6 +94,15 @@ class CLSyncServiceImplTest {
   private lateinit var clSyncService: CLSyncServiceImpl
   private lateinit var peerLookup: PeerLookup
   private lateinit var executorService: ExecutorService
+  private val defaultPipelineConfig =
+    Config(
+      blockRangeRequestTimeout = 5.seconds,
+      blocksBatchSize = 10u,
+      blocksParallelism = 1u,
+      pauseBetweenAttempts = pauseBetweenAttempts,
+      maxRetries = 5u,
+      useUnconditionalRandomDownloadPeer = false,
+    )
 
   @BeforeEach
   fun setUp() {
@@ -130,12 +139,7 @@ class CLSyncServiceImplTest {
         peerLookup = peerLookup,
         besuMetrics = TestMetricsSystemAdapter,
         metricsFacade = TestMetricsFacade,
-        pipelineConfig =
-          Config(
-            blocksBatchSize = 10u,
-            blocksParallelism = 1u,
-            pauseBetweenAttempts = pauseBetweenAttempts,
-          ),
+        pipelineConfig = defaultPipelineConfig,
       )
 
     try {
@@ -207,12 +211,7 @@ class CLSyncServiceImplTest {
         peerLookup = peerLookup,
         besuMetrics = TestMetricsSystemAdapter,
         metricsFacade = metricsFacade,
-        pipelineConfig =
-          Config(
-            blocksBatchSize = 10u,
-            blocksParallelism = 1u,
-            pauseBetweenAttempts = pauseBetweenAttempts,
-          ),
+        pipelineConfig = defaultPipelineConfig,
       )
 
     syncToTarget(BEACON_CHAIN_2_HEAD, restartClSyncService)

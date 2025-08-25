@@ -12,7 +12,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
-import kotlin.time.Duration
 import linea.kotlin.minusCoercingUnderflow
 import maru.config.consensus.ElFork
 import maru.consensus.ForksSchedule
@@ -210,9 +209,8 @@ class BeaconSyncControllerImpl(
       elSyncServiceConfig: ELSyncService.Config,
       finalizationProvider: FinalizationProvider,
       desyncTolerance: ULong,
-      pauseBetweenDownloadAttempts: Duration,
+      pipelineConfig: BeaconChainDownloadPipelineFactory.Config,
       allowEmptyBlocks: Boolean = true,
-      useUnconditionalRandomDownloadPeer: Boolean = false,
     ): SyncController {
       val clSyncService =
         CLSyncServiceImpl(
@@ -221,11 +219,7 @@ class BeaconSyncControllerImpl(
           allowEmptyBlocks = allowEmptyBlocks,
           executorService =
             Executors.newCachedThreadPool(Thread.ofPlatform().daemon().factory()),
-          pipelineConfig =
-            BeaconChainDownloadPipelineFactory.Config(
-              useUnconditionalRandomDownloadPeer = useUnconditionalRandomDownloadPeer,
-              pauseBetweenAttempts = pauseBetweenDownloadAttempts,
-            ),
+          pipelineConfig = pipelineConfig,
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,
           metricsFacade = metricsFacade,

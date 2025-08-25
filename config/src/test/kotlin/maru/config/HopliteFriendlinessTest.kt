@@ -69,6 +69,7 @@ class HopliteFriendlinessTest {
     blocks-batch-size = 64
     blocks-parallelism = 10
     max-retries = 5
+    pause-between-attempts = "10 seconds"
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -176,12 +177,12 @@ class HopliteFriendlinessTest {
         ),
       elSyncStatusRefreshInterval = 6.seconds,
       desyncTolerance = 10UL,
-      useUnconditionalRandomDownloadPeer = false,
       SyncingConfig.Download(
         blockRangeRequestTimeout = 10.seconds,
         blocksBatchSize = 64u,
         blocksParallelism = 10u,
         maxRetries = 5u,
+        pauseBetweenAttempts = 10.seconds,
       ),
     )
 

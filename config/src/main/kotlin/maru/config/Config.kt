@@ -169,8 +169,7 @@ data class SyncingConfig(
   val syncTargetSelection: SyncTargetSelection,
   val elSyncStatusRefreshInterval: Duration,
   val desyncTolerance: ULong,
-  val useUnconditionalRandomDownloadPeer: Boolean = false,
-  val download: Download = Download(),
+  val download: Download,
 ) {
   sealed interface SyncTargetSelection {
     data object Highest : SyncTargetSelection
@@ -192,6 +191,7 @@ data class SyncingConfig(
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
     val pauseBetweenAttempts: Duration = 1.seconds,
+    val useUnconditionalRandomDownloadPeer: Boolean = false,
   )
 }
 

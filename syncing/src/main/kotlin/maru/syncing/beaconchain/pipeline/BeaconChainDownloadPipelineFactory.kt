@@ -9,7 +9,6 @@
 package maru.syncing.beaconchain.pipeline
 
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.extensions.clampedAdd
 import maru.p2p.PeerLookup
@@ -43,12 +42,12 @@ class BeaconChainDownloadPipelineFactory(
   }
 
   data class Config(
-    val blockRangeRequestTimeout: Duration = 5.seconds,
+    val blockRangeRequestTimeout: Duration,
     val pauseBetweenAttempts: Duration,
-    val blocksBatchSize: UInt = 10u,
-    val blocksParallelism: UInt = 1u,
-    val maxRetries: UInt = 5u,
-    val useUnconditionalRandomDownloadPeer: Boolean = false,
+    val blocksBatchSize: UInt,
+    val blocksParallelism: UInt,
+    val maxRetries: UInt,
+    val useUnconditionalRandomDownloadPeer: Boolean,
   )
 
   fun createPipeline(startBlock: ULong): BeaconChainPipeline {

@@ -20,6 +20,7 @@ import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
 import maru.p2p.messages.BeaconBlocksByRangeResponse
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -40,6 +41,15 @@ class BeaconChainDownloadPipelineFactoryTest {
   private lateinit var executorService: ExecutorService
   private lateinit var syncTargetProvider: () -> ULong
   private val defaultPauseBetweenAttempts = 1.seconds
+  private val defaultPipelineConfig =
+    Config(
+      blockRangeRequestTimeout = 5.seconds,
+      blocksBatchSize = 10u,
+      blocksParallelism = 1u,
+      pauseBetweenAttempts = defaultPauseBetweenAttempts,
+      maxRetries = 5u,
+      useUnconditionalRandomDownloadPeer = false,
+    )
 
   @BeforeEach
   fun setUp() {
@@ -52,7 +62,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(pauseBetweenAttempts = defaultPauseBetweenAttempts),
+        config = defaultPipelineConfig,
         syncTargetProvider = syncTargetProvider,
       )
   }
@@ -168,11 +178,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config =
-          BeaconChainDownloadPipelineFactory.Config(
-            blocksBatchSize = 100u,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultPipelineConfig.copy(blocksBatchSize = 100u),
         syncTargetProvider = { 50uL },
       )
 
@@ -216,11 +222,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config =
-          BeaconChainDownloadPipelineFactory.Config(
-            blocksBatchSize = 0u,
-            pauseBetweenAttempts = defaultPauseBetweenAttempts,
-          ),
+        config = defaultPipelineConfig.copy(blocksBatchSize = 0u),
         syncTargetProvider = { 0uL },
       )
     }.isInstanceOf(IllegalArgumentException::class.java)
