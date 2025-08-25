@@ -68,7 +68,7 @@ class HopliteFriendlinessTest {
     blocks-batch-size = 64
     blocks-parallelism = 10
     max-retries = 5
-    pause-between-attempts = "10 seconds"
+    backoff-delay = "10 seconds"
     use-unconditional-random-download-peer = true
     """.trimIndent()
   private val rawConfigToml =
@@ -183,7 +183,7 @@ class HopliteFriendlinessTest {
           blocksBatchSize = 64u,
           blocksParallelism = 10u,
           maxRetries = 5u,
-          pauseBetweenAttempts = 10.seconds,
+          backoffDelay = 10.seconds,
           useUnconditionalRandomDownloadPeer = true,
         ),
     )

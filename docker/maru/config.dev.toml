@@ -47,5 +47,5 @@ block-range-request-timeout = "10 seconds"
 blocks-batch-size = 10
 blocks-parallelism = 10
 max-retries = 5
-pause-between-attempts = "1 seconds"
+backoff-delay = "1 seconds"
 use-unconditional-random-download-peer = false

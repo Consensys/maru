@@ -78,7 +78,7 @@ class CLSyncServiceImplTest {
     private val sourceNodeKey =
       "0x0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
         .fromHexToByteArray()
-    private val pauseBetweenAttempts = 1.seconds
+    private val backoffDelay = 1.seconds
   }
 
   private var sourceNodePort: UInt = 0u
@@ -99,7 +99,7 @@ class CLSyncServiceImplTest {
       blockRangeRequestTimeout = 5.seconds,
       blocksBatchSize = 10u,
       blocksParallelism = 1u,
-      pauseBetweenAttempts = pauseBetweenAttempts,
+      backoffDelay = backoffDelay,
       maxRetries = 5u,
       useUnconditionalRandomDownloadPeer = false,
     )

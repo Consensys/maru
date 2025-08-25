@@ -59,7 +59,7 @@ class DownloadBlocksStep(
   data class Config(
     val maxRetries: UInt,
     val blockRangeRequestTimeout: Duration,
-    val pauseBetweenAttempts: Duration,
+    val backoffDelay: Duration,
   )
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -98,7 +98,7 @@ class DownloadBlocksStep(
       state =
         when (val peer = downloadPeerProvider.getDownloadingPeer(targetRange.endBlock)) {
           null -> {
-            sleep(config.pauseBetweenAttempts.inWholeMilliseconds)
+            sleep(config.backoffDelay.inWholeMilliseconds)
             state.copy(retries = state.retries + 1u)
           }
 
@@ -191,7 +191,7 @@ class DownloadBlocksStep(
 
       else -> {
         log.debug("Failed to download blocks from peer: {}", peer.id, e)
-        sleep(config.pauseBetweenAttempts.inWholeMilliseconds)
+        sleep(config.backoffDelay.inWholeMilliseconds)
       }
     }
     return state.copy(retries = state.retries + 1u)

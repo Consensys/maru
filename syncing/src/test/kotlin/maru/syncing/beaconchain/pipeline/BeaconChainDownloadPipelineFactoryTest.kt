@@ -40,13 +40,13 @@ class BeaconChainDownloadPipelineFactoryTest {
   private lateinit var factory: BeaconChainDownloadPipelineFactory
   private lateinit var executorService: ExecutorService
   private lateinit var syncTargetProvider: () -> ULong
-  private val defaultPauseBetweenAttempts = 1.seconds
+  private val defaultBackoffDelay = 1.seconds
   private val defaultPipelineConfig =
     Config(
       blockRangeRequestTimeout = 5.seconds,
       blocksBatchSize = 10u,
       blocksParallelism = 1u,
-      pauseBetweenAttempts = defaultPauseBetweenAttempts,
+      backoffDelay = defaultBackoffDelay,
       maxRetries = 5u,
       useUnconditionalRandomDownloadPeer = false,
     )

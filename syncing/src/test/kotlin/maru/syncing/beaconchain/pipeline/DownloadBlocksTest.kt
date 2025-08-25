@@ -35,13 +35,13 @@ import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
 class DownloadBlocksTest {
   private val defaultEndBlock = 11UL
-  private val defaultPauseBetweenAttempts = 15.milliseconds
+  private val defaultBackoffDelay = 15.milliseconds
 
   private val defaultConfig =
     DownloadBlocksStep.Config(
       maxRetries = 5u,
       blockRangeRequestTimeout = 5.seconds,
-      pauseBetweenAttempts = defaultPauseBetweenAttempts,
+      backoffDelay = defaultBackoffDelay,
     )
 
   @Test

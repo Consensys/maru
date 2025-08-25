@@ -208,7 +208,7 @@ class MaruAppFactory {
           pipelineConfig =
             BeaconChainDownloadPipelineFactory.Config(
               blockRangeRequestTimeout = config.syncing.download.blockRangeRequestTimeout,
-              pauseBetweenAttempts = config.syncing.download.pauseBetweenAttempts,
+              backoffDelay = config.syncing.download.backoffDelay,
               blocksBatchSize = config.syncing.download.blocksBatchSize,
               blocksParallelism = config.syncing.download.blocksParallelism,
               maxRetries = config.syncing.download.maxRetries,

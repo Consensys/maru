@@ -190,7 +190,7 @@ data class SyncingConfig(
     val blocksBatchSize: UInt = 10u,
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
-    val pauseBetweenAttempts: Duration = 1.seconds,
+    val backoffDelay: Duration = 1.seconds,
     val useUnconditionalRandomDownloadPeer: Boolean = false,
   )
 }

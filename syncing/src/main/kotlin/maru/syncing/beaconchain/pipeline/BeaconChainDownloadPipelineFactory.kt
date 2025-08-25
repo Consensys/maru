@@ -43,7 +43,7 @@ class BeaconChainDownloadPipelineFactory(
 
   data class Config(
     val blockRangeRequestTimeout: Duration,
-    val pauseBetweenAttempts: Duration,
+    val backoffDelay: Duration,
     val blocksBatchSize: UInt,
     val blocksParallelism: UInt,
     val maxRetries: UInt,
@@ -80,7 +80,7 @@ class BeaconChainDownloadPipelineFactory(
           DownloadBlocksStep.Config(
             maxRetries = config.maxRetries,
             blockRangeRequestTimeout = config.blockRangeRequestTimeout,
-            pauseBetweenAttempts = config.pauseBetweenAttempts,
+            backoffDelay = config.backoffDelay,
           ),
       )
     val importBlocksStep = ImportBlocksStep(blockImporter)
