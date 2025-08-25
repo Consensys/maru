@@ -23,6 +23,7 @@ import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.BeaconChain
+import maru.finalization.LineaFinalizationProvider
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.p2p.PeerInfo
@@ -118,6 +119,14 @@ class MaruApp(
       throw th
     }
     try {
+      if (finalizationProvider is LineaFinalizationProvider) {
+        finalizationProvider.start()
+      }
+    } catch (th: Throwable) {
+      log.error("Error while trying to start the finalization provider", th)
+      throw th
+    }
+    try {
       p2pNetwork.start().get()
     } catch (th: Throwable) {
       log.error("Error while trying to start the P2P network", th)
@@ -142,6 +151,13 @@ class MaruApp(
       log.warn("Error while trying to stop the vertx verticles", th)
     }
     try {
+      if (finalizationProvider is LineaFinalizationProvider) {
+        finalizationProvider.stop()
+      }
+    } catch (th: Throwable) {
+      log.warn("Error while trying to stop the finalization provider", th)
+    }
+    try {
       p2pNetwork.stop().get()
     } catch (th: Throwable) {
       log.warn("Error while trying to stop the P2P network", th)
@@ -158,12 +174,13 @@ class MaruApp(
   }
 
   override fun close() {
-    beaconChain.close()
     validatorELNodeEngineApiWeb3JClient.eth1Web3j.shutdown()
     validatorELNodeEthJsonRpcClient.eth1Web3j.shutdown()
     followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
     p2pNetwork.close()
     vertx.close()
+    // close db last, otherwise other components may fail trying to save data
+    beaconChain.close()
   }
 
   fun peersConnected(): UInt =
@@ -196,6 +213,7 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
           metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
+          forksSchedule = beaconGenesisConfig,
         )
       } else {
         QbftFollowerFactory(
