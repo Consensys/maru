@@ -93,8 +93,6 @@ class DownloadBlocksStep(
     )
 
     while (state.downloadedBlocks.size.toULong() < totalCount) {
-      checkMaxRetries(state.retries)
-
       state =
         when (val peer = downloadPeerProvider.getDownloadingPeer(targetRange.endBlock)) {
           null -> {
@@ -104,6 +102,7 @@ class DownloadBlocksStep(
 
           else -> downloadFromPeer(peer, state)
         }
+      checkMaxRetries(state.retries)
     }
 
     return state.downloadedBlocks
