@@ -42,3 +42,4 @@ use-unconditional-random-download-peer = false
 sync-target-selection = "Highest"
 # sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
 desync-tolerance = 10
+pause-between-attempts = "1 seconds"
