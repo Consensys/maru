@@ -32,7 +32,6 @@ import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
-import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
@@ -123,27 +122,6 @@ class MaruApp(
     log.info("Maru is up")
   }
 
-  private fun runAction(
-    serviceName: String,
-    actionName: String,
-    logLevel: Level,
-    action: () -> Unit,
-  ) {
-    runCatching(action)
-      .onFailure { log.log(logLevel, "Failed to {} {}, errorMessage={}", actionName, serviceName, it.message, it) }
-      .getOrThrow()
-  }
-
-  private fun start(
-    serviceName: String,
-    action: () -> Unit,
-  ) = runAction(serviceName, "start", Level.ERROR, action)
-
-  private fun stop(
-    serviceName: String,
-    action: () -> Unit,
-  ) = runAction(serviceName, "stop", Level.WARN, action)
-
   fun stop() {
     stop("Sync service", syncControllerManager::stop)
     stop("P2P Network") { p2pNetwork.stop().get() }
@@ -169,6 +147,21 @@ class MaruApp(
     // close db last, otherwise other components may fail trying to save data
     beaconChain.close()
   }
+
+  private fun start(
+    serviceName: String,
+    action: () -> Unit,
+  ) {
+    runCatching(action)
+      .onFailure { log.error("Failed to start {}, errorMessage={}", serviceName, it.message, it) }
+      .getOrThrow()
+  }
+
+  private fun stop(
+    serviceName: String,
+    action: () -> Unit,
+  ) = runCatching(action)
+    .getOrElse { log.warn("Failed to stop {}, errorMessage={}", serviceName, it.message, it) }
 
   fun peersConnected(): UInt =
     p2pNetwork
