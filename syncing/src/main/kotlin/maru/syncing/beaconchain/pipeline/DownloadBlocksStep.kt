@@ -86,7 +86,7 @@ class DownloadBlocksStep(
       do {
         val peer = downloadPeerProvider.getDownloadingPeer(targetRange.endBlock)
         try {
-          require(peer != null) { "No suitable downloading peer" }
+          require(peer != null) { "No suitable peer for the download" }
           peer
             .sendBeaconBlocksByRange(startBlockNumber, remaining)
             .orTimeout(config.blockRangeRequestTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
