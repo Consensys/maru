@@ -71,7 +71,6 @@ data class ValidatorElNode(
 data class QbftOptions(
   val minBlockBuildTime: Duration = 500.milliseconds,
   val messageQueueLimit: Int = 1000,
-  val roundExpiry: Duration = 1.seconds,
   val duplicateMessageLimit: Int = 100,
   val futureMessageMaxDistance: Long = 10L,
   val futureMessagesLimit: Long = 1000L,
@@ -92,7 +91,6 @@ data class QbftOptions(
     if (futureMessageMaxDistance != other.futureMessageMaxDistance) return false
     if (futureMessagesLimit != other.futureMessagesLimit) return false
     if (minBlockBuildTime != other.minBlockBuildTime) return false
-    if (roundExpiry != other.roundExpiry) return false
     if (!feeRecipient.contentEquals(other.feeRecipient)) return false
 
     return true
@@ -104,7 +102,6 @@ data class QbftOptions(
     result = 31 * result + futureMessageMaxDistance.hashCode()
     result = 31 * result + futureMessagesLimit.hashCode()
     result = 31 * result + minBlockBuildTime.hashCode()
-    result = 31 * result + roundExpiry.hashCode()
     result = 31 * result + feeRecipient.contentHashCode()
     return result
   }
@@ -113,7 +110,6 @@ data class QbftOptions(
     "QbftOptions(" +
       "minBlockBuildTime=$minBlockBuildTime, " +
       "messageQueueLimit=$messageQueueLimit, " +
-      "roundExpiry=$roundExpiry, " +
       "duplicateMessageLimit=$duplicateMessageLimit, " +
       "futureMessageMaxDistance=$futureMessageMaxDistance, " +
       "futureMessagesLimit=$futureMessagesLimit, " +

@@ -157,7 +157,6 @@ class HopliteFriendlinessTest {
     QbftOptionsDtoToml(
       minBlockBuildTime = 500.milliseconds,
       messageQueueLimit = 1000,
-      roundExpiry = 1.seconds,
       duplicateMessageLimit = 100,
       futureMessageMaxDistance = 10L,
       futureMessagesLimit = 1000L,
@@ -285,7 +284,6 @@ class HopliteFriendlinessTest {
     """
     min-block-build-time=200m
     message-queue-limit = 1001
-    round-expiry = 900m
     duplicateMessageLimit = 99
     future-message-max-distance = 11
     future-messages-limit = 100
@@ -299,7 +297,6 @@ class HopliteFriendlinessTest {
       QbftOptions(
         minBlockBuildTime = 200.milliseconds,
         messageQueueLimit = 1001,
-        roundExpiry = 900.milliseconds,
         duplicateMessageLimit = 99,
         futureMessageMaxDistance = 11,
         futureMessagesLimit = 100,
