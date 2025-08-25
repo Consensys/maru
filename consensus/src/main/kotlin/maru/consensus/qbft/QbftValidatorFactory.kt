@@ -10,7 +10,7 @@ package maru.consensus.qbft
 
 import java.time.Clock
 import java.util.concurrent.Executors
-import kotlin.time.toJavaDuration
+import kotlin.time.Duration.Companion.seconds
 import maru.config.QbftOptions
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
@@ -145,7 +145,7 @@ class QbftValidatorFactory(
     val roundTimer =
       RoundTimer(
         /* queue = */ bftEventQueue,
-        /* baseExpiryPeriod = */ qbftOptions.roundExpiry.toJavaDuration(),
+        /* roundExpiryTimeCalculator = */ ConstantRoundTimeExpiryCalculator(forkSpec.blockTimeSeconds.seconds),
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
