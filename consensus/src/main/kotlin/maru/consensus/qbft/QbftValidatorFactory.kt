@@ -140,10 +140,11 @@ class QbftValidatorFactory(
 
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
     val bftEventQueue = BftEventQueue(qbftOptions.messageQueueLimit)
+    val roundExpiry = qbftOptions.roundExpiry ?: forkSpec.blockTimeSeconds.seconds
     val roundTimer =
       RoundTimer(
         /* queue = */ bftEventQueue,
-        /* roundExpiryTimeCalculator = */ ConstantRoundTimeExpiryCalculator(forkSpec.blockTimeSeconds.seconds),
+        /* roundExpiryTimeCalculator = */ ConstantRoundTimeExpiryCalculator(roundExpiry),
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
