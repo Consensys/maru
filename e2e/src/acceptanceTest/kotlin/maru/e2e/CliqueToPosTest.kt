@@ -443,7 +443,7 @@ class CliqueToPosTest {
 
     await
       .pollInterval(1.seconds.toJavaDuration())
-      .timeout(2.minutes.toJavaDuration())
+      .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
         transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
 
@@ -483,8 +483,8 @@ class CliqueToPosTest {
           .withFailMessage {
             "Nodes out of sync:" +
               "\nforks=$forksTimestamps" +
-              "\nexpectedBlockHeight=$expectedMinBlockHeight, " +
-              "\nbut got: $nodesOutOfSync"
+              "\nexpectedMinBlockHeight= $expectedMinBlockHeight, " +
+              "\nout of sync nodes: $nodesOutOfSync"
           }.isEmpty()
       }
   }
