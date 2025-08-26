@@ -40,6 +40,7 @@ import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
+import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -55,7 +56,9 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
+import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.methods.response.EthBlock
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 import testutils.Web3jTransactionsHelper
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
@@ -71,6 +74,12 @@ class CliqueToPosTest {
         .projectName(ProjectName.random())
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
+    private var forksTimestamps = emptyMap<String, Long>()
+    private val forks =
+      mapOf(
+        "cliqueEpoch" to 1692800000L,
+        "cliqueBlock" to 1692800000L,
+      )
     private var shanghaiTimestamp: Long = 0
     private var pragueTimestamp: Long = 0
     private lateinit var maruFactory: MaruFactory
@@ -90,11 +99,14 @@ class CliqueToPosTest {
     // Will only be used in the sync from scratch tests
     private var maruFollower: MaruApp? = null
 
-    private fun parseTimestamp(timestampFork: String): Long {
+    private fun parseForks(forks: List<String>): Map<String, Long> {
       val objectMapper = ObjectMapper()
       val genesisTree = objectMapper.readTree(File(genesisDir, "genesis-besu.json"))
-      val switchTime = genesisTree.at("/config/$timestampFork").asLong()
-      return if (switchTime == 0L) System.currentTimeMillis() / 1000 else switchTime
+      return forks
+        .map { forkId ->
+          val switchTime = genesisTree.at("/config/$forkId").asLong()
+          forkId to switchTime
+        }.associate { it }
     }
 
     private fun deleteGenesisFiles() {
@@ -113,8 +125,9 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      shanghaiTimestamp = parseTimestamp("shanghaiTime")
-      pragueTimestamp = parseTimestamp("pragueTime")
+      forksTimestamps = parseForks(listOf("shanghaiTime", "cancunTime", "pragueTime"))
+      shanghaiTimestamp = forksTimestamps["shanghaiTime"]!!
+      pragueTimestamp = forksTimestamps["pragueTime"]!!
       maruFactory =
         MaruFactory(
           validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
@@ -500,24 +513,35 @@ class CliqueToPosTest {
             .blockNumber
             .toLong()
 
+        data class NodeHead(
+          val node: String,
+          val blockHeight: Long,
+          val blockTimestamp: Long,
+        )
+
         val blockHeights =
           TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
             .map { entry ->
-              entry.key to entry.value.ethBlockNumber().sendAsync()
-            }.map {
-              it.first to
-                it.second
-                  .get()
-                  .blockNumber
-                  .toLong()
-            }
+              entry.value
+                .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
+                .sendAsync()
+                .thenApply {
+                  NodeHead(
+                    entry.key,
+                    it.block.number.toLong(),
+                    it.block.timestamp.toLong(),
+                  )
+                }.toSafeFuture()
+            }.let { SafeFuture.collectAll(it.stream()).get() }
 
-        val nodesOutOfSync = blockHeights.filter { it.second != sequencerBlockHeight }
+        val nodesOutOfSync = blockHeights.filter { it.blockHeight != sequencerBlockHeight }
 
         assertThat(nodesOutOfSync)
           .withFailMessage {
-            "Nodes out of sync: expectedBlockHeight=$sequencerBlockHeight, but got: " +
-              nodesOutOfSync.joinToString { "${it.first}=${it.second}" }
+            "Nodes out of sync:" +
+              "\nforks=$forksTimestamps" +
+              "\nexpectedBlockHeight=$sequencerBlockHeight, " +
+              "\nbut got: $nodesOutOfSync"
           }.isEmpty()
       }
   }
