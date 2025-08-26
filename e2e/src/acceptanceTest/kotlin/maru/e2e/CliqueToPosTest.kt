@@ -19,27 +19,17 @@ import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.app.Helpers
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
-import maru.config.consensus.ElFork
-import maru.consensus.blockimport.FollowerBeaconBlockImporter
-import maru.consensus.state.InstantFinalizationProvider
-import maru.core.BeaconBlock
-import maru.core.BeaconBlockBody
-import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
-import maru.core.Validator
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.extensions.encodeHex
 import maru.extensions.fromHexToByteArray
-import maru.mappers.Mappers.toDomain
-import maru.serialization.rlp.RLPSerializers
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -69,16 +59,12 @@ class CliqueToPosTest {
     private val qbftCluster =
       DockerComposeRule
         .Builder()
+        .pullOnStartup(true)
         .files(DockerComposeFiles.from(*dockerComposeFilePaths.toTypedArray()))
-        .projectName(ProjectName.random())
+        .projectName(ProjectName.fromString("maru-e2e-" + UUID.randomUUID().toString().take(8)))
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
     private var forksTimestamps = emptyMap<String, Long>()
-    private val forks =
-      mapOf(
-        "cliqueEpoch" to 1692800000L,
-        "cliqueBlock" to 1692800000L,
-      )
     private var shanghaiTimestamp: Long = 0
     private var pragueTimestamp: Long = 0
     private lateinit var maruFactory: MaruFactory
@@ -264,7 +250,7 @@ class CliqueToPosTest {
 
     assertNodeBlockHeight(TestEnvironment.sequencerL2Client, 13)
 
-    waitForAllBlockHeightsToMatch()
+    waitForAllNodesToBeInSyncToMatch()
   }
 
   // TODO: Explore parallelization of this test
@@ -300,17 +286,6 @@ class CliqueToPosTest {
         validatorPortForStaticPeering = maruSequencer.p2pPort(),
         desyncTolerance = 3UL,
       )
-    if (nodeName.contains("besu")) {
-      // Required to change validation rules from Clique to PostMerge
-      // TODO: investigate this issue more. It was working happen with Dummy Consensus
-      syncTarget(engineApiConfig = engineApiConfig, headBlockNumber = 5, followerName = nodeName)
-      awaitCondition
-        .ignoreExceptions()
-        .alias(nodeName)
-        .untilAsserted {
-          assertNodeBlockHeight(nodeEthereumClient, 5L)
-        }
-    }
 
     maruFollower!!.start()
 
@@ -406,49 +381,6 @@ class CliqueToPosTest {
       }
   }
 
-  private fun syncTarget(
-    engineApiConfig: ApiEndpointConfig,
-    headBlockNumber: Long,
-    followerName: String,
-  ) {
-    val latestBlock = getBlockByNumber(headBlockNumber, retreiveTransactions = true)!!
-    val latestExecutionPayload = latestBlock.toDomain()
-    val stubBeaconBlock =
-      BeaconBlock(
-        BeaconBlockHeader(
-          number = 0u,
-          round = 0u,
-          timestamp = latestExecutionPayload.timestamp,
-          proposer = Validator(latestExecutionPayload.feeRecipient),
-          parentRoot = EMPTY_HASH,
-          stateRoot = EMPTY_HASH,
-          bodyRoot = EMPTY_HASH,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        ),
-        BeaconBlockBody(emptySet(), latestExecutionPayload),
-      )
-    val web3JEngineApiClient =
-      Helpers.createWeb3jClient(
-        apiEndpointConfig = engineApiConfig,
-      )
-    val engineApiClient =
-      Helpers.buildExecutionEngineClient(
-        web3JEngineApiClient = web3JEngineApiClient,
-        elFork = ElFork.Prague,
-        metricsFacade = TestEnvironment.testMetricsFacade,
-      )
-    val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
-    val blockImporter =
-      FollowerBeaconBlockImporter.create(
-        executionLayerManager = executionLayerManager,
-        finalizationStateProvider = InstantFinalizationProvider,
-        importerName = followerName,
-      )
-    blockImporter
-      .handleNewBlock(stubBeaconBlock)
-      .get()
-  }
-
   private fun sendCliqueTransactions() {
     val sequencerBlock = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
     if (sequencerBlock.blockNumber >= BigInteger.valueOf(5)) {
@@ -498,17 +430,10 @@ class CliqueToPosTest {
     }
   }
 
-  private fun waitForAllBlockHeightsToMatch() {
+  private fun waitForAllNodesToBeInSyncToMatch(liniency: Long = 1) {
     // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
     // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
     transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
-
-    val expectedMinBlockHeight =
-      TestEnvironment.sequencerL2Client
-        .ethBlockNumber()
-        .send()
-        .blockNumber
-        .toLong()
 
     data class NodeHead(
       val node: String,
@@ -517,10 +442,17 @@ class CliqueToPosTest {
     )
 
     await
-      .pollInterval(5.seconds.toJavaDuration())
-      .timeout(1.minutes.toJavaDuration())
+      .pollInterval(1.seconds.toJavaDuration())
+      .timeout(2.minutes.toJavaDuration())
       .untilAsserted {
         transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+
+        val expectedMinBlockHeight =
+          TestEnvironment.sequencerL2Client
+            .ethBlockNumber()
+            .send()
+            .blockNumber
+            .toLong() - liniency
 
         val blockHeights =
           TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
@@ -545,7 +477,7 @@ class CliqueToPosTest {
                 }
             }.let { SafeFuture.collectAll(it.stream()).get() }
 
-        val nodesOutOfSync = blockHeights.filter { it.blockHeight <= expectedMinBlockHeight }
+        val nodesOutOfSync = blockHeights.filter { it.blockHeight < expectedMinBlockHeight }
 
         assertThat(nodesOutOfSync)
           .withFailMessage {
