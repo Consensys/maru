@@ -45,7 +45,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Order
@@ -56,7 +55,6 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
-import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import testutils.Web3jTransactionsHelper
@@ -136,8 +134,8 @@ class CliqueToPosTest {
         )
     }
 
-    @AfterAll
-    @JvmStatic
+    // @AfterAll
+    // @JvmStatic
     fun afterAll() {
       qbftCluster.after()
       if (::maruSequencer.isInitialized) {
@@ -347,12 +345,14 @@ class CliqueToPosTest {
     timestamp: Long,
     timestampFork: String,
   ) {
+    val unixTimestamp = System.currentTimeMillis() / 1000
+    log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
     await
       .timeout(2.minutes.toJavaDuration())
       .pollInterval(500.milliseconds.toJavaDuration())
       .untilAsserted {
         val unixTimestamp = System.currentTimeMillis() / 1000
-        log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
+        log.debug("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
         assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
       }
   }
@@ -523,15 +523,23 @@ class CliqueToPosTest {
           TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
             .map { entry ->
               entry.value
-                .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
+                // this complex logic is necessary because besu has a bug and get latest returns genesis block
+                // it follower nodes
+                .ethBlockNumber()
                 .sendAsync()
-                .thenApply {
-                  NodeHead(
-                    entry.key,
-                    it.block.number.toLong(),
-                    it.block.timestamp.toLong(),
-                  )
-                }.toSafeFuture()
+                .toSafeFuture()
+                .thenCompose { bn ->
+                  entry.value
+                    .ethGetBlockByNumber(DefaultBlockParameter.valueOf(bn.blockNumber), false)
+                    .sendAsync()
+                    .thenApply {
+                      NodeHead(
+                        entry.key,
+                        bn.blockNumber.toLong(),
+                        it.block.timestamp.toLong(),
+                      )
+                    }
+                }
             }.let { SafeFuture.collectAll(it.stream()).get() }
 
         val nodesOutOfSync = blockHeights.filter { it.blockHeight != sequencerBlockHeight }
