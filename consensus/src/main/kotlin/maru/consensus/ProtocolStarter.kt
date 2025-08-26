@@ -16,6 +16,8 @@ import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import maru.core.Protocol
+import maru.subscription.InOrderFanoutSubscriptionManager
+import maru.subscription.SubscriptionManager
 import maru.syncing.CLSyncStatus
 import maru.syncing.SyncStatusProvider
 import org.apache.logging.log4j.LogManager
@@ -33,6 +35,7 @@ class ProtocolStarter(
       isDaemon,
     )
   },
+  private val forkTransitionSubscriptionManager: SubscriptionManager<ForkSpec>,
 ) : Protocol {
   companion object {
     fun create(
@@ -48,6 +51,7 @@ class ProtocolStarter(
           isDaemon,
         )
       },
+      forkTransitionSubscriptionManager: SubscriptionManager<ForkSpec> = InOrderFanoutSubscriptionManager(),
     ): ProtocolStarter {
       val protocolStarter =
         ProtocolStarter(
@@ -57,6 +61,7 @@ class ProtocolStarter(
           forkTransitionCheckInterval = forkTransitionCheckInterval,
           clock = clock,
           timerFactory = timerFactory,
+          forkTransitionSubscriptionManager = forkTransitionSubscriptionManager,
         )
       syncStatusProvider.onClSyncStatusUpdate {
         if (it == CLSyncStatus.SYNCING) {
@@ -133,6 +138,7 @@ class ProtocolStarter(
 
     newProtocol.start()
     log.debug("started new protocol {}", newProtocol)
+    forkTransitionSubscriptionManager.notifySubscribers(nextForkSpec)
   }
 
   override fun start() {

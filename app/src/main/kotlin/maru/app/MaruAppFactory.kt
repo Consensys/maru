@@ -180,6 +180,7 @@ class MaruAppFactory {
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
+        forkIdHasher = forkIdHasher,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =
@@ -303,6 +304,7 @@ class MaruAppFactory {
       statusMessageFactory: StatusMessageFactory,
       besuMetricsSystem: BesuMetricsSystem,
       forkIdHashProvider: ForkIdHashProvider,
+      forkIdHasher: ForkIdHasher,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -322,6 +324,7 @@ class MaruAppFactory {
           isBlockImportEnabledProvider = isBlockImportEnabledProvider,
           metricsSystem = besuMetricsSystem,
           forkIdHashProvider = forkIdHashProvider,
+          forkIdHasher = forkIdHasher,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
