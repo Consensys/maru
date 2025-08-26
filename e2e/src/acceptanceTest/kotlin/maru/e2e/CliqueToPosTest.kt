@@ -457,42 +457,49 @@ class CliqueToPosTest {
           val blockTimestamp: Long,
         )
 
-        val blockHeights =
-          TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
-            .map { entry ->
-              entry.value
-                // this complex logic is necessary because besu has a bug and get latest returns genesis block
-                // it follower nodes
-                .ethBlockNumber()
-                .sendAsync()
-                .toSafeFuture()
-                .thenCompose { bn ->
+        await
+          .pollInterval(5.seconds.toJavaDuration())
+          .timeout(1.minutes.toJavaDuration())
+          .untilAsserted {
+            transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+
+            val blockHeights =
+              TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
+                .map { entry ->
                   entry.value
-                    .ethGetBlockByNumber(DefaultBlockParameter.valueOf(bn.blockNumber), false)
+                    // this complex logic is necessary because besu has a bug
+                    // eth_getBlockByNumber(latest) sometimes returns genesis block in follower nodes
+                    .ethBlockNumber()
                     .sendAsync()
-                    .thenApply {
-                      NodeHead(
-                        entry.key,
-                        bn.blockNumber.toLong(),
-                        it.block.timestamp.toLong(),
-                      )
+                    .toSafeFuture()
+                    .thenCompose { bn ->
+                      entry.value
+                        .ethGetBlockByNumber(DefaultBlockParameter.valueOf(bn.blockNumber), false)
+                        .sendAsync()
+                        .thenApply {
+                          NodeHead(
+                            entry.key,
+                            bn.blockNumber.toLong(),
+                            it.block.timestamp.toLong(),
+                          )
+                        }
                     }
-                }
-            }.let { SafeFuture.collectAll(it.stream()).get() }
+                }.let { SafeFuture.collectAll(it.stream()).get() }
 
-        // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
-        // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
-        transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+            // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
+            // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
+            transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
 
-        val nodesOutOfSync = blockHeights.filter { it.blockHeight != sequencerBlockHeight }
+            val nodesOutOfSync = blockHeights.filter { it.blockHeight != sequencerBlockHeight }
 
-        assertThat(nodesOutOfSync)
-          .withFailMessage {
-            "Nodes out of sync:" +
-              "\nforks=$forksTimestamps" +
-              "\nexpectedBlockHeight=$sequencerBlockHeight, " +
-              "\nbut got: $nodesOutOfSync"
-          }.isEmpty()
+            assertThat(nodesOutOfSync)
+              .withFailMessage {
+                "Nodes out of sync:" +
+                  "\nforks=$forksTimestamps" +
+                  "\nexpectedBlockHeight=$sequencerBlockHeight, " +
+                  "\nbut got: $nodesOutOfSync"
+              }.isEmpty()
+          }
       }
   }
 
