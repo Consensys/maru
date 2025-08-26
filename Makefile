@@ -11,7 +11,6 @@ pre-commit:
 	$(MAKE) build
 
 run-e2e-test:
-	docker compose -f docker/compose.yaml pull
 	./gradlew e2e:acceptanceTest
 
 clean:
