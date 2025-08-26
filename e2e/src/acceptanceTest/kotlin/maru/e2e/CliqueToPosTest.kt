@@ -503,29 +503,31 @@ class CliqueToPosTest {
     // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
     transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
 
+    val expectedMinBlockHeight =
+      TestEnvironment.sequencerL2Client
+        .ethBlockNumber()
+        .send()
+        .blockNumber
+        .toLong()
+
+    data class NodeHead(
+      val node: String,
+      val blockHeight: Long,
+      val blockTimestamp: Long,
+    )
+
     await
       .pollInterval(5.seconds.toJavaDuration())
       .timeout(1.minutes.toJavaDuration())
       .untilAsserted {
-        val sequencerBlockHeight =
-          TestEnvironment.sequencerL2Client
-            .ethBlockNumber()
-            .send()
-            .blockNumber
-            .toLong()
-
-        data class NodeHead(
-          val node: String,
-          val blockHeight: Long,
-          val blockTimestamp: Long,
-        )
+        transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
 
         val blockHeights =
           TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
             .map { entry ->
               entry.value
-                // this complex logic is necessary because besu has a bug and get latest returns genesis block
-                // it follower nodes
+                // this complex logic is necessary because besu has a bug
+                // eth_getBlockByNumber(latest) sometimes returns genesis block in follower nodes
                 .ethBlockNumber()
                 .sendAsync()
                 .toSafeFuture()
@@ -543,13 +545,13 @@ class CliqueToPosTest {
                 }
             }.let { SafeFuture.collectAll(it.stream()).get() }
 
-        val nodesOutOfSync = blockHeights.filter { it.blockHeight != sequencerBlockHeight }
+        val nodesOutOfSync = blockHeights.filter { it.blockHeight <= expectedMinBlockHeight }
 
         assertThat(nodesOutOfSync)
           .withFailMessage {
             "Nodes out of sync:" +
               "\nforks=$forksTimestamps" +
-              "\nexpectedBlockHeight=$sequencerBlockHeight, " +
+              "\nexpectedBlockHeight=$expectedMinBlockHeight, " +
               "\nbut got: $nodesOutOfSync"
           }.isEmpty()
       }
