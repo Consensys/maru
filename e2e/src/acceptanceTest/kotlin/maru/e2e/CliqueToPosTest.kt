@@ -45,6 +45,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Order
@@ -134,8 +135,8 @@ class CliqueToPosTest {
         )
     }
 
-    // @AfterAll
-    // @JvmStatic
+    @AfterAll
+    @JvmStatic
     fun afterAll() {
       qbftCluster.after()
       if (::maruSequencer.isInitialized) {
