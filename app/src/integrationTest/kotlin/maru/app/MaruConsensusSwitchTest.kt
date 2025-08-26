@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.Checks.getMinedBlocks
-import testutils.Checks.verifyBlockTimeWithAGapOn
+import testutils.Checks.verifyBlockTime
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
@@ -77,7 +77,8 @@ class MaruConsensusSwitchTest {
   private fun verifyConsensusSwitch(
     besuNode: BesuNode,
     totalBlocksToProduce: Int,
-    switchTimestamp: Long,
+    shanghaiTimestamp: Long,
+    pragueTimestamp: Long,
   ) {
     val blockProducedByClique = besuNode.ethGetBlockByNumber(1UL)
     assertThat(blockProducedByClique.extraData.decodeHex().size).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
@@ -86,8 +87,11 @@ class MaruConsensusSwitchTest {
     assertThat(blockProducedAfterSwitch.extraData.decodeHex().size).isLessThanOrEqualTo(VANILLA_EXTRA_DATA_LENGTH)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
-    val switchBlock = blocks.findPragueBlock(switchTimestamp)!!
-    blocks.verifyBlockTimeWithAGapOn(switchBlock)
+    val shanghaiSwitchBlock = blocks.findSwitchBlock(shanghaiTimestamp)!!
+    blocks.subList(0, shanghaiSwitchBlock).verifyBlockTime()
+    val pragueSwitchBlock = blocks.findSwitchBlock(pragueTimestamp)!!
+    blocks.subList(shanghaiSwitchBlock, pragueSwitchBlock).verifyBlockTime()
+    blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
   }
 
   @Test
@@ -164,11 +168,11 @@ class MaruConsensusSwitchTest {
     log.info("Current timestamp: $currentTimestamp, prague switch timestamp: $pragueTimestamp")
     assertThat(currentTimestamp).isGreaterThan(pragueTimestamp)
 
-    verifyConsensusSwitch(validatorBesuNode, totalBlocksToProduce, shanghaiTimestamp)
-    verifyConsensusSwitch(followerBesuNode, totalBlocksToProduce, shanghaiTimestamp)
+    verifyConsensusSwitch(validatorBesuNode, totalBlocksToProduce, shanghaiTimestamp, pragueTimestamp)
+    verifyConsensusSwitch(followerBesuNode, totalBlocksToProduce, shanghaiTimestamp, pragueTimestamp)
   }
 
-  private fun List<EthBlock.Block>.findPragueBlock(expectedSwitchTimestamp: Long): Int? =
+  private fun List<EthBlock.Block>.findSwitchBlock(expectedSwitchTimestamp: Long): Int? =
     this
       .indexOfFirst {
         it.timestamp.toLong() >= expectedSwitchTimestamp

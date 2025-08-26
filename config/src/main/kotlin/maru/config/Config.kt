@@ -36,7 +36,7 @@ data class FollowersConfig(
   val followers: Map<String, ApiEndpointConfig>,
 )
 
-data class P2P(
+data class P2PConfig(
   val ipAddress: String = "127.0.0.1", // default to localhost for security
   val port: UInt = 9000u,
   val staticPeers: List<String> = emptyList(),
@@ -68,7 +68,7 @@ data class ValidatorElNode(
   val engineApiEndpoint: ApiEndpointConfig,
 )
 
-data class QbftOptions(
+data class QbftConfig(
   val minBlockBuildTime: Duration = 500.milliseconds,
   val messageQueueLimit: Int = 1000,
   val roundExpiry: Duration? = null,
@@ -85,7 +85,7 @@ data class QbftOptions(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as QbftOptions
+    other as QbftConfig
 
     if (messageQueueLimit != other.messageQueueLimit) return false
     if (duplicateMessageLimit != other.duplicateMessageLimit) return false
@@ -121,8 +121,8 @@ data class QbftOptions(
       ")"
 }
 
-data class ObservabilityOptions(
-  val port: UInt,
+data class ObservabilityConfig(
+  val port: UInt = 9545u,
   val prometheusMetricsEnabled: Boolean = true,
   val jvmMetricsEnabled: Boolean = true,
 )
@@ -161,20 +161,37 @@ data class LineaConfig(
 }
 
 data class ApiConfig(
-  val port: UInt,
+  val port: UInt = 5060u,
 )
 
 data class SyncingConfig(
   val peerChainHeightPollingInterval: Duration,
-  val peerChainHeightGranularity: UInt,
+  val syncTargetSelection: SyncTargetSelection,
   val elSyncStatusRefreshInterval: Duration,
-  val download: Download? = Download(),
+  val desyncTolerance: ULong = 5UL,
+  val download: Download = Download(),
 ) {
+  sealed interface SyncTargetSelection {
+    data object Highest : SyncTargetSelection
+
+    data class MostFrequent(
+      val peerChainHeightGranularity: UInt,
+    ) : SyncTargetSelection {
+      init {
+        require(peerChainHeightGranularity > 0U) {
+          "peerChainHeightGranularity must be higher than 0"
+        }
+      }
+    }
+  }
+
   data class Download(
     val blockRangeRequestTimeout: Duration = 5.seconds,
     val blocksBatchSize: UInt = 10u,
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
+    val backoffDelay: Duration = 1.seconds,
+    val useUnconditionalRandomDownloadPeer: Boolean = false,
   )
 }
 
@@ -182,13 +199,13 @@ data class MaruConfig(
   val protocolTransitionPollingInterval: Duration = 1.seconds,
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
-  val qbftOptions: QbftOptions?,
-  val p2pConfig: P2P?,
+  val qbft: QbftConfig?,
+  val p2p: P2PConfig?,
   val validatorElNode: ValidatorElNode,
   val followers: FollowersConfig,
-  val observabilityOptions: ObservabilityOptions,
+  val observability: ObservabilityConfig,
   val linea: LineaConfig? = null,
-  val apiConfig: ApiConfig,
+  val api: ApiConfig,
   val syncing: SyncingConfig,
 ) {
   init {

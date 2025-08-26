@@ -27,7 +27,8 @@ import maru.api.ApiServer
 import maru.api.ApiServerImpl
 import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
-import maru.config.P2P
+import maru.config.P2PConfig
+import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHashProvider
@@ -59,8 +60,12 @@ import maru.serialization.rlp.RLPSerializers
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.ELSyncService
+import maru.syncing.HighestHeadTargetSelector
+import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
+import maru.syncing.SyncTargetSelector
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -86,8 +91,8 @@ class MaruAppFactory {
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val vertx =
       VertxFactory.createVertx(
-        jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
-        prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+        jvmMetricsEnabled = config.observability.jvmMetricsEnabled,
+        prometheusMetricsEnabled = config.observability.prometheusMetricsEnabled,
       )
 
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
@@ -167,7 +172,7 @@ class MaruAppFactory {
 
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
-        p2pConfig = config.p2pConfig,
+        p2pConfig = config.p2p,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         beaconChain = beaconChain,
@@ -175,19 +180,20 @@ class MaruAppFactory {
         statusMessageFactory = statusMessageFactory,
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
-        isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
+        isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
     syncControllerImpl =
-      if (config.p2pConfig != null) {
+      if (config.p2p != null) {
         BeaconSyncControllerImpl.create(
           beaconChain = beaconChain,
           forksSchedule = beaconGenesisConfig,
           elManagerMap = elManagerMap,
           peersHeadsProvider = peersHeadBlockProvider,
+          targetChainHeadCalculator = createSyncTargetSelector(config.syncing.syncTargetSelection),
           validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
           peerLookup = p2pNetwork.getPeerLookup(),
           besuMetrics = besuMetricsSystemAdapter,
@@ -195,10 +201,19 @@ class MaruAppFactory {
           peerChainTrackerConfig =
             PeerChainTracker.Config(
               config.syncing.peerChainHeightPollingInterval,
-              config.syncing.peerChainHeightGranularity,
             ),
           elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
           finalizationProvider = finalizationProvider,
+          desyncTolerance = config.syncing.desyncTolerance,
+          pipelineConfig =
+            BeaconChainDownloadPipelineFactory.Config(
+              blockRangeRequestTimeout = config.syncing.download.blockRangeRequestTimeout,
+              backoffDelay = config.syncing.download.backoffDelay,
+              blocksBatchSize = config.syncing.download.blocksBatchSize,
+              blocksParallelism = config.syncing.download.blocksParallelism,
+              maxRetries = config.syncing.download.maxRetries,
+              useUnconditionalRandomDownloadPeer = config.syncing.download.useUnconditionalRandomDownloadPeer,
+            ),
           allowEmptyBlocks = config.allowEmptyBlocks,
         )
       } else {
@@ -210,7 +225,7 @@ class MaruAppFactory {
         ?: ApiServerImpl(
           config =
             ApiServerImpl.Config(
-              port = config.apiConfig.port,
+              port = config.api.port,
             ),
           networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
           versionProvider = MaruVersionProvider(),
@@ -288,7 +303,7 @@ class MaruAppFactory {
         } ?: InstantFinalizationProvider
 
     private fun setupP2PNetwork(
-      p2pConfig: P2P?,
+      p2pConfig: P2PConfig?,
       privateKey: ByteArray,
       chainId: UInt,
       beaconChain: BeaconChain,
@@ -320,6 +335,15 @@ class MaruAppFactory {
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
         NoOpP2PNetwork
+      }
+
+    private fun createSyncTargetSelector(config: SyncingConfig.SyncTargetSelection): SyncTargetSelector =
+      when (config) {
+        is SyncingConfig.SyncTargetSelection.Highest ->
+          HighestHeadTargetSelector()
+
+        is SyncingConfig.SyncTargetSelection.MostFrequent ->
+          MostFrequentHeadTargetSelector(config.peerChainHeightGranularity)
       }
 
     private fun getOrGeneratePrivateKey(privateKeyPath: Path): ByteArray {
