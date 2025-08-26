@@ -56,7 +56,6 @@ import org.junit.jupiter.params.provider.MethodSource
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 import testutils.Web3jTransactionsHelper
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
@@ -335,11 +334,14 @@ class CliqueToPosTest {
     timestamp: Long,
     timestampFork: String,
   ) {
-    await.timeout(2.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
-      val unixTimestamp = System.currentTimeMillis() / 1000
-      log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
-      assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
-    }
+    await
+      .timeout(2.minutes.toJavaDuration())
+      .pollInterval(500.milliseconds.toJavaDuration())
+      .untilAsserted {
+        val unixTimestamp = System.currentTimeMillis() / 1000
+        log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
+        assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
+      }
   }
 
   private fun restartNodeFromScratch(
@@ -483,6 +485,10 @@ class CliqueToPosTest {
   }
 
   private fun waitForAllBlockHeightsToMatch() {
+    // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
+    // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
+    transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+
     await
       .pollInterval(5.seconds.toJavaDuration())
       .timeout(1.minutes.toJavaDuration())
@@ -497,23 +503,22 @@ class CliqueToPosTest {
         val blockHeights =
           TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
             .map { entry ->
-              entry.key to
-                SafeFuture.of(
-                  entry.value.ethBlockNumber().sendAsync(),
-                )
-            }.map { it.first to it.second.get() }
+              entry.key to entry.value.ethBlockNumber().sendAsync()
+            }.map {
+              it.first to
+                it.second
+                  .get()
+                  .blockNumber
+                  .toLong()
+            }
 
-        // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
-        // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
-        transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+        val nodesOutOfSync = blockHeights.filter { it.second != sequencerBlockHeight }
 
-        blockHeights.forEach {
-          assertThat(it.second.blockNumber)
-            .withFailMessage {
-              "Block height doesn't match for ${it.first}. Found ${it.second.blockNumber} " +
-                "while expecting $sequencerBlockHeight."
-            }.isEqualTo(sequencerBlockHeight)
-        }
+        assertThat(nodesOutOfSync)
+          .withFailMessage {
+            "Nodes out of sync: expectedBlockHeight=$sequencerBlockHeight, but got: " +
+              nodesOutOfSync.joinToString { "${it.first}=${it.second}" }
+          }.isEmpty()
       }
   }
 
