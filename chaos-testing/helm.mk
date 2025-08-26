@@ -109,7 +109,7 @@ helm-redeploy-maru:
 	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-2  ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-follower-2.yaml  --namespace default --set bootnodes=$$BOOTNODE_ENR $(IMAGE_ARG) ; \
 	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-3  ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-follower-3.yaml  --namespace default --set bootnodes=$$BOOTNODE_ENR $(IMAGE_ARG)
 	@MAKE wait_pods pod_name=maru-bootnode-0 pod_count=1
-	@$(MAKE) wait_all-running
+	@$(MAKE) wait-all-running
 
 helm-redeploy-linea:
 	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-linea-releases
@@ -180,24 +180,22 @@ port-forward-component:
 			echo "Local port $$current_port in use, trying next..."; \
 			current_port=$$((current_port + 1)); \
 		done; \
-		log_file="$(TMP_DIR_PF)/port-forward-$$pod.log"; \
-		pid_file="$(TMP_DIR_PF)/port-forward-$$pod.pid"; \
-		echo "Port-forwarding $$pod :$(port) -> 127.0.0.1:$$current_port"; \
+		log_file="$(TMP_DIR_PF)/port-forward-$$pod-$(port).log"; \
+		pid_file="$(TMP_DIR_PF)/port-forward-$$pod-$(port).pid"; \
 		kubectl port-forward $$pod $$current_port:$(port) > "$$log_file" 2>&1 & \
 		pf_pid=$$!; \
 		echo $$pf_pid > "$$pid_file"; \
 		url="$$pod = http://127.0.0.1:$$current_port"; \
+		url_log="$$pod:$(port) -> http://127.0.0.1:$$current_port"; \
 		echo "$$url" >> "$$summary_file"; \
-		echo "Started pid $$pf_pid (log: $$log_file, url: $$url)"; \
+		echo "$$url_log"; \
 		current_port=$$((current_port + 1)); \
 	done; \
-	echo "Active forwards:"; \
-	pids_files=$$(ls $(TMP_DIR_PF)/port-forward-*.pid 2>/dev/null || true); \
-	[ -n "$$pids_files" ] && ps -o pid,command -p $$(cat $$pids_files | tr '\n' ' ') 2>/dev/null || true; \
 	echo "URL list written to $$summary_file";
 
 port-forward-linea:
 	$(MAKE) port-forward-component component=maru port=5060 local_port_start_number=1100
+	$(MAKE) port-forward-component component=maru port=9545 local_port_start_number=1150
 	$(MAKE) port-forward-component component=besu port=8545 local_port_start_number=1200
 
 port-forward-stop-component:
