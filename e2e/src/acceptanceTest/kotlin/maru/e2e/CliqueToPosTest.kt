@@ -74,11 +74,6 @@ class CliqueToPosTest {
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
     private var forksTimestamps = emptyMap<String, Long>()
-    private val forks =
-      mapOf(
-        "cliqueEpoch" to 1692800000L,
-        "cliqueBlock" to 1692800000L,
-      )
     private var shanghaiTimestamp: Long = 0
     private var pragueTimestamp: Long = 0
     private lateinit var maruFactory: MaruFactory
@@ -300,17 +295,6 @@ class CliqueToPosTest {
         validatorPortForStaticPeering = maruSequencer.p2pPort(),
         desyncTolerance = 3UL,
       )
-    if (nodeName.contains("besu")) {
-      // Required to change validation rules from Clique to PostMerge
-      // TODO: investigate this issue more. It was working happen with Dummy Consensus
-      syncTarget(engineApiConfig = engineApiConfig, headBlockNumber = 5, followerName = nodeName)
-      awaitCondition
-        .ignoreExceptions()
-        .alias(nodeName)
-        .untilAsserted {
-          assertNodeBlockHeight(nodeEthereumClient, 5L)
-        }
-    }
 
     maruFollower!!.start()
 
@@ -406,49 +390,6 @@ class CliqueToPosTest {
       }
   }
 
-  private fun syncTarget(
-    engineApiConfig: ApiEndpointConfig,
-    headBlockNumber: Long,
-    followerName: String,
-  ) {
-    val latestBlock = getBlockByNumber(headBlockNumber, retreiveTransactions = true)!!
-    val latestExecutionPayload = latestBlock.toDomain()
-    val stubBeaconBlock =
-      BeaconBlock(
-        BeaconBlockHeader(
-          number = 0u,
-          round = 0u,
-          timestamp = latestExecutionPayload.timestamp,
-          proposer = Validator(latestExecutionPayload.feeRecipient),
-          parentRoot = EMPTY_HASH,
-          stateRoot = EMPTY_HASH,
-          bodyRoot = EMPTY_HASH,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        ),
-        BeaconBlockBody(emptySet(), latestExecutionPayload),
-      )
-    val web3JEngineApiClient =
-      Helpers.createWeb3jClient(
-        apiEndpointConfig = engineApiConfig,
-      )
-    val engineApiClient =
-      Helpers.buildExecutionEngineClient(
-        web3JEngineApiClient = web3JEngineApiClient,
-        elFork = ElFork.Prague,
-        metricsFacade = TestEnvironment.testMetricsFacade,
-      )
-    val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
-    val blockImporter =
-      FollowerBeaconBlockImporter.create(
-        executionLayerManager = executionLayerManager,
-        finalizationStateProvider = InstantFinalizationProvider,
-        importerName = followerName,
-      )
-    blockImporter
-      .handleNewBlock(stubBeaconBlock)
-      .get()
-  }
-
   private fun sendCliqueTransactions() {
     val sequencerBlock = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
     if (sequencerBlock.blockNumber >= BigInteger.valueOf(5)) {
@@ -499,10 +440,6 @@ class CliqueToPosTest {
   }
 
   private fun waitForAllBlockHeightsToMatch() {
-    // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
-    // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
-    transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
-
     await
       .pollInterval(5.seconds.toJavaDuration())
       .timeout(1.minutes.toJavaDuration())
@@ -542,6 +479,10 @@ class CliqueToPosTest {
                     }
                 }
             }.let { SafeFuture.collectAll(it.stream()).get() }
+
+        // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
+        // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
+        transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
 
         val nodesOutOfSync = blockHeights.filter { it.blockHeight != sequencerBlockHeight }
 
