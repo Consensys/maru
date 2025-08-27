@@ -14,5 +14,23 @@
  */
 
 plugins {
-  id 'maru.kotlin-common-minimal-conventions'
+  id 'maru.kotlin-common-conventions'
+}
+
+dependencies {
+  implementation "io.libp2p:jvm-libp2p"
+  implementation "tech.pegasys.teku.internal:p2p"
+  implementation "build.linea.internal:kotlin"
+}
+
+tasks.register('runDifficultyCalculator', JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'DifficultyCalculator'
+  standardOutput = System.out
+}
+
+tasks.register('runPrivateKeyGenerator', JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'PrivateKeyGenerator'
+  standardOutput = System.out
 }
