@@ -48,6 +48,8 @@ class MaruReputationManager(
   private val banPeriod: Long = reputationConfig.banPeriod.inWholeMilliseconds
   private val disconnectScoreThreshold: Int = reputationConfig.disconnectScoreThreshold
   private val maxReputationScore: Int = reputationConfig.maxReputation
+  private val largeChange: Int = reputationConfig.largeChange
+  private val smallChange: Int = reputationConfig.smallChange
 
   private val peerReputations: Cache<NodeId, Reputation> = LRUCache.create(reputationConfig.capacity)
 
@@ -106,10 +108,10 @@ class MaruReputationManager(
   // Configurable mapping from constants to score delta.
   private fun toScoreDelta(adjustment: ReputationAdjustment): Int =
     when (adjustment) {
-      ReputationAdjustment.LARGE_PENALTY -> -10
-      ReputationAdjustment.SMALL_PENALTY -> -3
-      ReputationAdjustment.SMALL_REWARD -> 3
-      ReputationAdjustment.LARGE_REWARD -> 10
+      ReputationAdjustment.LARGE_PENALTY -> -largeChange
+      ReputationAdjustment.SMALL_PENALTY -> -smallChange
+      ReputationAdjustment.SMALL_REWARD -> smallChange
+      ReputationAdjustment.LARGE_REWARD -> largeChange
     }
 
   inner class Reputation {

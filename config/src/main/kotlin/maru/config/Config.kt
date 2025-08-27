@@ -50,6 +50,12 @@ data class P2PConfig(
   init {
     // just a sanity check to ensure the IP address is valid
     InetAddress.getByName(ipAddress)
+    require(reputationConfig.smallChange >= 0) {
+      "smallChange must be a positive number"
+    }
+    require(reputationConfig.largeChange >= 0) {
+      "largeChange must be a positive number"
+    }
     require(reputationConfig.largeChange > reputationConfig.smallChange) {
       "largeChange must be larger than smallChange"
     }
