@@ -232,18 +232,45 @@ port-forward-restart-all-linea:
 	$(MAKE) port-forward-linea
 
 wait-all-running:
-	@echo "Waiting for all pods in default namespace to be running..."
-	@while true; do \
+	@uptime_arg="$${uptime:-5s}"; \
+	echo "Waiting for all pods in default namespace to be running for at least $$uptime_arg since last restart..."; \
+	uptime_seconds=0; \
+	case "$$uptime_arg" in \
+		*s) uptime_seconds=$$(echo "$$uptime_arg" | sed 's/s$$//'); ;; \
+		*m) uptime_seconds=$$(echo "$$uptime_arg" | sed 's/m$$//' | awk '{print $$1 * 60}'); ;; \
+		*h) uptime_seconds=$$(echo "$$uptime_arg" | sed 's/h$$//' | awk '{print $$1 * 3600}'); ;; \
+		*) echo "Invalid uptime format. Use format like: 30s, 2m, 1h"; exit 1; ;; \
+	esac; \
+	while true; do \
 		total_pods=$$(kubectl get pods --namespace=default --no-headers 2>/dev/null | wc -l | tr -d ' '); \
 		if [ "$$total_pods" -eq 0 ]; then \
 			echo "No pods found in default namespace."; \
 			break; \
 		fi; \
 		running_pods=$$(kubectl get pods --namespace=default --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' '); \
-		if [ "$$running_pods" -eq "$$total_pods" ]; then \
-			echo "All $$total_pods pods are running."; \
+		if [ "$$running_pods" -ne "$$total_pods" ]; then \
+			echo "$$running_pods/$$total_pods pods are running. Waiting for all to be running..."; \
+			sleep 2; \
+			continue; \
+		fi; \
+		pods_ready=0; \
+		for pod in $$(kubectl get pods --namespace=default --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do \
+			container_start_time=$$(kubectl get pod $$pod --namespace=default -o jsonpath='{.status.containerStatuses[0].state.running.startedAt}' 2>/dev/null || echo ""); \
+			if [ -z "$$container_start_time" ]; then \
+				echo "Could not get container start time for $$pod, skipping..."; \
+				continue; \
+			fi; \
+			container_start_seconds=$$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$$container_start_time" "+%s" 2>/dev/null || echo "0"); \
+			current_time=$$(date "+%s"); \
+			container_uptime=$$((current_time - container_start_seconds)); \
+			if [ "$$container_uptime" -ge "$$uptime_seconds" ]; then \
+				pods_ready=$$((pods_ready + 1)); \
+			fi; \
+		done; \
+		if [ "$$pods_ready" -eq "$$total_pods" ]; then \
+			echo "All $$total_pods pods have been running for at least $$uptime_arg since last restart."; \
 			break; \
 		fi; \
-		echo "$$running_pods/$$total_pods pods are running. Waiting..."; \
+		echo "$$pods_ready/$$total_pods pods have been running for at least $$uptime_arg since last restart. Waiting..."; \
 		sleep 2; \
 	done
