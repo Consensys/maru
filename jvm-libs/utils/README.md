@@ -1,4 +1,4 @@
-  # Maru Utils
+# Maru Utils
 
 This module contains utility tools for Maru blockchain operations.
 
