@@ -44,7 +44,6 @@ import org.assertj.core.api.Assertions.assertThatNoException
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility.await
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -716,7 +715,7 @@ class P2PTest {
     }
   }
 
-  @Disabled("FIXME: this test fails 100% of the time. Needs to be fixed")
+  @Test
   fun `sending status updates updates status`() {
     val refreshInterval = 5.seconds
     val p2pNetworkImpl1 =
@@ -729,11 +728,6 @@ class P2PTest {
             refreshIntervalLeeway = 1.seconds,
             timeout = 1.seconds,
           ),
-        discovery =
-          P2PConfig.Discovery(
-            port = PORT2,
-            refreshInterval = refreshInterval,
-          ),
         statusMessageFactory = getMockedStatusMessageFactory(),
       )
 
@@ -742,17 +736,12 @@ class P2PTest {
         privateKey = key2,
         port = PORT3,
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
+        staticPeers = listOf(PEER_ADDRESS_NODE_1),
         statusUpdate =
           P2PConfig.StatusUpdateConfig(
             refreshInterval = 1.seconds,
             refreshIntervalLeeway = 1.seconds,
             timeout = 1.seconds,
-          ),
-        discovery =
-          P2PConfig.Discovery(
-            port = PORT4,
-            bootnodes = listOf(p2pNetworkImpl1.enr!!),
-            refreshInterval = refreshInterval,
           ),
         statusMessageFactory = getMockedStatusMessageFactory(),
       )
