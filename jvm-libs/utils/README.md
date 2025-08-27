@@ -20,7 +20,7 @@ Calculates the expected block number and difficulty for Clique consensus blocks 
 
 **Command Line:**
 ```bash
-./gradlew :jvm-libs:utils:runDifficultyCalculator --args="<currentBlockNumber> <currentTimestamp> <desiredSwitchTime>"
+./gradlew -q :jvm-libs:utils:runDifficultyCalculator --args="<currentBlockNumber> <currentTimestamp> <desiredSwitchTime>"
 ```
 
 **Parameters:**
@@ -30,7 +30,7 @@ Calculates the expected block number and difficulty for Clique consensus blocks 
 
 **Example:**
 ```bash
-./gradlew :jvm-libs:utils:runDifficultyCalculator --args="1000 1692000000 1692001000"
+./gradlew -q :jvm-libs:utils:runDifficultyCalculator --args="1000 1692000000 1692001000"
 ```
 
 **Output:**
@@ -59,7 +59,7 @@ Generates cryptographic keys for Maru validators and P2P networking, displaying 
 
 **Command Line:**
 ```bash
-./gradlew :jvm-libs:utils:runPrivateKeyGenerator
+./gradlew -q :jvm-libs:utils:runPrivateKeyGenerator
 ```
 
 **Example Output:**
@@ -68,32 +68,8 @@ Generated private key (prefixed): 08021220abcd1234...
 Corresponding node ID: 16Uiu2HAm...
 ```
 
-#### Key Generation Process
-1. Generates a new SECP256K1 key pair (same as MaruFactory)
-2. Marshals the private key to get the prefixed version
-3. Creates the prefixed private key string (hex-encoded)
-4. Generates the PeerId from the public key
-5. Creates the LibP2P Node ID for networking
-
 #### Security Note
 ⚠️ **Warning**: The generated private keys are logged as plaintext for development and testing purposes. In production environments, ensure proper key management and never expose private keys in logs.
 
-## Building and Running
-
 ### Prerequisites
 - Java 21+
-- Gradle
-
-### Build the module
-```bash
-./gradlew :jvm-libs:utils:build
-```
-
-### Run tools
-```bash
-# Run DifficultyCalculator
-./gradlew :jvm-libs:utils:runDifficultyCalculator --args="1000 1692000000 1692001000"
-
-# Run PrivateKeyGenerator
-./gradlew :jvm-libs:utils:runPrivateKeyGenerator
-```

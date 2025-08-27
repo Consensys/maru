@@ -21,6 +21,7 @@ dependencies {
   implementation "io.libp2p:jvm-libp2p"
   implementation "tech.pegasys.teku.internal:p2p"
   implementation "build.linea.internal:kotlin"
+  implementation 'org.slf4j:slf4j-log4j12'
 }
 
 tasks.register('runDifficultyCalculator', JavaExec) {
