@@ -555,7 +555,13 @@ class P2PTest {
       )
     try {
       p2pNetworkImpl1.start()
-      val enr = ENR.factory.fromEnr(p2pNetworkImpl1.enr)
+      val enr =
+        ENR.factory.fromEnr(
+          p2pNetworkImpl1
+            .nodeRecords()
+            .first()
+            .asEnr(),
+        )
       assertThat(enr.tcpAddress.get().port).isEqualTo(PORT1.toInt())
       assertThat(enr.udpAddress.get().port).isEqualTo(PORT1.toInt())
       assertThat(
@@ -597,7 +603,7 @@ class P2PTest {
     }
   }
 
-  @Disabled("FIXME: this test fails 100% of the time. Needs to be fixed")
+  @Test
   fun `peer can be discovered and disconnected peers can be rediscovered`() {
     val refreshInterval = 5.seconds
     val p2pNetworkImpl1 =
@@ -609,36 +615,54 @@ class P2PTest {
             port = PORT2,
             refreshInterval = refreshInterval,
           ),
-      )
-
-    val p2pNetworkImpl2 =
-      createP2PNetwork(
-        privateKey = key2,
-        port = PORT3,
-        beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
-        discovery =
-          P2PConfig.Discovery(
-            port = PORT4,
-            bootnodes = listOf(p2pNetworkImpl1.enr),
-            refreshInterval = refreshInterval,
+        reputationConfig =
+          P2PConfig.ReputationConfig(
+            cooldownPeriod = 1.seconds,
+            banPeriod = 2.seconds,
           ),
       )
 
-    val p2pNetworkImpl3 =
-      createP2PNetwork(
-        privateKey = key3,
-        port = PORT5,
-        beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
-        discovery =
-          P2PConfig.Discovery(
-            port = PORT6,
-            bootnodes = listOf(p2pNetworkImpl1.enr),
-            refreshInterval = refreshInterval,
-          ),
-      )
-
+    var p2pNetworkImpl2: P2PNetworkImpl? = null
+    var p2pNetworkImpl3: P2PNetworkImpl? = null
     try {
       p2pNetworkImpl1.start()
+
+      p2pNetworkImpl2 =
+        createP2PNetwork(
+          privateKey = key2,
+          port = PORT3,
+          beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
+          discovery =
+            P2PConfig.Discovery(
+              port = PORT4,
+              bootnodes = listOf(p2pNetworkImpl1.enr!!),
+              refreshInterval = refreshInterval,
+            ),
+          reputationConfig =
+            P2PConfig.ReputationConfig(
+              cooldownPeriod = 1.seconds,
+              banPeriod = 2.seconds,
+            ),
+        )
+
+      p2pNetworkImpl3 =
+        createP2PNetwork(
+          privateKey = key3,
+          port = PORT5,
+          beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
+          discovery =
+            P2PConfig.Discovery(
+              port = PORT6,
+              bootnodes = listOf(p2pNetworkImpl1.enr!!),
+              refreshInterval = refreshInterval,
+            ),
+          reputationConfig =
+            P2PConfig.ReputationConfig(
+              cooldownPeriod = 1.seconds,
+              banPeriod = 2.seconds,
+            ),
+        )
+
       p2pNetworkImpl2.start()
       p2pNetworkImpl3.start()
 
@@ -687,8 +711,8 @@ class P2PTest {
       }
     } finally {
       p2pNetworkImpl1.stop().get()
-      p2pNetworkImpl2.stop().get()
-      p2pNetworkImpl3.stop().get()
+      p2pNetworkImpl2?.stop()?.get()
+      p2pNetworkImpl3?.stop()?.get()
     }
   }
 
@@ -727,7 +751,7 @@ class P2PTest {
         discovery =
           P2PConfig.Discovery(
             port = PORT4,
-            bootnodes = listOf(p2pNetworkImpl1.enr),
+            bootnodes = listOf(p2pNetworkImpl1.enr!!),
             refreshInterval = refreshInterval,
           ),
         statusMessageFactory = getMockedStatusMessageFactory(),

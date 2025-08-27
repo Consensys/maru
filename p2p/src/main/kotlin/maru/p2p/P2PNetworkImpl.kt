@@ -160,10 +160,7 @@ open class P2PNetworkImpl(
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String>
     get() = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
-  override val enr: String =
-    nodeRecords()
-      .first()
-      .asEnr()
+  override val enr: String? = discoveryService?.getLocalNodeRecord()?.asEnr()
   override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 
   private fun logEnr(nodeRecord: NodeRecord) {
@@ -199,7 +196,7 @@ open class P2PNetworkImpl(
         nodeRecords().forEach(::logEnr)
       }
 
-  private fun nodeRecords(): List<NodeRecord> {
+  fun nodeRecords(): List<NodeRecord> {
     val enrs: List<NodeRecord> =
       (listIpsV4(excludeLoopback = true) + discoveryAddresses)
         .toSet()
