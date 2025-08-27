@@ -9,6 +9,7 @@
 package maru.p2p
 
 import java.io.Closeable
+import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
@@ -116,6 +117,8 @@ interface P2PNetwork : Closeable {
   fun dropPeer(peer: PeerInfo)
 
   fun addPeer(address: String)
+
+  fun handleForkTransition(forkSpec: ForkSpec): Unit
 
   fun isStaticPeer(nodeId: NodeId): Boolean
 }

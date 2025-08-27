@@ -13,6 +13,7 @@ import java.time.Clock
 import maru.api.ApiServer
 import maru.config.MaruConfig
 import maru.consensus.ElBlockMetadata
+import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestElBlockMetadataCache
 import maru.consensus.NewBlockHandler
@@ -27,6 +28,7 @@ import maru.finalization.LineaFinalizationProvider
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.services.LongRunningService
+import maru.subscription.InOrderFanoutSubscriptionManager
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
@@ -79,7 +81,7 @@ class MaruApp(
       measurementSupplier = {
         beaconChain
           .getLatestBeaconState()
-          .latestBeaconBlockHeader.number
+          .beaconBlockHeader.number
           .toLong()
       },
     )
@@ -103,7 +105,7 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
+  private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock, beaconChain)
 
   fun start() {
     if (finalizationProvider is LineaFinalizationProvider) {
@@ -171,6 +173,7 @@ class MaruApp(
     config: MaruConfig,
     beaconGenesisConfig: ForksSchedule,
     clock: Clock,
+    beaconChain: BeaconChain,
   ): Protocol {
     val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
     val qbftFactory =
@@ -204,7 +207,8 @@ class MaruApp(
           finalizationStateProvider = finalizationProvider,
         )
       }
-
+    val forkTransitionSubscriptionManager = InOrderFanoutSubscriptionManager<ForkSpec>()
+    forkTransitionSubscriptionManager.addSyncSubscriber(p2pNetwork::handleForkTransition)
     val protocolStarter =
       ProtocolStarter.create(
         forksSchedule = beaconGenesisConfig,
@@ -215,6 +219,7 @@ class MaruApp(
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         syncStatusProvider = syncStatusProvider,
         forkTransitionCheckInterval = config.protocolTransitionPollingInterval,
+        forkTransitionNotifier = forkTransitionSubscriptionManager,
       )
 
     return protocolStarter

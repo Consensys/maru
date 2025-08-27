@@ -97,6 +97,7 @@ class MaruAppFactory {
       StatusMessageFactory,
       BeaconChain,
       ForkIdHashProvider,
+      ForkIdHasher,
       () -> Boolean,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
@@ -195,6 +196,7 @@ class MaruAppFactory {
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
+        forkIdHasher = forkIdHasher,
         p2pNetworkFactory = p2pNetworkFactory,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
@@ -327,6 +329,7 @@ class MaruAppFactory {
       statusMessageFactory: StatusMessageFactory,
       besuMetricsSystem: BesuMetricsSystem,
       forkIdHashProvider: ForkIdHashProvider,
+      forkIdHasher: ForkIdHasher,
       p2pNetworkFactory: (
         ByteArray,
         P2PConfig,
@@ -337,6 +340,7 @@ class MaruAppFactory {
         StatusMessageFactory,
         BeaconChain,
         ForkIdHashProvider,
+        ForkIdHasher,
         () -> Boolean,
       ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     ): P2PNetwork =
@@ -356,6 +360,7 @@ class MaruAppFactory {
           statusMessageFactory,
           beaconChain,
           forkIdHashProvider,
+          forkIdHasher,
           isBlockImportEnabledProvider,
         )
       } ?: run {

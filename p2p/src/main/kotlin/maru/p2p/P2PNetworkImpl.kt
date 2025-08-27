@@ -17,7 +17,10 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2PConfig
+import maru.consensus.ForkId
 import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHasher
+import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
 import maru.database.BeaconChain
@@ -56,6 +59,7 @@ open class P2PNetworkImpl(
   private val statusMessageFactory: StatusMessageFactory,
   private val beaconChain: BeaconChain,
   private val forkIdHashProvider: ForkIdHashProvider,
+  private val forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
   // for testing:
   private val rpcMethodsFactory: (
@@ -82,7 +86,7 @@ open class P2PNetworkImpl(
       deserializer = serDe,
       topicId = sealedBlocksTopicId,
       isHandlingEnabled = isBlockImportEnabledProvider,
-      nextExpectedSequenceNumberProvider = { beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL },
+      nextExpectedSequenceNumberProvider = { beaconChain.getLatestBeaconState().beaconBlockHeader.number + 1UL },
     )
   private val broadcastMessageCounterFactory =
     metricsFacade.createCounterFactory(
@@ -377,5 +381,18 @@ open class P2PNetworkImpl(
 
   override fun addPeer(address: String) {
     addStaticPeer(MultiaddrPeerAddress.fromAddress(address))
+  }
+
+  override fun handleForkTransition(forkSpec: ForkSpec) {
+    val forkId =
+      ForkId(
+        chainId = chainId,
+        forkSpec = forkSpec,
+        genesisRootHash =
+          beaconChain.getBeaconState(0u)?.beaconBlockHeader?.hash
+            ?: throw IllegalStateException("Genesis state not found"),
+      )
+    val newForkIdHash = forkIdHasher.hash(forkId)
+    discoveryService?.updateForkIdHash(Bytes.wrap(newForkIdHash))
   }
 }

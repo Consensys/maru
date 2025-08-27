@@ -9,6 +9,7 @@
 package maru.p2p
 
 import java.util.UUID
+import maru.consensus.ForkSpec
 import org.apache.logging.log4j.LogManager
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -76,6 +77,8 @@ object NoOpP2PNetwork : P2PNetwork {
   override fun dropPeer(peer: PeerInfo) = Unit
 
   override fun addPeer(address: String) = Unit
+
+  override fun handleForkTransition(forkSpec: ForkSpec) = Unit
 
   override fun isStaticPeer(nodeId: NodeId): Boolean = false
 

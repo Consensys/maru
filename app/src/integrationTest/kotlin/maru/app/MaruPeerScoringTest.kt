@@ -180,6 +180,7 @@ class MaruPeerScoringTest {
           smf,
           chain,
           forkIdHashProvider,
+          forkIdHasher,
           isBlockImportEnabledProvider,
           ->
           MisbehavingP2PNetwork(
@@ -192,6 +193,7 @@ class MaruPeerScoringTest {
             smf,
             chain,
             forkIdHashProvider,
+            forkIdHasher,
             isBlockImportEnabledProvider,
             // You must provide a default or test-specific handler factory here
             beaconBlocksByRangeHandlerFactory,
@@ -252,6 +254,7 @@ class MaruPeerScoringTest {
           smf,
           chain,
           forkIdHashProvider,
+          forkIdHasher,
           isBlockImportEnabledProvider,
           ->
           MisbehavingP2PNetwork(
@@ -264,6 +267,7 @@ class MaruPeerScoringTest {
             smf,
             chain,
             forkIdHashProvider,
+            forkIdHasher,
             isBlockImportEnabledProvider,
             // You must provide a default or test-specific handler factory here
             beaconBlocksByRangeHandlerFactory,

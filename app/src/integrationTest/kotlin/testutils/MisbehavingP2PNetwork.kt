@@ -11,6 +11,7 @@ package testutils
 import java.lang.Thread.sleep
 import maru.config.P2PConfig
 import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHasher
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.p2p.LineaRpcProtocolIdGenerator
@@ -37,6 +38,7 @@ class MisbehavingP2PNetwork(
   smf: StatusMessageFactory,
   chain: BeaconChain,
   forkIdHashProvider: ForkIdHashProvider,
+  forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
   beaconBlocksByRangeHandlerFactory: (BeaconChain) -> BeaconBlocksByRangeHandler,
 ) : P2PNetworkImpl(
@@ -49,6 +51,7 @@ class MisbehavingP2PNetwork(
     statusMessageFactory = smf,
     beaconChain = chain,
     forkIdHashProvider = forkIdHashProvider,
+    forkIdHasher = forkIdHasher,
     isBlockImportEnabledProvider = isBlockImportEnabledProvider,
     rpcMethodsFactory = { statusMessageFactory, lineaRpcProtocolIdGenerator, peerLookup, beaconChain ->
       MisbehavingRpcMethods(

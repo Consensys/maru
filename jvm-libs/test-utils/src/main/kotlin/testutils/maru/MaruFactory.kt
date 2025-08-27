@@ -41,6 +41,7 @@ import maru.config.consensus.ElFork
 import maru.config.consensus.delegated.ElDelegatedConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
@@ -314,6 +315,7 @@ class MaruFactory(
       StatusMessageFactory,
       BeaconChain,
       ForkIdHashProvider,
+      ForkIdHasher,
       () -> Boolean,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp =
@@ -408,6 +410,7 @@ class MaruFactory(
       StatusMessageFactory,
       BeaconChain,
       ForkIdHashProvider,
+      ForkIdHasher,
       () -> Boolean,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
@@ -459,6 +462,7 @@ class MaruFactory(
       StatusMessageFactory,
       BeaconChain,
       ForkIdHashProvider,
+      ForkIdHasher,
       () -> Boolean,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
@@ -516,6 +520,7 @@ class MaruFactory(
       StatusMessageFactory,
       BeaconChain,
       ForkIdHashProvider,
+      ForkIdHasher,
       () -> Boolean,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
