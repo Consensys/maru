@@ -242,16 +242,19 @@ wait-all-running:
 		*) echo "Invalid uptime format. Use format like: 30s, 2m, 1h"; exit 1; ;; \
 	esac; \
 	while true; do \
+	  total_pods=$$(kubectl get pods --namespace=default -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | wc -l | tr -d ' '); \
 		pods_data=$$(kubectl get pods --namespace=default --field-selector=status.phase=Running -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.containerStatuses[*].state.running.startedAt}{"\n"}{end}' 2>/dev/null); \
-		if [ -z "$$pods_data" ]; then \
-			echo "No running pods found in default namespace."; \
+		if [ -z "$$pods_data" ] || [ $$(echo "$$pods_data" | wc -l | tr -d ' ') -lt "$$total_pods" ]; then \
+			echo "Not all pods are running in default namespace. Waiting..."; \
 			sleep 2; \
 			continue; \
 		fi; \
-		total_pods=$$(echo "$$pods_data" | wc -l | tr -d ' '); \
 		pods_ready=0; \
 		current_time=$$(date +%s); \
-		echo "$$pods_data" | while IFS=' ' read -r pod_name start_times; do \
+		for line in $$pods_data; do \
+			if [ -z "$$line" ]; then continue; fi; \
+			pod_name=$$(echo "$$line" | awk '{print $$1}'); \
+			start_times=$$(echo "$$line" | cut -d' ' -f2-); \
 			if [ -z "$$pod_name" ]; then continue; fi; \
 			most_recent_seconds=0; \
 			for start_time in $$start_times; do \
@@ -272,16 +275,16 @@ wait-all-running:
 				if [ "$$container_uptime" -ge "$$uptime_seconds" ]; then \
 					pods_ready=$$((pods_ready + 1)); \
 				else \
-					echo "Pod $$pod_name: uptime $$container_uptime""s < required $$uptime_seconds""s"; \
+					echo "Pod $$pod_name: uptime $$container_uptime seconds < required $$uptime_seconds seconds"; \
 				fi; \
 			else \
 				echo "Pod $$pod_name: Could not parse container start time, skipping"; \
 			fi; \
 		done; \
 		if [ "$$pods_ready" -eq "$$total_pods" ]; then \
-			echo "All $$total_pods pods have been running for at least $$uptime_arg since last restart."; \
+			echo "All $$total_pods pods have been running for at least $$uptime_seconds seconds since last restart."; \
 			break; \
 		fi; \
-		echo "$$pods_ready/$$total_pods pods have been running for at least $$uptime_arg since last restart. Waiting..."; \
+		echo "$$pods_ready/$$total_pods pods have been running for at least $$uptime_seconds seconds since last restart. Waiting..."; \
 		sleep 2; \
 	done
