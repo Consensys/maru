@@ -18,25 +18,18 @@ import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.marshalPrivateKey
 import linea.kotlin.encodeHex
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 
 /**
  * Utility tool to generate a prefixed private key and corresponding node ID
  */
 object PrivateKeyGenerator {
-  private val logger: Logger = LogManager.getLogger(PrivateKeyGenerator::class.java)
-
   fun generateAndLogPrivateKey() {
     val keyPair = generateKeyPair(KeyType.SECP256K1)
     val privateKey = keyPair.component1()
     val privateKeyWithPrefixString = marshalPrivateKey(privateKey).encodeHex()
     val peerId = PeerId.fromPubKey(privateKey.publicKey())
     val libP2PNodeId = LibP2PNodeId(peerId)
-
-    logger.info("Generated private key (prefixed): $privateKeyWithPrefixString")
-    logger.info("Corresponding node ID: $libP2PNodeId")
 
     println("Generated private key (prefixed): $privateKeyWithPrefixString")
     println("Corresponding node ID: $libP2PNodeId")
