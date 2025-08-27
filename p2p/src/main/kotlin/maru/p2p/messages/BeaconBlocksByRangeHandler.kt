@@ -82,7 +82,6 @@ open class BeaconBlocksByRangeHandler(
     request: BeaconBlocksByRangeRequest,
     maxBlocks: ULong,
   ): List<SealedBeaconBlock> {
-    println("BeaconBlocksByRangeHandler: getBlocks called $maxBlocks")
     val blocks =
       beaconChain.getSealedBeaconBlocks(
         startBlockNumber = request.startBlockNumber,
