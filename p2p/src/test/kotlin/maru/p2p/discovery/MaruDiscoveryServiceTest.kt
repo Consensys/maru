@@ -15,6 +15,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import linea.kotlin.decodeHex
+import linea.kotlin.toULong
 import maru.config.P2PConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
@@ -27,6 +28,8 @@ import maru.consensus.ForksSchedule
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
+import maru.database.InMemoryRuntimeConfigs
+import maru.database.RuntimeConfigs
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.discovery.MaruDiscoveryService.Companion.convertSafeNodeRecordToDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService.Companion.isValidNodeRecord
@@ -87,6 +90,7 @@ class MaruDiscoveryServiceTest {
     val otherForkSpec = ForkSpec(1L, 1, consensusConfig)
   }
 
+  private lateinit var runtimeConfigs: RuntimeConfigs
   private lateinit var service: MaruDiscoveryService
 
   private val keyPair = SECP256K1.KeyPair.random()
@@ -125,11 +129,13 @@ class MaruDiscoveryServiceTest {
             refreshInterval = 10.seconds,
           ),
       )
+    runtimeConfigs = InMemoryRuntimeConfigs()
     service =
       MaruDiscoveryService(
         privateKeyBytes = keyPair.secretKey().bytesArray(),
         p2pConfig = p2pConfig,
         forkIdHashProvider = forkIdHashProvider,
+        runtimeConfigs = runtimeConfigs,
       )
   }
 
@@ -142,6 +148,42 @@ class MaruDiscoveryServiceTest {
     assertEquals(publicKey, peer.publicKey)
     assertEquals(dummyAddr.get(), peer.nodeAddress)
     assertEquals(Bytes.wrap(forkIdHashProvider.currentForkIdHash()), peer.forkIdBytes)
+  }
+
+  @Test
+  fun `seq number updates on local record updates`() {
+    val sequenceNumberInDBAtStartup = 0uL
+    assertThat(runtimeConfigs.getDiscoverySequenceNumber()).isEqualTo(sequenceNumberInDBAtStartup)
+    service.start()
+    assertThat(
+      service
+        .getLocalNodeRecord()
+        .seq
+        .toBigInteger()
+        .toULong(),
+    ).isEqualTo(sequenceNumberInDBAtStartup + 1uL)
+
+    service.updateForkIdHash(Bytes.wrap("update 1".toByteArray()))
+    assertThat(runtimeConfigs.getDiscoverySequenceNumber()).isEqualTo(sequenceNumberInDBAtStartup + 2uL)
+    assertThat(
+      service
+        .getLocalNodeRecord()
+        .seq
+        .toBigInteger()
+        .toULong(),
+    ).isEqualTo(sequenceNumberInDBAtStartup + 2uL)
+
+    service.updateForkIdHash(Bytes.wrap("update 2".toByteArray()))
+    assertThat(runtimeConfigs.getDiscoverySequenceNumber()).isEqualTo(sequenceNumberInDBAtStartup + 3uL)
+    assertThat(
+      service
+        .getLocalNodeRecord()
+        .seq
+        .toBigInteger()
+        .toULong(),
+    ).isEqualTo(sequenceNumberInDBAtStartup + 3uL)
+
+    service.stop()
   }
 
   @Test
@@ -183,6 +225,7 @@ class MaruDiscoveryServiceTest {
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
+        runtimeConfigs = InMemoryRuntimeConfigs(),
       )
 
     val discoveryService2 =
@@ -200,6 +243,7 @@ class MaruDiscoveryServiceTest {
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
+        runtimeConfigs = InMemoryRuntimeConfigs(),
       )
 
     val discoveryService3 =
@@ -217,6 +261,7 @@ class MaruDiscoveryServiceTest {
               ),
           ),
         forkIdHashProvider = forkIdHashProvider,
+        runtimeConfigs = InMemoryRuntimeConfigs(),
       )
 
     try {
