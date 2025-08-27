@@ -55,6 +55,8 @@ wait-for-log-entry:
 
 
 # make helm-deploy-linea-node maru_release_name=maru-bootnode-0 maru_values=maru-bootnode-0.yaml besu_release_name=besu-bootnode-0 besu_values=besu-bootnode-0.yaml
+# to debug templates:
+# helm template maru-test ./helm/charts/maru -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-bootnode-0.yaml --debug
 helm-deploy-linea-node:
 	@if [ -z "$(maru_release_name)" ] || [ -z "$(maru_values)" ] || [ -z "$(besu_release_name)" ] || [ -z "$(besu_values)" ]; then \
 		echo "Usage: make helm-deploy-linea-node maru_release_name=<name> maru_values=<values_file> besu_release_name=<name> besu_values=<values_file> [maru_bootnode=<bootnode>] [besu_bootnode=<bootnode>]"; \
@@ -232,7 +234,7 @@ port-forward-restart-all-linea:
 	$(MAKE) port-forward-linea
 
 wait-all-running:
-	@uptime_arg="$${uptime:-5s}"; \
+	@uptime_arg="$${uptime:-10s}"; \
 	echo "Waiting for all pods in default namespace to be running for at least $$uptime_arg since last restart..."; \
 	uptime_seconds=0; \
 	case "$$uptime_arg" in \
