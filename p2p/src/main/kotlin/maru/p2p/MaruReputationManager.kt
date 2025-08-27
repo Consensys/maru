@@ -46,7 +46,7 @@ class MaruReputationManager(
 
   private val cooldownPeriod: Long = reputationConfig.cooldownPeriod.inWholeMilliseconds
   private val banPeriod: Long = reputationConfig.banPeriod.inWholeMilliseconds
-  private val disconnectThreshold: Int = reputationConfig.disconnectThreshold
+  private val disconnectScoreThreshold: Int = reputationConfig.disconnectScoreThreshold
   private val maxReputationScore: Int = reputationConfig.maxReputation
 
   private val peerReputations: Cache<NodeId, Reputation> = LRUCache.create(reputationConfig.capacity)
@@ -154,13 +154,13 @@ class MaruReputationManager(
       currentTime: UInt64,
     ): Boolean {
       if (!isSuitableAt(currentTime)) {
-        return score.get() <= disconnectThreshold
+        return score.get() <= disconnectScoreThreshold
       }
       val newScore =
         score.updateAndGet { current ->
           min(maxReputationScore, current + toScoreDelta(effect))
         }
-      val shouldDisconnect = newScore <= disconnectThreshold
+      val shouldDisconnect = newScore <= disconnectScoreThreshold
       if (shouldDisconnect) {
         suitableAfter = Optional.of(currentTime.plus(banPeriod))
         score.set(DEFAULT_SCORE)

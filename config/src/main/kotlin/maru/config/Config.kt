@@ -50,6 +50,9 @@ data class P2PConfig(
   init {
     // just a sanity check to ensure the IP address is valid
     InetAddress.getByName(ipAddress)
+    require(reputationConfig.largeChange > reputationConfig.smallChange) {
+      "largeChange must be larger than smallChange"
+    }
   }
 
   data class Discovery(
@@ -68,7 +71,7 @@ data class P2PConfig(
     val capacity: Int = 1024,
     val largeChange: Int = 10,
     val smallChange: Int = 3,
-    val disconnectThreshold: Int = -largeChange,
+    val disconnectScoreThreshold: Int = -largeChange,
     val maxReputation: Int = 2 * largeChange,
     val cooldownPeriod: Duration = 2.minutes,
     val banPeriod: Duration = 12.hours,
