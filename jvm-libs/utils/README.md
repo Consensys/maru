@@ -1,4 +1,4 @@
-# Maru Utils
+  # Maru Utils
 
 This module contains utility tools for Maru blockchain operations.
 
@@ -64,7 +64,8 @@ Generates cryptographic keys for Maru validators and P2P networking, displaying 
 
 **Example Output:**
 ```
-Generated private key (prefixed): 08021220abcd1234...
+Generated private key (prefixed): 0x08021220abcd1234...
+Ethereum address: 0xabc
 Corresponding node ID: 16Uiu2HAm...
 ```
 
