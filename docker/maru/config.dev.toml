@@ -23,7 +23,6 @@ engine-api-endpoint = { endpoint = "http://sequencer:8550" }
 eth-api-endpoint = { endpoint = "http://sequencer:8545" }
 
 [follower-engine-apis]
-"follower-besu" = { endpoint = "http://follower-besu:8550" }
 "follower-erigon" = { endpoint = "http://follower-erigon:8551", jwt-secret-path = "../docker/jwt" }
 "follower-nethermind" = { endpoint = "http://follower-nethermind:8550", jwt-secret-path = "../docker/jwt" }
 "follower-geth" = { endpoint = "http://follower-geth:8551", jwt-secret-path = "../docker/jwt" }
@@ -38,5 +37,15 @@ port = 8080
 
 [syncing]
 peer-chain-height-polling-interval = "5 seconds"
-peer-chain-height-granularity = 10
 el-sync-status-refresh-interval = "5 seconds"
+sync-target-selection = "Highest"
+# sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
+desync-tolerance = 10
+
+[syncing.download]
+block-range-request-timeout = "10 seconds"
+blocks-batch-size = 10
+blocks-parallelism = 10
+max-retries = 5
+backoff-delay = "1 seconds"
+use-unconditional-random-download-peer = false

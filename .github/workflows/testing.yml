@@ -23,7 +23,7 @@ on:
         required: false
 
 concurrency:
-  group: consensus-client-testing-${{ github.workflow }}-${{ github.ref }}
+  group: maru-tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-med ]
-    name: Consensus client tests
+    name: maru tests
     #   useful for debugging flaky tests. Comment out Jacoco and Codecov steps because they override the test results.
 #    strategy:
 #      matrix:
@@ -85,4 +85,9 @@ jobs:
           os: linux
           name: codecov
           verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
           token: ${{ secrets.CODECOV_TOKEN }}

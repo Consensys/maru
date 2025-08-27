@@ -17,7 +17,7 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.p2p.discovery.MaruDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.logging.log4j.LogManager
@@ -36,7 +36,7 @@ import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 
 class MaruPeerManager(
   private val maruPeerFactory: MaruPeerFactory,
-  private val p2pConfig: P2P,
+  private val p2pConfig: P2PConfig,
   private val reputationManager: ReputationManager,
   private val isStaticPeer: (NodeId) -> Boolean,
 ) : PeerHandler,
@@ -128,9 +128,10 @@ class MaruPeerManager(
   }
 
   private fun logConnectedPeers() {
-    val peerIds = connectedPeers.keys.joinToString(", ") { it.toString() }
-    log.info("Currently connected peers: [$peerIds]")
-    log.info("Discovered nodes: [${discoveryService?.getKnownPeers()}]")
+    log.info("Currently connected peers={}", connectedPeers.keys.toList())
+    discoveryService?.getKnownPeers()?.forEach { peer ->
+      log.info("discovered peer={}", peer)
+    }
   }
 
   override fun onConnect(peer: Peer) {

@@ -1,14 +1,36 @@
-helm-clean-releases:
-	@echo "Cleaning up Helm releases"
-	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-sequencer
-	-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-0
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3
-	KUBECONFIG=$(KUBECONFIG) kubectl delete pvc --all
-	KUBECONFIG=$(KUBECONFIG) kubectl delete pv --all
+.SILENT:
+
+helm-clean-pvcs:
+	@echo "Cleaning up $(component) Persistent Volumes Claims and correspondent PV"
+	-@KUBECONFIG=$(KUBECONFIG) kubectl delete pvc -l app.kubernetes.io/component=$(component) >/dev/null 2>&1
+	-@KUBECONFIG=$(KUBECONFIG) kubectl get pv --no-headers 2>/dev/null | awk '$$5=="Available" {print $$1}' | xargs -r -I {} env KUBECONFIG=$(KUBECONFIG) kubectl delete pv {} >/dev/null 2>&1
+
+helm-clean-component:
+	@if [ -z "$(component)" ]; then \
+		echo "Usage: make helm-clean-component component=<component_name>"; \
+		exit 1; \
+	fi
+	@echo "Cleaning up all $(component) releases"
+	@COMPONENT_RELEASES=$$(helm --kubeconfig $(KUBECONFIG) list -q 2>/dev/null | grep '^$(component)-' || true); \
+	if [ -n "$$COMPONENT_RELEASES" ]; then \
+		for release in $$COMPONENT_RELEASES; do \
+			echo "Uninstalling $$release"; \
+			helm --kubeconfig $(KUBECONFIG) uninstall $$release >/dev/null 2>&1 || true; \
+		done; \
+	else \
+		echo "No $(component) releases found"; \
+	fi
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-pvcs component=$(component)
+
+helm-clean-besu-releases:
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-component component=besu
+
+helm-clean-maru-releases:
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-component component=maru
+
+helm-clean-linea-releases:
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-besu-releases
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-maru-releases
 
 wait_pods:
 	@if [ -z "$(pod_name)" ] || [ -z "$(pod_count)" ]; then \
@@ -31,56 +53,197 @@ wait-for-log-entry:
 		sleep 1; \
 	done
 
-helm-deploy-besu:
-		@echo "Deploying Besu"
-		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-sequencer ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-sequencer.yaml
-		@helm --kubeconfig $(KUBECONFIG) upgrade --install besu-follower ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/besu-local-dev-follower.yaml
-		@echo "Waiting for Besu to be ready..."
-		@$(MAKE) wait_pods pod_name=besu-sequencer pod_count=1
-		@$(MAKE) wait_pods pod_name=besu-follower pod_count=3
 
-helm-redeploy-besu:
-		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-sequencer
-		-@helm --kubeconfig $(KUBECONFIG) uninstall besu-follower
-		@sleep 3 # Wait for a second to ensure the previous release is fully uninstalled
-		@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-deploy-besu
+# make helm-deploy-linea-node maru_release_name=maru-bootnode-0 maru_values=maru-bootnode-0.yaml besu_release_name=besu-bootnode-0 besu_values=besu-bootnode-0.yaml
+helm-deploy-linea-node:
+	@if [ -z "$(maru_release_name)" ] || [ -z "$(maru_values)" ] || [ -z "$(besu_release_name)" ] || [ -z "$(besu_values)" ]; then \
+		echo "Usage: make helm-deploy-linea-node maru_release_name=<name> maru_values=<values_file> besu_release_name=<name> besu_values=<values_file> [maru_bootnode=<bootnode>] [besu_bootnode=<bootnode>]"; \
+		exit 1; \
+	fi
+	@echo "Deploying Linea node - Besu: $(besu_release_name), Maru: $(maru_release_name)"
+	@BESU_ARGS=""; \
+	if [ -n "$(besu_bootnode)" ]; then \
+		BESU_ARGS="--set bootnodes=$(besu_bootnode)"; \
+	fi; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install $(besu_release_name) ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/$(besu_values) --namespace default $$BESU_ARGS
+#	@$(MAKE) wait-for-log-entry pod_name=$(besu_release_name)-0 log_entry="Ethereum main loop is up"
+	@MARU_ARGS=""; \
+	if [ -n "$(maru_bootnode)" ]; then \
+		MARU_ARGS="--set bootnodes=$(maru_bootnode)"; \
+	fi; \
+	if [ -n "$(maru_image)" ]; then \
+		MARU_ARGS="$$MARU_ARGS --set image.name=$(maru_image)"; \
+	fi; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install $(maru_release_name) ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/$(maru_values) --namespace default $$MARU_ARGS
 
+
+get-pod-enode:
+	@mkdir -p tmp
+	@$(MAKE) wait-for-log-entry pod_name=$(pod_name) log_entry="enode"
+	@BOOTNODE_IP=$$(kubectl describe pod $(pod_name) | grep -E '^IP:' | awk '{print $$2}'); \
+	ENODE=$$(kubectl logs $(pod_name) | grep -o 'enode://[^[:space:]]*' | sed "s/127\.0\.0\.1/$$BOOTNODE_IP/"); \
+	echo "ENODE: $$ENODE"; \
+	DST_FILE=$${dst_file:-enode-$(pod_name).txt}; \
+	echo "$$ENODE" > "tmp/$$DST_FILE"; \
+	echo "ENODE saved to tmp/$$DST_FILE"
+
+get-pod-enr:
+	@mkdir -p tmp
+	@$(MAKE) wait-for-log-entry pod_name=$(pod_name) log_entry="enr"
+	ENR=$$(kubectl logs $(pod_name) | grep -Ev '0.0.0.0|127.0.0.1' | grep -o 'enr=[^ ]*' | head -1 | cut -d= -f2); \
+	echo "ENR: $$ENR"; \
+	DST_FILE=$${dst_file:-enr-$(pod_name).txt}; \
+	echo "$$ENR" > "tmp/$$DST_FILE"; \
+	echo "ENR saved to tmp/$$DST_FILE"
+
+IMAGE_ARG=$(if $(maru_image),--set image.name=$(maru_image),)
 helm-redeploy-maru:
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-validator
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-0
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-1
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-2
-	-@helm --kubeconfig $(KUBECONFIG) uninstall maru-follower-3
-	@sleep 2 # Wait for a second to ensure the previous release is fully uninstalled
-	@echo "Deploying Maru Nodes"
-	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-0 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-0.yaml
-	@$(MAKE) wait_pods pod_name=maru-follower-0 pod_count=1
-	@$(MAKE) wait-for-log-entry pod_name=maru-follower-0-0 log_entry="enr"
-	BOOTNODE_ENR=$$(kubectl logs maru-follower-0-0 | grep -Ev '0.0.0.0|127.0.0.1' | grep -o 'enr=[^ ]*' | head -1 | cut -d= -f2); \
-	echo "Bootnode ENR: $$BOOTNODE_ENR"; \
-	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-validator ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-validator.yaml --set bootnodes=$$BOOTNODE_ENR ; \
-	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-1.yaml --set bootnodes=$$BOOTNODE_ENR ; \
-	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-2 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-2.yaml --set bootnodes=$$BOOTNODE_ENR ; \
-	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-3 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-local-dev-follower-3.yaml --set bootnodes=$$BOOTNODE_ENR
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-maru-releases
+	@echo "Deploying Maru Nodes: IMAGE_ARG='$(IMAGE_ARG)'"
+	@helm --kubeconfig $(KUBECONFIG) upgrade --install maru-bootnode-0 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-bootnode-0.yaml --namespace default $(IMAGE_ARG);
+	$(MAKE) get-pod-enr pod_name=maru-bootnode-0-0 dst_file=maru-bootnode.txt; \
+	MARU_BOOTNODE=$$(cat tmp/maru-bootnode.txt); \
+	echo "Deploying remaining nodes with $$MARU_BOOTNODE"; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-sequencer-0 ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-sequencer-0.yaml --namespace default --set bootnodes=$$BOOTNODE_ENR $(IMAGE_ARG) ; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-1  ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-follower-1.yaml  --namespace default --set bootnodes=$$BOOTNODE_ENR $(IMAGE_ARG) ; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-2  ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-follower-2.yaml  --namespace default --set bootnodes=$$BOOTNODE_ENR $(IMAGE_ARG) ; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install maru-follower-3  ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-follower-3.yaml  --namespace default --set bootnodes=$$BOOTNODE_ENR $(IMAGE_ARG)
+	@MAKE wait_pods pod_name=maru-bootnode-0 pod_count=1
+	@$(MAKE) wait-all-running
 
-	@$(MAKE) wait_pods pod_name=maru-validator pod_count=1
+helm-redeploy-linea:
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-linea-releases
+	@set -e; \
+	pid1=""; \
+	if [ "$(maru_image)" ]; then \
+		case "$(maru_image)" in \
+			*local) \
+				echo "maru_image ends with 'local' -> build/import local image"; \
+				$(MAKE) build-and-import-maru-image & pid1=$$!; \
+				;; \
+			*) \
+				echo "Using provided maru_image=$(maru_image)"; \
+				;; \
+		esac; \
+	fi; \
+	if [ -n "$$pid1" ]; then wait $$pid1 || exit 1; fi;
+	@$(MAKE) helm-deploy-linea-node maru_release_name=maru-bootnode-0 maru_values=maru-bootnode-0.yaml besu_release_name=besu-bootnode-0 besu_values=besu-bootnode-0.yaml;
+	@$(MAKE) get-pod-enode pod_name=besu-bootnode-0-0 dst_file=el-bootnode.txt
+	@$(MAKE) get-pod-enr pod_name=maru-bootnode-0-0 dst_file=maru-bootnode.txt
+	@EL_BOOTNODE=$$(cat tmp/el-bootnode.txt); \
+	MARU_BOOTNODE=$$(cat tmp/maru-bootnode.txt); \
+	echo "Deploying remaining nodes with bootnodes - EL: $$EL_BOOTNODE, Maru: $$MARU_BOOTNODE"; \
+	$(MAKE) helm-deploy-linea-node maru_release_name=maru-sequencer-0 maru_values=maru-sequencer-0.yaml besu_release_name=besu-sequencer-0 besu_values=besu-sequencer-0.yaml maru_bootnode=$$MARU_BOOTNODE besu_bootnode=$$EL_BOOTNODE $(if $(maru_image),maru_image=$(maru_image),); \
+	$(MAKE) helm-deploy-linea-node maru_release_name=maru-follower-1 maru_values=maru-follower-1.yaml besu_release_name=besu-follower-1 besu_values=besu-follower-1.yaml maru_bootnode=$$MARU_BOOTNODE besu_bootnode=$$EL_BOOTNODE $(if $(maru_image),maru_image=$(maru_image),); \
+	$(MAKE) helm-deploy-linea-node maru_release_name=maru-follower-2 maru_values=maru-follower-2.yaml besu_release_name=besu-follower-2 besu_values=besu-follower-2.yaml maru_bootnode=$$MARU_BOOTNODE besu_bootnode=$$EL_BOOTNODE $(if $(maru_image),maru_image=$(maru_image),); \
+	$(MAKE) helm-deploy-linea-node maru_release_name=maru-follower-3 maru_values=maru-follower-3.yaml besu_release_name=besu-follower-3 besu_values=besu-follower-3.yaml maru_bootnode=$$MARU_BOOTNODE besu_bootnode=$$EL_BOOTNODE $(if $(maru_image),maru_image=$(maru_image),); \
+	sleep 3; \
+	$(MAKE) wait-all-running; \
+	echo "Deployment done"
 
-helm-redeploy-maru-and-besu:
-	@echo "Redeploying Besu and Maru"
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-releases
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-deploy-besu
-	# Wait for Besu to be fully deployed,
-	# otherwise Maru will fail to start because it cannot connect to Besu
-	# then will miss P2P messages from validator
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-redeploy-maru
+build-maru-image:
+	@echo "Building Maru image"
+	cd .. && ./gradlew :app:installDist
+	cd .. && docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./app/build/libs/ -t consensys/maru:local
 
-wait-maru-follower-is-syncing:
-	@echo "Waiting for Maru follower to be ready..."
-	@until kubectl get pods -n default -l app.kubernetes.io/instance=maru-follower-0 | grep -q '1/1'; do \
+build-and-import-maru-image:
+	@$(MAKE) build-maru-image
+	@$(MAKE) k3s-import-local-maru-image
+
+build-and-redeploy-maru:
+	@$(MAKE) build-and-import-maru-image
+	@$(MAKE) helm-redeploy-maru
+
+# Port-forward component pods exposing each pod's <port> on incremental local ports
+# Usage:
+#   make port-forward-all component=besu port=8545          -> 1000, 1001, ...
+#   make port-forward-all component=maru port=8550          -> 1000, 1001, ...
+# Optional vars: local_port_start_number (default 1000)
+# Backward compatibility: besu-port-forward-all still works (defaults component=besu remote_port=8545)
+component ?= besu
+port ?= 8545
+local_port_start_number ?= 1000
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+TMP_DIR := $(MAKEFILE_DIR)tmp
+TMP_DIR_PF := $(TMP_DIR)/pf
+port-forward-component:
+	mkdir -p $(TMP_DIR_PF); \
+	echo "Using dirs: $(TMP_DIR) $(TMP_DIR_PF)"; \
+	summary_file="$(TMP_DIR)/port-forward-$(component)-$(port).txt"; \
+	: > "$$summary_file"; \
+	echo "Discovering pods (label app.kubernetes.io/component=$(component))..."; \
+	pods=$$(kubectl get pods -l app.kubernetes.io/component=$(component) -o jsonpath='{.items[*].metadata.name}'); \
+	if [ -z "$$pods" ]; then echo "No pods found for component $(component)"; exit 1; fi; \
+	current_port=$(local_port_start_number); \
+	for pod in $$pods; do \
+		while lsof -i TCP:$$current_port -sTCP:LISTEN >/dev/null 2>&1; do \
+			echo "Local port $$current_port in use, trying next..."; \
+			current_port=$$((current_port + 1)); \
+		done; \
+		log_file="$(TMP_DIR_PF)/port-forward-$$pod-$(port).log"; \
+		pid_file="$(TMP_DIR_PF)/port-forward-$$pod-$(port).pid"; \
+		kubectl port-forward $$pod $$current_port:$(port) > "$$log_file" 2>&1 & \
+		pf_pid=$$!; \
+		echo $$pf_pid > "$$pid_file"; \
+		url="$$pod = http://127.0.0.1:$$current_port"; \
+		url_log="$$pod:$(port) -> http://127.0.0.1:$$current_port"; \
+		echo "$$url" >> "$$summary_file"; \
+		echo "$$url_log"; \
+		current_port=$$((current_port + 1)); \
+	done; \
+	echo "URL list written to $$summary_file";
+
+port-forward-linea:
+	$(MAKE) port-forward-component component=maru port=5060 local_port_start_number=1100
+	$(MAKE) port-forward-component component=maru port=9545 local_port_start_number=1150
+	$(MAKE) port-forward-component component=besu port=8545 local_port_start_number=1200
+
+port-forward-stop-component:
+	@echo "Scanning for all kubectl port-forward processes..."; \
+	pids=$$(ps -o pid= -o command= -ax | grep 'kubectl port-forward' | grep -v grep | grep $(component) | awk '{print $$1}'); \
+	if [ -z "$$pids" ]; then \
+		echo "No kubectl port-forward processes found."; \
+	else \
+		for pid in $$pids; do \
+			if kill -0 $$pid >/dev/null 2>&1; then \
+				echo "Killing PID $$pid"; \
+				kill $$pid 2>/dev/null || echo "Failed to kill $$pid with SIGTERM"; \
+			fi; \
+		done; \
 		sleep 1; \
-	done
-	@echo "Maru follower is ready."
-	@echo "Waiting for 'block received' message in maru-follower-0 pod..."
-	@until kubectl logs -n default -l app.kubernetes.io/instance=maru-follower-0 | grep -q 'block received'; do \
-		sleep 1; \
+		for pid in $$pids; do \
+			if kill -0 $$pid >/dev/null 2>&1; then \
+				echo "Force killing PID $$pid"; \
+				kill -9 $$pid 2>/dev/null || echo "Failed to force kill $$pid"; \
+			fi; \
+		done; \
+	fi; \
+	echo "Removing tracked PID files in $(TMP_DIR_PF)"; \
+	rm -f $(TMP_DIR_PF)/port-forward-$(component)*.pid 2>/dev/null || true; \
+	rm -f $(TMP_DIR_PF)/port-forward-$(component)*.log 2>/dev/null || true; \
+	echo "Done.";
+
+port-forward-stop-all-linea:
+	$(MAKE) port-forward-stop-component component=maru;
+	$(MAKE) port-forward-stop-component component=besu;
+
+port-forward-restart-all-linea:
+	-$(MAKE) port-forward-stop-all-linea
+	$(MAKE) port-forward-linea
+
+wait-all-running:
+	@echo "Waiting for all pods in default namespace to be running..."
+	@while true; do \
+		total_pods=$$(kubectl get pods --namespace=default --no-headers 2>/dev/null | wc -l | tr -d ' '); \
+		if [ "$$total_pods" -eq 0 ]; then \
+			echo "No pods found in default namespace."; \
+			break; \
+		fi; \
+		running_pods=$$(kubectl get pods --namespace=default --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' '); \
+		if [ "$$running_pods" -eq "$$total_pods" ]; then \
+			echo "All $$total_pods pods are running."; \
+			break; \
+		fi; \
+		echo "$$running_pods/$$total_pods pods are running. Waiting..."; \
+		sleep 2; \
 	done

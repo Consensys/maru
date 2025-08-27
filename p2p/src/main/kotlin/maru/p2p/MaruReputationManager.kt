@@ -14,7 +14,7 @@ import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.Volatile
 import kotlin.math.min
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.MaruMetricsCategory
 import org.hyperledger.besu.plugin.services.MetricsSystem
@@ -32,7 +32,7 @@ class MaruReputationManager(
   metricsSystem: MetricsSystem,
   private val timeProvider: TimeProvider,
   private val isStaticPeer: (NodeId) -> Boolean,
-  reputationConfig: P2P.ReputationConfig,
+  reputationConfig: P2PConfig.ReputationConfig,
 ) : ReputationManager {
   companion object {
     private const val DEFAULT_SCORE = 0

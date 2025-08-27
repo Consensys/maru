@@ -8,6 +8,7 @@
  */
 package maru.config
 
+import com.sksamuel.hoplite.ConfigException
 import com.sksamuel.hoplite.ExperimentalHoplite
 import java.net.URI
 import kotlin.io.path.Path
@@ -17,7 +18,9 @@ import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
@@ -55,15 +58,18 @@ class HopliteFriendlinessTest {
     port = 8080
 
     [syncing]
+    desync-tolerance = 10
     peer-chain-height-polling-interval = "5 seconds"
-    peer-chain-height-granularity = 10
     el-sync-status-refresh-interval = "6 seconds"
+    sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
 
     [syncing.download]
     block-range-request-timeout = "10 seconds"
     blocks-batch-size = 64
     blocks-parallelism = 10
     max-retries = 5
+    backoff-delay = "10 seconds"
+    use-unconditional-random-download-peer = true
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -71,13 +77,13 @@ class HopliteFriendlinessTest {
 
     [follower-engine-apis]
     follower1 = { endpoint = "http://localhost:1234", jwt-secret-path = "/secret/path" }
-    follower2 = { endpoint = "http://localhost:4321" }
+    follower2 = { endpoint = "http://localhost:4321", timeout = "25 seconds" }
     """.trimIndent()
   private val dataPath = Path("/some/path")
   private val privateKeyPath = Path("/private-key/path")
   private val persistence = Persistence(dataPath, privateKeyPath)
   private val p2pConfig =
-    P2P(
+    P2PConfig(
       ipAddress = "10.11.12.13",
       port = 3322u,
       staticPeers =
@@ -86,7 +92,7 @@ class HopliteFriendlinessTest {
         ),
       reconnectDelay = 500.milliseconds,
       discovery =
-        P2P.Discovery(
+        P2PConfig.Discovery(
           port = 3324u,
           bootnodes =
             listOf(
@@ -128,18 +134,27 @@ class HopliteFriendlinessTest {
     )
   private val follower1 =
     ApiEndpointDto(
-      URI.create("http://localhost:1234").toURL(),
+      endpoint = URI.create("http://localhost:1234").toURL(),
       jwtSecretPath = "/secret/path",
     )
   private val follower2 =
     ApiEndpointDto(
-      URI.create("http://localhost:4321").toURL(),
+      endpoint = URI.create("http://localhost:4321").toURL(),
+      timeout = 25.seconds,
     )
   private val followersConfig =
     FollowersConfig(
       mapOf(
-        "follower1" to ApiEndpointConfig(URI.create("http://localhost:1234").toURL(), "/secret/path"),
-        "follower2" to ApiEndpointConfig(URI.create("http://localhost:4321").toURL()),
+        "follower1" to
+          ApiEndpointConfig(
+            endpoint = URI.create("http://localhost:1234").toURL(),
+            jwtSecretPath = "/secret/path",
+          ),
+        "follower2" to
+          ApiEndpointConfig(
+            endpoint = URI.create("http://localhost:4321").toURL(),
+            timeout = 25.seconds,
+          ),
       ),
     )
   private val emptyFollowersConfig = FollowersConfig(emptyMap())
@@ -147,7 +162,7 @@ class HopliteFriendlinessTest {
     QbftOptionsDtoToml(
       minBlockBuildTime = 500.milliseconds,
       messageQueueLimit = 1000,
-      roundExpiry = 1.seconds,
+      roundExpiry = null,
       duplicateMessageLimit = 100,
       futureMessageMaxDistance = 10L,
       futureMessagesLimit = 1000L,
@@ -156,14 +171,21 @@ class HopliteFriendlinessTest {
   private val syncingConfig =
     SyncingConfig(
       peerChainHeightPollingInterval = 5.seconds,
-      peerChainHeightGranularity = 10u,
+      syncTargetSelection =
+        SyncingConfig.SyncTargetSelection.MostFrequent(
+          peerChainHeightGranularity = 10U,
+        ),
       elSyncStatusRefreshInterval = 6.seconds,
-      SyncingConfig.Download(
-        blockRangeRequestTimeout = 10.seconds,
-        blocksBatchSize = 64u,
-        blocksParallelism = 10u,
-        maxRetries = 5u,
-      ),
+      desyncTolerance = 10UL,
+      download =
+        SyncingConfig.Download(
+          blockRangeRequestTimeout = 10.seconds,
+          blocksBatchSize = 64u,
+          blocksParallelism = 10u,
+          maxRetries = 5u,
+          backoffDelay = 10.seconds,
+          useUnconditionalRandomDownloadPeer = true,
+        ),
     )
 
   @Test
@@ -178,7 +200,7 @@ class HopliteFriendlinessTest {
         p2p = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
-        observability = ObservabilityOptions(port = 9090u),
+        observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
@@ -197,11 +219,32 @@ class HopliteFriendlinessTest {
         p2p = p2pConfig,
         payloadValidator = payloadValidator,
         followerEngineApis = null,
-        observability = ObservabilityOptions(port = 9090u),
+        observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
     )
+  }
+
+  @Test
+  fun `throws when el validator is also specified as follower`() {
+    val exception =
+      assertThrows<IllegalArgumentException> {
+        MaruConfig(
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+          allowEmptyBlocks = false,
+          persistence = persistence,
+          qbft = qbftOptions.toDomain(),
+          p2p = p2pConfig,
+          validatorElNode = payloadValidator.domainFriendly(),
+          followers = FollowersConfig(mapOf("el-validator" to payloadValidator.engineApiEndpoint.domainFriendly())),
+          observability = ObservabilityConfig(port = 9090u),
+          linea = null,
+          api = ApiConfig(port = 8080u),
+          syncing = syncingConfig,
+        )
+      }
+    assertThat(exception.message).isEqualTo("Validator EL node cannot be defined as a follower")
   }
 
   @Test
@@ -212,16 +255,16 @@ class HopliteFriendlinessTest {
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
-        p2pConfig = p2pConfig,
+        p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
           ),
-        qbftOptions = qbftOptions.toDomain(),
+        qbft = qbftOptions.toDomain(),
         followers = followersConfig,
-        observabilityOptions = ObservabilityOptions(port = 9090u),
-        apiConfig = ApiConfig(port = 8080u),
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
     )
@@ -235,16 +278,16 @@ class HopliteFriendlinessTest {
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
-        qbftOptions = qbftOptions.toDomain(),
-        p2pConfig = p2pConfig,
+        qbft = qbftOptions.toDomain(),
+        p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
           ),
         followers = emptyFollowersConfig,
-        observabilityOptions = ObservabilityOptions(port = 9090u),
-        apiConfig = ApiConfig(port = 8080u),
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
       ),
     )
@@ -254,7 +297,7 @@ class HopliteFriendlinessTest {
     """
     min-block-build-time=200m
     message-queue-limit = 1001
-    round-expiry = 900m
+    round-expiry = "10 seconds"
     duplicateMessageLimit = 99
     future-message-max-distance = 11
     future-messages-limit = 100
@@ -263,17 +306,89 @@ class HopliteFriendlinessTest {
 
   @Test
   fun validatorDutiesAreParseable() {
-    val config = parseConfig<QbftOptions>(qbftOptionsToml)
+    val config = parseConfig<QbftConfig>(qbftOptionsToml)
     assertThat(config).isEqualTo(
-      QbftOptions(
+      QbftConfig(
         minBlockBuildTime = 200.milliseconds,
         messageQueueLimit = 1001,
-        roundExpiry = 900.milliseconds,
+        roundExpiry = 10.seconds,
         duplicateMessageLimit = 99,
         futureMessageMaxDistance = 11,
         futureMessagesLimit = 100,
         feeRecipient = "0x0000000000000000000000000000000000000001".decodeHex(),
       ),
+    )
+  }
+
+  data class SyncTargetSelectionWrapper(
+    val syncTargetSelection: SyncingConfig.SyncTargetSelection,
+  )
+
+  private val syncTargetSelectorForMostFrequentToml =
+    """
+    sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
+    """.trimIndent()
+
+  @Test
+  fun syncTargetSelectorForMostFrequentIsParseable() {
+    val config = parseConfig<SyncTargetSelectionWrapper>(syncTargetSelectorForMostFrequentToml)
+    assertThat(config.syncTargetSelection).isEqualTo(
+      SyncingConfig.SyncTargetSelection.MostFrequent(
+        peerChainHeightGranularity = 10U,
+      ),
+    )
+  }
+
+  private val syncTargetSelectorMostFrequentWithInvalidGranularityToml =
+    """
+    sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 0 }
+    """.trimIndent()
+
+  @Test
+  fun syncTargetSelectorForMostFrequentWithInvalidGranularityIsNotParseable() {
+    assertThatThrownBy {
+      parseConfig<SyncTargetSelectionWrapper>(syncTargetSelectorMostFrequentWithInvalidGranularityToml)
+    }.isInstanceOf(ConfigException::class.java)
+      .hasMessageContaining("peerChainHeightGranularity must be higher than 0")
+  }
+
+  private val syncTargetSelectorMostFrequentWithoutGranularityToml =
+    """
+    _type = "MostFrequent"
+    """.trimIndent()
+
+  @Test
+  fun syncTargetSelectorForMostFrequentWithoutGranularityIsNotParseable() {
+    assertThatThrownBy {
+      parseConfig<SyncingConfig.SyncTargetSelection.MostFrequent>(syncTargetSelectorMostFrequentWithoutGranularityToml)
+    }.isInstanceOf(ConfigException::class.java)
+      .hasMessageContaining("Missing class kotlin.UInt from config")
+  }
+
+  private val syncTargetSelectorInvalidTypeToml =
+    """
+    sync-target-selection = { _type = "leastFrequent" }
+    """.trimIndent()
+
+  @Test
+  fun syncTargetSelectorWithInvalidTypeIsNotParseable() {
+    assertThatThrownBy {
+      parseConfig<SyncTargetSelectionWrapper>(syncTargetSelectorInvalidTypeToml)
+    }.isInstanceOf(ConfigException::class.java)
+      .hasMessageContaining("No sealed subtype of ")
+      .hasMessageContaining(" was found using the discriminator value `leastFrequent`")
+  }
+
+  private val syncTargetSelectorForHighestToml =
+    """
+    sync-target-selection = "Highest"
+    """.trimIndent()
+
+  @Test
+  fun syncTargetSelectorForHighestIsParseable() {
+    val config = parseConfig<SyncTargetSelectionWrapper>(syncTargetSelectorForHighestToml)
+    assertThat(config.syncTargetSelection).isEqualTo(
+      SyncingConfig.SyncTargetSelection.Highest,
     )
   }
 
@@ -286,41 +401,39 @@ class HopliteFriendlinessTest {
       """.trimIndent()
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
-    assertThat(config)
-      .isEqualTo(
-        MaruConfigDtoToml(
-          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-          allowEmptyBlocks = true,
-          persistence = persistence,
-          qbft = qbftOptions,
-          p2p = p2pConfig,
-          payloadValidator = payloadValidator,
-          followerEngineApis = null,
-          observability = ObservabilityOptions(port = 9090u),
-          api = ApiConfig(port = 8080u),
-          syncing = syncingConfig,
-        ),
-      )
+    assertThat(config).isEqualTo(
+      MaruConfigDtoToml(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+        allowEmptyBlocks = true,
+        persistence = persistence,
+        qbft = qbftOptions,
+        p2p = p2pConfig,
+        payloadValidator = payloadValidator,
+        followerEngineApis = null,
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
+      ),
+    )
 
-    assertThat(config.domainFriendly())
-      .isEqualTo(
-        MaruConfig(
-          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-          allowEmptyBlocks = true,
-          persistence = persistence,
-          p2pConfig = p2pConfig,
-          validatorElNode =
-            ValidatorElNode(
-              engineApiEndpoint = engineApiEndpoint,
-              ethApiEndpoint = ethApiEndpoint,
-            ),
-          qbftOptions = qbftOptions.toDomain(),
-          followers = emptyFollowersConfig,
-          observabilityOptions = ObservabilityOptions(port = 9090u),
-          apiConfig = ApiConfig(port = 8080u),
-          syncing = syncingConfig,
-        ),
-      )
+    assertThat(config.domainFriendly()).isEqualTo(
+      MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+        allowEmptyBlocks = true,
+        persistence = persistence,
+        p2p = p2pConfig,
+        validatorElNode =
+          ValidatorElNode(
+            engineApiEndpoint = engineApiEndpoint,
+            ethApiEndpoint = ethApiEndpoint,
+          ),
+        qbft = qbftOptions.toDomain(),
+        followers = emptyFollowersConfig,
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
+      ),
+    )
   }
 
   @Test
@@ -360,40 +473,38 @@ class HopliteFriendlinessTest {
       )
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
-    assertThat(config)
-      .isEqualTo(
-        MaruConfigDtoToml(
-          linea = expectedTomlConfig,
-          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-          persistence = persistence,
-          qbft = qbftOptions,
-          p2p = p2pConfig,
-          payloadValidator = payloadValidator,
-          observability = ObservabilityOptions(port = 9090u),
-          api = ApiConfig(port = 8080u),
-          syncing = syncingConfig,
-          followerEngineApis = null,
-        ),
-      )
+    assertThat(config).isEqualTo(
+      MaruConfigDtoToml(
+        linea = expectedTomlConfig,
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+        persistence = persistence,
+        qbft = qbftOptions,
+        p2p = p2pConfig,
+        payloadValidator = payloadValidator,
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
+        followerEngineApis = null,
+      ),
+    )
 
-    assertThat(config.domainFriendly())
-      .isEqualTo(
-        MaruConfig(
-          linea = expectedLineaConfig,
-          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-          persistence = persistence,
-          p2pConfig = p2pConfig,
-          validatorElNode =
-            ValidatorElNode(
-              engineApiEndpoint = engineApiEndpoint,
-              ethApiEndpoint = ethApiEndpoint,
-            ),
-          qbftOptions = qbftOptions.toDomain(),
-          followers = emptyFollowersConfig,
-          observabilityOptions = ObservabilityOptions(port = 9090u),
-          apiConfig = ApiConfig(port = 8080u),
-          syncing = syncingConfig,
-        ),
-      )
+    assertThat(config.domainFriendly()).isEqualTo(
+      MaruConfig(
+        linea = expectedLineaConfig,
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+        persistence = persistence,
+        p2p = p2pConfig,
+        validatorElNode =
+          ValidatorElNode(
+            engineApiEndpoint = engineApiEndpoint,
+            ethApiEndpoint = ethApiEndpoint,
+          ),
+        qbft = qbftOptions.toDomain(),
+        followers = emptyFollowersConfig,
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
+      ),
+    )
   }
 }

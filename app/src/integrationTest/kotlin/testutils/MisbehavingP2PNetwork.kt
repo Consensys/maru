@@ -9,7 +9,7 @@
 package testutils
 
 import java.lang.Thread.sleep
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.consensus.ForkIdHashProvider
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
@@ -29,7 +29,7 @@ import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MisbehavingP2PNetwork(
   privateKeyBytes: ByteArray,
-  p2pConfig: P2P,
+  p2pConfig: P2PConfig,
   chainId: UInt,
   serDe: SerDe<SealedBeaconBlock>,
   metricsFacade: MetricsFacade,

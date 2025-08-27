@@ -11,14 +11,16 @@ package maru.syncing.beaconchain.pipeline
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
+import maru.core.ext.DataGenerators.randomStatus
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
 import maru.p2p.messages.BeaconBlocksByRangeResponse
-import maru.syncing.beaconchain.pipeline.DataGenerators.randomStatus
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -38,6 +40,16 @@ class BeaconChainDownloadPipelineFactoryTest {
   private lateinit var factory: BeaconChainDownloadPipelineFactory
   private lateinit var executorService: ExecutorService
   private lateinit var syncTargetProvider: () -> ULong
+  private val defaultBackoffDelay = 1.seconds
+  private val defaultPipelineConfig =
+    Config(
+      blockRangeRequestTimeout = 5.seconds,
+      blocksBatchSize = 10u,
+      blocksParallelism = 1u,
+      backoffDelay = defaultBackoffDelay,
+      maxRetries = 5u,
+      useUnconditionalRandomDownloadPeer = false,
+    )
 
   @BeforeEach
   fun setUp() {
@@ -50,7 +62,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(),
+        config = defaultPipelineConfig,
         syncTargetProvider = syncTargetProvider,
       )
   }
@@ -67,22 +79,22 @@ class BeaconChainDownloadPipelineFactoryTest {
 
     val rangeResponses = mutableMapOf<Pair<ULong, ULong>, List<SealedBeaconBlock>>()
 
-    // Ranges: [100, 291], [292, 483], [484, 490]
-    rangeResponses[100uL to 192uL] = (100uL..291uL).map { randomSealedBeaconBlock(it) }
-    rangeResponses[292uL to 192uL] = (292uL..483uL).map { randomSealedBeaconBlock(it) }
-    rangeResponses[484uL to 7uL] = (484uL..490uL).map { randomSealedBeaconBlock(it) }
+    // Ranges: [100, 109], [110, 119], [120, 125]
+    rangeResponses[100uL to 10uL] = (100uL..109uL).map { randomSealedBeaconBlock(it) }
+    rangeResponses[110uL to 10uL] = (110uL..119uL).map { randomSealedBeaconBlock(it) }
+    rangeResponses[120uL to 6uL] = (120uL..125uL).map { randomSealedBeaconBlock(it) }
 
     rangeResponses.forEach { (range, blocks) ->
       val response = mock<BeaconBlocksByRangeResponse>()
       whenever(response.blocks).thenReturn(blocks)
       whenever(peer.sendBeaconBlocksByRange(range.first, range.second)).thenReturn(completedFuture(response))
-      whenever(peer.getStatus()).thenReturn(randomStatus(490uL))
+      whenever(peer.getStatus()).thenReturn(randomStatus(125uL))
     }
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
     )
-    whenever(syncTargetProvider.invoke()).thenReturn(490uL)
+    whenever(syncTargetProvider.invoke()).thenReturn(125uL)
 
     val pipeline = factory.createPipeline(100uL)
     val completionFuture = pipeline.pipeline.start(executorService)
@@ -91,8 +103,8 @@ class BeaconChainDownloadPipelineFactoryTest {
     completionFuture.get(5, TimeUnit.SECONDS)
 
     // Verify all blocks were imported
-    val numberOfImportedBlocks = 490 - 100 + 1 // Total blocks from 100 to 125 inclusive
-    assertThat(pipeline.target()).isEqualTo(490uL)
+    val numberOfImportedBlocks = 125 - 100 + 1 // Total blocks from 100 to 125 inclusive
+    assertThat(pipeline.target()).isEqualTo(125uL)
     verify(blockImporter, times(numberOfImportedBlocks)).importBlock(any())
   }
 
@@ -103,23 +115,23 @@ class BeaconChainDownloadPipelineFactoryTest {
 
     val rangeResponses = mutableMapOf<Pair<ULong, ULong>, List<SealedBeaconBlock>>()
 
-    // Ranges: [100, 291], [292, 483], [484, 490]
-    rangeResponses[100uL to 192uL] = (100uL..291uL).map { randomSealedBeaconBlock(it) }
-    rangeResponses[292uL to 192uL] = (292uL..483uL).map { randomSealedBeaconBlock(it) }
-    rangeResponses[484uL to 7uL] = (484uL..490uL).map { randomSealedBeaconBlock(it) }
+    // Ranges: [100, 109], [110, 119], [120, 125]
+    rangeResponses[100uL to 10uL] = (100uL..109uL).map { randomSealedBeaconBlock(it) }
+    rangeResponses[110uL to 10uL] = (110uL..119uL).map { randomSealedBeaconBlock(it) }
+    rangeResponses[120uL to 6uL] = (120uL..125uL).map { randomSealedBeaconBlock(it) }
 
     rangeResponses.forEach { (range, blocks) ->
       val response = mock<BeaconBlocksByRangeResponse>()
       whenever(response.blocks).thenReturn(blocks)
       whenever(peer.sendBeaconBlocksByRange(range.first, range.second)).thenReturn(completedFuture(response))
-      whenever(peer.getStatus()).thenReturn(randomStatus(490uL))
+      whenever(peer.getStatus()).thenReturn(randomStatus(125uL))
     }
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
     )
-    // the initial sync target is 383, but we will change it to 390 during execution
-    whenever(syncTargetProvider.invoke()).thenReturn(383uL, 490uL, 490uL)
+    // the initial sync target is 119, but we will change it to 125 during execution
+    whenever(syncTargetProvider.invoke()).thenReturn(119uL, 125uL, 125uL)
 
     val pipeline = factory.createPipeline(100uL)
     val completionFuture = pipeline.pipeline.start(executorService)
@@ -128,8 +140,8 @@ class BeaconChainDownloadPipelineFactoryTest {
     completionFuture.get(5, TimeUnit.SECONDS)
 
     // Verify all blocks were imported
-    val numberOfImportedBlocks = 490 - 100 + 1 // Total blocks from 100 to 490 inclusive
-    assertThat(pipeline.target()).isEqualTo(490uL)
+    val numberOfImportedBlocks = 125 - 100 + 1 // Total blocks from 100 to 125 inclusive
+    assertThat(pipeline.target()).isEqualTo(125uL)
     verify(blockImporter, times(numberOfImportedBlocks)).importBlock(any())
   }
 
@@ -166,7 +178,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 100u),
+        config = defaultPipelineConfig.copy(blocksBatchSize = 100u),
         syncTargetProvider = { 50uL },
       )
 
@@ -210,7 +222,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 0u),
+        config = defaultPipelineConfig.copy(blocksBatchSize = 0u),
         syncTargetProvider = { 0uL },
       )
     }.isInstanceOf(IllegalArgumentException::class.java)

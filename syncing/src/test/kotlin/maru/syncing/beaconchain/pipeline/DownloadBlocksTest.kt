@@ -10,14 +10,16 @@ package maru.syncing.beaconchain.pipeline
 
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeoutException
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
+import maru.core.ext.DataGenerators.randomStatus
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.messages.BeaconBlocksByRangeResponse
-import maru.syncing.beaconchain.pipeline.DataGenerators.randomStatus
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
@@ -33,6 +35,14 @@ import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 
 class DownloadBlocksTest {
   private val defaultEndBlock = 11UL
+  private val defaultBackoffDelay = 15.milliseconds
+
+  private val defaultConfig =
+    DownloadBlocksStep.Config(
+      maxRetries = 5u,
+      blockRangeRequestTimeout = 5.seconds,
+      backoffDelay = defaultBackoffDelay,
+    )
 
   @Test
   fun `downloads blocks successfully from peer`() {
@@ -45,9 +55,8 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
-        maxRetries = 5u,
-        blockRangeRequestTimeout = 5.seconds,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(10uL, defaultEndBlock)
     val result = task.apply(range).get()
@@ -75,9 +84,8 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
-        maxRetries = 5u,
-        blockRangeRequestTimeout = 5.seconds,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(10uL, endBlock)
     val result = task.apply(range).get()
@@ -100,9 +108,8 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
-        maxRetries = 5u,
-        blockRangeRequestTimeout = 5.seconds,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(1uL, endBlock)
 
@@ -123,9 +130,29 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
-        maxRetries = 5u,
-        blockRangeRequestTimeout = 5.seconds,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig,
+      )
+    val range = SyncTargetRange(1uL, endBlock)
+
+    assertThrows<Exception> { task.apply(range).get() }
+    verify(peer, atLeastOnce()).adjustReputation(ReputationAdjustment.LARGE_PENALTY)
+  }
+
+  @Test
+  fun `applies large penalty if the request future times out`() {
+    val endBlock = 1uL
+    val peer = mock<MaruPeer>()
+    val peerLookup = mock<PeerLookup>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
+    val future = SafeFuture<BeaconBlocksByRangeResponse>() // leave it uncompleted
+    whenever(peer.getStatus()).thenReturn(randomStatus(endBlock))
+    whenever(peer.sendBeaconBlocksByRange(1uL, 1uL)).thenReturn(future)
+
+    val task =
+      DownloadBlocksStep(
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig.copy(blockRangeRequestTimeout = 50.milliseconds),
       )
     val range = SyncTargetRange(1uL, endBlock)
 
@@ -148,14 +175,13 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
-        maxRetries = 5u,
-        blockRangeRequestTimeout = 5.seconds,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(1uL, endBlock)
 
     val ex = assertThrows<Exception> { task.apply(range).get() }
-    assertThat(ex.message).contains("Maximum retries reached.")
+    assertThat(ex.cause).isInstanceOf(DownloadBlocksStep.MaxRetriesReachedException::class.java)
   }
 
   @Test
@@ -165,13 +191,13 @@ class DownloadBlocksTest {
 
     val task =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
-        maxRetries = 5u,
-        blockRangeRequestTimeout = 5.seconds,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(1uL, 1uL)
 
-    assertThrows<ExecutionException> { task.apply(range).get() }
+    val ex = assertThrows<ExecutionException> { task.apply(range).get() }
+    assertThat(ex.cause).isInstanceOf(DownloadBlocksStep.MaxRetriesReachedException::class.java)
   }
 
   @Test
@@ -187,9 +213,8 @@ class DownloadBlocksTest {
 
     val step =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
-        maxRetries = 5u,
-        blockRangeRequestTimeout = 5.seconds,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(10u, defaultEndBlock)
     val result = step.apply(range).get()
@@ -216,9 +241,8 @@ class DownloadBlocksTest {
 
     val step =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
-        maxRetries = 5u,
-        blockRangeRequestTimeout = 5.seconds,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(10u, defaultEndBlock)
     val result = step.apply(range).get()
@@ -227,22 +251,64 @@ class DownloadBlocksTest {
   }
 
   @Test
-  fun `throws if no peers are available`() {
+  fun `throws if no peers are returned from DownloadPeerProvider`() {
     val peerLookup = mock<PeerLookup>()
     whenever(peerLookup.getPeers()).thenReturn(emptyList())
     val step =
       DownloadBlocksStep(
-        peerLookup = peerLookup,
-        maxRetries = 5u,
-        blockRangeRequestTimeout = 5.seconds,
+        downloadPeerProvider = DownloadPeerProviderImpl(peerLookup, false),
+        config = defaultConfig,
       )
     val range = SyncTargetRange(0u, 0u)
-    try {
-      step.apply(range).get()
-      assert(false) { "Expected exception" }
-    } catch (e: Exception) {
-      assertThat(e.cause).isInstanceOf(NoSuchElementException::class.java)
-    }
+
+    val throwable =
+      catchThrowable {
+        step.apply(range).get()
+      }
+    assertThat(throwable.cause).isInstanceOf(DownloadBlocksStep.MaxRetriesReachedException::class.java)
+  }
+
+  @Test
+  fun `always select a random peer if there are available peers when purely random selection is true`() {
+    val peer1 = mock<MaruPeer>()
+    whenever(peer1.getStatus()).thenReturn(randomStatus(0U))
+
+    val peerLookup = mock<PeerLookup>()
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer1))
+
+    val selectedPeer = DownloadPeerProviderImpl(peerLookup, true).getDownloadingPeer(100U)
+    assertThat(selectedPeer).isEqualTo(peer1)
+    verify(peer1, never()).getStatus()
+  }
+
+  @Test
+  fun `returns null if no peers have latest block number more or equal to 100U with filter enabled`() {
+    val peerLookup = mock<PeerLookup>()
+
+    val peer1 = mock<MaruPeer>()
+    whenever(peer1.getStatus()).thenReturn(randomStatus(50U))
+
+    val peer2 = mock<MaruPeer>()
+    whenever(peer2.getStatus()).thenReturn(randomStatus(80U))
+
+    val peer3 = mock<MaruPeer>()
+    whenever(peer3.getStatus()).thenReturn(randomStatus(99U))
+
+    whenever(peerLookup.getPeers()).thenReturn(listOf(peer1, peer2, peer3))
+
+    val peerWithFilter = DownloadPeerProviderImpl(peerLookup, false).getDownloadingPeer(100U)
+    assertThat(peerWithFilter).isNull()
+  }
+
+  @Test
+  fun `returns null if no peers are available regardless of purely random selection or not`() {
+    val peerLookup = mock<PeerLookup>()
+    whenever(peerLookup.getPeers()).thenReturn(emptyList())
+    val peerWithFilter = DownloadPeerProviderImpl(peerLookup, false).getDownloadingPeer(100U)
+    assertThat(peerWithFilter).isNull()
+
+    val peerWithoutFilter = DownloadPeerProviderImpl(peerLookup, true).getDownloadingPeer(100U)
+    assertThat(peerWithoutFilter).isNull()
   }
 
   private fun createSealedBlocksWithPeers(

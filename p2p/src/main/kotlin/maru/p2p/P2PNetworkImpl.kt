@@ -16,7 +16,7 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.consensus.ForkIdHashProvider
 import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
@@ -48,7 +48,7 @@ import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 open class P2PNetworkImpl(
   private val privateKeyBytes: ByteArray,
-  private val p2pConfig: P2P,
+  private val p2pConfig: P2PConfig,
   private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
@@ -68,7 +68,12 @@ open class P2PNetworkImpl(
   private val log: Logger = LogManager.getLogger(this.javaClass)
   internal lateinit var maruPeerManager: MaruPeerManager
   private val topicIdGenerator = LineaMessageIdGenerator(chainId)
-  private val sealedBlocksTopicId = topicIdGenerator.id(GossipMessageType.BEACON_BLOCK.name, Version.V1)
+  private val sealedBlocksTopicId =
+    topicIdGenerator.id(
+      GossipMessageType.BEACON_BLOCK.name,
+      Version.V1,
+      Encoding.RLP_SNAPPY,
+    )
   private val sealedBlocksSubscriptionManager = SubscriptionManager<SealedBeaconBlock>()
   private val sealedBlocksTopicHandler =
     TopicHandlerWithInOrderDelivering(
@@ -91,7 +96,7 @@ open class P2PNetworkImpl(
 
   private fun buildP2PNetwork(
     privateKeyBytes: ByteArray,
-    p2pConfig: P2P,
+    p2pConfig: P2PConfig,
     besuMetricsSystem: BesuMetricsSystem,
   ): TekuLibP2PNetwork {
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
@@ -237,7 +242,10 @@ open class P2PNetworkImpl(
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload))
-        p2pNetwork.gossip(topicIdGenerator.id(message.type.name, message.version), serializedSealedBeaconBlock)
+        p2pNetwork.gossip(
+          topicIdGenerator.id(message.type.name, message.version, Encoding.RLP_SNAPPY),
+          serializedSealedBeaconBlock,
+        )
       }
     }
   }
@@ -360,4 +368,17 @@ open class P2PNetworkImpl(
     peerLookup.getPeer(LibP2PNodeId(PeerId.fromBase58(peerId)))?.toPeerInfo()
 
   override fun getPeerLookup(): PeerLookup = peerLookup
+
+  override fun dropPeer(peer: PeerInfo) {
+    staticPeerMap[LibP2PNodeId(PeerId.fromBase58(peer.nodeId))]?.let { staticPeer ->
+      removeStaticPeer(staticPeer)
+    } ?: dropPeer(
+      peer = peer.nodeId,
+      reason = DisconnectReason.SHUTTING_DOWN,
+    ).get()
+  }
+
+  override fun addPeer(address: String) {
+    addStaticPeer(MultiaddrPeerAddress.fromAddress(address))
+  }
 }

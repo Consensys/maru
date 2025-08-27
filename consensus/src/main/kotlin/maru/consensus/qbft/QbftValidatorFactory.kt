@@ -10,10 +10,11 @@ package maru.consensus.qbft
 
 import java.time.Clock
 import java.util.concurrent.Executors
-import kotlin.time.toJavaDuration
-import maru.config.QbftOptions
+import kotlin.time.Duration.Companion.seconds
+import maru.config.QbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
+import maru.consensus.ForksSchedule
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.PrevRandaoProvider
 import maru.consensus.PrevRandaoProviderImpl
@@ -74,7 +75,7 @@ import org.hyperledger.besu.util.Subscribers
 class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
   private val privateKeyBytes: ByteArray,
-  private val qbftOptions: QbftOptions,
+  private val qbftOptions: QbftConfig,
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
@@ -83,6 +84,7 @@ class QbftValidatorFactory(
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,
   private val allowEmptyBlocks: Boolean,
+  private val forksSchedule: ForksSchedule,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
@@ -140,10 +142,11 @@ class QbftValidatorFactory(
 
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
     val bftEventQueue = BftEventQueue(qbftOptions.messageQueueLimit)
+    val roundExpiry = qbftOptions.roundExpiry ?: forkSpec.blockTimeSeconds.seconds
     val roundTimer =
       RoundTimer(
         /* queue = */ bftEventQueue,
-        /* baseExpiryPeriod = */ qbftOptions.roundExpiry.toJavaDuration(),
+        /* roundExpiryTimeCalculator = */ ConstantRoundTimeExpiryCalculator(roundExpiry),
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
@@ -260,10 +263,18 @@ class QbftValidatorFactory(
     feeRecipient: ByteArray,
   ): SealedBeaconBlockImporter<ValidationResult> {
     val shouldBuildNextBlock =
-      { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier ->
-        val nextProposerAddress =
-          proposerSelector.getProposerForBlock(beaconState, roundIdentifier).get().address
-        nextProposerAddress.contentEquals(localNodeIdentity.address)
+      { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier, nextBlockTimestamp: Long ->
+        // We shouldn't build next block if this fork ends
+        val nextForkTimestamp =
+          forksSchedule.getNextForkByTimestamp(beaconState.latestBeaconBlockHeader.timestamp.toLong())?.timestampSeconds
+            ?: Long.MAX_VALUE
+        if (nextBlockTimestamp >= nextForkTimestamp) {
+          false
+        } else {
+          val nextProposerAddress =
+            proposerSelector.getProposerForBlock(beaconState, roundIdentifier).get().address
+          nextProposerAddress.contentEquals(localNodeIdentity.address)
+        }
       }
     val beaconBlockImporter =
       BlockBuildingBeaconBlockImporter(

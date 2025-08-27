@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
@@ -104,14 +104,14 @@ class P2PTest {
       val reputationManager = DefaultReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), 1024, PeerPools())
       val maruPeerFactory =
         DefaultMaruPeerFactory(
-          rpcMethods,
-          statusMessageFactory,
-          P2P(ipAddress = IPV4, port = PORT1),
+          rpcMethods = rpcMethods,
+          statusMessageFactory = statusMessageFactory,
+          p2pConfig = P2PConfig(ipAddress = IPV4, port = PORT1),
         )
       maruPeerManager =
         MaruPeerManager(
           maruPeerFactory = maruPeerFactory,
-          p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
+          p2pConfig = P2PConfig(ipAddress = IPV4, port = PORT1),
           reputationManager = reputationManager,
           isStaticPeer = { false },
         )
@@ -145,14 +145,14 @@ class P2PTest {
       beaconChain: BeaconChain = Companion.beaconChain,
       reconnectDelay: Duration = 1.seconds,
       statusMessageFactory: StatusMessageFactory = Companion.statusMessageFactory,
-      statusUpdate: P2P.StatusUpdateConfig = P2P.StatusUpdateConfig(),
-      discovery: P2P.Discovery? = null,
-      reputationConfig: P2P.ReputationConfig = P2P.ReputationConfig(),
+      statusUpdate: P2PConfig.StatusUpdateConfig = P2PConfig.StatusUpdateConfig(),
+      discovery: P2PConfig.Discovery? = null,
+      reputationConfig: P2PConfig.ReputationConfig = P2PConfig.ReputationConfig(),
     ): P2PNetworkImpl =
       P2PNetworkImpl(
         privateKeyBytes = privateKey,
         p2pConfig =
-          P2P(
+          P2PConfig(
             ipAddress = IPV4,
             port = port,
             staticPeers = staticPeers,
@@ -162,7 +162,7 @@ class P2PTest {
             reputationConfig = reputationConfig,
           ),
         chainId = chainId,
-        serDe = RLPSerializers.SealedBeaconBlockSerializer,
+        serDe = RLPSerializers.SealedBeaconBlockCompressorSerializer,
         metricsFacade = TestMetrics.TestMetricsFacade,
         statusMessageFactory = statusMessageFactory,
         beaconChain = beaconChain,
@@ -238,7 +238,7 @@ class P2PTest {
       createP2PNetwork(
         privateKey = key1,
         port = PORT1,
-        reputationConfig = P2P.ReputationConfig(cooldownPeriod = 1.seconds),
+        reputationConfig = P2PConfig.ReputationConfig(cooldownPeriod = 1.seconds),
       )
     val p2pNetworkImpl2 =
       createP2PNetwork(
@@ -291,9 +291,7 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
-      val randomBlockMessage1 =
-        maru.p2p.ext.DataGenerators
-          .randomBlockMessage()
+      val randomBlockMessage1 = P2P2DataGenerators.randomBlockMessage()
       p2pNetworkImpl1.broadcastMessage(randomBlockMessage1).get()
       val randomBlockMessage2 = P2P2DataGenerators.randomBlockMessage(2UL)
       p2pNetworkImpl1.broadcastMessage(randomBlockMessage2).get()
@@ -399,7 +397,7 @@ class P2PTest {
           delegatePeer = peer1,
           rpcMethods = rpcMethods,
           statusMessageFactory = statusMessageFactory,
-          p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
+          p2pConfig = P2PConfig(ipAddress = IPV4, port = PORT1),
         )
 
       val responseFuture = maruPeer1.sendStatus()
@@ -451,7 +449,7 @@ class P2PTest {
           delegatePeer = peer1,
           rpcMethods = rpcMethods,
           statusMessageFactory = statusMessageFactory,
-          p2pConfig = P2P(ipAddress = IPV4, port = PORT1),
+          p2pConfig = P2PConfig(ipAddress = IPV4, port = PORT1),
         )
 
       val responseFuture = maruPeer1.sendStatus()
@@ -578,7 +576,7 @@ class P2PTest {
         privateKey = key1,
         port = PORT1,
         discovery =
-          P2P.Discovery(
+          P2PConfig.Discovery(
             port = PORT2,
             refreshInterval = 1.seconds,
           ),
@@ -607,7 +605,7 @@ class P2PTest {
         privateKey = key1,
         port = PORT1,
         discovery =
-          P2P.Discovery(
+          P2PConfig.Discovery(
             port = PORT2,
             refreshInterval = refreshInterval,
           ),
@@ -619,7 +617,7 @@ class P2PTest {
         port = PORT3,
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         discovery =
-          P2P.Discovery(
+          P2PConfig.Discovery(
             port = PORT4,
             bootnodes = listOf(p2pNetworkImpl1.enr),
             refreshInterval = refreshInterval,
@@ -632,7 +630,7 @@ class P2PTest {
         port = PORT5,
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         discovery =
-          P2P.Discovery(
+          P2PConfig.Discovery(
             port = PORT6,
             bootnodes = listOf(p2pNetworkImpl1.enr),
             refreshInterval = refreshInterval,
@@ -702,13 +700,13 @@ class P2PTest {
         privateKey = key1,
         port = PORT1,
         statusUpdate =
-          P2P.StatusUpdateConfig(
+          P2PConfig.StatusUpdateConfig(
             refreshInterval = 1.seconds,
             refreshIntervalLeeway = 1.seconds,
             timeout = 1.seconds,
           ),
         discovery =
-          P2P.Discovery(
+          P2PConfig.Discovery(
             port = PORT2,
             refreshInterval = refreshInterval,
           ),
@@ -721,13 +719,13 @@ class P2PTest {
         port = PORT3,
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         statusUpdate =
-          P2P.StatusUpdateConfig(
+          P2PConfig.StatusUpdateConfig(
             refreshInterval = 1.seconds,
             refreshIntervalLeeway = 1.seconds,
             timeout = 1.seconds,
           ),
         discovery =
-          P2P.Discovery(
+          P2PConfig.Discovery(
             port = PORT4,
             bootnodes = listOf(p2pNetworkImpl1.enr),
             refreshInterval = refreshInterval,
@@ -776,13 +774,13 @@ class P2PTest {
         privateKey = key1,
         port = PORT1,
         statusUpdate =
-          P2P.StatusUpdateConfig(
+          P2PConfig.StatusUpdateConfig(
             refreshInterval = 1.seconds,
             refreshIntervalLeeway = 0.seconds,
             timeout = 1.seconds,
           ),
         reputationConfig =
-          P2P.ReputationConfig(
+          P2PConfig.ReputationConfig(
             cooldownPeriod = 50.milliseconds,
           ),
       )
@@ -798,7 +796,7 @@ class P2PTest {
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         reconnectDelay = 100.milliseconds,
         statusUpdate =
-          P2P.StatusUpdateConfig(
+          P2PConfig.StatusUpdateConfig(
             refreshInterval = 2.seconds,
             refreshIntervalLeeway = 1.seconds,
             timeout = 1.seconds,

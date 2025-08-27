@@ -11,7 +11,7 @@ package maru.p2p
 import java.util.Optional
 import java.util.concurrent.ScheduledFuture
 import kotlin.time.Duration.Companion.seconds
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import org.assertj.core.api.Assertions.assertThat
@@ -40,7 +40,7 @@ class DefaultMaruPeerTest {
       delegatePeer,
       rpcMethods,
       statusMessageFactory,
-      p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u),
+      p2pConfig = P2PConfig(ipAddress = "1.1.1.1", port = 9876u),
     )
 
   @Test
@@ -160,6 +160,16 @@ class DefaultMaruPeerTest {
 
     assertThat(result).isTrue()
     verify(delegatePeer).connectionInitiatedLocally()
+  }
+
+  @Test
+  fun `connectionInitiatedRemotely delegates to connectionInitiatedRemotely on underlying peer`() {
+    whenever(delegatePeer.connectionInitiatedRemotely()).thenReturn(true)
+
+    val result = maruPeer.connectionInitiatedRemotely()
+
+    assertThat(result).isTrue()
+    verify(delegatePeer).connectionInitiatedRemotely()
   }
 
   @Test

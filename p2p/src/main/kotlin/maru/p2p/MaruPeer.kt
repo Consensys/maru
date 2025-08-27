@@ -15,7 +15,7 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BeaconBlocksByRangeResponse
 import maru.p2p.messages.Status
@@ -57,7 +57,7 @@ interface MaruPeerFactory {
 class DefaultMaruPeerFactory(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
-  private val p2pConfig: P2P,
+  private val p2pConfig: P2PConfig,
 ) : MaruPeerFactory {
   override fun createMaruPeer(delegatePeer: Peer): MaruPeer =
     DefaultMaruPeer(
@@ -72,13 +72,12 @@ class DefaultMaruPeer(
   private val delegatePeer: Peer,
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
-  private val p2pConfig: P2P,
-) : MaruPeer {
   private val scheduler: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor(
       Thread.ofVirtual().factory(),
-    )
-
+    ),
+  private val p2pConfig: P2PConfig,
+) : MaruPeer {
   init {
     delegatePeer.subscribeDisconnect { _, _ ->
       scheduledDisconnect.ifPresent { it.cancel(true) }

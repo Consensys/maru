@@ -105,15 +105,19 @@ interface P2PNetwork : Closeable {
 
   val enr: String?
 
+  val peerCount: Int
+
   fun getPeers(): List<PeerInfo>
 
   fun getPeer(peerId: String): PeerInfo?
 
   fun getPeerLookup(): PeerLookup
 
-  fun isStaticPeer(nodeId: NodeId): Boolean
+  fun dropPeer(peer: PeerInfo)
 
-  val peerCount: Int
+  fun addPeer(address: String)
+
+  fun isStaticPeer(nodeId: NodeId): Boolean
 }
 
 data class PeerInfo(
