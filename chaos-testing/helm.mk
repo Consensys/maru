@@ -242,29 +242,40 @@ wait-all-running:
 		*) echo "Invalid uptime format. Use format like: 30s, 2m, 1h"; exit 1; ;; \
 	esac; \
 	while true; do \
-		total_pods=$$(kubectl get pods --namespace=default --no-headers 2>/dev/null | wc -l | tr -d ' '); \
-		if [ "$$total_pods" -eq 0 ]; then \
-			echo "No pods found in default namespace."; \
-			break; \
-		fi; \
-		running_pods=$$(kubectl get pods --namespace=default --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' '); \
-		if [ "$$running_pods" -ne "$$total_pods" ]; then \
-			echo "$$running_pods/$$total_pods pods are running. Waiting for all to be running..."; \
+		pods_data=$$(kubectl get pods --namespace=default --field-selector=status.phase=Running -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.containerStatuses[*].state.running.startedAt}{"\n"}{end}' 2>/dev/null); \
+		if [ -z "$$pods_data" ]; then \
+			echo "No running pods found in default namespace."; \
 			sleep 2; \
 			continue; \
 		fi; \
+		total_pods=$$(echo "$$pods_data" | wc -l | tr -d ' '); \
 		pods_ready=0; \
-		for pod in $$(kubectl get pods --namespace=default --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do \
-			container_start_time=$$(kubectl get pod $$pod --namespace=default -o jsonpath='{.status.containerStatuses[0].state.running.startedAt}' 2>/dev/null || echo ""); \
-			if [ -z "$$container_start_time" ]; then \
-				echo "Could not get container start time for $$pod, skipping..."; \
-				continue; \
-			fi; \
-			container_start_seconds=$$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$$container_start_time" "+%s" 2>/dev/null || echo "0"); \
-			current_time=$$(date "+%s"); \
-			container_uptime=$$((current_time - container_start_seconds)); \
-			if [ "$$container_uptime" -ge "$$uptime_seconds" ]; then \
-				pods_ready=$$((pods_ready + 1)); \
+		current_time=$$(date +%s); \
+		echo "$$pods_data" | while IFS=' ' read -r pod_name start_times; do \
+			if [ -z "$$pod_name" ]; then continue; fi; \
+			most_recent_seconds=0; \
+			for start_time in $$start_times; do \
+				if [ -n "$$start_time" ]; then \
+					start_time_clean=$$(echo "$$start_time" | sed 's/\.[0-9]*Z$$/Z/'); \
+					if date --version >/dev/null 2>&1; then \
+						start_seconds=$$(date -d "$$start_time_clean" +%s 2>/dev/null || echo "0"); \
+					else \
+						start_seconds=$$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$$start_time_clean" "+%s" 2>/dev/null || echo "0"); \
+					fi; \
+					if [ "$$start_seconds" -gt "$$most_recent_seconds" ]; then \
+						most_recent_seconds=$$start_seconds; \
+					fi; \
+				fi; \
+			done; \
+			if [ "$$most_recent_seconds" -gt 0 ]; then \
+				container_uptime=$$((current_time - most_recent_seconds)); \
+				if [ "$$container_uptime" -ge "$$uptime_seconds" ]; then \
+					pods_ready=$$((pods_ready + 1)); \
+				else \
+					echo "Pod $$pod_name: uptime $$container_uptime""s < required $$uptime_seconds""s"; \
+				fi; \
+			else \
+				echo "Pod $$pod_name: Could not parse container start time, skipping"; \
 			fi; \
 		done; \
 		if [ "$$pods_ready" -eq "$$total_pods" ]; then \
