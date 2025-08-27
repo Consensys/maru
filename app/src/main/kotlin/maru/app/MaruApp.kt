@@ -242,7 +242,7 @@ class MaruApp(
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         syncStatusProvider = syncStatusProvider,
         forkTransitionCheckInterval = config.protocolTransitionPollingInterval,
-        forkTransitionSubscriptionManager = forkTransitionSubscriptionManager,
+        forkTransitionNotifier = forkTransitionSubscriptionManager,
       )
 
     return protocolStarter
