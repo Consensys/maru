@@ -504,7 +504,6 @@ class P2PTest {
 
       val startBlockNumber = 3UL
       val count = 5UL
-
       val responseFuture = peer1.sendBeaconBlocksByRange(startBlockNumber, count)
 
       val response = responseFuture.get(5, TimeUnit.SECONDS)
@@ -848,7 +847,7 @@ class P2PTest {
   }
 
   private fun awaitUntilAsserted(
-    timeout: Long = 130000L,
+    timeout: Long = 10000L,
     timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
     condition: () -> Unit,
   ) {

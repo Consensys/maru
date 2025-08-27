@@ -25,7 +25,6 @@ import maru.crypto.Crypto
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
-import maru.p2p.PeerInfo
 import maru.services.LongRunningService
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
@@ -42,7 +41,7 @@ class MaruApp(
   val beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
-  private val p2pNetwork: P2PNetwork,
+  val p2pNetwork: P2PNetwork,
   private val privateKeyProvider: () -> ByteArray,
   private val finalizationProvider: FinalizationProvider,
   private val vertx: Vertx,
@@ -168,9 +167,7 @@ class MaruApp(
 
   fun peersConnected(): UInt =
     p2pNetwork
-      .getPeers()
-      .filter { it.status == PeerInfo.PeerStatus.CONNECTED }
-      .size
+      .peerCount
       .toUInt()
 
   private fun createProtocolStarter(

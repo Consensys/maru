@@ -184,39 +184,6 @@ class MaruPeerManagerTest {
   }
 
   @Test
-  fun `reports successful connection to reputation manager when peer connects`() {
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
-    val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
-    val p2pConfig = mock<P2P>()
-    val reputationManager = mock<DefaultReputationManager>()
-    val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
-    val address = mock<PeerAddress>()
-
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
-    whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(reputationManager.isConnectionInitiationAllowed(any())).thenReturn(true)
-    whenever(peer.address).thenReturn(address)
-    whenever(maruPeer.address).thenReturn(address)
-    whenever(p2pNetwork.peerCount).thenReturn(0)
-
-    val manager =
-      MaruPeerManager(
-        maruPeerFactory = maruPeerFactory,
-        p2pConfig = p2pConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
-      )
-    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
-    manager.onConnect(peer)
-
-    verify(reputationManager).reportInitiatedConnectionSuccessful(address)
-  }
-
-  @Test
   fun `does not connect or add peer if reputation manager disallows connection`() {
     val nodeId = mock<NodeId>()
     val peer = mock<Peer>()
@@ -231,8 +198,9 @@ class MaruPeerManagerTest {
     whenever(peer.address).thenReturn(address)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
     whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(reputationManager.isConnectionInitiationAllowed(address)).thenReturn(false)
     whenever(p2pNetwork.peerCount).thenReturn(0)
+
+    whenever(reputationManager.isConnectionInitiationAllowed(address)).thenReturn(false)
 
     val manager =
       MaruPeerManager(

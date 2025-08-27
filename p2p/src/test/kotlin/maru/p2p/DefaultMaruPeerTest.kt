@@ -35,7 +35,6 @@ class DefaultMaruPeerTest {
   private val delegatePeer = mock<Peer>()
   private val rpcMethods = mock<RpcMethods>()
   private val statusMessageFactory = mock<StatusMessageFactory>()
-
   private val maruPeer =
     DefaultMaruPeer(
       delegatePeer,

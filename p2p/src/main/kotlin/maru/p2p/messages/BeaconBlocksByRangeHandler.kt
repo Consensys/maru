@@ -8,6 +8,7 @@
  */
 package maru.p2p.messages
 
+import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.p2p.MaruPeer
 import maru.p2p.Message
@@ -18,7 +19,7 @@ import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 
-class BeaconBlocksByRangeHandler(
+open class BeaconBlocksByRangeHandler(
   private val beaconChain: BeaconChain,
 ) : RpcMessageHandler<
     Message<BeaconBlocksByRangeRequest, RpcMessageType>,
@@ -42,10 +43,7 @@ class BeaconBlocksByRangeHandler(
       val maxBlocks = minOf(request.count, MAX_BLOCKS_PER_REQUEST)
 
       val blocks =
-        beaconChain.getSealedBeaconBlocks(
-          startBlockNumber = request.startBlockNumber,
-          count = maxBlocks,
-        )
+        getBlocks(request, maxBlocks)
 
       val response = BeaconBlocksByRangeResponse(blocks = blocks)
       val responseMessage =
@@ -78,5 +76,18 @@ class BeaconBlocksByRangeHandler(
         ),
       )
     }
+  }
+
+  open fun getBlocks(
+    request: BeaconBlocksByRangeRequest,
+    maxBlocks: ULong,
+  ): List<SealedBeaconBlock> {
+    println("BeaconBlocksByRangeHandler: getBlocks called $maxBlocks")
+    val blocks =
+      beaconChain.getSealedBeaconBlocks(
+        startBlockNumber = request.startBlockNumber,
+        count = maxBlocks,
+      )
+    return blocks
   }
 }

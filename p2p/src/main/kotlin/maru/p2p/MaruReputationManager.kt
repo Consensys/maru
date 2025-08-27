@@ -29,7 +29,7 @@ import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 
 class MaruReputationManager(
-  private val metricsSystem: MetricsSystem,
+  metricsSystem: MetricsSystem,
   private val timeProvider: TimeProvider,
   private val isStaticPeer: (NodeId) -> Boolean,
   reputationConfig: P2P.ReputationConfig,

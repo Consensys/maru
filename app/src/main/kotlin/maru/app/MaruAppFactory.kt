@@ -39,6 +39,7 @@ import maru.consensus.StaticValidatorProvider
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
+import maru.core.SealedBeaconBlock
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.kv.KvDatabaseFactory
@@ -56,6 +57,7 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
+import maru.serialization.SerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
@@ -81,6 +83,18 @@ class MaruAppFactory {
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     overridingApiServer: ApiServer? = null,
+    p2pNetworkFactory: (
+      ByteArray,
+      P2P,
+      UInt,
+      SerDe<SealedBeaconBlock>,
+      MetricsFacade,
+      BesuMetricsSystem,
+      StatusMessageFactory,
+      BeaconChain,
+      ForkIdHashProvider,
+      () -> Boolean,
+    ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     log.info("configs={}", config)
     log.info("beaconGenesisConfig={}", beaconGenesisConfig)
@@ -181,6 +195,7 @@ class MaruAppFactory {
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
+        p2pNetworkFactory = p2pNetworkFactory,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =
@@ -301,25 +316,36 @@ class MaruAppFactory {
       statusMessageFactory: StatusMessageFactory,
       besuMetricsSystem: BesuMetricsSystem,
       forkIdHashProvider: ForkIdHashProvider,
+      p2pNetworkFactory: (
+        ByteArray,
+        P2P,
+        UInt,
+        SerDe<SealedBeaconBlock>,
+        MetricsFacade,
+        BesuMetricsSystem,
+        StatusMessageFactory,
+        BeaconChain,
+        ForkIdHashProvider,
+        () -> Boolean,
+      ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     ): P2PNetwork =
       p2pConfig?.let {
-        P2PNetworkImpl(
-          privateKeyBytes = privateKey,
-          p2pConfig =
-            NetworkHelper
-              .selectIpV4ForP2P(
-                targetIpV4 = p2pConfig.ipAddress,
-                excludeLoopback = true,
-              ).also { log.info("using p2p ip={}", it) }
-              .let { p2pConfig.copy(ipAddress = it) },
-          chainId = chainId,
-          serDe = RLPSerializers.SealedBeaconBlockSerializer,
-          metricsFacade = metricsFacade,
-          statusMessageFactory = statusMessageFactory,
-          beaconChain = beaconChain,
-          isBlockImportEnabledProvider = isBlockImportEnabledProvider,
-          metricsSystem = besuMetricsSystem,
-          forkIdHashProvider = forkIdHashProvider,
+        p2pNetworkFactory(
+          privateKey,
+          NetworkHelper
+            .selectIpV4ForP2P(
+              targetIpV4 = p2pConfig.ipAddress,
+              excludeLoopback = true,
+            ).also { log.info("using p2p ip={}", it) }
+            .let { p2pConfig.copy(ipAddress = it) },
+          chainId,
+          RLPSerializers.SealedBeaconBlockSerializer,
+          metricsFacade,
+          besuMetricsSystem,
+          statusMessageFactory,
+          beaconChain,
+          forkIdHashProvider,
+          isBlockImportEnabledProvider,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

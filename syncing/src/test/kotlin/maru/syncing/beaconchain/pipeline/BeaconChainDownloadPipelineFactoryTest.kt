@@ -67,22 +67,22 @@ class BeaconChainDownloadPipelineFactoryTest {
 
     val rangeResponses = mutableMapOf<Pair<ULong, ULong>, List<SealedBeaconBlock>>()
 
-    // Ranges: [100, 109], [110, 119], [120, 125]
-    rangeResponses[100uL to 10uL] = (100uL..109uL).map { randomSealedBeaconBlock(it) }
-    rangeResponses[110uL to 10uL] = (110uL..119uL).map { randomSealedBeaconBlock(it) }
-    rangeResponses[120uL to 6uL] = (120uL..125uL).map { randomSealedBeaconBlock(it) }
+    // Ranges: [100, 291], [292, 483], [484, 490]
+    rangeResponses[100uL to 192uL] = (100uL..291uL).map { randomSealedBeaconBlock(it) }
+    rangeResponses[292uL to 192uL] = (292uL..483uL).map { randomSealedBeaconBlock(it) }
+    rangeResponses[484uL to 7uL] = (484uL..490uL).map { randomSealedBeaconBlock(it) }
 
     rangeResponses.forEach { (range, blocks) ->
       val response = mock<BeaconBlocksByRangeResponse>()
       whenever(response.blocks).thenReturn(blocks)
       whenever(peer.sendBeaconBlocksByRange(range.first, range.second)).thenReturn(completedFuture(response))
-      whenever(peer.getStatus()).thenReturn(randomStatus(125uL))
+      whenever(peer.getStatus()).thenReturn(randomStatus(490uL))
     }
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
     )
-    whenever(syncTargetProvider.invoke()).thenReturn(125uL)
+    whenever(syncTargetProvider.invoke()).thenReturn(490uL)
 
     val pipeline = factory.createPipeline(100uL)
     val completionFuture = pipeline.pipeline.start(executorService)
@@ -91,8 +91,8 @@ class BeaconChainDownloadPipelineFactoryTest {
     completionFuture.get(5, TimeUnit.SECONDS)
 
     // Verify all blocks were imported
-    val numberOfImportedBlocks = 125 - 100 + 1 // Total blocks from 100 to 125 inclusive
-    assertThat(pipeline.target()).isEqualTo(125uL)
+    val numberOfImportedBlocks = 490 - 100 + 1 // Total blocks from 100 to 125 inclusive
+    assertThat(pipeline.target()).isEqualTo(490uL)
     verify(blockImporter, times(numberOfImportedBlocks)).importBlock(any())
   }
 
@@ -103,23 +103,23 @@ class BeaconChainDownloadPipelineFactoryTest {
 
     val rangeResponses = mutableMapOf<Pair<ULong, ULong>, List<SealedBeaconBlock>>()
 
-    // Ranges: [100, 109], [110, 119], [120, 125]
-    rangeResponses[100uL to 10uL] = (100uL..109uL).map { randomSealedBeaconBlock(it) }
-    rangeResponses[110uL to 10uL] = (110uL..119uL).map { randomSealedBeaconBlock(it) }
-    rangeResponses[120uL to 6uL] = (120uL..125uL).map { randomSealedBeaconBlock(it) }
+    // Ranges: [100, 291], [292, 483], [484, 490]
+    rangeResponses[100uL to 192uL] = (100uL..291uL).map { randomSealedBeaconBlock(it) }
+    rangeResponses[292uL to 192uL] = (292uL..483uL).map { randomSealedBeaconBlock(it) }
+    rangeResponses[484uL to 7uL] = (484uL..490uL).map { randomSealedBeaconBlock(it) }
 
     rangeResponses.forEach { (range, blocks) ->
       val response = mock<BeaconBlocksByRangeResponse>()
       whenever(response.blocks).thenReturn(blocks)
       whenever(peer.sendBeaconBlocksByRange(range.first, range.second)).thenReturn(completedFuture(response))
-      whenever(peer.getStatus()).thenReturn(randomStatus(125uL))
+      whenever(peer.getStatus()).thenReturn(randomStatus(490uL))
     }
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
     )
-    // the initial sync target is 119, but we will change it to 125 during execution
-    whenever(syncTargetProvider.invoke()).thenReturn(119uL, 125uL, 125uL)
+    // the initial sync target is 383, but we will change it to 390 during execution
+    whenever(syncTargetProvider.invoke()).thenReturn(383uL, 490uL, 490uL)
 
     val pipeline = factory.createPipeline(100uL)
     val completionFuture = pipeline.pipeline.start(executorService)
@@ -128,8 +128,8 @@ class BeaconChainDownloadPipelineFactoryTest {
     completionFuture.get(5, TimeUnit.SECONDS)
 
     // Verify all blocks were imported
-    val numberOfImportedBlocks = 125 - 100 + 1 // Total blocks from 100 to 125 inclusive
-    assertThat(pipeline.target()).isEqualTo(125uL)
+    val numberOfImportedBlocks = 490 - 100 + 1 // Total blocks from 100 to 490 inclusive
+    assertThat(pipeline.target()).isEqualTo(490uL)
     verify(blockImporter, times(numberOfImportedBlocks)).importBlock(any())
   }
 

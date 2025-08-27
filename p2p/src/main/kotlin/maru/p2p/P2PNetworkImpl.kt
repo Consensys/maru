@@ -46,7 +46,7 @@ import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
-class P2PNetworkImpl(
+open class P2PNetworkImpl(
   private val privateKeyBytes: ByteArray,
   private val p2pConfig: P2P,
   private val chainId: UInt,
@@ -57,6 +57,13 @@ class P2PNetworkImpl(
   private val beaconChain: BeaconChain,
   private val forkIdHashProvider: ForkIdHashProvider,
   isBlockImportEnabledProvider: () -> Boolean,
+  // for testing:
+  private val rpcMethodsFactory: (
+    StatusMessageFactory,
+    LineaRpcProtocolIdGenerator,
+    () -> PeerLookup,
+    BeaconChain,
+  ) -> RpcMethods = ::RpcMethods,
 ) : P2PNetwork {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   internal lateinit var maruPeerManager: MaruPeerManager
@@ -93,14 +100,14 @@ class P2PNetworkImpl(
     val reputationManager =
       MaruReputationManager(besuMetricsSystem, SystemTimeProvider(), this::isStaticPeer, p2pConfig.reputationConfig)
 
-    val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
+    val rpcMethods = rpcMethodsFactory(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
     maruPeerManager =
       MaruPeerManager(
         maruPeerFactory =
           DefaultMaruPeerFactory(
-            rpcMethods,
-            statusMessageFactory,
-            p2pConfig,
+            rpcMethods = rpcMethods,
+            statusMessageFactory = statusMessageFactory,
+            p2pConfig = p2pConfig,
           ),
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
@@ -131,6 +138,9 @@ class P2PNetworkImpl(
         forkIdHashProvider = forkIdHashProvider,
       )
     }
+
+  override val localNodeRecord: NodeRecord?
+    get() = discoveryService?.getLocalNodeRecord()
 
   // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
   private val peerLookup = builtNetwork.peerLookup
@@ -254,6 +264,8 @@ class P2PNetworkImpl(
    */
   override fun unsubscribeFromBlocks(subscriptionId: Int) = sealedBlocksSubscriptionManager.unsubscribe(subscriptionId)
 
+  override fun isStaticPeer(nodeId: NodeId): Boolean = staticPeerMap.containsKey(nodeId)
+
   fun addStaticPeer(peerAddress: MultiaddrPeerAddress) {
     if (peerAddress.id == p2pNetwork.nodeId) { // Don't connect to self
       log.debug("Not adding static peer as it is the local node")
@@ -266,14 +278,6 @@ class P2PNetworkImpl(
       staticPeerMap[peerAddress.id] = peerAddress
     }
     maintainPersistentConnection(peerAddress)
-  }
-
-  override fun isStaticPeer(nodeId: NodeId): Boolean {
-    println("Has ${staticPeerMap.size} static peers")
-    staticPeerMap.forEach { (k, v) -> println("has static peer: $k") }
-    val containsKey = staticPeerMap.containsKey(nodeId)
-    println("isStaticPeer: $containsKey")
-    return containsKey
   }
 
   fun removeStaticPeer(peerAddress: PeerAddress) {
@@ -292,7 +296,7 @@ class P2PNetworkImpl(
             log.trace("Already connected to peer {}. Error: {}", peerAddress, t.message)
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
-            log.debug(
+            log.trace(
               "Failed to connect to static peer={}, retrying after {} ms. Error: {}",
               peerAddress,
               p2pConfig.reconnectDelay,
@@ -331,7 +335,7 @@ class P2PNetworkImpl(
         .stringValue!!
         .toUInt()
 
-  internal val peerCount: Int
+  override val peerCount: Int
     get() = maruPeerManager.peerCount
 
   internal fun dropPeer(

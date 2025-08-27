@@ -194,9 +194,7 @@ class DefaultMaruPeer(
   override fun disconnectImmediately(
     reason: Optional<DisconnectReason>,
     locallyInitiated: Boolean,
-  ) {
-    delegatePeer.disconnectImmediately(reason, locallyInitiated)
-  }
+  ) = delegatePeer.disconnectImmediately(reason, locallyInitiated)
 
   override fun disconnectCleanly(reason: DisconnectReason?): SafeFuture<Void> = delegatePeer.disconnectCleanly(reason)
 

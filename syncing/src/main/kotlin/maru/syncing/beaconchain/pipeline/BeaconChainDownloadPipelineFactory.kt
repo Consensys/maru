@@ -44,7 +44,7 @@ class BeaconChainDownloadPipelineFactory(
 
   data class Config(
     val blockRangeRequestTimeout: Duration = 5.seconds,
-    val blocksBatchSize: UInt = 10u,
+    val blocksBatchSize: UInt = 192u,
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
   )

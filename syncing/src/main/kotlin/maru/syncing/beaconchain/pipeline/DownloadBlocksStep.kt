@@ -14,7 +14,6 @@ import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Function
 import kotlin.time.Duration
-import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -38,7 +37,6 @@ class DownloadBlocksStep(
       var remaining = count
       val downloadedBlocks = mutableListOf<SealedBlockWithPeer>()
       var retries = 0u
-      var peer: MaruPeer?
 
       LogUtil.throttledLog(
         log::info,
@@ -48,7 +46,7 @@ class DownloadBlocksStep(
       )
 
       do {
-        peer =
+        val selectedPeer =
           peerLookup
             .getPeers()
             .filter {
@@ -57,47 +55,46 @@ class DownloadBlocksStep(
                 targetRange.endBlock
             }.random()
         try {
-          peer
+          selectedPeer
             .sendBeaconBlocksByRange(startBlockNumber, remaining)
             .orTimeout(blockRangeRequestTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
             .thenApply { response ->
               if (response.blocks.isEmpty()) {
-                peer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
-                log.debug("No blocks received from peer: {}", peer.id)
+                selectedPeer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
+                log.debug("No blocks received from peer: {}", selectedPeer.id)
                 retries++
               } else {
                 val numBlocks = response.blocks.size.toULong()
                 if (numBlocks > remaining) {
-                  peer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+                  selectedPeer.disconnectCleanly(DisconnectReason.REMOTE_FAULT)
                   log.debug(
                     "Received more blocks than requested from peer: {}. Expected: {}, Received: {}",
-                    peer.id,
+                    selectedPeer.id,
                     remaining,
                     numBlocks,
                   )
                   retries++
                 } else {
-                  response.blocks.forEach { downloadedBlocks.add(SealedBlockWithPeer(it, peer)) }
+                  response.blocks.forEach { downloadedBlocks.add(SealedBlockWithPeer(it, selectedPeer)) }
                   startBlockNumber += numBlocks
                   remaining -= numBlocks
                   retries = 0u // Reset retries on successful download
-                  peer.adjustReputation(ReputationAdjustment.SMALL_REWARD)
                 }
               }
             }.join()
         } catch (e: Exception) {
           when (e.cause) {
             is TimeoutException -> {
-              log.debug("Timed out while downloading blocks from peer: {}", peer.id)
-              peer.adjustReputation(ReputationAdjustment.LARGE_PENALTY)
+              log.debug("Timed out while downloading blocks from peer: {}", selectedPeer.id)
+              selectedPeer.adjustReputation(ReputationAdjustment.LARGE_PENALTY)
             }
 
             is RpcException -> {
-              log.warn("RpcException while downloading blocks from peer: {}", peer.id, e.cause)
-              peer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
+              log.warn("RpcException while downloading blocks from peer: {}", selectedPeer.id, e.cause)
+              selectedPeer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
             }
 
-            else -> log.debug("Failed to download blocks from peer: {}", peer.id, e)
+            else -> log.debug("Failed to download blocks from peer: {}", selectedPeer.id, e)
           }
           retries++
         }
