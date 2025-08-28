@@ -35,26 +35,4 @@ object NetworkHelper {
     listNetworkAddresses(excludeLoopback)
       .filter { it is Inet4Address }
       .map { it.hostAddress }
-
-  fun selectIpV4ForP2P(
-    targetIpV4: String,
-    excludeLoopback: Boolean = true,
-  ): String {
-    val address =
-      runCatching { Inet4Address.getByName(targetIpV4) }
-        .getOrElse { throw IllegalArgumentException("Invalid targetIpV4=$targetIpV4", it) }
-
-    if (address.isLoopbackAddress) {
-      return targetIpV4
-    }
-
-    val ips = listIpsV4(excludeLoopback)
-    check(ips.isNotEmpty()) { "No IPv4 addresses found on the local machine." }
-
-    return if (targetIpV4 == "0.0.0.0") {
-      ips.first()
-    } else {
-      targetIpV4
-    }
-  }
 }

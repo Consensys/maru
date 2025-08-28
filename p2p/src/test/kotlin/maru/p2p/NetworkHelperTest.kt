@@ -11,7 +11,6 @@ package maru.p2p
 import java.net.Inet4Address
 import java.net.InetAddress
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 class NetworkHelperTest {
@@ -51,40 +50,5 @@ class NetworkHelperTest {
     NetworkHelper.listIpsV4(excludeLoopback = false).also { addresses ->
       assertThat(addresses).contains("127.0.0.1")
     }
-  }
-
-  @Test
-  fun `selectIpV4ForP2P returns targetIpV4 if present in local interfaces`() {
-    val localIp = NetworkHelper.listIpsV4().first()
-    val result = NetworkHelper.selectIpV4ForP2P(localIp)
-    assertThat(result).isEqualTo(localIp)
-  }
-
-  @Test
-  fun `selectIpV4ForP2P returns first IP if targetIpV4 is 0_0_0_0`() {
-    val ips = NetworkHelper.listIpsV4()
-    val result = NetworkHelper.selectIpV4ForP2P("0.0.0.0")
-    assertThat(result).isEqualTo(ips.first())
-  }
-
-  @Test
-  fun `selectIpV4ForP2P allows loopback when targetIpV4 is loopback`() {
-    assertThat(NetworkHelper.selectIpV4ForP2P("127.0.0.1", excludeLoopback = true))
-      .isEqualTo("127.0.0.1")
-
-    assertThat(NetworkHelper.selectIpV4ForP2P("127.1", excludeLoopback = true))
-      .isEqualTo("127.1")
-
-    // decimal representation of loopback address, allowed by the spec
-    assertThat(NetworkHelper.selectIpV4ForP2P("2130706433", excludeLoopback = true))
-      .isEqualTo("2130706433")
-  }
-
-  @Test
-  fun `selectIpV4ForP2P throws if targetIpV4 is not valid ip`() {
-    val fakeIp = "192.0.A.A"
-    assertThatThrownBy { NetworkHelper.selectIpV4ForP2P(fakeIp) }
-      .isInstanceOf(IllegalArgumentException::class.java)
-      .hasMessageContaining("Invalid targetIpV4=192.0.A.A")
   }
 }
