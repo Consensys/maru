@@ -55,16 +55,11 @@ class MaruPeerScoringTest {
   private lateinit var validatorEthApiClient: EthApiClient
   private lateinit var followerEthApiClient: EthApiClient
 
-//  @BeforeEach
-//  fun setUp() {
-//
-//  }
-
   @AfterEach
   fun tearDown() {
-//    followerStack.maruApp.stop()
+    followerStack.maruApp.stop()
     validatorStack.maruApp.stop()
-//    followerStack.maruApp.close()
+    followerStack.maruApp.close()
     validatorStack.maruApp.close()
     cluster.close()
   }
