@@ -54,7 +54,7 @@ class P2PNetworkImpl(
   private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
-  private val metricsSystem: BesuMetricsSystem,
+  metricsSystem: BesuMetricsSystem,
   private val statusMessageFactory: StatusMessageFactory,
   private val beaconChain: BeaconChain,
   private val forkIdHashProvider: ForkIdHashProvider,
@@ -284,11 +284,12 @@ class P2PNetworkImpl(
             log.debug("Already connected to peer {}. Error: {}", peerAddress, t.message)
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
-            log.trace(
+            log.warn(
               "Failed to connect to static peer={}, retrying after {} ms. Error: {}",
               peerAddress,
               p2pConfig.reconnectDelay,
               t.message,
+              t,
             )
             if (t.cause?.message != "Transport is closed") {
               SafeFuture

@@ -36,8 +36,6 @@ object NetworkHelper {
       .filter { it is Inet4Address }
       .map { it.hostAddress }
 
-  fun hasInterfaceWithIpV4(ipV4: String): Boolean = listIpsV4(excludeLoopback = false).contains(ipV4)
-
   fun selectIpV4ForP2P(
     targetIpV4: String,
     excludeLoopback: Boolean = true,
@@ -53,13 +51,10 @@ object NetworkHelper {
     val ips = listIpsV4(excludeLoopback)
     check(ips.isNotEmpty()) { "No IPv4 addresses found on the local machine." }
 
-    if (ips.contains(targetIpV4)) {
-      return targetIpV4
-    } else if (targetIpV4 == "0.0.0.0") {
-      return ips.first()
+    return if (targetIpV4 == "0.0.0.0") {
+      ips.first()
     } else {
-      val ipsString = ips.joinToString(separator = ",") { it }
-      throw IllegalArgumentException("targetIpV4=$targetIpV4 not found in machine interfaces, available ips=$ipsString")
+      targetIpV4
     }
   }
 }
