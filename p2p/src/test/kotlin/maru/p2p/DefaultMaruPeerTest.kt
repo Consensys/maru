@@ -96,6 +96,7 @@ class DefaultMaruPeerTest {
 
   @Test
   fun `disconnectImmediately delegates to underlying peer`() {
+    whenever(delegatePeer.address).thenReturn(mock())
     val reason = Optional.of(DisconnectReason.REMOTE_FAULT)
 
     maruPeer.disconnectImmediately(reason, true)
@@ -109,6 +110,7 @@ class DefaultMaruPeerTest {
     val expectedFuture = SafeFuture.completedFuture<Void>(null)
 
     whenever(delegatePeer.disconnectCleanly(reason)).thenReturn(expectedFuture)
+    whenever(delegatePeer.address).thenReturn(mock())
 
     val result = maruPeer.disconnectCleanly(reason)
 
@@ -172,11 +174,9 @@ class DefaultMaruPeerTest {
 
   @Test
   fun `adjustReputation delegates to underlying peer`() {
-    val adjustment = mock<ReputationAdjustment>()
+    maruPeer.adjustReputation(ReputationAdjustment.SMALL_PENALTY)
 
-    maruPeer.adjustReputation(adjustment)
-
-    verify(delegatePeer).adjustReputation(adjustment)
+    verify(delegatePeer).adjustReputation(ReputationAdjustment.SMALL_PENALTY)
   }
 
   @Test
