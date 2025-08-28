@@ -92,7 +92,7 @@ class MaruApp(
     config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
       Helpers.createWeb3jClient(
         apiEndpointConfig = apiEndpointConfig,
-        log = LogManager.getLogger("maru.clients.$followerLabel"),
+        log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
       )
     }
 
