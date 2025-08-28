@@ -17,7 +17,7 @@ class InMemoryP2PState : P2PState {
 
   override fun getLocalNodeRecordSequenceNumber(): ULong = (configs[DISCOVERY_SEQUENCE_NUMBER_KEY] ?: 0uL) as ULong
 
-  override fun newRuntimeConfigsUpdater(): P2PState.Updater = InMemoryP2PStateUpdater(this)
+  override fun newP2PStateUpdater(): P2PState.Updater = InMemoryP2PStateUpdater(this)
 
   override fun close() {
     // No-op for in-memory runtime configs

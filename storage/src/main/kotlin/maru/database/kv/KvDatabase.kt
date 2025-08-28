@@ -89,7 +89,7 @@ class KvDatabase(
       .get(Schema.DiscoverySequenceNumber)
       .getOrDefault(0uL)
 
-  override fun newRuntimeConfigsUpdater(): P2PState.Updater = KvUpdater(this.kvStoreAccessor)
+  override fun newP2PStateUpdater(): P2PState.Updater = KvUpdater(this.kvStoreAccessor)
 
   override fun close() {
     kvStoreAccessor.close()

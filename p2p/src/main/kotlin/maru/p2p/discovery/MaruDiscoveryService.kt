@@ -228,7 +228,7 @@ class MaruDiscoveryService(
     oldRecord: NodeRecord?,
     newRecord: NodeRecord,
   ) = p2PState
-    .newRuntimeConfigsUpdater()
+    .newP2PStateUpdater()
     .putDiscoverySequenceNumber(newRecord.seq.toBigInteger().toULong())
     .commit()
 }

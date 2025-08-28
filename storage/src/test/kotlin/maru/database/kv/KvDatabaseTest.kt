@@ -304,7 +304,7 @@ class KvDatabaseTest {
     createDatabase(databasePath).use { db ->
       assertThat(db.getLocalNodeRecordSequenceNumber()).isEqualTo(0uL)
       (1uL..maxIterations).forEach { expectedSeqNumber ->
-        db.newRuntimeConfigsUpdater().putDiscoverySequenceNumber(expectedSeqNumber).commit()
+        db.newP2PStateUpdater().putDiscoverySequenceNumber(expectedSeqNumber).commit()
         assertThat(db.getLocalNodeRecordSequenceNumber()).isEqualTo(expectedSeqNumber)
       }
     }
