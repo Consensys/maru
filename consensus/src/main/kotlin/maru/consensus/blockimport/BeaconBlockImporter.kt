@@ -101,7 +101,7 @@ class BlockBuildingBeaconBlockImporter(
     return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier, nextBlockTimestamp)) {
       log.info(
         "importing block and starting build next block: " +
-          "elBlockNumber={} elBlockTimestamp={} clNextBlockTimestamp={} beaconBlockHeader={}",
+          "elBlockNumber={} elBlockTimestamp={} elNextBlockTimestamp={} beaconBlockHeader={}",
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         beaconBlock.beaconBlockBody.executionPayload.timestamp,
         nextBlockTimestamp,
