@@ -13,7 +13,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
-import maru.database.RuntimeConfigs
+import maru.database.P2PState
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor.KvStoreTransaction
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreColumn
@@ -22,7 +22,7 @@ import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
 class KvDatabase(
   private val kvStoreAccessor: KvStoreAccessor,
 ) : BeaconChain,
-  RuntimeConfigs {
+  P2PState {
   override fun isInitialized(): Boolean = kvStoreAccessor.get(Schema.LatestBeaconState).getOrNull() != null
 
   companion object {
@@ -84,12 +84,12 @@ class KvDatabase(
 
   override fun newBeaconChainUpdater(): BeaconChain.Updater = KvUpdater(this.kvStoreAccessor)
 
-  override fun getDiscoverySequenceNumber(): ULong =
+  override fun getLocalNodeRecordSequenceNumber(): ULong =
     kvStoreAccessor
       .get(Schema.DiscoverySequenceNumber)
       .getOrDefault(0uL)
 
-  override fun newRuntimeConfigsUpdater(): RuntimeConfigs.Updater = KvUpdater(this.kvStoreAccessor)
+  override fun newRuntimeConfigsUpdater(): P2PState.Updater = KvUpdater(this.kvStoreAccessor)
 
   override fun close() {
     kvStoreAccessor.close()
@@ -98,7 +98,7 @@ class KvDatabase(
   class KvUpdater(
     kvStoreAccessor: KvStoreAccessor,
   ) : BeaconChain.Updater,
-    RuntimeConfigs.Updater {
+    P2PState.Updater {
     private val transaction: KvStoreTransaction = kvStoreAccessor.startTransaction()
 
     override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
@@ -122,7 +122,7 @@ class KvDatabase(
       return this
     }
 
-    override fun putDiscoverySequenceNumber(newSequenceNumber: ULong): RuntimeConfigs.Updater {
+    override fun putDiscoverySequenceNumber(newSequenceNumber: ULong): P2PState.Updater {
       transaction.put(Schema.DiscoverySequenceNumber, newSequenceNumber)
       return this
     }

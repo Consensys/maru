@@ -302,14 +302,14 @@ class KvDatabaseTest {
   ) {
     val maxIterations = 10uL
     createDatabase(databasePath).use { db ->
-      assertThat(db.getDiscoverySequenceNumber()).isEqualTo(0uL)
+      assertThat(db.getLocalNodeRecordSequenceNumber()).isEqualTo(0uL)
       (1uL..maxIterations).forEach { expectedSeqNumber ->
         db.newRuntimeConfigsUpdater().putDiscoverySequenceNumber(expectedSeqNumber).commit()
-        assertThat(db.getDiscoverySequenceNumber()).isEqualTo(expectedSeqNumber)
+        assertThat(db.getLocalNodeRecordSequenceNumber()).isEqualTo(expectedSeqNumber)
       }
     }
     createDatabase(databasePath).use { db ->
-      assertThat(db.getDiscoverySequenceNumber()).isEqualTo(maxIterations)
+      assertThat(db.getLocalNodeRecordSequenceNumber()).isEqualTo(maxIterations)
     }
   }
 }

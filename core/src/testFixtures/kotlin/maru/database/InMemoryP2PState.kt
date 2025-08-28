@@ -8,34 +8,34 @@
  */
 package maru.database
 
-class InMemoryRuntimeConfigs : RuntimeConfigs {
+class InMemoryP2PState : P2PState {
   companion object {
     const val DISCOVERY_SEQUENCE_NUMBER_KEY = "DiscoverySequenceNumber"
   }
 
   private val configs = mutableMapOf<String, Any>()
 
-  override fun getDiscoverySequenceNumber(): ULong = (configs[DISCOVERY_SEQUENCE_NUMBER_KEY] ?: 0uL) as ULong
+  override fun getLocalNodeRecordSequenceNumber(): ULong = (configs[DISCOVERY_SEQUENCE_NUMBER_KEY] ?: 0uL) as ULong
 
-  override fun newRuntimeConfigsUpdater(): RuntimeConfigs.Updater = InMemoryRuntimeConfigsUpdater(this)
+  override fun newRuntimeConfigsUpdater(): P2PState.Updater = InMemoryP2PStateUpdater(this)
 
   override fun close() {
     // No-op for in-memory runtime configs
   }
 
-  class InMemoryRuntimeConfigsUpdater(
-    val inMemoryRuntimeConfigs: InMemoryRuntimeConfigs,
-  ) : RuntimeConfigs.Updater {
+  class InMemoryP2PStateUpdater(
+    val inMemoryP2PState: InMemoryP2PState,
+  ) : P2PState.Updater {
     private val configUpdates = mutableMapOf<String, Any>()
 
-    override fun putDiscoverySequenceNumber(newSequenceNumber: ULong): RuntimeConfigs.Updater {
-      configUpdates[InMemoryRuntimeConfigs.DISCOVERY_SEQUENCE_NUMBER_KEY] = newSequenceNumber
+    override fun putDiscoverySequenceNumber(newSequenceNumber: ULong): P2PState.Updater {
+      configUpdates[InMemoryP2PState.DISCOVERY_SEQUENCE_NUMBER_KEY] = newSequenceNumber
       return this
     }
 
     override fun commit() {
       configUpdates.forEach { (key, value) ->
-        inMemoryRuntimeConfigs.configs[key] = value
+        inMemoryP2PState.configs[key] = value
       }
       configUpdates.clear()
     }

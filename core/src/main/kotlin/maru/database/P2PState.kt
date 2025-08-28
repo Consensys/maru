@@ -8,10 +8,10 @@
  */
 package maru.database
 
-interface RuntimeConfigs : AutoCloseable {
-  fun getDiscoverySequenceNumber(): ULong
+interface P2PState : AutoCloseable {
+  fun getLocalNodeRecordSequenceNumber(): ULong
 
-  fun newRuntimeConfigsUpdater(): Updater
+  fun newP2PStateUpdater(): Updater
 
   interface Updater : AutoCloseable {
     fun putDiscoverySequenceNumber(newSequenceNumber: ULong): Updater

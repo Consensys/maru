@@ -42,7 +42,7 @@ import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
 import maru.database.BeaconChain
-import maru.database.RuntimeConfigs
+import maru.database.P2PState
 import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.finalization.LineaFinalizationProvider
@@ -183,7 +183,7 @@ class MaruAppFactory {
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
         forkIdHasher = forkIdHasher,
-        runtimeConfigs = kvDatabase,
+        p2PState = kvDatabase,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =
@@ -316,7 +316,7 @@ class MaruAppFactory {
       besuMetricsSystem: BesuMetricsSystem,
       forkIdHashProvider: ForkIdHashProvider,
       forkIdHasher: ForkIdHasher,
-      runtimeConfigs: RuntimeConfigs,
+      p2PState: P2PState,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -337,7 +337,7 @@ class MaruAppFactory {
           metricsSystem = besuMetricsSystem,
           forkIdHashProvider = forkIdHashProvider,
           forkIdHasher = forkIdHasher,
-          runtimeConfigs = runtimeConfigs,
+          p2PState = p2PState,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

@@ -31,7 +31,7 @@ import maru.core.ext.metrics.TestMetrics
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
-import maru.database.InMemoryRuntimeConfigs
+import maru.database.InMemoryP2PState
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializers
@@ -88,7 +88,7 @@ class P2PTest {
     private val key2 = "0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".fromHex()
     private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
-    private val runtimeConfigs = InMemoryRuntimeConfigs()
+    private val runtimeConfigs = InMemoryP2PState()
     private val forkIdHashProvider =
       createForkIdHashProvider()
     private val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
@@ -154,7 +154,7 @@ class P2PTest {
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
         forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
-        runtimeConfigs = runtimeConfigs,
+        p2PState = runtimeConfigs,
       )
   }
 

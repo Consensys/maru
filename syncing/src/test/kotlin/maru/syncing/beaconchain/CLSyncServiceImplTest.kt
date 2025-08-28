@@ -35,8 +35,8 @@ import maru.core.ext.metrics.TestMetrics.TestMetricsSystemAdapter
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
-import maru.database.InMemoryRuntimeConfigs
-import maru.database.RuntimeConfigs
+import maru.database.InMemoryP2PState
+import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.PeerLookup
@@ -119,8 +119,8 @@ class CLSyncServiceImplTest {
 
     sourceNodePort = findFreePort()
     targetNodePort = findFreePort()
-    targetP2pNetwork = createNetwork(targetBeaconChain, targetNodeKey, targetNodePort, InMemoryRuntimeConfigs())
-    sourceP2pNetwork = createNetwork(sourceBeaconChain, sourceNodeKey, sourceNodePort, InMemoryRuntimeConfigs())
+    targetP2pNetwork = createNetwork(targetBeaconChain, targetNodeKey, targetNodePort, InMemoryP2PState())
+    sourceP2pNetwork = createNetwork(sourceBeaconChain, sourceNodeKey, sourceNodePort, InMemoryP2PState())
 
     createBlocks(
       beaconChain = sourceBeaconChain,
@@ -371,7 +371,7 @@ class CLSyncServiceImplTest {
     beaconChain: BeaconChain,
     key: ByteArray,
     port: UInt,
-    runtimeConfigs: RuntimeConfigs,
+    p2PState: P2PState,
   ): P2PNetworkImpl {
     val forkIdHashProvider = createForkIdHashProvider(beaconChain)
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
@@ -393,7 +393,7 @@ class CLSyncServiceImplTest {
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
         forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
-        runtimeConfigs = runtimeConfigs,
+        p2PState = p2PState,
       )
     return p2pNetworkImpl
   }

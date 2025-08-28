@@ -17,7 +17,7 @@ import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
 import maru.config.P2PConfig
 import maru.consensus.ForkIdHashProvider
-import maru.database.RuntimeConfigs
+import maru.database.P2PState
 import maru.services.LongRunningService
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
@@ -38,7 +38,7 @@ class MaruDiscoveryService(
   private val p2pConfig: P2PConfig,
   private val forkIdHashProvider: ForkIdHashProvider,
   private val timerFactory: (String, Boolean) -> Timer = { namePrefix, isDaemon -> createTimer(namePrefix, isDaemon) },
-  private val runtimeConfigs: RuntimeConfigs,
+  private val p2PState: P2PState,
 ) : LongRunningService {
   init {
     require(p2pConfig.discovery != null) {
@@ -207,7 +207,7 @@ class MaruDiscoveryService(
   }
 
   private fun createLocalNodeRecord(): NodeRecord {
-    val sequenceNumber = runtimeConfigs.getDiscoverySequenceNumber() + 1uL
+    val sequenceNumber = p2PState.getLocalNodeRecordSequenceNumber() + 1uL
     val nodeRecordBuilder: NodeRecordBuilder =
       NodeRecordBuilder()
         .secretKey(privateKey)
@@ -227,7 +227,7 @@ class MaruDiscoveryService(
   private fun localNodeRecordUpdated(
     oldRecord: NodeRecord?,
     newRecord: NodeRecord,
-  ) = runtimeConfigs
+  ) = p2PState
     .newRuntimeConfigsUpdater()
     .putDiscoverySequenceNumber(newRecord.seq.toBigInteger().toULong())
     .commit()
