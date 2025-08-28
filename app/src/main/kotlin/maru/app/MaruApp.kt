@@ -91,7 +91,7 @@ class MaruApp(
   private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
     config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
       Helpers.createWeb3jClient(
-        apiEndpointConfig = config.validatorElNode.ethApiEndpoint,
+        apiEndpointConfig = apiEndpointConfig,
         log = LogManager.getLogger("maru.clients.$followerLabel"),
       )
     }
