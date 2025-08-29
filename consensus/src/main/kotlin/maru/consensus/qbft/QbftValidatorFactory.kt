@@ -57,11 +57,11 @@ import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
 import org.hyperledger.besu.consensus.common.bft.RoundTimer
 import org.hyperledger.besu.consensus.common.bft.statemachine.FutureMessageBuffer
-import org.hyperledger.besu.consensus.qbft.core.network.QbftGossip
 import org.hyperledger.besu.consensus.qbft.core.payload.MessageFactory
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftBlockHeightManagerFactory
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftRoundFactory
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMinedBlockObserver
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
 import org.hyperledger.besu.consensus.qbft.core.validation.MessageValidatorFactory
@@ -223,12 +223,12 @@ class QbftValidatorFactory(
         .number
         .toLong()
     val futureMessageBuffer =
-      FutureMessageBuffer(
+      FutureMessageBuffer<QbftMessage>(
         /* futureMessagesMaxDistance = */ qbftOptions.futureMessageMaxDistance,
         /* futureMessagesLimit = */ qbftOptions.futureMessagesLimit,
         /* chainHeight = */ chainHeaderNumber,
       )
-    val gossiper = QbftGossip(validatorMulticaster, blockCodec)
+    val gossiper = QbftGossiper(validatorMulticaster)
     val qbftController =
       QbftController(
         /* blockchain = */ blockChain,
