@@ -15,10 +15,9 @@
 <!--    <Logger name="org.hyperledger.besu.consensus.merge.blockcreation.MergeCoordinator"-->
 <!--            level="TRACE"/>-->
     <Logger name="maru.executionlayer.manager" level="DEBUG"/>
-    <Logger name="maru.consensus.ProtocolStarter" level="DEBUG"/>
     <Logger name="maru.syncing" level="DEBUG"/>
     <Logger name="org.hyperledger.besu" level="INFO"/>
-    <Logger name="org.hyperledger.besu.consensus.qbft" level="DEBUG"/>
+    <Logger name="org.hyperledger.besu.consensus.qbft" level="INFO"/>
     <Root level="INFO" additivity="false">
       <appender-ref ref="console"/>
     </Root>

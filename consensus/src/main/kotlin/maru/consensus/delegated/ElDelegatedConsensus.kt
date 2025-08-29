@@ -49,17 +49,16 @@ class ElDelegatedConsensus(
 
   private var poller: Timer? = null
   private var postTtdProtocol: Protocol? = null
-  private var ttdReached: Boolean = false
 
   private fun pollTask() {
     val elDelegatedConfig = forkSpec.configuration as ElDelegatedConfig
     try {
-      // Skip if TTD already reached and protocol instantiated
-      if (ttdReached && postTtdProtocol != null) {
+      if (postTtdProtocol != null) {
+        // Maybe it was stopped and started after the TTD was reached and poller stopped once
+        stopPoller()
         return
       }
 
-      // Get the latest block from EL
       val latestBlock =
         ethereumJsonRpcClient
           .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false)
@@ -71,16 +70,16 @@ class ElDelegatedConsensus(
         return
       }
 
-      val currentBlockNumber = latestBlock.number.toLong()
+      val totalDifficulty = latestBlock.totalDifficulty.toLong()
       log.debug(
-        "Current EL block number: {}, TTD block number: {}",
-        currentBlockNumber,
-        elDelegatedConfig.switchBlockNumber,
+        "Current elBlockNumber={}, totalDifficulty={}, terminalTotalDifficulty={}",
+        latestBlock.number,
+        totalDifficulty,
+        elDelegatedConfig.terminalTotalDifficulty,
       )
 
-      // Check if we've reached the TTD block number
-      if (currentBlockNumber > elDelegatedConfig.switchBlockNumber.toLong()) {
-        log.info("TTD reached at block number: {}. Transitioning to post-TTD protocol.", currentBlockNumber)
+      if (totalDifficulty >= elDelegatedConfig.terminalTotalDifficulty.toLong()) {
+        log.info("TTD reached at elBlockNumber={}. Transitioning to post-TTD protocol.", latestBlock.number)
         val postTtdForkSpec =
           ForkSpec(
             timestampSeconds = forkSpec.timestampSeconds,
@@ -88,6 +87,7 @@ class ElDelegatedConsensus(
             configuration = elDelegatedConfig.postTtdConfig,
           )
         transitionToPostTtdProtocol(postTtdForkSpec)
+        stopPoller()
       }
     } catch (e: Exception) {
       log.error("Error during EL block polling", e)
@@ -96,15 +96,14 @@ class ElDelegatedConsensus(
 
   @Synchronized
   private fun transitionToPostTtdProtocol(postTtdForkSpec: ForkSpec) {
-    if (ttdReached) {
-      return // Already transitioned
+    if (postTtdProtocol != null) {
+      throw IllegalStateException("This protocol is supposed to be stopped after reaching TTD")
     }
 
     try {
-      log.info("Creating post-TTD protocol with fork spec: {}", postTtdForkSpec)
+      log.info("Creating post-TTD protocol forkSpec={}", postTtdForkSpec)
       postTtdProtocol = postTtdProtocolFactory.create(postTtdForkSpec)
       postTtdProtocol?.start()
-      ttdReached = true
       log.info("Post-TTD protocol started successfully")
     } catch (e: Exception) {
       log.error("Failed to start post-TTD protocol", e)
@@ -117,7 +116,7 @@ class ElDelegatedConsensus(
       if (poller != null) {
         return
       }
-      log.debug("Starting ElDelegatedConsensus with polling interval: {} seconds", forkSpec.blockTimeSeconds)
+      log.debug("Starting ElDelegatedConsensus with pollingInterval={} seconds", forkSpec.blockTimeSeconds)
       poller = timerFactory("ElDelegatedConsensus", true)
       poller!!.scheduleAtFixedRate(
         timerTask {
@@ -132,19 +131,16 @@ class ElDelegatedConsensus(
           .toInt()
           .seconds.inWholeMilliseconds,
       )
+      postTtdProtocol?.start()
     }
   }
 
   override fun stop() {
     synchronized(this) {
-      // Stop the polling timer
       if (poller != null) {
-        log.debug("Stopping ElDelegatedConsensus poller")
-        poller?.cancel()
-        poller = null
+        stopPoller()
       }
 
-      // Stop the post-TTD protocol if it was started
       if (postTtdProtocol != null) {
         log.debug("Stopping post-TTD protocol")
         try {
@@ -152,10 +148,13 @@ class ElDelegatedConsensus(
         } catch (e: Exception) {
           log.warn("Error stopping post-TTD protocol", e)
         }
-        postTtdProtocol = null
       }
-
-      ttdReached = false
     }
+  }
+
+  private fun stopPoller() {
+    log.debug("Stopping ElDelegatedConsensus poller")
+    poller?.cancel()
+    poller = null
   }
 }

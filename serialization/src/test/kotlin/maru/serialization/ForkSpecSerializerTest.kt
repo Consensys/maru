@@ -26,7 +26,7 @@ class ForkSpecSerializerTest {
             ElFork
               .Paris,
         ),
-      switchBlockNumber = 123UL,
+      terminalTotalDifficulty = 123UL,
     )
 
   @Test

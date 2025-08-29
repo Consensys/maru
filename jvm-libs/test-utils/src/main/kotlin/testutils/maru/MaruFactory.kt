@@ -112,7 +112,7 @@ class MaruFactory(
                   validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
                   elFork = ElFork.Paris,
                 ),
-                switchBlockNumber = (ttd!! - 1u) / 2u,
+                terminalTotalDifficulty = ttd!!,
               ),
           ),
           ForkSpec(

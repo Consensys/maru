@@ -68,7 +68,7 @@ object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
   ): ConfigResult<ConsensusConfig> =
     when (type) {
       "delegated" -> {
-        val switchBlockNumber = obj.getString("switchblocknumber").toULong()
+        val switchBlockNumber = obj.getString("terminaltotaldifficulty").toULong()
         val postTtdQbftSpec = mapObjectToConfiguration("qbft", obj["postttdconfig"]).getUnsafe()
         ElDelegatedConfig(postTtdQbftSpec, switchBlockNumber).valid()
       }

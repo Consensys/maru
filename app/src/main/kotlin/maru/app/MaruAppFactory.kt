@@ -374,11 +374,9 @@ class MaruAppFactory {
     beaconChain: BeaconChain,
   ) {
     val qbftForkConfig = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
-    val qbftForkTimestamp = 0UL
     val beaconChainInitialization =
       BeaconChainInitialization(
         beaconChain = beaconChain,
-        genesisTimestamp = qbftForkTimestamp,
       )
     val qbftConsensusConfig = qbftForkConfig.configuration as QbftConsensusConfig
     beaconChainInitialization.ensureDbIsInitialized(qbftConsensusConfig.validatorSet)

@@ -13,9 +13,7 @@ import maru.core.SealedBeaconBlock
 
 interface ChainDataProvider {
   fun getGenesisBeaconState(): BeaconState =
-    getGenesisBeaconBlock().let { genesisBlock ->
-      getBeaconStateByStateRoot(genesisBlock.beaconBlock.beaconBlockHeader.stateRoot)
-    }
+    getBeaconStateByStateRoot(getGenesisBeaconBlock().beaconBlock.beaconBlockHeader.stateRoot)
 
   fun getLatestBeaconState(): BeaconState
 

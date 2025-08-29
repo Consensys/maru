@@ -32,7 +32,7 @@ class JsonFriendlyForksScheduleTest {
             "validatorSet": ["0x121212ec3215d8ade8a33607f2cf0f4f60e5f0d0"],
             "elFork": "Paris"
           },
-          "switchBlockNumber": 12
+          "terminalTotalDifficulty": 12
         },
         "4": {
           "type": "qbft",
@@ -63,7 +63,7 @@ class JsonFriendlyForksScheduleTest {
                 validatorSet = setOf(Validator("0x121212ec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
                 elFork = ElFork.Paris,
               ),
-              switchBlockNumber = 12U,
+              terminalTotalDifficulty = 12U,
             ),
           ),
           ForkSpec(

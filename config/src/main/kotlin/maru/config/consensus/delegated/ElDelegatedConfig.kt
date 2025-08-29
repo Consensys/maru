@@ -12,5 +12,5 @@ import maru.consensus.ConsensusConfig
 
 data class ElDelegatedConfig(
   val postTtdConfig: ConsensusConfig,
-  val switchBlockNumber: ULong,
+  val terminalTotalDifficulty: ULong,
 ) : ConsensusConfig
