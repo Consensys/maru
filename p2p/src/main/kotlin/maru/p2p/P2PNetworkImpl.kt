@@ -28,6 +28,7 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.topics.MessageDataSerDe
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import net.consensys.linea.metrics.MetricsFacade
@@ -36,6 +37,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import org.ethereum.beacon.discovery.schema.NodeRecord
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -60,6 +62,7 @@ class P2PNetworkImpl(
   private val forkIdHashProvider: ForkIdHashProvider,
   private val forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
+  private val messageDataSerDe: MessageDataSerDe = MessageDataSerDe(),
 ) : P2PNetwork {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   internal lateinit var maruPeerManager: MaruPeerManager
@@ -67,6 +70,12 @@ class P2PNetworkImpl(
   private val sealedBlocksTopicId =
     topicIdGenerator.id(
       GossipMessageType.BEACON_BLOCK.name,
+      Version.V1,
+      Encoding.RLP_SNAPPY,
+    )
+  private val qbftTopicId =
+    topicIdGenerator.id(
+      GossipMessageType.QBFT.name,
       Version.V1,
       Encoding.RLP_SNAPPY,
     )
@@ -220,7 +229,14 @@ class P2PNetworkImpl(
         ),
       ).increment()
     return when (message.type) {
-      GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
+      GossipMessageType.QBFT -> {
+        require(message.payload is MessageData)
+        val serializedMessageData = Bytes.wrap(messageDataSerDe.serialize(message.payload))
+        p2pNetwork.gossip(
+          qbftTopicId,
+          serializedMessageData,
+        )
+      }
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload))
