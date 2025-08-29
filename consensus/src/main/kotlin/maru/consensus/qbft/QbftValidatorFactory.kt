@@ -56,6 +56,7 @@ import org.hyperledger.besu.consensus.common.bft.BlockTimer
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
 import org.hyperledger.besu.consensus.common.bft.RoundTimer
+import org.hyperledger.besu.consensus.common.bft.events.BftEvents
 import org.hyperledger.besu.consensus.common.bft.statemachine.FutureMessageBuffer
 import org.hyperledger.besu.consensus.qbft.core.payload.MessageFactory
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftBlockHeightManagerFactory
@@ -64,6 +65,7 @@ import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftRoundFactory
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMinedBlockObserver
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
+import org.hyperledger.besu.consensus.qbft.core.types.QbftReceivedMessageEvent
 import org.hyperledger.besu.consensus.qbft.core.validation.MessageValidatorFactory
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.cryptoservices.KeyPairSecurityModule
@@ -71,6 +73,7 @@ import org.hyperledger.besu.cryptoservices.NodeKey
 import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.util.Subscribers
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
@@ -243,6 +246,18 @@ class QbftValidatorFactory(
     val eventMultiplexer = QbftEventMultiplexer(qbftController)
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())
+
+    // Subscribe to QBFT messages from P2P network and add them to the event queue
+    p2PNetwork.subscribeToQbftMessages { qbftMessage ->
+      val messageEvent =
+        object : QbftReceivedMessageEvent {
+          override fun getMessage(): QbftMessage = qbftMessage
+
+          override fun getType(): BftEvents.Type = BftEvents.Type.MESSAGE
+        }
+      bftEventQueue.add(messageEvent)
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid)
+    }
 
     return QbftConsensusValidator(
       qbftController = qbftController,
