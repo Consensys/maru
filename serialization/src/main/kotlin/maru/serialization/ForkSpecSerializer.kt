@@ -36,8 +36,8 @@ object ForkSpecSerializer {
             QbftConsensusConfigSerializer.serialize(value.configuration as QbftConsensusConfig)
           ByteBuffer
             .allocate(4 + 8 + serializedConsensusConfig.size)
-            .putInt(value.blockTimeSeconds)
-            .putLong(value.timestampSeconds)
+            .putInt(value.blockTimeSeconds.toInt())
+            .putLong(value.timestampSeconds.toLong())
             .put(serializedConsensusConfig)
             .array()
         }
