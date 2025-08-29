@@ -42,6 +42,7 @@ import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
 import maru.database.BeaconChain
+import maru.database.P2PState
 import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.finalization.LineaFinalizationProvider
@@ -109,7 +110,7 @@ class MaruAppFactory {
       )
 
     ensureDirectoryExists(config.persistence.dataPath)
-    val beaconChain =
+    val kvDatabase =
       KvDatabaseFactory
         .createRocksDbDatabase(
           databasePath = config.persistence.dataPath,
@@ -131,22 +132,24 @@ class MaruAppFactory {
     val forkIdHashProvider =
       ForkIdHashProviderImpl(
         chainId = beaconGenesisConfig.chainId,
-        beaconChain = beaconChain,
+        beaconChain = kvDatabase,
         forksSchedule = beaconGenesisConfig,
         forkIdHasher = forkIdHasher,
       )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
         apiEndpointConfig = config.validatorElNode.ethApiEndpoint,
+        log = LogManager.getLogger("maru.clients.el.ethapi"),
       )
     val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
     val latestElBlockMetadataCache =
       LatestElBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
-    val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
+    val statusMessageFactory = StatusMessageFactory(kvDatabase, forkIdHashProvider)
 
     val engineApiWeb3jClient =
       Helpers.createWeb3jClient(
         apiEndpointConfig = config.validatorElNode.engineApiEndpoint,
+        log = LogManager.getLogger("maru.clients.el.engineapi"),
       )
 
     val elManagerMap =
@@ -168,13 +171,14 @@ class MaruAppFactory {
         p2pConfig = config.p2p,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
-        beaconChain = beaconChain,
+        beaconChain = kvDatabase,
         metricsFacade = metricsFacade,
         statusMessageFactory = statusMessageFactory,
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
         forkIdHasher = forkIdHasher,
+        p2PState = kvDatabase,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =
@@ -183,7 +187,7 @@ class MaruAppFactory {
     syncControllerImpl =
       if (config.p2p != null) {
         BeaconSyncControllerImpl.create(
-          beaconChain = beaconChain,
+          beaconChain = kvDatabase,
           forksSchedule = beaconGenesisConfig,
           elManagerMap = elManagerMap,
           peersHeadsProvider = peersHeadBlockProvider,
@@ -211,7 +215,7 @@ class MaruAppFactory {
           allowEmptyBlocks = config.allowEmptyBlocks,
         )
       } else {
-        AlwaysSyncedController(beaconChain)
+        AlwaysSyncedController(kvDatabase)
       }
 
     val apiServer =
@@ -223,7 +227,7 @@ class MaruAppFactory {
             ),
           networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
           versionProvider = MaruVersionProvider(),
-          chainDataProvider = ChainDataProviderImpl(beaconChain),
+          chainDataProvider = ChainDataProviderImpl(kvDatabase),
           syncStatusProvider = syncControllerImpl,
           isElOnlineProvider = { elManagerMap[ElFork.Prague]!!.isOnline().get() },
         )
@@ -238,7 +242,7 @@ class MaruAppFactory {
         finalizationProvider = finalizationProvider,
         metricsFacade = metricsFacade,
         vertx = vertx,
-        beaconChain = beaconChain,
+        beaconChain = kvDatabase,
         metricsSystem = besuMetricsSystemAdapter,
         lastElBlockMetadataCache = latestElBlockMetadataCache,
         validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
@@ -307,6 +311,7 @@ class MaruAppFactory {
       besuMetricsSystem: BesuMetricsSystem,
       forkIdHashProvider: ForkIdHashProvider,
       forkIdHasher: ForkIdHasher,
+      p2PState: P2PState,
     ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
@@ -327,6 +332,7 @@ class MaruAppFactory {
           metricsSystem = besuMetricsSystem,
           forkIdHashProvider = forkIdHashProvider,
           forkIdHasher = forkIdHasher,
+          p2PState = p2PState,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
