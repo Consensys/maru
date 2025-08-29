@@ -40,8 +40,8 @@ object ForkIdSerializers {
             QbftConsensusConfigSerializer.serialize(value.configuration as QbftConsensusConfig)
           ByteBuffer
             .allocate(4 + 8 + serializedConsensusConfig.size)
-            .putInt(value.blockTimeSeconds)
-            .putLong(value.timestampSeconds)
+            .putInt(value.blockTimeSeconds.toInt())
+            .putLong(value.timestampSeconds.toLong())
             .put(serializedConsensusConfig)
             .array()
         }
@@ -49,8 +49,8 @@ object ForkIdSerializers {
         is ElDelegatedConfig -> {
           ByteBuffer
             .allocate(4 + 8 + 1)
-            .putInt(value.blockTimeSeconds)
-            .putLong(value.timestampSeconds)
+            .putInt(value.blockTimeSeconds.toInt())
+            .putLong(value.timestampSeconds.toLong())
             .put(EL_DELEGATED_CONFIG_MARKER)
             .array()
         }

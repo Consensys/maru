@@ -17,6 +17,18 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class ForkSpecSerializerTest {
+  private val config =
+    ElDelegatedConfig(
+      postTtdConfig =
+        QbftConsensusConfig(
+          setOf(DataGenerators.randomValidator(), DataGenerators.randomValidator()),
+          elFork =
+            ElFork
+              .Paris,
+        ),
+      switchBlockNumber = 123UL,
+    )
+
   @Test
   fun `serialization for Qbft is deterministic for same input`() {
     val v1 = DataGenerators.randomValidator()
@@ -33,14 +45,14 @@ class ForkSpecSerializerTest {
       )
     val forkSpec1 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5u,
+        timestampSeconds = 123456789UL,
         configuration = config1,
       )
     val forkSpec2 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5u,
+        timestampSeconds = 123456789UL,
         configuration = config2,
       )
     val bytes1 = ForkSpecSerializer.ForkSpecSerializer.serialize(forkSpec1)
@@ -50,17 +62,16 @@ class ForkSpecSerializerTest {
 
   @Test
   fun `serialization for ELDelegated is deterministic for same input`() {
-    val config = ElDelegatedConfig
     val forkSpec1 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5u,
+        timestampSeconds = 123456789UL,
         configuration = config,
       )
     val forkSpec2 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5u,
+        timestampSeconds = 123456789UL,
         configuration = config,
       )
     val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
@@ -70,15 +81,14 @@ class ForkSpecSerializerTest {
 
   @Test
   fun `serialization changes for ELDelegated when blockTimeSeconds changes`() {
-    val config = ElDelegatedConfig
     val forkSpec1 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5u,
+        timestampSeconds = 123456789UL,
         configuration = config,
       )
     val forkSpec2 =
-      forkSpec1.copy(blockTimeSeconds = 10)
+      forkSpec1.copy(blockTimeSeconds = 10U)
     val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
     val bytes2 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec2)
     assertThat(bytes1).isNotEqualTo(bytes2)
@@ -94,12 +104,12 @@ class ForkSpecSerializerTest {
       )
     val forkSpec1 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5U,
+        timestampSeconds = 123456789UL,
         configuration = config,
       )
     val forkSpec2 =
-      forkSpec1.copy(blockTimeSeconds = 10)
+      forkSpec1.copy(blockTimeSeconds = 10U)
     val bytes1 = ForkSpecSerializer.ForkSpecSerializer.serialize(forkSpec1)
     val bytes2 = ForkSpecSerializer.ForkSpecSerializer.serialize(forkSpec2)
     assertThat(bytes1).isNotEqualTo(bytes2)
@@ -115,11 +125,11 @@ class ForkSpecSerializerTest {
       )
     val forkSpec1 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5U,
+        timestampSeconds = 123456789UL,
         configuration = config,
       )
-    val forkSpec2 = forkSpec1.copy(timestampSeconds = 3123L)
+    val forkSpec2 = forkSpec1.copy(timestampSeconds = 3123UL)
     val bytes1 = ForkSpecSerializer.ForkSpecSerializer.serialize(forkSpec1)
     val bytes2 = ForkSpecSerializer.ForkSpecSerializer.serialize(forkSpec2)
     assertThat(bytes1).isNotEqualTo(bytes2)
@@ -127,14 +137,13 @@ class ForkSpecSerializerTest {
 
   @Test
   fun `serialization for ELDelegated changes when timestampSeconds changes`() {
-    val config = ElDelegatedConfig
     val forkSpec1 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5U,
+        timestampSeconds = 123456789UL,
         configuration = config,
       )
-    val forkSpec2 = forkSpec1.copy(timestampSeconds = 3123L)
+    val forkSpec2 = forkSpec1.copy(timestampSeconds = 3123UL)
     val bytes1 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec1)
     val bytes2 = ForkIdSerializers.ForkSpecSerializer.serialize(forkSpec2)
     assertThat(bytes1).isNotEqualTo(bytes2)
@@ -156,14 +165,14 @@ class ForkSpecSerializerTest {
       )
     val forkSpec1 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5U,
+        timestampSeconds = 123456789UL,
         configuration = config1,
       )
     val forkSpec2 =
       ForkSpec(
-        blockTimeSeconds = 5,
-        timestampSeconds = 123456789L,
+        blockTimeSeconds = 5U,
+        timestampSeconds = 123456789UL,
         configuration = config2,
       )
     val bytes1 = ForkSpecSerializer.ForkSpecSerializer.serialize(forkSpec1)

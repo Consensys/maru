@@ -442,7 +442,7 @@ class CLSyncServiceImplTest {
           ),
         elFork = ElFork.Prague,
       )
-    val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0L, 1, consensusConfig)))
+    val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0UL, 1u, consensusConfig)))
 
     return ForkIdHashProviderImpl(
       chainId = CHAIN_ID,

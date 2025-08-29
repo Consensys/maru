@@ -46,8 +46,8 @@ object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
         val blockTimeSeconds = v.getString("blocktimeseconds").toInt()
         mapObjectToConfiguration(type, v).map {
           ForkSpec(
-            k.toLong(),
-            blockTimeSeconds,
+            k.toULong(),
+            blockTimeSeconds.toUInt(),
             it,
           )
         }
@@ -67,7 +67,11 @@ object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
     obj: Node,
   ): ConfigResult<ConsensusConfig> =
     when (type) {
-      "delegated" -> ElDelegatedConfig.valid()
+      "delegated" -> {
+        val switchBlockNumber = obj.getString("switchblocknumber").toULong()
+        val postTtdQbftSpec = mapObjectToConfiguration("qbft", obj["postttdconfig"]).getUnsafe()
+        ElDelegatedConfig(postTtdQbftSpec, switchBlockNumber).valid()
+      }
       "qbft" ->
         QbftConsensusConfig(
           validatorSet =

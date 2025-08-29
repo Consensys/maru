@@ -120,14 +120,7 @@ class MaruAppFactory {
         }
 
     val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
-    val qbftForkTimestamp = qbftFork.timestampSeconds.toULong()
     val qbftConfig = qbftFork.configuration as QbftConsensusConfig
-    BeaconChainInitialization(
-      beaconChain = beaconChain,
-      genesisTimestamp = qbftForkTimestamp,
-    ).ensureDbIsInitialized(
-      validatorSet = qbftConfig.validatorSet,
-    )
 
     val forkIdHasher =
       ForkIdHasher(
@@ -375,10 +368,7 @@ class MaruAppFactory {
     beaconChain: BeaconChain,
   ) {
     val qbftForkConfig = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
-    val qbftForkTimestamp =
-      qbftForkConfig
-        .timestampSeconds
-        .toULong()
+    val qbftForkTimestamp = 0UL
     val beaconChainInitialization =
       BeaconChainInitialization(
         beaconChain = beaconChain,

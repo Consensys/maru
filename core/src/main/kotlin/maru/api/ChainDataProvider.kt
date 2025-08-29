@@ -15,7 +15,6 @@ interface ChainDataProvider {
   fun getGenesisBeaconState(): BeaconState =
     getGenesisBeaconBlock().let { genesisBlock ->
       getBeaconStateByStateRoot(genesisBlock.beaconBlock.beaconBlockHeader.stateRoot)
-        ?: throw BeaconStateNotFoundException()
     }
 
   fun getLatestBeaconState(): BeaconState

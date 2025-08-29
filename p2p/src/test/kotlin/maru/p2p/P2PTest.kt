@@ -113,7 +113,7 @@ class P2PTest {
             ),
           elFork = ElFork.Prague,
         )
-      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0L, 1, consensusConfig)))
+      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0UL, 1u, consensusConfig)))
 
       return ForkIdHashProviderImpl(
         chainId = chainId,

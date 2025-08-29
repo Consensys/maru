@@ -15,6 +15,7 @@ import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
 import maru.config.consensus.ElFork
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
+import maru.executionlayer.client.ParisWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.client.ShanghaiWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -65,6 +66,12 @@ object Helpers {
     metricsFacade: MetricsFacade,
   ): ExecutionLayerEngineApiClient =
     when (elFork) {
+      ElFork.Paris ->
+        ParisWeb3JJsonRpcExecutionLayerEngineApiClient(
+          web3jClient = web3JEngineApiClient,
+          metricsFacade = metricsFacade,
+        )
+
       ElFork.Shanghai ->
         ShanghaiWeb3JJsonRpcExecutionLayerEngineApiClient(
           web3jClient = web3JEngineApiClient,

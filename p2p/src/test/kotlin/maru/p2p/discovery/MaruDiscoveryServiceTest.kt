@@ -73,7 +73,7 @@ class MaruDiscoveryServiceTest {
           ),
         elFork = ElFork.Prague,
       )
-    val forkSpec = ForkSpec(0L, 1, consensusConfig)
+    val forkSpec = ForkSpec(0UL, 1u, consensusConfig)
     val forksSchedule = ForksSchedule(chainId = chainId, forks = listOf(forkSpec))
 
     private val forkIdHashProvider =
@@ -84,7 +84,7 @@ class MaruDiscoveryServiceTest {
         forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
       )
 
-    val otherForkSpec = ForkSpec(1L, 1, consensusConfig)
+    val otherForkSpec = ForkSpec(1UL, 1u, consensusConfig)
   }
 
   private lateinit var service: MaruDiscoveryService
