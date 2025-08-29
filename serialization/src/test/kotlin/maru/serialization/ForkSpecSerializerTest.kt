@@ -22,9 +22,7 @@ class ForkSpecSerializerTest {
       postTtdConfig =
         QbftConsensusConfig(
           setOf(DataGenerators.randomValidator(), DataGenerators.randomValidator()),
-          elFork =
-            ElFork
-              .Paris,
+          elFork = ElFork.Paris,
         ),
       terminalTotalDifficulty = 123UL,
     )

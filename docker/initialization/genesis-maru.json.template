@@ -1,7 +1,7 @@
 {
   "chainId": 1337,
   "config": {
-    {
+    "0": {
       "type": "delegated",
       "blockTimeSeconds": 4,
       "postTtdConfig": {
