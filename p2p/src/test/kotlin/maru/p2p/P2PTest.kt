@@ -37,10 +37,13 @@ import maru.serialization.ForkIdSerializers
 import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility.await
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -239,7 +242,7 @@ class P2PTest {
   }
 
   @Test
-  fun `two peers can gossip with each other`() {
+  fun `two peers can gossip blocks with each other`() {
     val beaconChain2 = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     val p2pNetworkImpl1 = createP2PNetwork(privateKey = key1, port = PORT1)
     val p2pNetworkImpl2 =
@@ -278,7 +281,50 @@ class P2PTest {
   }
 
   @Test
-  fun `peer receiving gossip passes message on`() {
+  fun `two peers can gossip QBFT messages with each other`() {
+    val p2pNetworkImpl1 = createP2PNetwork(privateKey = key1, port = PORT1)
+    val p2pNetworkImpl2 =
+      createP2PNetwork(
+        privateKey = key2,
+        port = PORT2,
+        staticPeers = listOf(PEER_ADDRESS_NODE_1),
+      )
+    try {
+      p2pNetworkImpl1.start()
+
+      val qbftMessagesReceived = mutableListOf<QbftMessage>()
+      p2pNetworkImpl2.start()
+      p2pNetworkImpl2.subscribeToQbftMessages {
+        qbftMessagesReceived.add(it)
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid)
+      }
+
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
+
+      // Create test QBFT messages
+      val testMessage1 = createTestQbftMessage(code = 42, data = "test data 1")
+      val testMessage2 = createTestQbftMessage(code = 43, data = "test data 2")
+
+      val qbftMessage1 = Message(GossipMessageType.QBFT, Version.V1, testMessage1)
+      val qbftMessage2 = Message(GossipMessageType.QBFT, Version.V1, testMessage2)
+
+      p2pNetworkImpl1.broadcastMessage(qbftMessage1).get()
+      p2pNetworkImpl1.broadcastMessage(qbftMessage2).get()
+
+      awaitUntilAsserted {
+        assertThat(qbftMessagesReceived).hasSize(2)
+        assertThat(qbftMessagesReceived[0].data.code).isEqualTo(42)
+        assertThat(qbftMessagesReceived[1].data.code).isEqualTo(43)
+      }
+    } finally {
+      p2pNetworkImpl1.stop().get()
+      p2pNetworkImpl2.stop().get()
+    }
+  }
+
+  @Test
+  fun `peer receiving block gossip passes message on`() {
     val beaconChain2 = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     val beaconChain3 = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     val p2pNetworkImpl1 = createP2PNetwork(privateKey = key1, port = PORT1, staticPeers = emptyList())
@@ -837,5 +883,20 @@ class P2PTest {
       IllegalStateException("Missing sealed beacon block"),
     )
     return mockedBeaconChain
+  }
+
+  private fun createTestQbftMessage(
+    code: Int,
+    data: String,
+  ): QbftMessage {
+    val messageData =
+      object : MessageData {
+        override fun getData(): Bytes = Bytes.wrap(data.toByteArray())
+
+        override fun getSize(): Int = data.toByteArray().size
+
+        override fun getCode(): Int = code
+      }
+    return QbftMessage { messageData }
   }
 }

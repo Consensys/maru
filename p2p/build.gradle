@@ -36,6 +36,7 @@ dependencies {
   implementation "org.hyperledger.besu.internal:besu-metrics-core"
   implementation "org.hyperledger.besu.internal:besu-ethereum-rlp"
   implementation "org.hyperledger.besu.internal:besu-ethereum-p2p"
+  implementation "org.hyperledger.besu.internal:besu-consensus-qbft-core"
 
   implementation "io.tmio:tuweni-crypto"
   implementation "io.tmio:tuweni-rlp"

@@ -28,7 +28,7 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.messages.StatusMessageFactory
-import maru.p2p.topics.MessageDataSerDe
+import maru.p2p.topics.QbftMessageSerDe
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import net.consensys.linea.metrics.MetricsFacade
@@ -37,7 +37,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import org.ethereum.beacon.discovery.schema.NodeRecord
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -62,7 +62,7 @@ class P2PNetworkImpl(
   private val forkIdHashProvider: ForkIdHashProvider,
   private val forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
-  private val messageDataSerDe: MessageDataSerDe = MessageDataSerDe(),
+  private val qbftMessageSerDe: QbftMessageSerDe = QbftMessageSerDe(),
 ) : P2PNetwork {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   internal lateinit var maruPeerManager: MaruPeerManager
@@ -88,6 +88,16 @@ class P2PNetworkImpl(
       topicId = sealedBlocksTopicId,
       isHandlingEnabled = isBlockImportEnabledProvider,
       nextExpectedSequenceNumberProvider = { beaconChain.getLatestBeaconState().beaconBlockHeader.number + 1UL },
+    )
+  private val qbftMessagesSubscriptionManager = SubscriptionManager<QbftMessage>()
+  private val qbftMessagesTopicHandler =
+    TopicHandlerWithInOrderDelivering(
+      subscriptionManager = qbftMessagesSubscriptionManager,
+      sequenceNumberExtractor = { 0UL }, // QBFT messages don't have sequence numbers, so we use 0
+      deserializer = qbftMessageSerDe,
+      topicId = qbftTopicId,
+      isHandlingEnabled = { true }, // Always enabled for QBFT messages
+      nextExpectedSequenceNumberProvider = { 0UL }, // Always expect 0 since we don't use sequence numbers
     )
   private val broadcastMessageCounterFactory =
     metricsFacade.createCounterFactory(
@@ -230,11 +240,11 @@ class P2PNetworkImpl(
       ).increment()
     return when (message.type) {
       GossipMessageType.QBFT -> {
-        require(message.payload is MessageData)
-        val serializedMessageData = Bytes.wrap(messageDataSerDe.serialize(message.payload))
+        require(message.payload is QbftMessage) { "QBFT message payload must be QbftMessage" }
+        val serializedQbftMessage = Bytes.wrap(qbftMessageSerDe.serialize(message.payload))
         p2pNetwork.gossip(
           qbftTopicId,
-          serializedMessageData,
+          serializedQbftMessage,
         )
       }
       GossipMessageType.BEACON_BLOCK -> {
@@ -269,6 +279,29 @@ class P2PNetworkImpl(
    * handled by LibP2P, but not processed by Maru
    */
   override fun unsubscribeFromBlocks(subscriptionId: Int) = sealedBlocksSubscriptionManager.unsubscribe(subscriptionId)
+
+  override fun subscribeToQbftMessages(subscriber: QbftMessageHandler<ValidationResult>): Int {
+    log.trace("Subscribing to QBFT messages")
+    val subscriptionManagerHadSubscriptions = qbftMessagesSubscriptionManager.hasSubscriptions()
+
+    return qbftMessagesSubscriptionManager.subscribeToBlocks(subscriber::handleQbftMessage).also {
+      if (!subscriptionManagerHadSubscriptions) {
+        log.trace(
+          "First ever subscription to QBFT messages topicId={}. Subscribing on network level",
+          qbftTopicId,
+        )
+        p2pNetwork.subscribe(qbftTopicId, qbftMessagesTopicHandler)
+      }
+    }
+  }
+
+  /**
+   * Unsubscribes the handler with a given subscriptionId from QBFT message handling.
+   * Note that it's impossible to unsubscribe from a topic on LibP2P level, so the messages will still be received and
+   * handled by LibP2P, but not processed by Maru
+   */
+  override fun unsubscribeFromQbftMessages(subscriptionId: Int) =
+    qbftMessagesSubscriptionManager.unsubscribe(subscriptionId)
 
   fun addStaticPeer(peerAddress: MultiaddrPeerAddress) {
     if (peerAddress.id == p2pNetwork.nodeId) { // Don't connect to self
