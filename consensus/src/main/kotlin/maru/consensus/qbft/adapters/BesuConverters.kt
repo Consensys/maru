@@ -15,6 +15,7 @@ import maru.p2p.GossipMessageType
 import maru.p2p.Message
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
 /**
@@ -53,8 +54,8 @@ fun QbftBlockHeader.toBeaconBlockHeader(): BeaconBlockHeader {
   return this.beaconBlockHeader
 }
 
-fun BesuMessageData.toDomain(): Message<BesuMessageData, GossipMessageType> =
+fun BesuMessageData.toDomain(): Message<QbftMessage, GossipMessageType> =
   Message(
     type = GossipMessageType.QBFT,
-    payload = this,
+    payload = QbftMessage { this },
   )
