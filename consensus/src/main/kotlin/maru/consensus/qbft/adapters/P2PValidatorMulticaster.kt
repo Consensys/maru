@@ -8,7 +8,10 @@
  */
 package maru.consensus.qbft.adapters
 
+import io.libp2p.pubsub.NoPeersForOutboundMessageException
+import java.util.concurrent.ExecutionException
 import maru.p2p.P2PNetwork
+import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
@@ -21,13 +24,24 @@ import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 class P2PValidatorMulticaster(
   private val p2pNetwork: P2PNetwork,
 ) : ValidatorMulticaster {
+  private val log = LogManager.getLogger(this.javaClass)
+
   /**
    * Send a message to all connected validators.
    *
    * @param message The message to send.
    */
   override fun send(message: MessageData) {
-    p2pNetwork.broadcastMessage(message.toDomain()).get()
+    try {
+      p2pNetwork.broadcastMessage(message.toDomain()).get()
+    } catch (e: ExecutionException) {
+      // It's valid for QBFT to not have any peers to send messages to, so just log and ignore this error
+      if (e.cause?.javaClass == NoPeersForOutboundMessageException::class.java) {
+        log.trace("No peers available for QBFT message broadcast, ignoring", e)
+      } else {
+        throw e
+      }
+    }
   }
 
   /**
