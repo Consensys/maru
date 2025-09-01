@@ -300,11 +300,12 @@ class MaruFactory(
   private fun buildP2pConfig(
     p2pPort: UInt = 0u,
     validatorPortForStaticPeering: UInt? = null,
+    validatorNodeIdForStaticPeering: String? = validatorNodeId.toString(),
   ): P2PConfig {
     val ip = "127.0.0.1"
     val staticPeers =
       if (validatorPortForStaticPeering != null) {
-        val validatorPeer = "/ip4/$ip/tcp/$validatorPortForStaticPeering/p2p/$validatorNodeId"
+        val validatorPeer = "/ip4/$ip/tcp/$validatorPortForStaticPeering/p2p/$validatorNodeIdForStaticPeering"
         listOf(validatorPeer)
       } else {
         emptyList()
@@ -343,6 +344,8 @@ class MaruFactory(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
+    validatorPortForStaticPeering: UInt? = null,
+    validatorNodeIdForStaticPeering: String? = null,
     overridingP2PNetwork: P2PNetwork? = null,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
@@ -350,7 +353,12 @@ class MaruFactory(
     allowEmptyBlocks: Boolean = false,
     syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
-    val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
+    val p2pConfig =
+      buildP2pConfig(
+        p2pPort = p2pPort,
+        validatorPortForStaticPeering = validatorPortForStaticPeering,
+        validatorNodeIdForStaticPeering = validatorNodeIdForStaticPeering,
+      )
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
