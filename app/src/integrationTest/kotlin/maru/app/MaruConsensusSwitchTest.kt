@@ -79,7 +79,6 @@ class MaruConsensusSwitchTest {
     besuNode: BesuNode,
     expectedBlocksInClique: Int,
     totalBlocksToProduce: Int,
-    shanghaiTimestamp: ULong,
     pragueTimestamp: ULong,
   ) {
     val blockProducedByClique = besuNode.ethGetBlockByNumber(1UL)
@@ -89,13 +88,11 @@ class MaruConsensusSwitchTest {
     assertThat(blockProducedAfterSwitch.extraData.decodeHex().size).isLessThanOrEqualTo(VANILLA_EXTRA_DATA_LENGTH)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
-    val shanghaiSwitchBlock = blocks.findSwitchBlock(shanghaiTimestamp)!!
-    val preShanghaiBlocks = blocks.subList(0, shanghaiSwitchBlock)
+    val pragueSwitchBlock = blocks.findSwitchBlock(pragueTimestamp)!!
+    val preShanghaiBlocks = blocks.subList(0, pragueSwitchBlock)
     preShanghaiBlocks.verifyBlockTime()
     assertThat(preShanghaiBlocks).hasSizeGreaterThan(expectedBlocksInClique)
     // Check that there are Prague blocks
-    val pragueSwitchBlock = blocks.findSwitchBlock(pragueTimestamp)!!
-    blocks.subList(shanghaiSwitchBlock, pragueSwitchBlock).verifyBlockTime()
     blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
   }
 
@@ -116,14 +113,12 @@ class MaruConsensusSwitchTest {
     // Initialize Besu with the same switch timestamp
     validatorBesuNode =
       BesuFactory.buildSwitchableBesu(
-        switchTimestamp = shanghaiTimestamp,
         pragueTimestamp = pragueTimestamp,
         ttd = ttd,
         validator = true,
       )
     followerBesuNode =
       BesuFactory.buildSwitchableBesu(
-        switchTimestamp = shanghaiTimestamp,
         pragueTimestamp = pragueTimestamp,
         ttd = ttd,
         validator = false,
@@ -134,7 +129,7 @@ class MaruConsensusSwitchTest {
     val validatorEthereumJsonRpcBaseUrl = validatorBesuNode.jsonRpcBaseUrl().get()
     val validatorEngineRpcUrl = validatorBesuNode.engineRpcUrl().get()
 
-    val maruFactory = MaruFactory(shanghaiTimestamp = shanghaiTimestamp, pragueTimestamp = pragueTimestamp, ttd = ttd)
+    val maruFactory = MaruFactory(pragueTimestamp = pragueTimestamp, ttd = ttd)
     validatorMaruNode =
       maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,
@@ -178,14 +173,12 @@ class MaruConsensusSwitchTest {
       besuNode = validatorBesuNode,
       expectedBlocksInClique = expectedBlocksInClique,
       totalBlocksToProduce = totalBlocksToProduce,
-      shanghaiTimestamp = shanghaiTimestamp,
       pragueTimestamp = pragueTimestamp,
     )
     verifyConsensusSwitch(
       besuNode = followerBesuNode,
       expectedBlocksInClique = expectedBlocksInClique,
       totalBlocksToProduce = totalBlocksToProduce,
-      shanghaiTimestamp = shanghaiTimestamp,
       pragueTimestamp = pragueTimestamp,
     )
   }
