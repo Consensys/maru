@@ -75,7 +75,7 @@ class MaruMultiValidatorTest {
 
   @Test
   fun `Maru with multiple validators is able to produce blocks`() {
-    // Create and start validator Maru app first
+    // Create and start validator 1 Maru app first
     val validator1MaruApp =
       maruFactory1.buildTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validator1Stack.besuNode.jsonRpcBaseUrl().get(),
@@ -86,11 +86,11 @@ class MaruMultiValidatorTest {
       )
     validator1Stack.setMaruApp(validator1MaruApp)
     validator1Stack.maruApp.start()
-    // Get the validator's p2p port after it's started
+    // Get validator 1 p2p port and node ID after it's started
     val validator1P2pPort = validator1Stack.p2pPort
     val validator1NodeId = validator1Stack.maruApp.p2pNetwork().nodeId
 
-    // Create follower Maru app with the validator's p2p port for static peering
+    // Create validator 2 Maru app with the validator 1 p2p port and node ID for static peering
     val validator2MaruApp =
       maruFactory2.buildTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validator2Stack.besuNode.jsonRpcBaseUrl().get(),
