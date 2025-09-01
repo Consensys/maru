@@ -135,15 +135,6 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Shanghai,
-              ),
-          ),
-          ForkSpec(
-            timestampSeconds = 1UL,
-            blockTimeSeconds = 1u,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
                 elFork = ElFork.Prague,
               ),
           ),

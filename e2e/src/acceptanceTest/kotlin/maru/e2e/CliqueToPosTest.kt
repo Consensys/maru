@@ -111,7 +111,7 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      forksTimestamps = parseForks(listOf("shanghaiTime", "cancunTime", "pragueTime", "terminalTotalDifficulty"))
+      forksTimestamps = parseForks(listOf("pragueTime", "terminalTotalDifficulty"))
       pragueTimestamp = forksTimestamps["pragueTime"]!!
       ttd = forksTimestamps["terminalTotalDifficulty"]!!
       maruFactory =

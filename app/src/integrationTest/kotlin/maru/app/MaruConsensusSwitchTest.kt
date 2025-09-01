@@ -89,9 +89,9 @@ class MaruConsensusSwitchTest {
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
     val pragueSwitchBlock = blocks.findSwitchBlock(pragueTimestamp)!!
-    val preShanghaiBlocks = blocks.subList(0, pragueSwitchBlock)
-    preShanghaiBlocks.verifyBlockTime()
-    assertThat(preShanghaiBlocks).hasSizeGreaterThan(expectedBlocksInClique)
+    val prePragueBlocks = blocks.subList(0, pragueSwitchBlock)
+    prePragueBlocks.verifyBlockTime()
+    assertThat(prePragueBlocks).hasSizeGreaterThan(expectedBlocksInClique)
     // Check that there are Prague blocks
     blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
   }
@@ -101,13 +101,11 @@ class MaruConsensusSwitchTest {
     val stackStartupMargin = 30UL
     val expectedBlocksInClique = 5
     var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
-    val pragueTimestamp = shanghaiTimestamp + 5UL
+    val pragueTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
     val totalBlocksToProduce = (pragueTimestamp - currentTimestamp).toInt()
     val ttd = expectedBlocksInClique.toULong() * 2UL
     log.info(
-      "Setting Shanghai switch timestamp to $shanghaiTimestamp, Prague switch timestamp to $pragueTimestamp, " +
-        "current timestamp: $currentTimestamp",
+      "Setting Prague switch timestamp to $pragueTimestamp, current timestamp: $currentTimestamp",
     )
 
     // Initialize Besu with the same switch timestamp
@@ -164,8 +162,6 @@ class MaruConsensusSwitchTest {
     }
 
     currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    log.info("Current timestamp: $currentTimestamp, shanghai switch timestamp: $shanghaiTimestamp")
-    assertThat(currentTimestamp).isGreaterThan(shanghaiTimestamp)
     log.info("Current timestamp: $currentTimestamp, prague switch timestamp: $pragueTimestamp")
     assertThat(currentTimestamp).isGreaterThan(pragueTimestamp)
 
