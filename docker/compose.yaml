@@ -24,7 +24,7 @@ services:
     depends_on:
       initialization:
         condition: service_completed_successfully
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250826111259-ce5e036}
+    image: hyperledger/besu:25.8.0
     container_name: sequencer
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
@@ -60,7 +60,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: ethereum/client-go:v1.15.7
+    image: ethereum/client-go:v1.16.3
     container_name: follower-geth
     restart: always
     entrypoint: [ "sh", "/scripts/node.sh", "/initialization/genesis-geth.json" ]
@@ -105,7 +105,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v3.1-rc8-20250826111259-ce5e036}
+    image: hyperledger/besu:25.8.0
     container_name: follower-besu
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]

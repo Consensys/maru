@@ -1,6 +1,6 @@
 [Eth]
 NetworkId = 1337
-SyncMode = "snap"
+SyncMode = "full"
 NoPruning = true
 NoPrefetch = false
 TxLookupLimit = 0
