@@ -12,9 +12,11 @@ import io.libp2p.etc.types.fromHex
 import java.math.BigInteger
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
+import maru.crypto.Crypto
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
+import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
@@ -28,6 +30,7 @@ import testutils.Checks.getMinedBlocks
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
+import testutils.besu.ethGetBlockByNumber
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
@@ -75,6 +78,12 @@ class MaruMultiValidatorTest {
 
   @Test
   fun `Maru with multiple validators is able to produce blocks`() {
+    val initialValidators =
+      setOf(key1, key2)
+        .map {
+          Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(it))
+        }.toSet()
+
     // Create and start validator 1 Maru app first
     val validator1MaruApp =
       maruFactory1.buildTestMaruValidatorWithP2pPeering(
@@ -83,6 +92,7 @@ class MaruMultiValidatorTest {
         dataDir = validator1Stack.tmpDir,
         syncingConfig = MaruFactory.defaultSyncingConfig,
         allowEmptyBlocks = true,
+        initialValidators = initialValidators,
       )
     validator1Stack.setMaruApp(validator1MaruApp)
     validator1Stack.maruApp.start()
@@ -100,6 +110,7 @@ class MaruMultiValidatorTest {
         validatorNodeIdForStaticPeering = validator1NodeId,
         syncingConfig = MaruFactory.defaultSyncingConfig,
         allowEmptyBlocks = true,
+        initialValidators = initialValidators,
       )
     validator2Stack.setMaruApp(validator2MaruApp)
     validator2Stack.maruApp.start()
@@ -107,9 +118,30 @@ class MaruMultiValidatorTest {
     validator2Stack.maruApp.awaitTillMaruHasPeers(1u)
     validator1Stack.maruApp.awaitTillMaruHasPeers(1u)
     log.info("Nodes are peered")
+
+    val validator1besuGenesis = validator1Stack.besuNode.ethGetBlockByNumber("earliest", false)
+    val validator2besuGenesis = validator2Stack.besuNode.ethGetBlockByNumber("earliest", false)
+    assertThat(validator1besuGenesis).isEqualTo(validator2besuGenesis)
+
+    val validator1MaruGenesis = validator1Stack.maruApp.beaconChain().getBeaconState(0u)
+    val validator2MaruGenesis = validator2Stack.maruApp.beaconChain().getBeaconState(0u)
+    assertThat(validator1MaruGenesis).isEqualTo(validator2MaruGenesis)
+
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validator1Stack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    checkValidatorBlocks(blocksToProduce)
   }
 
-  private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
+  private fun checkValidatorBlocks(blocksToProduce: Int) {
     await
       .pollDelay(1.seconds.toJavaDuration())
       .timeout(30.seconds.toJavaDuration())

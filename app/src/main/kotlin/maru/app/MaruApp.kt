@@ -232,4 +232,6 @@ class MaruApp(
   }
 
   fun p2pNetwork(): P2PNetwork = p2pNetwork
+
+  fun beaconChain(): BeaconChain = beaconChain
 }
