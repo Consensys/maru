@@ -254,6 +254,8 @@ class QbftValidatorFactory(
           override fun getMessage(): QbftMessage = qbftMessage
 
           override fun getType(): BftEvents.Type = BftEvents.Type.MESSAGE
+
+          override fun toString(): String = qbftMessage.toString()
         }
       bftEventQueue.add(messageEvent)
       SafeFuture.completedFuture(ValidationResult.Companion.Valid)

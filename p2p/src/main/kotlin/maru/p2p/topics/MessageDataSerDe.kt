@@ -37,6 +37,8 @@ class MessageDataSerDe : RLPSerDe<MessageData> {
       override fun getSize(): Int = data.size()
 
       override fun getCode(): Int = code
+
+      override fun toString(): String = "MessageData(code=$code, size=$size, data=$data)"
     }
   }
 }
