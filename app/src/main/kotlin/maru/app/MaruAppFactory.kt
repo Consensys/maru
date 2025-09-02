@@ -56,7 +56,7 @@ import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
@@ -125,8 +125,7 @@ class MaruAppFactory {
 
     val forkIdHasher =
       ForkIdHasher(
-        ForkIdSerializers
-          .ForkIdSerializer,
+        ForkIdSerializer,
         Hashing::shortShaHash,
       )
     val forkIdHashProvider =
@@ -294,6 +293,7 @@ class MaruAppFactory {
                 log = LogManager.getLogger("clients.l2.eth.el"),
                 requestRetryConfig = config.validatorElNode.ethApiEndpoint.requestRetries,
                 vertx = vertx,
+                stopRetriesOnErrorPredicate = { true },
               ),
             pollingUpdateInterval = lineaConfig.l1PollingInterval,
             l1HighestBlock = lineaConfig.l1HighestBlockTag,
