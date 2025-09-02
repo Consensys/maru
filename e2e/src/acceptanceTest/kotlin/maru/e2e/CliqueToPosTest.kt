@@ -125,11 +125,11 @@ class CliqueToPosTest {
     @AfterAll
     @JvmStatic
     fun afterAll() {
-      qbftCluster.after()
       if (::maruSequencer.isInitialized) {
         maruSequencer.stop()
         maruSequencer.close()
       }
+      qbftCluster.after()
 
       TestEnvironment.allClients.values.forEach { web3j ->
         web3j.shutdown()
