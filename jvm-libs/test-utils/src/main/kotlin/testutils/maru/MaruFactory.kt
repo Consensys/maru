@@ -53,8 +53,8 @@ import maru.p2p.P2PNetwork
  */
 class MaruFactory(
   validatorPrivateKey: ByteArray = generatePrivateKey(),
-  val shanghaiTimestamp: Long? = null,
-  val pragueTimestamp: Long? = null,
+  val pragueTimestamp: ULong? = null,
+  val ttd: ULong? = null,
 ) {
   companion object {
     val defaultReconnectDelay = 500.milliseconds
@@ -99,32 +99,29 @@ class MaruFactory(
     )
 
   private fun buildForkSchedule(
-    shanghaiTimestamp: Long?,
-    pragueTimestamp: Long?,
+    pragueTimestamp: ULong?,
+    ttd: ULong?,
     validatorSet: Set<Validator>,
   ): ForksSchedule =
-    if (shanghaiTimestamp != null) {
+    if (pragueTimestamp != null) {
       ForksSchedule(
         1337u,
         setOf(
           ForkSpec(
-            timestampSeconds = 0,
-            blockTimeSeconds = 1,
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1u,
             configuration =
-            ElDelegatedConfig,
-          ),
-          ForkSpec(
-            timestampSeconds = shanghaiTimestamp,
-            blockTimeSeconds = 1,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = validatorSet,
-                elFork = ElFork.Shanghai,
+              ElDelegatedConfig(
+                QbftConsensusConfig(
+                  validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                  elFork = ElFork.Paris,
+                ),
+                terminalTotalDifficulty = ttd!!,
               ),
           ),
           ForkSpec(
-            timestampSeconds = pragueTimestamp!!,
-            blockTimeSeconds = 1,
+            timestampSeconds = pragueTimestamp,
+            blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
                 validatorSet = validatorSet,
@@ -138,17 +135,8 @@ class MaruFactory(
         1337u,
         setOf(
           ForkSpec(
-            timestampSeconds = 0,
-            blockTimeSeconds = 1,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = validatorSet,
-                elFork = ElFork.Shanghai,
-              ),
-          ),
-          ForkSpec(
-            timestampSeconds = 1,
-            blockTimeSeconds = 1,
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
                 validatorSet = validatorSet,
@@ -286,7 +274,7 @@ class MaruFactory(
   ): MaruApp =
     MaruAppFactory().create(
       config = config,
-      beaconGenesisConfig = buildForkSchedule(shanghaiTimestamp, pragueTimestamp, initialValidators),
+      beaconGenesisConfig = buildForkSchedule(pragueTimestamp, ttd, initialValidators),
       overridingP2PNetwork = overridingP2PNetwork,
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
