@@ -74,7 +74,12 @@ class ImportBlocksStep(
       }
     }
     if (blocksWithPeers.isNotEmpty()) {
-      blocksWithPeers[0].peer.adjustReputation(ReputationAdjustment.SMALL_REWARD)
+      // get a list of peers that have provided at least one block and reward them
+      blocksWithPeers.stream().map({ it.peer }).distinct().forEach(
+        Consumer { peer ->
+          peer.adjustReputation(ReputationAdjustment.SMALL_REWARD)
+        },
+      )
     }
   }
 }

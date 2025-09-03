@@ -20,16 +20,15 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
-import tech.pegasys.teku.networking.p2p.connection.PeerPools
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
-import tech.pegasys.teku.networking.p2p.reputation.DefaultReputationManager
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork as TekuP2PNetwork
 
 class MaruPeerManagerTest {
   companion object {
-    val reputationManager = DefaultReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), 1024, PeerPools())
+    val reputationManager =
+      MaruReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), { _: NodeId -> false }, P2PConfig.Reputation())
   }
 
   @Test
@@ -110,7 +109,7 @@ class MaruPeerManagerTest {
     whenever(maruPeer.getStatus()).thenReturn(null)
     whenever(maruPeer.address).thenReturn(mock())
     whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(p2pConfig.statusUpdate).thenReturn(P2PConfig.StatusUpdateConfig())
+    whenever(p2pConfig.statusUpdate).thenReturn(P2PConfig.StatusUpdate())
 
     val manager =
       MaruPeerManager(
@@ -168,7 +167,7 @@ class MaruPeerManagerTest {
     whenever(maruPeer.getStatus()).thenReturn(null)
     whenever(maruPeer.address).thenReturn(mock())
     whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(p2pConfig.statusUpdate).thenReturn(P2PConfig.StatusUpdateConfig())
+    whenever(p2pConfig.statusUpdate).thenReturn(P2PConfig.StatusUpdate())
 
     val manager =
       MaruPeerManager(
@@ -190,7 +189,7 @@ class MaruPeerManagerTest {
     val maruPeerFactory = mock<MaruPeerFactory>()
     val maruPeer = mock<MaruPeer>()
     val p2pConfig = mock<P2PConfig>()
-    val reputationManager = mock<DefaultReputationManager>()
+    val reputationManager = mock<MaruReputationManager>()
     val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
     val address = mock<PeerAddress>()
 
@@ -218,13 +217,12 @@ class MaruPeerManagerTest {
 
   @Test
   fun `connects and adds peer if reputation manager allows connection`() {
-    val mockScheduler = mock<ScheduledExecutorService>()
     val nodeId = mock<NodeId>()
     val peer = mock<Peer>()
     val maruPeerFactory = mock<MaruPeerFactory>()
     val maruPeer = mock<MaruPeer>()
     val p2pConfig = mock<P2PConfig>()
-    val reputationManager = mock<DefaultReputationManager>()
+    val reputationManager = mock<MaruReputationManager>()
     val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
     val address = mock<PeerAddress>()
 
@@ -232,7 +230,7 @@ class MaruPeerManagerTest {
     whenever(peer.address).thenReturn(address)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
     whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(reputationManager.isConnectionInitiationAllowed(address)).thenReturn(true)
+    whenever(reputationManager.isExternalConnectionInitiationAllowed(address)).thenReturn(true)
     whenever(p2pNetwork.peerCount).thenReturn(0)
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
 
@@ -246,7 +244,7 @@ class MaruPeerManagerTest {
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
 
-    verify(maruPeerFactory).createMaruPeer(peer)
     assertThat(manager.getPeer(nodeId)).isEqualTo(maruPeer)
+    verify(maruPeerFactory).createMaruPeer(peer)
   }
 }

@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
 import maru.config.consensus.ElFork
@@ -56,11 +57,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
-import tech.pegasys.teku.networking.p2p.connection.PeerPools
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
-import tech.pegasys.teku.networking.p2p.reputation.DefaultReputationManager
+import tech.pegasys.teku.networking.p2p.peer.NodeId
 import maru.p2p.ext.DataGenerators as P2P2DataGenerators
 
 @Execution(ExecutionMode.SAME_THREAD)
@@ -102,7 +102,13 @@ class P2PTest {
       val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
       lateinit var maruPeerManager: MaruPeerManager
       val rpcMethods = RpcMethods(statusMessageFactory, rpcProtocolIdGenerator, { maruPeerManager }, beaconChain)
-      val reputationManager = DefaultReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), 1024, PeerPools())
+      val reputationManager =
+        MaruReputationManager(
+          NoOpMetricsSystem(),
+          SystemTimeProvider(),
+          { _: NodeId -> true },
+          P2PConfig.Reputation(),
+        )
       val maruPeerFactory =
         DefaultMaruPeerFactory(
           rpcMethods = rpcMethods,
@@ -146,9 +152,9 @@ class P2PTest {
       beaconChain: BeaconChain = Companion.beaconChain,
       reconnectDelay: Duration = 1.seconds,
       statusMessageFactory: StatusMessageFactory = Companion.statusMessageFactory,
-      statusUpdate: P2PConfig.StatusUpdateConfig = P2PConfig.StatusUpdateConfig(),
+      statusUpdate: P2PConfig.StatusUpdate = P2PConfig.StatusUpdate(),
       discovery: P2PConfig.Discovery? = null,
-      reputationConfig: P2PConfig.ReputationConfig = P2PConfig.ReputationConfig(),
+      reputationConfig: P2PConfig.Reputation = P2PConfig.Reputation(),
     ): P2PNetworkImpl =
       P2PNetworkImpl(
         privateKeyBytes = privateKey,
@@ -160,7 +166,7 @@ class P2PTest {
             reconnectDelay = reconnectDelay,
             statusUpdate = statusUpdate,
             discovery = discovery,
-            reputationConfig = reputationConfig,
+            reputation = reputationConfig,
           ),
         chainId = chainId,
         serDe = RLPSerializers.SealedBeaconBlockCompressorSerializer,
@@ -241,7 +247,7 @@ class P2PTest {
       createP2PNetwork(
         privateKey = key1,
         port = PORT1,
-        reputationConfig = P2PConfig.ReputationConfig(cooldownPeriod = 1.seconds),
+        reputationConfig = P2PConfig.Reputation(cooldownPeriod = 1.seconds),
       )
     val p2pNetworkImpl2 =
       createP2PNetwork(
@@ -619,7 +625,7 @@ class P2PTest {
             refreshInterval = refreshInterval,
           ),
         reputationConfig =
-          P2PConfig.ReputationConfig(
+          P2PConfig.Reputation(
             cooldownPeriod = 1.seconds,
             banPeriod = 2.seconds,
           ),
@@ -642,9 +648,9 @@ class P2PTest {
               refreshInterval = refreshInterval,
             ),
           reputationConfig =
-            P2PConfig.ReputationConfig(
+            P2PConfig.Reputation(
               cooldownPeriod = 1.seconds,
-              banPeriod = 2.seconds,
+              banPeriod = 2.minutes,
             ),
         )
 
@@ -660,9 +666,9 @@ class P2PTest {
               refreshInterval = refreshInterval,
             ),
           reputationConfig =
-            P2PConfig.ReputationConfig(
+            P2PConfig.Reputation(
               cooldownPeriod = 1.seconds,
-              banPeriod = 2.seconds,
+              banPeriod = 2.minutes,
             ),
         )
 
@@ -696,7 +702,6 @@ class P2PTest {
       awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl1, PEER_ID_NODE_2)
       }
-
       awaitUntilAsserted(timeout = awaitTimeoutInSeconds, timeUnit = TimeUnit.SECONDS) {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl2, PEER_ID_NODE_1)
       }
@@ -727,7 +732,7 @@ class P2PTest {
         privateKey = key1,
         port = PORT1,
         statusUpdate =
-          P2PConfig.StatusUpdateConfig(
+          P2PConfig.StatusUpdate(
             refreshInterval = 1.seconds,
             refreshIntervalLeeway = 1.seconds,
             timeout = 1.seconds,
@@ -742,7 +747,7 @@ class P2PTest {
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         staticPeers = listOf(PEER_ADDRESS_NODE_1),
         statusUpdate =
-          P2PConfig.StatusUpdateConfig(
+          P2PConfig.StatusUpdate(
             refreshInterval = 1.seconds,
             refreshIntervalLeeway = 1.seconds,
             timeout = 1.seconds,
@@ -791,13 +796,13 @@ class P2PTest {
         privateKey = key1,
         port = PORT1,
         statusUpdate =
-          P2PConfig.StatusUpdateConfig(
+          P2PConfig.StatusUpdate(
             refreshInterval = 1.seconds,
             refreshIntervalLeeway = 0.seconds,
             timeout = 1.seconds,
           ),
         reputationConfig =
-          P2PConfig.ReputationConfig(
+          P2PConfig.Reputation(
             cooldownPeriod = 50.milliseconds,
           ),
       )
@@ -813,7 +818,7 @@ class P2PTest {
         beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)),
         reconnectDelay = 100.milliseconds,
         statusUpdate =
-          P2PConfig.StatusUpdateConfig(
+          P2PConfig.StatusUpdate(
             refreshInterval = 2.seconds,
             refreshIntervalLeeway = 1.seconds,
             timeout = 1.seconds,

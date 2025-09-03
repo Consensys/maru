@@ -93,7 +93,6 @@ class MaruPeerScoringTest {
 
     // In setUpNodes we have made sure that the validator and the follower have 1 peer
     // Now wait until it is disconnected because of empty responses
-    println("Before: Follower has ${followerMaruApp.p2pNetwork.getPeers().size} peers")
     await
       .atMost(2.seconds.toJavaDuration())
       .pollInterval(10.milliseconds.toJavaDuration())
@@ -102,7 +101,6 @@ class MaruPeerScoringTest {
         assertThat(followerMaruApp.p2pNetwork.getPeers().size == 0)
       }
     // reconnects after cooldown and finishes syncing
-    println("After: Follower has ${followerMaruApp.p2pNetwork.getPeers().size} peers")
     await
       .atMost(20.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
@@ -300,7 +298,6 @@ class MaruPeerScoringTest {
 
     validatorStack.maruApp.awaitTillMaruHasPeers(1u)
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
-    log.info("Follower has ${followerMaruApp.p2pNetwork.getPeers().size} peers")
 
     followerEthApiClient =
       createEthApiClient(

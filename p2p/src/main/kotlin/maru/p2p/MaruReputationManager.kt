@@ -17,6 +17,8 @@ import kotlin.math.min
 import maru.config.P2PConfig
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.MaruMetricsCategory
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.infrastructure.collections.cache.Cache
 import tech.pegasys.teku.infrastructure.collections.cache.LRUCache
@@ -32,10 +34,11 @@ class MaruReputationManager(
   metricsSystem: MetricsSystem,
   private val timeProvider: TimeProvider,
   private val isStaticPeer: (NodeId) -> Boolean,
-  reputationConfig: P2PConfig.ReputationConfig,
+  reputationConfig: P2PConfig.Reputation,
 ) : ReputationManager {
   companion object {
     private const val DEFAULT_SCORE = 0
+    private val `5_SECONDS` = UInt64.valueOf(5000)
     private val BAN_REASONS: EnumSet<DisconnectReason?> =
       EnumSet.of(
         DisconnectReason.IRRELEVANT_NETWORK,
@@ -44,13 +47,14 @@ class MaruReputationManager(
       )
   }
 
+  private val log: Logger = LogManager.getLogger(this.javaClass)
+
   private val cooldownPeriod: Long = reputationConfig.cooldownPeriod.inWholeMilliseconds
   private val banPeriod: Long = reputationConfig.banPeriod.inWholeMilliseconds
   private val disconnectScoreThreshold: Int = reputationConfig.disconnectScoreThreshold
   private val maxReputationScore: Int = reputationConfig.maxReputation
   private val largeChange: Int = reputationConfig.largeChange
   private val smallChange: Int = reputationConfig.smallChange
-
   private val peerReputations: Cache<NodeId, Reputation> = LRUCache.create(reputationConfig.capacity)
 
   init {
@@ -76,6 +80,16 @@ class MaruReputationManager(
     return bool
   }
 
+  fun isExternalConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean {
+    val bool =
+      peerReputations
+        .getCached(peerAddress.id)
+        // allow external connection 5 seconds earlier to prevent peers from not being able to reconnect immediately
+        .map { it.shouldInitiateConnection(timeProvider.timeInMillis + `5_SECONDS`) }
+        .orElse(true)
+    return bool
+  }
+
   override fun reportInitiatedConnectionSuccessful(peerAddress: PeerAddress) {
     getOrCreateReputation(peerAddress).reportInitiatedConnectionSuccessful()
   }
@@ -85,6 +99,12 @@ class MaruReputationManager(
     reason: Optional<DisconnectReason>,
     locallyInitiated: Boolean,
   ) {
+    log.trace(
+      "Reporting disconnection: peer={}, reason={}, locallyInitiated={}",
+      peerAddress,
+      reason.orElse(null),
+      locallyInitiated,
+    )
     getOrCreateReputation(peerAddress)
       .reportDisconnection(timeProvider.timeInMillis, reason, locallyInitiated)
   }
@@ -105,7 +125,6 @@ class MaruReputationManager(
       Reputation()
     }
 
-  // Configurable mapping from constants to score delta.
   private fun toScoreDelta(adjustment: ReputationAdjustment): Int =
     when (adjustment) {
       ReputationAdjustment.LARGE_PENALTY -> -largeChange

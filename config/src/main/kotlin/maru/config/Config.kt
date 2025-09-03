@@ -44,20 +44,17 @@ data class P2PConfig(
   val reconnectDelay: Duration = 5.seconds,
   val maxPeers: Int = 25,
   val discovery: Discovery? = null,
-  val statusUpdate: StatusUpdateConfig = StatusUpdateConfig(),
-  val reputationConfig: ReputationConfig = ReputationConfig(),
+  val statusUpdate: StatusUpdate = StatusUpdate(),
+  val reputation: Reputation = Reputation(),
 ) {
   init {
     // just a sanity check to ensure the IP address is valid
     InetAddress.getByName(ipAddress)
-    require(reputationConfig.smallChange >= 0) {
+    require(reputation.smallChange > 0) {
       "smallChange must be a positive number"
     }
-    require(reputationConfig.largeChange >= 0) {
-      "largeChange must be a positive number"
-    }
-    require(reputationConfig.largeChange > reputationConfig.smallChange) {
-      "largeChange must be larger than smallChange"
+    require(reputation.largeChange > reputation.smallChange) {
+      "largeChange must be greater than smallChange"
     }
   }
 
@@ -67,20 +64,20 @@ data class P2PConfig(
     val refreshInterval: Duration,
   )
 
-  data class StatusUpdateConfig(
+  data class StatusUpdate(
     val refreshInterval: Duration = 30.seconds,
     val refreshIntervalLeeway: Duration = 5.seconds,
     val timeout: Duration = 10.seconds,
   )
 
-  data class ReputationConfig(
+  data class Reputation(
     val capacity: Int = 1024,
     val largeChange: Int = 10,
     val smallChange: Int = 3,
     val disconnectScoreThreshold: Int = -largeChange,
     val maxReputation: Int = 2 * largeChange,
     val cooldownPeriod: Duration = 2.minutes,
-    val banPeriod: Duration = 12.hours,
+    val banPeriod: Duration = 1.hours,
   )
 }
 
@@ -208,7 +205,7 @@ data class SyncingConfig(
 
   data class Download(
     val blockRangeRequestTimeout: Duration = 5.seconds,
-    val blocksBatchSize: UInt = 10u,
+    val blocksBatchSize: UInt = 100u,
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
     val backoffDelay: Duration = 1.seconds,

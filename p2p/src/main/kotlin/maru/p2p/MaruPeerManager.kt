@@ -32,12 +32,11 @@ import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
-import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 
 class MaruPeerManager(
   private val maruPeerFactory: MaruPeerFactory,
   private val p2pConfig: P2PConfig,
-  private val reputationManager: ReputationManager,
+  private val reputationManager: MaruReputationManager,
   private val isStaticPeer: (NodeId) -> Boolean,
 ) : PeerHandler,
   PeerLookup {
@@ -47,16 +46,14 @@ class MaruPeerManager(
   private val maxPeers = p2pConfig.maxPeers
   private val currentlySearching = AtomicBoolean(false)
   private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
-  val peerCount: Int
-    get() = connectedPeers.size
-
+  private var searchTaskFuture: ScheduledFuture<*>? = null
   private val connectionInProgress = mutableListOf<Bytes>()
   private var discoveryService: MaruDiscoveryService? = null
 
   private lateinit var p2pNetwork: P2PNetwork<Peer>
 
-  private var searchTaskFuture: ScheduledFuture<*>? = null
-  private val searchInFlight = AtomicBoolean(false)
+  val peerCount: Int
+    get() = connectedPeers.size
 
   @Volatile
   private var started = AtomicBoolean(false)
@@ -82,8 +79,8 @@ class MaruPeerManager(
         scheduler!!.scheduleWithFixedDelay(
           { runSearchTask(discoveryService) },
           0,
-          1,
-          TimeUnit.SECONDS,
+          1000,
+          TimeUnit.MILLISECONDS,
         )
     }
   }
@@ -103,27 +100,26 @@ class MaruPeerManager(
   private fun runSearchTask(discoveryService: MaruDiscoveryService) {
     if (peerCount >= maxPeers) return
     if (!started.get()) return
-    if (!searchInFlight.compareAndSet(false, true)) return
+    if (!currentlySearching.compareAndSet(false, true)) return
 
     try {
       discoveryService
         .searchForPeers()
         .orTimeout(Duration.ofSeconds(30L))
         .whenComplete { availablePeers, throwable ->
-          log.info("Finished searching for peers. Found {} peers.", availablePeers.size)
-          if (started.get()) {
-            if (throwable != null) {
-              log.debug("Failed to discover peers: {}", throwable.message, throwable)
-              discoveryService.getKnownPeers()
-            } else {
-              availablePeers
-            }.forEach { peer ->
-              tryToConnectIfNotFull(peer)
-            }
+          if (throwable != null) {
+            log.info("Finished searching for peers with error.")
+          } else {
+            log.info(
+              "Finished searching for peers. Found {} peers. Currently connected to {} peers.",
+              availablePeers.size,
+              peerCount,
+            )
+            availablePeers.forEach { peer -> tryToConnectIfNotFull(peer) }
           }
         }
     } finally {
-      searchInFlight.set(false)
+      currentlySearching.set(false)
     }
   }
 
@@ -142,7 +138,7 @@ class MaruPeerManager(
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
       return
     }
-    if (isAStaticPeer || reputationManager.isConnectionInitiationAllowed(peer.address)) {
+    if (isAStaticPeer || reputationManager.isExternalConnectionInitiationAllowed(peer.address)) {
       val maruPeer = maruPeerFactory.createMaruPeer(peer)
       connectedPeers[peer.id] = maruPeer
       if (maruPeer.connectionInitiatedLocally()) {
@@ -151,6 +147,7 @@ class MaruPeerManager(
         maruPeer.scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
       }
     } else {
+      log.trace("Disconnecting from peer=${peer.address} due to connection not allowed yet.")
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
     }
   }
@@ -171,8 +168,8 @@ class MaruPeerManager(
 
       val peerAddress = p2pNetwork.createPeerAddress(peer)
 
-      if (!reputationManager.isConnectionInitiationAllowed(peerAddress)) return
       if (p2pNetwork.isConnected(peerAddress)) return
+      if (!reputationManager.isConnectionInitiationAllowed(peerAddress)) return
 
       synchronized(connectionInProgress) {
         if (connectionInProgress.contains(peer.nodeId)) {
@@ -189,8 +186,12 @@ class MaruPeerManager(
             if (throwable != null) {
               if (throwable.cause !is PeerAlreadyConnectedException) {
                 reputationManager.reportInitiatedConnectionFailed(peerAddress)
-                log.error("Failed to connect to peer={}", peer.nodeId, throwable)
+                log.trace("Failed to connect to peer={}", peerAddress, throwable)
+              } else {
+                log.trace("Peer is already connected, peer={}", peerAddress)
               }
+            } else {
+              log.trace("Successfully connected to peer={}", peerAddress)
             }
           } finally {
             synchronized(connectionInProgress) {

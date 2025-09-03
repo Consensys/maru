@@ -109,7 +109,7 @@ open class P2PNetworkImpl(
     val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
 
     val reputationManager =
-      MaruReputationManager(besuMetricsSystem, SystemTimeProvider(), this::isStaticPeer, p2pConfig.reputationConfig)
+      MaruReputationManager(besuMetricsSystem, SystemTimeProvider(), this::isStaticPeer, p2pConfig.reputation)
 
     val rpcMethods = rpcMethodsFactory(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
     maruPeerManager =

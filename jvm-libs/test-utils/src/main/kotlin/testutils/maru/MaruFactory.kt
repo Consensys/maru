@@ -338,8 +338,8 @@ class MaruFactory(
       port = p2pPort,
       staticPeers = staticPeers,
       reconnectDelay = defaultReconnectDelay,
-      statusUpdate = P2PConfig.StatusUpdateConfig(refreshInterval = 1.seconds), // For faster syncing in the tests
-      reputationConfig = P2PConfig.ReputationConfig(banPeriod = banPeriod, cooldownPeriod = cooldownPeriod),
+      statusUpdate = P2PConfig.StatusUpdate(refreshInterval = 1.seconds), // For faster syncing in the tests
+      reputation = P2PConfig.Reputation(banPeriod = banPeriod, cooldownPeriod = cooldownPeriod),
       discovery = discovery,
     )
   }

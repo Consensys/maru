@@ -75,7 +75,10 @@ configFiles:
 
     [p2p.reputation]
     cooldown-period = "2 seconds"
-    ban-period = "4 seconds"
+    ban-period = "30 seconds"
+
+    [p2p.status-update]
+    refresh-interval= "2 seconds"
 
     [syncing]
     peer-chain-height-polling-interval = "1 seconds"

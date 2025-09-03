@@ -101,7 +101,7 @@ class DefaultMaruPeer(
         .thenApply { message -> message.payload }
         .whenComplete { status, error ->
           if (error != null) {
-            disconnectImmediately(Optional.of(DisconnectReason.TOO_MANY_PEERS), false)
+            disconnectImmediately(Optional.of(DisconnectReason.UNRESPONSIVE), false)
             if (error.cause !is PeerDisconnectedException) {
               log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
             }

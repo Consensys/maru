@@ -101,7 +101,6 @@ class FourEmptyResponsesBeaconBlocksByRangeHandler(
     maxBlocks: ULong,
   ): List<SealedBeaconBlock> {
     if (numCalls < 4) {
-      println("MisbehavingBeaconBlocksByRangeHandler: getBlocks called $maxBlocks")
       numCalls++
       return emptyList()
     } else {
@@ -139,7 +138,6 @@ class NormalResponsesBeaconBlocksByRangeHandler(
     request: BeaconBlocksByRangeRequest,
     maxBlocks: ULong,
   ): List<SealedBeaconBlock> {
-    println("BeaconBlocksByRangeHandler: getBlocks called $maxBlocks")
     val blocks =
       beaconChain.getSealedBeaconBlocks(
         startBlockNumber = request.startBlockNumber,
