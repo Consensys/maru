@@ -208,6 +208,10 @@ class MaruDiscoveryService(
 
   private fun createLocalNodeRecord(): NodeRecord {
     val sequenceNumber = p2PState.getLocalNodeRecordSequenceNumber() + 1uL
+    p2PState
+      .newP2PStateUpdater()
+      .putDiscoverySequenceNumber(sequenceNumber)
+      .commit()
     val nodeRecordBuilder: NodeRecordBuilder =
       NodeRecordBuilder()
         .secretKey(privateKey)
