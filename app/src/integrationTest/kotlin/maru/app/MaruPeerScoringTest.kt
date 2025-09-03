@@ -50,7 +50,7 @@ class MaruPeerScoringTest {
   private lateinit var followerStack: PeeringNodeNetworkStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
-  private val maruFactory = MaruFactory(pragueTimestamp = 0L)
+  private val maruFactory = MaruFactory()
   private lateinit var fakeLineaContract: FakeLineaRollupSmartContractClient
   private lateinit var validatorEthApiClient: EthApiClient
   private lateinit var followerEthApiClient: EthApiClient
@@ -177,6 +177,7 @@ class MaruPeerScoringTest {
           forkIdHashProvider,
           forkIdHasher,
           isBlockImportEnabledProvider,
+          p2pState,
           ->
           MisbehavingP2PNetwork(
             privateKeyBytes,
@@ -190,7 +191,7 @@ class MaruPeerScoringTest {
             forkIdHashProvider,
             forkIdHasher,
             isBlockImportEnabledProvider,
-            // You must provide a default or test-specific handler factory here
+            p2pState,
             beaconBlocksByRangeHandlerFactory,
           )
         },
@@ -251,6 +252,7 @@ class MaruPeerScoringTest {
           forkIdHashProvider,
           forkIdHasher,
           isBlockImportEnabledProvider,
+          p2pState,
           ->
           MisbehavingP2PNetwork(
             privateKeyBytes,
@@ -264,7 +266,7 @@ class MaruPeerScoringTest {
             forkIdHashProvider,
             forkIdHasher,
             isBlockImportEnabledProvider,
-            // You must provide a default or test-specific handler factory here
+            p2pState,
             beaconBlocksByRangeHandlerFactory,
           )
         },

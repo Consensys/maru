@@ -33,9 +33,10 @@ import maru.core.ext.metrics.TestMetrics
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
+import maru.database.InMemoryP2PState
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -91,6 +92,7 @@ class P2PTest {
     private val key2 = "0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".fromHex()
     private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
     private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
+    private val p2PState = InMemoryP2PState()
     private val forkIdHashProvider =
       createForkIdHashProvider()
     private val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
@@ -127,13 +129,13 @@ class P2PTest {
             ),
           elFork = ElFork.Prague,
         )
-      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0L, 1, consensusConfig)))
+      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0UL, 1u, consensusConfig)))
 
       return ForkIdHashProviderImpl(
         chainId = chainId,
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
       )
     }
 
@@ -168,7 +170,8 @@ class P2PTest {
         metricsSystem = NoOpMetricsSystem(),
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+        p2PState = p2PState,
       )
   }
 
@@ -363,7 +366,7 @@ class P2PTest {
     beaconBlockHeader: BeaconBlockHeader,
   ) {
     beaconChain
-      .newUpdater()
+      .newBeaconChainUpdater()
       .putBeaconState(
         beaconChain.getLatestBeaconState().copy(
           beaconBlockHeader = beaconBlockHeader,
@@ -474,7 +477,7 @@ class P2PTest {
         DataGenerators.randomSealedBeaconBlock(number = blockNumber)
       }
 
-    testBeaconChain.newUpdater().use { updater ->
+    testBeaconChain.newBeaconChainUpdater().use { updater ->
       storedBlocks.forEach { block ->
         updater.putSealedBeaconBlock(block)
       }

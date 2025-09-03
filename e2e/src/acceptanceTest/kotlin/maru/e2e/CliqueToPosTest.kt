@@ -24,6 +24,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
+import linea.kotlin.toULong
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
@@ -64,9 +65,9 @@ class CliqueToPosTest {
         .projectName(ProjectName.fromString("maru-e2e-" + UUID.randomUUID().toString().take(8)))
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
-    private var forksTimestamps = emptyMap<String, Long>()
-    private var shanghaiTimestamp: Long = 0
-    private var pragueTimestamp: Long = 0
+    private var forksTimestamps = emptyMap<String, ULong>()
+    private var pragueTimestamp: ULong = 0UL
+    private var ttd: ULong = 0UL
     private lateinit var maruFactory: MaruFactory
 
     @TempDir
@@ -84,13 +85,13 @@ class CliqueToPosTest {
     // Will only be used in the sync from scratch tests
     private var maruFollower: MaruApp? = null
 
-    private fun parseForks(forks: List<String>): Map<String, Long> {
+    private fun parseForks(forks: List<String>): Map<String, ULong> {
       val objectMapper = ObjectMapper()
       val genesisTree = objectMapper.readTree(File(genesisDir, "genesis-besu.json"))
       return forks
         .map { forkId ->
           val switchTime = genesisTree.at("/config/$forkId").asLong()
-          forkId to switchTime
+          forkId to switchTime.toULong()
         }.associate { it }
     }
 
@@ -110,25 +111,25 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      forksTimestamps = parseForks(listOf("shanghaiTime", "cancunTime", "pragueTime"))
-      shanghaiTimestamp = forksTimestamps["shanghaiTime"]!!
+      forksTimestamps = parseForks(listOf("pragueTime", "terminalTotalDifficulty"))
       pragueTimestamp = forksTimestamps["pragueTime"]!!
+      ttd = forksTimestamps["terminalTotalDifficulty"]!!
       maruFactory =
         MaruFactory(
           validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
-          shanghaiTimestamp = shanghaiTimestamp,
           pragueTimestamp = pragueTimestamp,
+          ttd = ttd,
         )
     }
 
     @AfterAll
     @JvmStatic
     fun afterAll() {
-      qbftCluster.after()
       if (::maruSequencer.isInitialized) {
         maruSequencer.stop()
         maruSequencer.close()
       }
+      qbftCluster.after()
 
       TestEnvironment.allClients.values.forEach { web3j ->
         web3j.shutdown()
@@ -183,6 +184,7 @@ class CliqueToPosTest {
       )
 
     private var runCounter = 0u
+    private val lastCliqueBlockNumber = 5L
   }
 
   private fun saveLogs(path: Path) {
@@ -230,25 +232,26 @@ class CliqueToPosTest {
   fun networkCanBeSwitched() {
     maruSequencer = buildValidatorMaruWithMultipleFollowers()
     maruSequencer.start()
-    sendCliqueTransactions()
+    val prePragueTransactions = 10
+    sendCliqueAndParisTransactions(prePragueTransactions)
     everyoneArePeered()
-    waitTillTimestamp(shanghaiTimestamp, "shanghaiTime")
+    val lastCliqueBlock = getBlockByNumber(lastCliqueBlockNumber)!!
+    assertThat(lastCliqueBlock.totalDifficulty.toLong()).isEqualTo(lastCliqueBlockNumber * 2L + 1L)
+    val parisBlock = getBlockByNumber(lastCliqueBlockNumber + 1)!!
+    assertThat(parisBlock.difficulty.toLong()).isEqualTo(0L)
 
-    log.info("Sequencer has switched to PoS")
-    repeat(4) {
-      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
-    }
-
-    val postMergeBlock = getBlockByNumber(6)!!
-    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(shanghaiTimestamp)
-
+    val pragueTransactions = 4
     waitTillTimestamp(pragueTimestamp, "pragueTime")
     log.info("Sequencer has switched to Prague")
-    repeat(4) {
+    repeat(pragueTransactions) {
       transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
 
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, 13)
+    val firstPragueBlock = getBlockByNumber(prePragueTransactions.toLong() + 1)!!
+    assertThat(firstPragueBlock.timestamp.toULong()).isGreaterThanOrEqualTo(pragueTimestamp)
+
+    val resultingBlockNumber = prePragueTransactions + pragueTransactions.toLong()
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, resultingBlockNumber)
 
     waitForAllNodesToBeInSyncToMatch()
   }
@@ -284,7 +287,7 @@ class CliqueToPosTest {
         ethereumApiConfig = engineApiConfig,
         dataDir = followerDataDir,
         validatorPortForStaticPeering = maruSequencer.p2pPort(),
-        desyncTolerance = 3UL,
+        desyncTolerance = 0UL,
       )
 
     maruFollower!!.start()
@@ -301,37 +304,29 @@ class CliqueToPosTest {
           // For some reason Erigon and Nethermind need a restart after PoS transition
           restartNodeKeepingState(nodeName, nodeEthereumClient)
         }
-        if (nodeName.contains("follower-geth")) {
-          val latestBlockFromGeth =
-            getBlockByNumber(
-              blockNumber = 9,
-              retreiveTransactions = true,
-              ethClient = nodeEthereumClient,
-            )!!
-          // For some reason it doesn't set latest block correctly, but the block is available
-          assertThat(latestBlockFromGeth).isNotNull
-        } else {
-          assertNodeBlockHeight(nodeEthereumClient)
-          assertNodeBlockPrevRandao(nodeEthereumClient)
-        }
+
+        assertNodeBlockHeight(nodeEthereumClient)
+        assertNodeBlockPrevRandao(nodeEthereumClient)
       }
   }
 
   private fun waitTillTimestamp(
-    timestamp: Long,
+    timestamp: ULong,
     timestampFork: String,
   ) {
-    val unixTimestamp = System.currentTimeMillis() / 1000
+    val unixTimestamp = currentTimestamp()
     log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
     await
       .timeout(2.minutes.toJavaDuration())
       .pollInterval(500.milliseconds.toJavaDuration())
       .untilAsserted {
-        val unixTimestamp = System.currentTimeMillis() / 1000
+        val unixTimestamp = currentTimestamp()
         log.debug("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
         assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
       }
   }
+
+  private fun currentTimestamp(): ULong = (System.currentTimeMillis() / 1000).toULong()
 
   private fun restartNodeFromScratch(
     nodeName: String,
@@ -381,12 +376,12 @@ class CliqueToPosTest {
       }
   }
 
-  private fun sendCliqueTransactions() {
+  private fun sendCliqueAndParisTransactions(cliqueAndParisTransactions: Int) {
     val sequencerBlock = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
-    if (sequencerBlock.blockNumber >= BigInteger.valueOf(5)) {
+    if (sequencerBlock.blockNumber >= BigInteger.valueOf(cliqueAndParisTransactions.toLong())) {
       return
     }
-    repeat(5) { transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() } }
+    repeat(cliqueAndParisTransactions) { transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() } }
   }
 
   private fun assertNodeBlockHeight(
@@ -430,7 +425,7 @@ class CliqueToPosTest {
     }
   }
 
-  private fun waitForAllNodesToBeInSyncToMatch(liniency: Long = 1) {
+  private fun waitForAllNodesToBeInSyncToMatch() {
     // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
     // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
     transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
@@ -452,7 +447,7 @@ class CliqueToPosTest {
             .ethBlockNumber()
             .send()
             .blockNumber
-            .toLong() - liniency
+            .toLong()
 
         val blockHeights =
           TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries

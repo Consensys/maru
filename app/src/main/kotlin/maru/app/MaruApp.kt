@@ -20,6 +20,7 @@ import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
+import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
@@ -88,8 +89,11 @@ class MaruApp(
   }
 
   private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
-    config.followers.followers.mapValues { (_, apiEndpointConfig) ->
-      Helpers.createWeb3jClient(apiEndpointConfig = apiEndpointConfig)
+    config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
+      Helpers.createWeb3jClient(
+        apiEndpointConfig = apiEndpointConfig,
+        log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
+      )
     }
 
   fun p2pPort(): UInt = p2pNetwork.port
@@ -209,12 +213,18 @@ class MaruApp(
       }
     val forkTransitionSubscriptionManager = InOrderFanoutSubscriptionManager<ForkSpec>()
     forkTransitionSubscriptionManager.addSyncSubscriber(p2pNetwork::handleForkTransition)
+    val elDelegatedConsensusFactory =
+      ElDelegatedConsensusFactory(
+        ethereumJsonRpcClient = validatorELNodeEthJsonRpcClient.eth1Web3j,
+        postTtdProtocolFactory = qbftFactory,
+      )
     val protocolStarter =
       ProtocolStarter.create(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
           OmniProtocolFactory(
             qbftConsensusFactory = qbftFactory,
+            elDelegatedConsensusFactory = elDelegatedConsensusFactory,
           ),
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         syncStatusProvider = syncStatusProvider,

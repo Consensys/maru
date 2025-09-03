@@ -24,6 +24,7 @@ import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
 import maru.database.BeaconChain
+import maru.database.P2PState
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
@@ -61,6 +62,7 @@ open class P2PNetworkImpl(
   private val forkIdHashProvider: ForkIdHashProvider,
   private val forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
+  private val p2PState: P2PState,
   // for testing:
   private val rpcMethodsFactory: (
     StatusMessageFactory,
@@ -145,6 +147,7 @@ open class P2PNetworkImpl(
         privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
         p2pConfig = p2pConfig,
         forkIdHashProvider = forkIdHashProvider,
+        p2PState = p2PState,
       )
     }
 

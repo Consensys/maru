@@ -35,11 +35,13 @@ import maru.core.ext.metrics.TestMetrics.TestMetricsSystemAdapter
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
+import maru.database.InMemoryP2PState
+import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.PeerLookup
 import maru.p2p.messages.StatusMessageFactory
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import net.consensys.linea.metrics.Counter
@@ -117,8 +119,8 @@ class CLSyncServiceImplTest {
 
     sourceNodePort = findFreePort()
     targetNodePort = findFreePort()
-    targetP2pNetwork = createNetwork(targetBeaconChain, targetNodeKey, targetNodePort)
-    sourceP2pNetwork = createNetwork(sourceBeaconChain, sourceNodeKey, sourceNodePort)
+    targetP2pNetwork = createNetwork(targetBeaconChain, targetNodeKey, targetNodePort, InMemoryP2PState())
+    sourceP2pNetwork = createNetwork(sourceBeaconChain, sourceNodeKey, sourceNodePort, InMemoryP2PState())
 
     createBlocks(
       beaconChain = sourceBeaconChain,
@@ -235,7 +237,7 @@ class CLSyncServiceImplTest {
     verifyChain(50UL, sourceBeaconChain.getBeaconState(50uL)!!)
 
     // Verify that beaconChain for node1 was not updated, and there are no reads on node2 beaconChain
-    verify(targetBeaconChain, never()).newUpdater()
+    verify(targetBeaconChain, never()).newBeaconChainUpdater()
     verify(sourceBeaconChain, never()).getSealedBeaconBlocks(any(), any())
   }
 
@@ -265,7 +267,7 @@ class CLSyncServiceImplTest {
     verifyChain(50UL, sourceBeaconChain.getBeaconState(50uL)!!)
 
     // Verify that beaconChain for node1 was not updated, and there are no reads on node2 beaconChain
-    verify(targetBeaconChain, never()).newUpdater()
+    verify(targetBeaconChain, never()).newBeaconChainUpdater()
     verify(sourceBeaconChain, never()).getSealedBeaconBlocks(any(), any())
   }
 
@@ -369,6 +371,7 @@ class CLSyncServiceImplTest {
     beaconChain: BeaconChain,
     key: ByteArray,
     port: UInt,
+    p2PState: P2PState,
   ): P2PNetworkImpl {
     val forkIdHashProvider = createForkIdHashProvider(beaconChain)
     val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
@@ -389,7 +392,8 @@ class CLSyncServiceImplTest {
         metricsSystem = TestMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
-        forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+        p2PState = p2PState,
       )
     return p2pNetworkImpl
   }
@@ -402,7 +406,7 @@ class CLSyncServiceImplTest {
     signatureAlgorithm: SignatureAlgorithm,
     keypair: KeyPair,
   ) {
-    val updater = beaconChain.newUpdater()
+    val updater = beaconChain.newBeaconChainUpdater()
     var parentSealedBeaconBlock = genesisBeaconBlock
     for (i in 1uL..BEACON_CHAIN_2_HEAD) {
       val beaconBlock =
@@ -442,13 +446,13 @@ class CLSyncServiceImplTest {
           ),
         elFork = ElFork.Prague,
       )
-    val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0L, 1, consensusConfig)))
+    val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0UL, 1u, consensusConfig)))
 
     return ForkIdHashProviderImpl(
       chainId = CHAIN_ID,
       beaconChain = beaconChain,
       forksSchedule = forksSchedule,
-      forkIdHasher = ForkIdHasher(ForkIdSerializers.ForkIdSerializer, Hashing::shortShaHash),
+      forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
     )
   }
 

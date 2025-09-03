@@ -49,6 +49,7 @@ import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.crypto.Crypto
 import maru.database.BeaconChain
+import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
@@ -63,8 +64,8 @@ import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
  */
 class MaruFactory(
   validatorPrivateKey: ByteArray = generatePrivateKey(),
-  shanghaiTimestamp: Long? = null,
-  pragueTimestamp: Long? = null,
+  pragueTimestamp: ULong? = null,
+  ttd: ULong? = null,
 ) {
   companion object {
     val defaultReconnectDelay = 500.milliseconds
@@ -108,43 +109,25 @@ class MaruFactory(
     )
 
   private val beaconGenesisConfig: ForksSchedule =
-    if (shanghaiTimestamp != null) {
+    if (pragueTimestamp != null) {
       ForksSchedule(
         1337u,
         setOf(
           ForkSpec(
-            timestampSeconds = 0,
-            blockTimeSeconds = 1,
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1u,
             configuration =
-            ElDelegatedConfig,
-          ),
-          ForkSpec(
-            timestampSeconds = shanghaiTimestamp,
-            blockTimeSeconds = 1,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Shanghai,
+              ElDelegatedConfig(
+                QbftConsensusConfig(
+                  validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                  elFork = ElFork.Paris,
+                ),
+                terminalTotalDifficulty = ttd!!,
               ),
           ),
           ForkSpec(
-            timestampSeconds = pragueTimestamp!!,
-            blockTimeSeconds = 1,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Prague,
-              ),
-          ),
-        ),
-      )
-    } else if (pragueTimestamp == 0L) {
-      ForksSchedule(
-        1337u,
-        setOf(
-          ForkSpec(
-            timestampSeconds = 0,
-            blockTimeSeconds = 1,
+            timestampSeconds = pragueTimestamp,
+            blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
@@ -158,17 +141,8 @@ class MaruFactory(
         1337u,
         setOf(
           ForkSpec(
-            timestampSeconds = 0,
-            blockTimeSeconds = 1,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Shanghai,
-              ),
-          ),
-          ForkSpec(
-            timestampSeconds = 1,
-            blockTimeSeconds = 1,
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
@@ -317,6 +291,7 @@ class MaruFactory(
       ForkIdHashProvider,
       ForkIdHasher,
       () -> Boolean,
+      P2PState,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp =
     MaruAppFactory().create(
@@ -412,6 +387,7 @@ class MaruFactory(
       ForkIdHashProvider,
       ForkIdHasher,
       () -> Boolean,
+      P2PState,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort)
@@ -464,6 +440,7 @@ class MaruFactory(
       ForkIdHashProvider,
       ForkIdHasher,
       () -> Boolean,
+      P2PState,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =
@@ -522,6 +499,7 @@ class MaruFactory(
       ForkIdHashProvider,
       ForkIdHasher,
       () -> Boolean,
+      P2PState,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =

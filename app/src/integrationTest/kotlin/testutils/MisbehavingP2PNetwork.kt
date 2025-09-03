@@ -14,6 +14,7 @@ import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
+import maru.database.P2PState
 import maru.p2p.LineaRpcProtocolIdGenerator
 import maru.p2p.MaruRpcMethod
 import maru.p2p.P2PNetworkImpl
@@ -40,6 +41,7 @@ class MisbehavingP2PNetwork(
   forkIdHashProvider: ForkIdHashProvider,
   forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
+  p2pState: P2PState,
   beaconBlocksByRangeHandlerFactory: (BeaconChain) -> BeaconBlocksByRangeHandler,
 ) : P2PNetworkImpl(
     privateKeyBytes = privateKeyBytes,
@@ -53,6 +55,7 @@ class MisbehavingP2PNetwork(
     forkIdHashProvider = forkIdHashProvider,
     forkIdHasher = forkIdHasher,
     isBlockImportEnabledProvider = isBlockImportEnabledProvider,
+    p2PState = p2pState,
     rpcMethodsFactory = { statusMessageFactory, lineaRpcProtocolIdGenerator, peerLookup, beaconChain ->
       MisbehavingRpcMethods(
         statusMessageFactory,
