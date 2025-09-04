@@ -16,7 +16,7 @@ import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class AifficultyAwareQbftConfigSerializerTest {
+class DifficultyAwareQbftConfigSerializerTest {
   private val serializer = DifficultyAwareQbftConfigSerializer
 
   @Test
