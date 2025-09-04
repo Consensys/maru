@@ -171,9 +171,8 @@ class MaruDiscoveryService(
     discoverySystem.stop()
   }
 
-  fun updateForkIdHash(forkIdHash: Bytes) { // TODO: Need to call this when the fork id changes
+  fun updateForkIdHash(forkIdHash: Bytes) {
     discoverySystem.updateCustomFieldValue(
-      // TODO: needs to increment the sequence number in the local node record as well
       FORK_ID_HASH_FIELD_NAME,
       forkIdHash,
     )
@@ -216,8 +215,6 @@ class MaruDiscoveryService(
       NodeRecordBuilder()
         .secretKey(privateKey)
         .seq(UInt64.valueOf(sequenceNumber.toBigInteger()))
-        // TODO: we need to store the sequence number in the DB?
-        //  and increment it after changing the record and after each restart!
         .address(
           p2pConfig.ipAddress,
           p2pConfig.discovery!!.port.toInt(),
