@@ -50,7 +50,7 @@ import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
-open class P2PNetworkImpl(
+class P2PNetworkImpl(
   private val privateKeyBytes: ByteArray,
   private val p2pConfig: P2PConfig,
   private val chainId: UInt,

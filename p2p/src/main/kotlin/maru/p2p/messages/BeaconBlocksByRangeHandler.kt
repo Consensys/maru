@@ -20,7 +20,7 @@ import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 
 open class BeaconBlocksByRangeHandler(
-  private val beaconChain: BeaconChain,
+  protected val beaconChain: BeaconChain,
 ) : RpcMessageHandler<
     Message<BeaconBlocksByRangeRequest, RpcMessageType>,
     Message<BeaconBlocksByRangeResponse, RpcMessageType>,

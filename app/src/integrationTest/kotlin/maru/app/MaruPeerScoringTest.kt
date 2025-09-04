@@ -205,7 +205,7 @@ class MaruPeerScoringTest {
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,
             beaconBlocksByRangeHandlerFactory = beaconBlocksByRangeHandlerFactory,
-          )
+          ).p2pNetwork
         },
       )
 
@@ -279,7 +279,7 @@ class MaruPeerScoringTest {
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,
             beaconBlocksByRangeHandlerFactory = beaconBlocksByRangeHandlerFactory,
-          )
+          ).p2pNetwork
         },
       )
     followerStack.setMaruApp(followerMaruApp)

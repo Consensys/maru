@@ -69,7 +69,7 @@ open class RpcMethods(
 
   fun status() = statusRpcMethod
 
-  fun beaconBlocksByRange() = beaconBlocksByRangeRpcMethod
+  open fun beaconBlocksByRange() = beaconBlocksByRangeRpcMethod
 
-  fun all(): List<MaruRpcMethod<*, *>> = listOf(statusRpcMethod, beaconBlocksByRangeRpcMethod)
+  open fun all(): List<MaruRpcMethod<*, *>> = listOf(statusRpcMethod, beaconBlocksByRangeRpcMethod)
 }
