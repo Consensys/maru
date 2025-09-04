@@ -83,7 +83,7 @@ class MaruPeerScoringTest {
   }
 
   @Test
-  fun `node disconnects validator when BeaconBlocksByRangeHandler sends empty reasponses`() {
+  fun `node disconnects validator when BeaconBlocksByRangeHandler sends empty responses`() {
     val maruNodeSetup =
       setUpNodes(
         blockRetrievalStrategy = FourEmptyResponsesStrategy(),
@@ -95,7 +95,7 @@ class MaruPeerScoringTest {
     // Now wait until it is disconnected because of empty responses
     await
       .atMost(2.seconds.toJavaDuration())
-      .pollInterval(10.milliseconds.toJavaDuration())
+      .pollInterval(250.milliseconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
@@ -254,7 +254,7 @@ class MaruPeerScoringTest {
 
     val job =
       CoroutineScope(Dispatchers.Default).launch {
-        repeat(50) {
+        while (true) {
           transactionsHelper.run {
             validatorStack.besuNode.sendTransactionAndAssertExecution(
               logger = log,

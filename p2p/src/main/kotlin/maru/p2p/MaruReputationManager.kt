@@ -71,24 +71,18 @@ class MaruReputationManager(
       .reportInitiatedConnectionFailed(timeProvider.timeInMillis)
   }
 
-  override fun isConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean {
-    val bool =
-      peerReputations
-        .getCached(peerAddress.id)
-        .map { it.shouldInitiateConnection(timeProvider.timeInMillis) }
-        .orElse(true)
-    return bool
-  }
+  override fun isConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean =
+    peerReputations
+      .getCached(peerAddress.id)
+      .map<Boolean> { it.shouldInitiateConnection(timeProvider.timeInMillis) }
+      .orElse(true)
 
-  fun isExternalConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean {
-    val bool =
-      peerReputations
-        .getCached(peerAddress.id)
-        // allow external connection 5 seconds earlier to prevent peers from not being able to reconnect immediately
-        .map { it.shouldInitiateConnection(timeProvider.timeInMillis + `5_SECONDS`) }
-        .orElse(true)
-    return bool
-  }
+  fun isExternalConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean =
+    peerReputations
+      .getCached(peerAddress.id)
+      // allow external connection 5 seconds earlier to prevent peers from not being able to reconnect immediately
+      .map { it.shouldInitiateConnection(timeProvider.timeInMillis + `5_SECONDS`) }
+      .orElse(true)
 
   override fun reportInitiatedConnectionSuccessful(peerAddress: PeerAddress) {
     getOrCreateReputation(peerAddress).reportInitiatedConnectionSuccessful()
@@ -116,11 +110,9 @@ class MaruReputationManager(
     if (isStaticPeer(peerAddress.id)) {
       return false
     }
-    val bool =
-      getOrCreateReputation(peerAddress)
-        .adjustReputation(effect, timeProvider.timeInMillis)
-    log.debug("Disocnnect peer={} after adjustment={}", peerAddress, bool)
-    return bool
+    return getOrCreateReputation(peerAddress)
+      .adjustReputation(effect, timeProvider.timeInMillis)
+      .also { if (it) log.debug("Disocnnecting peer={} after adjustment", peerAddress) }
   }
 
   private fun getOrCreateReputation(peerAddress: PeerAddress): Reputation =
