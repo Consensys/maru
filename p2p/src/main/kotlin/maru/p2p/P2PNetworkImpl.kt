@@ -220,7 +220,7 @@ open class P2PNetworkImpl(
   }
 
   override fun stop(): SafeFuture<Unit> {
-    log.info("Stopping {}", this::class.simpleName)
+    log.info("Stopping={}", this::class.simpleName)
     val pmStop = maruPeerManager.stop()
     discoveryService?.stop()
     val p2pStop = p2pNetwork.stop()
@@ -305,11 +305,11 @@ open class P2PNetworkImpl(
       .whenComplete { peer: Peer?, t: Throwable? ->
         if (t != null) {
           if (t.cause is PeerAlreadyConnectedException) {
-            log.trace("Already connected to peer {}. Error: {}", peerAddress, t.message)
+            log.trace("Already connected to peer={}. Error={}", peerAddress, t.message)
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
             log.trace(
-              "Failed to connect to static peer={}, retrying after {} ms. Error: {}",
+              "Failed to connect to static peer={}, retrying after {} ms. Error={}",
               peerAddress,
               p2pConfig.reconnectDelay,
               t.message,
@@ -320,7 +320,7 @@ open class P2PNetworkImpl(
             }
           }
         } else {
-          log.trace("Created persistent connection to {}", peerAddress)
+          log.trace("Created persistent connection to peer={}", peerAddress)
           reconnectWhenDisconnected(peer!!, peerAddress)
         }
       }.thenApply {}
@@ -359,7 +359,7 @@ open class P2PNetworkImpl(
         .getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
         .getOrNull()
     return if (maybePeer == null) {
-      log.warn("Trying to disconnect from peer {}, but there's no connection to it!", peer)
+      log.warn("Trying to disconnect from peer={}, but there's no connection to it!", peer)
       SafeFuture.completedFuture(Unit)
     } else {
       maybePeer.disconnectCleanly(reason).thenApply { }

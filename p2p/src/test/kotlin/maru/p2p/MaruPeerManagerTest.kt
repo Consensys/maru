@@ -23,6 +23,7 @@ import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork as TekuP2PNetwork
 
 class MaruPeerManagerTest {
@@ -189,17 +190,25 @@ class MaruPeerManagerTest {
     val maruPeerFactory = mock<MaruPeerFactory>()
     val maruPeer = mock<MaruPeer>()
     val p2pConfig = mock<P2PConfig>()
-    val reputationManager = mock<MaruReputationManager>()
     val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
     val address = mock<PeerAddress>()
 
+    val reputationManager =
+      MaruReputationManager(
+        NoOpMetricsSystem(),
+        SystemTimeProvider(),
+        { _: NodeId -> false }, // always banned
+        P2PConfig.Reputation(),
+      )
+
     whenever(peer.id).thenReturn(nodeId)
     whenever(peer.address).thenReturn(address)
+    whenever(address.id).thenReturn(nodeId)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
     whenever(p2pConfig.maxPeers).thenReturn(10)
     whenever(p2pNetwork.peerCount).thenReturn(0)
 
-    whenever(reputationManager.isConnectionInitiationAllowed(address)).thenReturn(false)
+    reputationManager.adjustReputation(peer.address, ReputationAdjustment.LARGE_PENALTY)
 
     val manager =
       MaruPeerManager(

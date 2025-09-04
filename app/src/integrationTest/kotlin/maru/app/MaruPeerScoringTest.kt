@@ -66,7 +66,7 @@ class MaruPeerScoringTest {
 
   @Test
   fun `node get's in sync with normal BeaconBlocksByRangeHandler`() {
-    val (_, _, job) =
+    val maruNodeSetup =
       setUpNodes(beaconBlocksByRangeHandlerFactory = ::NormalResponsesBeaconBlocksByRangeHandler)
 
     await
@@ -79,12 +79,12 @@ class MaruPeerScoringTest {
         ).isGreaterThanOrEqualTo(15UL)
       }
 
-    job.cancel()
+    maruNodeSetup.job.cancel()
   }
 
   @Test
   fun `node disconnects validator when BeaconBlocksByRangeHandler sends empty reasponses`() {
-    val (validatorMaruApp, followerMaruApp, job) =
+    val maruNodeSetup =
       setUpNodes(
         beaconBlocksByRangeHandlerFactory = ::FourEmptyResponsesBeaconBlocksByRangeHandler,
         banPeriod = 1000.milliseconds,
@@ -98,7 +98,11 @@ class MaruPeerScoringTest {
       .pollInterval(10.milliseconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
-        assertThat(followerMaruApp.p2pNetwork.getPeers().size == 0)
+        assertThat(
+          maruNodeSetup.followerMaruApp.p2pNetwork
+            .getPeers()
+            .size == 0,
+        )
       }
     // reconnects after cooldown and finishes syncing
     await
@@ -111,12 +115,12 @@ class MaruPeerScoringTest {
         ).isGreaterThanOrEqualTo(18UL)
       }
 
-    job.cancel()
+    maruNodeSetup.job.cancel()
   }
 
   @Test
   fun `node disconnects validator when BeaconBlocksByRangeHandler takes too long to respond`() {
-    val (validatorMaruApp, followerMaruApp, job) =
+    val maruNodeSetup =
       setUpNodes(beaconBlocksByRangeHandlerFactory = ::TimeOutResponsesBeaconBlocksByRangeHandler)
 
     await
@@ -124,17 +128,27 @@ class MaruPeerScoringTest {
       .pollInterval(10.milliseconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
-        assertThat(followerMaruApp.p2pNetwork.getPeers().size == 0)
+        assertThat(
+          maruNodeSetup.followerMaruApp.p2pNetwork
+            .getPeers()
+            .size == 0,
+        )
       }
 
-    job.cancel()
+    maruNodeSetup.job.cancel()
   }
+
+  data class MaruNodeSetup(
+    val validatorMaruApp: MaruApp,
+    val followerMaruApp: MaruApp,
+    val job: Job,
+  )
 
   private fun setUpNodes(
     beaconBlocksByRangeHandlerFactory: (BeaconChain) -> BeaconBlocksByRangeHandler,
     banPeriod: Duration = 10.seconds,
     cooldownPeriod: Duration = 10.seconds,
-  ): Triple<MaruApp, MaruApp, Job> {
+  ): MaruNodeSetup {
     fakeLineaContract = FakeLineaRollupSmartContractClient()
     transactionsHelper = BesuTransactionsHelper()
     cluster =
@@ -178,19 +192,19 @@ class MaruPeerScoringTest {
           p2pState,
           ->
           MisbehavingP2PNetwork(
-            privateKeyBytes,
-            p2pConfig,
-            chainId,
-            serDe,
-            metricsFacade,
-            metricsSystem,
-            smf,
-            chain,
-            forkIdHashProvider,
-            forkIdHasher,
-            isBlockImportEnabledProvider,
-            p2pState,
-            beaconBlocksByRangeHandlerFactory,
+            privateKeyBytes = privateKeyBytes,
+            p2pConfig = p2pConfig,
+            chainId = chainId,
+            serDe = serDe,
+            metricsFacade = metricsFacade,
+            metricsSystem = metricsSystem,
+            smf = smf,
+            chain = chain,
+            forkIdHashProvider = forkIdHashProvider,
+            forkIdHasher = forkIdHasher,
+            isBlockImportEnabledProvider = isBlockImportEnabledProvider,
+            p2pState = p2pState,
+            beaconBlocksByRangeHandlerFactory = beaconBlocksByRangeHandlerFactory,
           )
         },
       )
@@ -198,7 +212,6 @@ class MaruPeerScoringTest {
     validatorStack.setMaruApp(validatorMaruApp)
     validatorStack.maruApp.start()
 
-    println("validator local node record: ${validatorStack.maruApp.p2pNetwork.localNodeRecord}")
     val bootnodeEnr =
       validatorStack.maruApp.p2pNetwork.localNodeRecord
         ?.asEnr()
@@ -253,19 +266,19 @@ class MaruPeerScoringTest {
           p2pState,
           ->
           MisbehavingP2PNetwork(
-            privateKeyBytes,
-            p2pConfig,
-            chainId,
-            serDe,
-            metricsFacade,
-            metricsSystem,
-            smf,
-            chain,
-            forkIdHashProvider,
-            forkIdHasher,
-            isBlockImportEnabledProvider,
-            p2pState,
-            beaconBlocksByRangeHandlerFactory,
+            privateKeyBytes = privateKeyBytes,
+            p2pConfig = p2pConfig,
+            chainId = chainId,
+            serDe = serDe,
+            metricsFacade = metricsFacade,
+            metricsSystem = metricsSystem,
+            smf = smf,
+            chain = chain,
+            forkIdHashProvider = forkIdHashProvider,
+            forkIdHasher = forkIdHasher,
+            isBlockImportEnabledProvider = isBlockImportEnabledProvider,
+            p2pState = p2pState,
+            beaconBlocksByRangeHandlerFactory = beaconBlocksByRangeHandlerFactory,
           )
         },
       )
@@ -317,7 +330,7 @@ class MaruPeerScoringTest {
           followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(0UL)
       }
-    return Triple(validatorMaruApp, followerMaruApp, job)
+    return MaruNodeSetup(validatorMaruApp, followerMaruApp, job)
   }
 
   private fun findFreePort(): UInt =
