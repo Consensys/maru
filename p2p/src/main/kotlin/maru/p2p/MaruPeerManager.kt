@@ -108,14 +108,14 @@ class MaruPeerManager(
         .orTimeout(Duration.ofSeconds(30L))
         .whenComplete { availablePeers, throwable ->
           if (throwable != null) {
-            log.info("Finished searching for peers with error.")
+            log.trace("Finished searching for peers with error.")
           } else {
-            log.info(
+            log.trace(
               "Finished searching for peers. Found {} peers. Currently connected to {} peers.",
               availablePeers.size,
               peerCount,
             )
-            availablePeers.forEach { peer -> tryToConnectIfNotFull(peer) }
+            availablePeers.forEach { peer -> tryToConnect(peer) }
           }
         }
     } finally {
@@ -124,9 +124,11 @@ class MaruPeerManager(
   }
 
   private fun logConnectedPeers() {
-    log.debug("Currently connected peers={}", connectedPeers.keys.toList())
-    discoveryService?.getKnownPeers()?.forEach { peer ->
-      log.info("discovered peer={}", peer)
+    log.info("Currently connected peers={}", connectedPeers.keys.toList())
+    if (log.isDebugEnabled) {
+      discoveryService?.getKnownPeers()?.forEach { peer ->
+        log.debug("discovered peer={}", peer)
+      }
     }
   }
 
@@ -161,7 +163,7 @@ class MaruPeerManager(
 
   override fun getPeers(): List<MaruPeer> = connectedPeers.values.toList()
 
-  private fun tryToConnectIfNotFull(peer: MaruDiscoveryPeer) {
+  private fun tryToConnect(peer: MaruDiscoveryPeer) {
     try {
       if (!started.get()) return
       if (peerCount >= maxPeers) return
@@ -200,7 +202,7 @@ class MaruPeerManager(
           }
         }
     } catch (e: Exception) {
-      log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeId, e.message, e)
+      log.trace("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeId, e.message, e)
       synchronized(connectionInProgress) {
         connectionInProgress.remove(peer.nodeId)
       }

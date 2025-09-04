@@ -8,6 +8,7 @@
  */
 package testutils
 
+import kotlin.time.Duration
 import maru.config.P2PConfig
 import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHasher
@@ -78,13 +79,15 @@ class FourEmptyResponsesStrategy : BlockRetrievalStrategy {
   }
 }
 
-class TimeOutResponsesStrategy : BlockRetrievalStrategy {
+class TimeOutResponsesStrategy(
+  var delay: Duration,
+) : BlockRetrievalStrategy {
   override fun getBlocks(
     beaconChain: BeaconChain,
     request: BeaconBlocksByRangeRequest,
     maxBlocks: ULong,
   ): List<SealedBeaconBlock> {
-    Thread.sleep(6000) // longer than the timeout of 5 seconds
+    Thread.sleep(delay.inWholeMilliseconds)
     return beaconChain.getSealedBeaconBlocks(
       startBlockNumber = request.startBlockNumber,
       count = maxBlocks,

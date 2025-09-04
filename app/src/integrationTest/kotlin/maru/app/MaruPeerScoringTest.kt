@@ -8,6 +8,7 @@
  */
 package maru.app
 
+import java.lang.Thread.sleep
 import java.net.ServerSocket
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
+import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.DefaultBlockRetrievalStrategy
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -116,18 +118,18 @@ class MaruPeerScoringTest {
 
   @Test
   fun `node disconnects validator when BeaconBlocksByRangeHandler takes too long to respond`() {
+    val timeout = 100.milliseconds
+    val delay = timeout + 2.seconds
     val maruNodeSetup =
-      setUpNodes(blockRetrievalStrategy = TimeOutResponsesStrategy())
+      setUpNodes(
+        blockRangeRequestTimeout = timeout,
+        blockRetrievalStrategy = TimeOutResponsesStrategy(delay = delay),
+        cooldownPeriod = 10.seconds,
+      )
 
-    await
-      .atMost(2.seconds.toJavaDuration())
-      .pollInterval(10.milliseconds.toJavaDuration())
-      .ignoreExceptions()
-      .untilAsserted {
-        assertThat(
-          maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0,
-        )
-      }
+    sleep(delay.inWholeMilliseconds)
+
+    assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0)
 
     maruNodeSetup.job.cancel()
   }
@@ -139,9 +141,10 @@ class MaruPeerScoringTest {
   )
 
   private fun setUpNodes(
-    blockRetrievalStrategy: maru.p2p.messages.BlockRetrievalStrategy,
+    blockRetrievalStrategy: BlockRetrievalStrategy,
     banPeriod: Duration = 10.seconds,
     cooldownPeriod: Duration = 10.seconds,
+    blockRangeRequestTimeout: Duration = 5.seconds,
   ): MaruNodeSetup {
     fakeLineaContract = FakeLineaRollupSmartContractClient()
     transactionsHelper = BesuTransactionsHelper()
@@ -245,36 +248,7 @@ class MaruPeerScoringTest {
         discoveryPort = udpPortFollower,
         banPeriod = banPeriod,
         cooldownPeriod = cooldownPeriod,
-        p2pNetworkFactory = {
-          privateKeyBytes,
-          p2pConfig,
-          chainId,
-          serDe,
-          metricsFacade,
-          metricsSystem,
-          smf,
-          chain,
-          forkIdHashProvider,
-          forkIdHasher,
-          isBlockImportEnabledProvider,
-          p2pState,
-          ->
-          MisbehavingP2PNetwork(
-            privateKeyBytes = privateKeyBytes,
-            p2pConfig = p2pConfig,
-            chainId = chainId,
-            serDe = serDe,
-            metricsFacade = metricsFacade,
-            metricsSystem = metricsSystem,
-            smf = smf,
-            chain = chain,
-            forkIdHashProvider = forkIdHashProvider,
-            forkIdHasher = forkIdHasher,
-            isBlockImportEnabledProvider = isBlockImportEnabledProvider,
-            p2pState = p2pState,
-            blockRetrievalStrategy = blockRetrievalStrategy,
-          ).p2pNetwork
-        },
+        blockRangeRequestTimeout = blockRangeRequestTimeout,
       )
     followerStack.setMaruApp(followerMaruApp)
 
@@ -324,7 +298,7 @@ class MaruPeerScoringTest {
           followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(0UL)
       }
-    return MaruNodeSetup(validatorMaruApp, followerMaruApp, job)
+    return MaruNodeSetup(validatorMaruApp = validatorMaruApp, followerMaruApp = followerMaruApp, job = job)
   }
 
   private fun findFreePort(): UInt =

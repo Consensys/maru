@@ -426,8 +426,16 @@ class MaruFactory(
     bootnode: String? = null,
     banPeriod: Duration = 10.seconds,
     cooldownPeriod: Duration = 10.seconds,
+    blockRangeRequestTimeout: Duration = 5.seconds,
     allowEmptyBlocks: Boolean = false,
-    syncingConfig: SyncingConfig = defaultSyncingConfig,
+    syncingConfig: SyncingConfig =
+      SyncingConfig(
+        peerChainHeightPollingInterval = 1.seconds,
+        syncTargetSelection = SyncTargetSelection.Highest,
+        elSyncStatusRefreshInterval = 500.milliseconds,
+        desyncTolerance = 0UL,
+        download = SyncingConfig.Download(blockRangeRequestTimeout = blockRangeRequestTimeout),
+      ),
     p2pNetworkFactory: (
       ByteArray,
       P2PConfig,
@@ -487,6 +495,15 @@ class MaruFactory(
     banPeriod: Duration = 10.seconds,
     cooldownPeriod: Duration = 10.seconds,
     allowEmptyBlocks: Boolean = false,
+    blockRangeRequestTimeout: Duration = 5.seconds,
+    syncingConfig: SyncingConfig =
+      SyncingConfig(
+        peerChainHeightPollingInterval = 1.seconds,
+        syncTargetSelection = SyncTargetSelection.Highest,
+        elSyncStatusRefreshInterval = 500.milliseconds,
+        desyncTolerance = 0UL,
+        download = SyncingConfig.Download(blockRangeRequestTimeout = blockRangeRequestTimeout),
+      ),
     p2pNetworkFactory: (
       ByteArray,
       P2PConfig,
@@ -518,6 +535,7 @@ class MaruFactory(
         p2pConfig = p2pConfig,
         overridingLineaContractClient = overridingLineaContractClient,
         allowEmptyBlocks = allowEmptyBlocks,
+        syncingConfig = syncingConfig,
       )
 
     return buildApp(

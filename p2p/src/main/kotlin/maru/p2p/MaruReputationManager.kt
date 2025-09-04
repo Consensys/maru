@@ -116,8 +116,11 @@ class MaruReputationManager(
     if (isStaticPeer(peerAddress.id)) {
       return false
     }
-    return getOrCreateReputation(peerAddress)
-      .adjustReputation(effect, timeProvider.timeInMillis)
+    val bool =
+      getOrCreateReputation(peerAddress)
+        .adjustReputation(effect, timeProvider.timeInMillis)
+    log.debug("Disocnnect peer={} after adjustment={}", peerAddress, bool)
+    return bool
   }
 
   private fun getOrCreateReputation(peerAddress: PeerAddress): Reputation =

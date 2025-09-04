@@ -695,7 +695,6 @@ class P2PTest {
         assertNetworkIsConnectedToPeer(p2pNetworkImpl3, PEER_ID_NODE_1)
       }
 
-      log.info("Dropping peers from p2pNetworkImpl2")
       p2pNetworkImpl2.dropPeer(PEER_ID_NODE_1, DisconnectReason.TOO_MANY_PEERS).get()
       p2pNetworkImpl2.dropPeer(PEER_ID_NODE_3, DisconnectReason.TOO_MANY_PEERS).get()
 
