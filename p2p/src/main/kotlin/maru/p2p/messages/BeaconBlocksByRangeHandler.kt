@@ -8,7 +8,6 @@
  */
 package maru.p2p.messages
 
-import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.p2p.MaruPeer
 import maru.p2p.Message
@@ -19,8 +18,13 @@ import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 
-open class BeaconBlocksByRangeHandler(
-  protected val beaconChain: BeaconChain,
+/**
+ * A configurable handler that uses composition with BlockRetrievalStrategy
+ * instead of requiring inheritance.
+ */
+class BeaconBlocksByRangeHandler(
+  private val beaconChain: BeaconChain,
+  private val blockRetrievalStrategy: BlockRetrievalStrategy = DefaultBlockRetrievalStrategy(),
 ) : RpcMessageHandler<
     Message<BeaconBlocksByRangeRequest, RpcMessageType>,
     Message<BeaconBlocksByRangeResponse, RpcMessageType>,
@@ -42,8 +46,7 @@ open class BeaconBlocksByRangeHandler(
       // Limit the number of blocks to prevent excessive resource usage
       val maxBlocks = minOf(request.count, MAX_BLOCKS_PER_REQUEST)
 
-      val blocks =
-        getBlocks(request, maxBlocks)
+      val blocks = blockRetrievalStrategy.getBlocks(beaconChain, request, maxBlocks)
 
       val response = BeaconBlocksByRangeResponse(blocks = blocks)
       val responseMessage =
@@ -76,17 +79,5 @@ open class BeaconBlocksByRangeHandler(
         ),
       )
     }
-  }
-
-  open fun getBlocks(
-    request: BeaconBlocksByRangeRequest,
-    maxBlocks: ULong,
-  ): List<SealedBeaconBlock> {
-    val blocks =
-      beaconChain.getSealedBeaconBlocks(
-        startBlockNumber = request.startBlockNumber,
-        count = maxBlocks,
-      )
-    return blocks
   }
 }

@@ -20,8 +20,7 @@ import kotlinx.coroutines.launch
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
-import maru.database.BeaconChain
-import maru.p2p.messages.BeaconBlocksByRangeHandler
+import maru.p2p.messages.DefaultBlockRetrievalStrategy
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -33,11 +32,10 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import testutils.FourEmptyResponsesBeaconBlocksByRangeHandler
+import testutils.FourEmptyResponsesStrategy
 import testutils.MisbehavingP2PNetwork
-import testutils.NormalResponsesBeaconBlocksByRangeHandler
 import testutils.PeeringNodeNetworkStack
-import testutils.TimeOutResponsesBeaconBlocksByRangeHandler
+import testutils.TimeOutResponsesStrategy
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
@@ -65,9 +63,9 @@ class MaruPeerScoringTest {
   }
 
   @Test
-  fun `node get's in sync with normal BeaconBlocksByRangeHandler`() {
+  fun `node get's in sync with default BeaconBlocksByRangeHandler`() {
     val maruNodeSetup =
-      setUpNodes(beaconBlocksByRangeHandlerFactory = ::NormalResponsesBeaconBlocksByRangeHandler)
+      setUpNodes(blockRetrievalStrategy = DefaultBlockRetrievalStrategy())
 
     await
       .atMost(20.seconds.toJavaDuration())
@@ -86,7 +84,7 @@ class MaruPeerScoringTest {
   fun `node disconnects validator when BeaconBlocksByRangeHandler sends empty reasponses`() {
     val maruNodeSetup =
       setUpNodes(
-        beaconBlocksByRangeHandlerFactory = ::FourEmptyResponsesBeaconBlocksByRangeHandler,
+        blockRetrievalStrategy = FourEmptyResponsesStrategy(),
         banPeriod = 1000.milliseconds,
         cooldownPeriod = 500.milliseconds,
       )
@@ -99,9 +97,7 @@ class MaruPeerScoringTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          maruNodeSetup.followerMaruApp.p2pNetwork
-            .getPeers()
-            .size == 0,
+          maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0,
         )
       }
     // reconnects after cooldown and finishes syncing
@@ -121,7 +117,7 @@ class MaruPeerScoringTest {
   @Test
   fun `node disconnects validator when BeaconBlocksByRangeHandler takes too long to respond`() {
     val maruNodeSetup =
-      setUpNodes(beaconBlocksByRangeHandlerFactory = ::TimeOutResponsesBeaconBlocksByRangeHandler)
+      setUpNodes(blockRetrievalStrategy = TimeOutResponsesStrategy())
 
     await
       .atMost(2.seconds.toJavaDuration())
@@ -129,9 +125,7 @@ class MaruPeerScoringTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          maruNodeSetup.followerMaruApp.p2pNetwork
-            .getPeers()
-            .size == 0,
+          maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0,
         )
       }
 
@@ -145,7 +139,7 @@ class MaruPeerScoringTest {
   )
 
   private fun setUpNodes(
-    beaconBlocksByRangeHandlerFactory: (BeaconChain) -> BeaconBlocksByRangeHandler,
+    blockRetrievalStrategy: maru.p2p.messages.BlockRetrievalStrategy,
     banPeriod: Duration = 10.seconds,
     cooldownPeriod: Duration = 10.seconds,
   ): MaruNodeSetup {
@@ -204,7 +198,7 @@ class MaruPeerScoringTest {
             forkIdHasher = forkIdHasher,
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,
-            beaconBlocksByRangeHandlerFactory = beaconBlocksByRangeHandlerFactory,
+            blockRetrievalStrategy = blockRetrievalStrategy,
           ).p2pNetwork
         },
       )
@@ -278,7 +272,7 @@ class MaruPeerScoringTest {
             forkIdHasher = forkIdHasher,
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,
-            beaconBlocksByRangeHandlerFactory = beaconBlocksByRangeHandlerFactory,
+            blockRetrievalStrategy = blockRetrievalStrategy,
           ).p2pNetwork
         },
       )
