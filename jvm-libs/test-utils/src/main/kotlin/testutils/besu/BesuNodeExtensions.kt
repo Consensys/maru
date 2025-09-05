@@ -64,3 +64,20 @@ fun Cluster.startWithRetry(vararg besuNodes: BesuNode) {
   }
   throw lastException ?: IllegalStateException("Failed to start BesuNode after $maxAttempts attempts")
 }
+
+fun Cluster.addNodeWithRetry(besuNode: BesuNode) {
+  val maxAttempts = 10
+  var lastException: IllegalStateException? = null
+  repeat(maxAttempts) { attempt ->
+    try {
+      this.addNode(besuNode)
+      return
+    } catch (e: IllegalStateException) {
+      lastException = e
+      if (attempt < maxAttempts - 1) {
+        Thread.sleep(1000)
+      }
+    }
+  }
+  throw lastException ?: IllegalStateException("Failed to start BesuNode after $maxAttempts attempts")
+}

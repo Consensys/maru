@@ -8,8 +8,11 @@
  */
 package testutils.besu
 
+import java.util.Collections.singletonList
 import java.util.Optional
+import kotlin.jvm.optionals.getOrDefault
 import org.hyperledger.besu.crypto.KeyPairUtil
+import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration
 import org.hyperledger.besu.ethereum.core.AddressHelpers
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration.MutableInitValues
@@ -31,6 +34,8 @@ object BesuFactory {
   fun buildTestBesu(
     genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS),
     validator: Boolean = true,
+    engineRpcPort: Optional<Int> = Optional.empty(),
+    jsonRpcPort: Optional<Int> = Optional.empty(),
   ): BesuNode =
     BesuNodeFactory().createNode("miner") { builder: BesuNodeConfigurationBuilder ->
       val persistentStorageFactory: KeyValueStorageFactory =
@@ -39,6 +44,18 @@ object BesuFactory {
           KeyValueSegmentIdentifier.entries,
           RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS,
         )
+
+      val engineRpcConfig = JsonRpcConfiguration.createEngineDefault()
+      engineRpcConfig.setEnabled(true)
+      engineRpcConfig.setPort(engineRpcPort.getOrDefault(0))
+      engineRpcConfig.setHostsAllowlist(singletonList("*"))
+      engineRpcConfig.setAuthenticationEnabled(false)
+
+      val jsonRpcConfig = JsonRpcConfiguration.createDefault()
+      jsonRpcConfig.setEnabled(true)
+      jsonRpcConfig.setPort(jsonRpcPort.getOrDefault(0))
+      jsonRpcConfig.setHostsAllowlist(singletonList("*"))
+
       builder
         .storageImplementation(persistentStorageFactory)
         .genesisConfigProvider {
@@ -46,8 +63,8 @@ object BesuFactory {
             genesisFile,
           )
         }.devMode(false)
-        .engineRpcEnabled(true)
-        .jsonRpcEnabled()
+        .engineJsonRpcConfiguration(engineRpcConfig)
+        .jsonRpcConfiguration(jsonRpcConfig)
         .webSocketEnabled()
 
       if (validator) {
