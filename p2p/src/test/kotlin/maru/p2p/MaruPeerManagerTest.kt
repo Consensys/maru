@@ -239,7 +239,7 @@ class MaruPeerManagerTest {
     whenever(peer.address).thenReturn(address)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
     whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(reputationManager.isExternalConnectionInitiationAllowed(address)).thenReturn(true)
+    whenever(reputationManager.isConnectionInitiationAllowed(address)).thenReturn(true)
     whenever(p2pNetwork.peerCount).thenReturn(0)
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
 

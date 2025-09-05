@@ -123,7 +123,7 @@ class MaruPeerScoringTest {
 
   @Test
   fun `node disconnects validator when requests time out`() {
-    val timeout = 100.milliseconds
+    val timeout = 3.seconds
     val delay = timeout + 2.seconds
     val maruNodeSetup =
       setUpNodes(
@@ -132,9 +132,12 @@ class MaruPeerScoringTest {
         cooldownPeriod = 20.seconds,
       )
     try {
-      sleep(delay.inWholeMilliseconds)
+      sleep((delay - 1.seconds).inWholeMilliseconds)
+      assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 1)
 
-      assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0)
+      await.untilAsserted {
+        assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0)
+      }
     } finally {
       maruNodeSetup.job.cancel()
     }
