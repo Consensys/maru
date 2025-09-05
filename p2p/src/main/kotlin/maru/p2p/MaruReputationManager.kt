@@ -150,17 +150,19 @@ class MaruReputationManager(
       reason: Optional<DisconnectReason>,
       locallyInitiated: Boolean,
     ) {
-      if (isLocallyConsideredUnsuitable(reason, locallyInitiated) ||
-        reason.map { it.isPermanent }.orElse(false)
-      ) {
-        suitableAfter = Optional.of(disconnectTime.plus(banPeriod))
-        score.set(DEFAULT_SCORE)
-      } else if (suitableAfter.isEmpty) {
-        suitableAfter = Optional.of(disconnectTime.plus(cooldownPeriod))
+      if (suitableAfter.isEmpty) {
+        if (isLocallyConsideredUnsuitable(reason, locallyInitiated) ||
+          reason.map { it.isPermanent }.orElse(false)
+        ) {
+          suitableAfter = Optional.of(disconnectTime.plus(banPeriod))
+          score.set(DEFAULT_SCORE)
+        } else {
+          suitableAfter = Optional.of(disconnectTime.plus(cooldownPeriod))
+        }
       }
     }
 
-    private fun isLocallyConsideredUnsuitable(
+    fun isLocallyConsideredUnsuitable(
       reason: Optional<DisconnectReason>,
       locallyInitiated: Boolean,
     ): Boolean = locallyInitiated && reason.map { BAN_REASONS.contains(it) }.orElse(false)
@@ -178,7 +180,7 @@ class MaruReputationManager(
         }
       val shouldDisconnect = newScore <= disconnectScoreThreshold
       if (shouldDisconnect) {
-        suitableAfter = Optional.of(currentTime.plus(banPeriod))
+        suitableAfter = Optional.of(currentTime.plus(cooldownPeriod))
         score.set(DEFAULT_SCORE)
       }
       return shouldDisconnect

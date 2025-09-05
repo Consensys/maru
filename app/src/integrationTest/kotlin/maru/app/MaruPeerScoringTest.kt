@@ -12,6 +12,7 @@ import java.lang.Thread.sleep
 import java.net.ServerSocket
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import kotlinx.coroutines.CoroutineScope
@@ -65,73 +66,78 @@ class MaruPeerScoringTest {
   }
 
   @Test
-  fun `node get's in sync with default BeaconBlocksByRangeHandler`() {
+  fun `node get's in sync with default block retrieval strategy`() {
     val maruNodeSetup =
       setUpNodes(blockRetrievalStrategy = DefaultBlockRetrievalStrategy())
 
-    await
-      .atMost(20.seconds.toJavaDuration())
-      .pollInterval(200.milliseconds.toJavaDuration())
-      .ignoreExceptions()
-      .untilAsserted {
-        assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
-        ).isGreaterThanOrEqualTo(15UL)
-      }
-
-    maruNodeSetup.job.cancel()
+    try {
+      await
+        .atMost(20.seconds.toJavaDuration())
+        .pollInterval(200.milliseconds.toJavaDuration())
+        .ignoreExceptions()
+        .untilAsserted {
+          assertThat(
+            followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          ).isGreaterThanOrEqualTo(15UL)
+        }
+    } finally {
+      maruNodeSetup.job.cancel()
+    }
   }
 
   @Test
-  fun `node disconnects validator when BeaconBlocksByRangeHandler sends empty responses`() {
+  fun `node disconnects validator when receiving too many empty responses`() {
     val maruNodeSetup =
       setUpNodes(
         blockRetrievalStrategy = FourEmptyResponsesStrategy(),
-        banPeriod = 1000.milliseconds,
-        cooldownPeriod = 500.milliseconds,
+        banPeriod = 10.minutes,
+        cooldownPeriod = 1000.milliseconds,
       )
 
-    // In setUpNodes we have made sure that the validator and the follower have 1 peer
-    // Now wait until it is disconnected because of empty responses
-    await
-      .atMost(2.seconds.toJavaDuration())
-      .pollInterval(250.milliseconds.toJavaDuration())
-      .ignoreExceptions()
-      .untilAsserted {
-        assertThat(
-          maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0,
-        )
-      }
-    // reconnects after cooldown and finishes syncing
-    await
-      .atMost(20.seconds.toJavaDuration())
-      .pollInterval(200.milliseconds.toJavaDuration())
-      .ignoreExceptions()
-      .untilAsserted {
-        assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
-        ).isGreaterThanOrEqualTo(18UL)
-      }
-
-    maruNodeSetup.job.cancel()
+    try {
+      // In setUpNodes we have made sure that the validator and the follower have 1 peer
+      // Now wait until it is disconnected because of empty responses
+      await
+        .atMost(2.seconds.toJavaDuration())
+        .pollInterval(250.milliseconds.toJavaDuration())
+        .ignoreExceptions()
+        .untilAsserted {
+          assertThat(
+            maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0,
+          )
+        }
+      // reconnects after cooldown and finishes syncing
+      await
+        .atMost(20.seconds.toJavaDuration())
+        .pollInterval(200.milliseconds.toJavaDuration())
+        .ignoreExceptions()
+        .untilAsserted {
+          assertThat(
+            followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          ).isGreaterThanOrEqualTo(18UL)
+        }
+    } finally {
+      maruNodeSetup.job.cancel()
+    }
   }
 
   @Test
-  fun `node disconnects validator when BeaconBlocksByRangeHandler takes too long to respond`() {
+  fun `node disconnects validator when requests time out`() {
     val timeout = 100.milliseconds
     val delay = timeout + 2.seconds
     val maruNodeSetup =
       setUpNodes(
         blockRangeRequestTimeout = timeout,
         blockRetrievalStrategy = TimeOutResponsesStrategy(delay = delay),
-        cooldownPeriod = 10.seconds,
+        cooldownPeriod = 20.seconds,
       )
+    try {
+      sleep(delay.inWholeMilliseconds)
 
-    sleep(delay.inWholeMilliseconds)
-
-    assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0)
-
-    maruNodeSetup.job.cancel()
+      assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0)
+    } finally {
+      maruNodeSetup.job.cancel()
+    }
   }
 
   data class MaruNodeSetup(
@@ -140,7 +146,7 @@ class MaruPeerScoringTest {
     val job: Job,
   )
 
-  private fun setUpNodes(
+  fun setUpNodes(
     blockRetrievalStrategy: BlockRetrievalStrategy,
     banPeriod: Duration = 10.seconds,
     cooldownPeriod: Duration = 10.seconds,
@@ -265,39 +271,43 @@ class MaruPeerScoringTest {
         }
       }
 
-    await
-      .atMost(20.seconds.toJavaDuration())
-      .pollInterval(200.milliseconds.toJavaDuration())
-      .ignoreExceptions()
-      .untilAsserted {
-        assertThat(
-          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
-        ).isGreaterThanOrEqualTo(10UL)
-      }
+    try {
+      await
+        .atMost(20.seconds.toJavaDuration())
+        .pollInterval(200.milliseconds.toJavaDuration())
+        .ignoreExceptions()
+        .untilAsserted {
+          assertThat(
+            validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          ).isGreaterThanOrEqualTo(10UL)
+        }
 
-    followerStack.maruApp.start()
+      followerStack.maruApp.start()
 
-    validatorStack.maruApp.awaitTillMaruHasPeers(1u)
-    followerStack.maruApp.awaitTillMaruHasPeers(1u)
+      validatorStack.maruApp.awaitTillMaruHasPeers(1u)
+      followerStack.maruApp.awaitTillMaruHasPeers(1u)
 
-    followerEthApiClient =
-      createEthApiClient(
-        rpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
-        log = LogManager.getLogger("clients.l2.test.follower"),
-        requestRetryConfig = null,
-        vertx = null,
-      )
-    // wait for Besu to be fully started and synced,
-    // to avoid CI flakiness due to low resources sometimes
-    await
-      .atMost(20.seconds.toJavaDuration())
-      .pollInterval(200.milliseconds.toJavaDuration())
-      .ignoreExceptions()
-      .untilAsserted {
-        assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
-        ).isGreaterThanOrEqualTo(0UL)
-      }
+      followerEthApiClient =
+        createEthApiClient(
+          rpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+          log = LogManager.getLogger("clients.l2.test.follower"),
+          requestRetryConfig = null,
+          vertx = null,
+        )
+      // wait for Besu to be fully started and synced,
+      // to avoid CI flakiness due to low resources sometimes
+      await
+        .atMost(20.seconds.toJavaDuration())
+        .pollInterval(200.milliseconds.toJavaDuration())
+        .ignoreExceptions()
+        .untilAsserted {
+          assertThat(
+            followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          ).isGreaterThanOrEqualTo(0UL)
+        }
+    } catch (e: Exception) {
+      job.cancel()
+    }
     return MaruNodeSetup(validatorMaruApp = validatorMaruApp, followerMaruApp = followerMaruApp, job = job)
   }
 
