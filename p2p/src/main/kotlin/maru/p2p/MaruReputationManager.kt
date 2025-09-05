@@ -38,7 +38,6 @@ class MaruReputationManager(
 ) : ReputationManager {
   companion object {
     private const val DEFAULT_SCORE = 0
-    private val `5_SECONDS` = UInt64.valueOf(5000)
     private val BAN_REASONS: EnumSet<DisconnectReason?> =
       EnumSet.of(
         DisconnectReason.IRRELEVANT_NETWORK,
@@ -74,14 +73,7 @@ class MaruReputationManager(
   override fun isConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean =
     peerReputations
       .getCached(peerAddress.id)
-      .map<Boolean> { it.shouldInitiateConnection(timeProvider.timeInMillis) }
-      .orElse(true)
-
-  fun isExternalConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean =
-    peerReputations
-      .getCached(peerAddress.id)
-      // allow external connection 5 seconds earlier to prevent peers from not being able to reconnect immediately
-      .map { it.shouldInitiateConnection(timeProvider.timeInMillis + `5_SECONDS`) }
+      .map { it.shouldInitiateConnection(timeProvider.timeInMillis) }
       .orElse(true)
 
   override fun reportInitiatedConnectionSuccessful(peerAddress: PeerAddress) {

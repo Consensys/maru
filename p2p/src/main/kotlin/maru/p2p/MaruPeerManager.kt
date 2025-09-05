@@ -140,7 +140,7 @@ class MaruPeerManager(
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
       return
     }
-    if (isAStaticPeer || reputationManager.isExternalConnectionInitiationAllowed(peer.address)) {
+    if (isAStaticPeer || reputationManager.isConnectionInitiationAllowed(peer.address)) {
       val maruPeer = maruPeerFactory.createMaruPeer(peer)
       connectedPeers[peer.id] = maruPeer
       if (maruPeer.connectionInitiatedLocally()) {
