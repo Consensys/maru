@@ -65,9 +65,8 @@ import maru.syncing.HighestHeadTargetSelector
 import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
-import maru.syncing.SyncTargetSelector
-import maru.syncing.SyncControllerManager
 import maru.syncing.SyncStatusProvider
+import maru.syncing.SyncTargetSelector
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -182,7 +181,7 @@ class MaruAppFactory {
         p2PState = kvDatabase,
         syncStatusProviderProvider = { syncControllerImpl!! },
         syncConfig = config.syncing,
-        )
+      )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =
       overridingFinalizationProvider
@@ -318,7 +317,7 @@ class MaruAppFactory {
       p2PState: P2PState,
       syncStatusProviderProvider: () -> SyncStatusProvider,
       syncConfig: SyncingConfig,
-      ): P2PNetwork =
+    ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
           privateKeyBytes = privateKey,
@@ -340,7 +339,8 @@ class MaruAppFactory {
           forkIdHasher = forkIdHasher,
           p2PState = p2PState,
           syncStatusProviderProvider = syncStatusProviderProvider,
-          syncConfig = syncConfig,        )
+          syncConfig = syncConfig,
+        )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
         NoOpP2PNetwork
