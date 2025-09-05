@@ -118,6 +118,44 @@ class MaruFollowerTest {
   }
 
   @Test
+  fun `Besu sequencer restarted from scratch is able to sync state`() {
+    setupMaruHelper()
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+    val oldBesuSequencer = validatorStack.besuNode
+    val engineRpcPort = oldBesuSequencer.engineJsonRpcPort
+    val jsonRpcPort = oldBesuSequencer.jsonRpcPort
+    cluster.stopNode(oldBesuSequencer)
+    oldBesuSequencer.stop()
+    oldBesuSequencer.close()
+
+    val newBesuSequencer =
+      BesuFactory.buildTestBesu(
+        validator = true,
+        jsonRpcPort = jsonRpcPort,
+        engineRpcPort = engineRpcPort,
+      )
+
+    cluster.addNode(newBesuSequencer)
+
+    await
+      .pollDelay(1.seconds.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
+      .untilAsserted {
+        val newSequencerBlocks = newBesuSequencer.getMinedBlocks(blocksToProduce)
+        assertThat(newSequencerBlocks).hasSize(blocksToProduce)
+      }
+  }
+
+  @Test
   fun `Maru follower is able to import blocks`() {
     setupMaruHelper()
 
