@@ -34,6 +34,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import testutils.FourEmptyResponsesStrategy
 import testutils.MisbehavingP2PNetwork
@@ -123,7 +124,7 @@ class MaruPeerScoringTest {
 
   @Test
   fun `node disconnects validator when requests time out`() {
-    val timeout = 100.milliseconds
+    val timeout = 3.seconds
     val delay = timeout + 2.seconds
     val maruNodeSetup =
       setUpNodes(
@@ -132,9 +133,12 @@ class MaruPeerScoringTest {
         cooldownPeriod = 20.seconds,
       )
     try {
-      sleep(delay.inWholeMilliseconds)
+      sleep((delay - 1.seconds).inWholeMilliseconds)
+      assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 1)
 
-      assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0)
+      await.untilAsserted {
+        assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0)
+      }
     } finally {
       maruNodeSetup.job.cancel()
     }
