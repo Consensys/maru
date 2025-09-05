@@ -116,7 +116,7 @@ class DefaultMaruPeer(
                 )
               }
             } catch (e: Exception) {
-              log.trace("Failed to schedule disconnect for peerId={}", this.id, e)
+              log.trace("Failed to schedule sendStatus to peerId={}", this.id, e)
             }
           }
         }.thenApply {}
