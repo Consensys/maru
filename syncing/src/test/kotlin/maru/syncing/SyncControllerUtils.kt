@@ -26,6 +26,10 @@ class FakeCLSyncService : CLSyncService {
     syncCompleteHandlers.add(handler)
   }
 
+  override fun getSyncDistance(): ULong = 0UL
+
+  override fun getSyncTarget(): ULong = 0UL
+
   fun triggerSyncComplete(syncTarget: ULong) {
     syncCompleteHandlers.forEach { it(syncTarget) }
   }
@@ -34,11 +38,13 @@ class FakeCLSyncService : CLSyncService {
 fun createSyncController(
   blockNumber: ULong,
   clSyncService: CLSyncService = FakeCLSyncService(),
+  desyncTolerance: ULong,
 ): BeaconSyncControllerImpl {
   val state = DataGenerators.randomBeaconState(blockNumber)
   val beaconChain = InMemoryBeaconChain(state)
   return BeaconSyncControllerImpl(
     beaconChain = beaconChain,
     clSyncService = clSyncService,
+    desyncTolerance = desyncTolerance,
   )
 }

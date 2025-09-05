@@ -22,7 +22,6 @@ class StatusSerDeTest {
 
     val serializedData = serDe.serialize(testValue)
     val deserializedValue = serDe.deserialize(serializedData)
-
     assertThat(deserializedValue).isEqualTo(testValue)
   }
 }

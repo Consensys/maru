@@ -9,9 +9,11 @@
 package maru.syncing
 
 import java.util.Timer
+import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import maru.database.BeaconChain
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
 import org.apache.logging.log4j.LogManager
@@ -29,54 +31,47 @@ class PeerChainTracker(
   private val beaconSyncTargetUpdateHandler: BeaconSyncTargetUpdateHandler,
   private val targetChainHeadCalculator: SyncTargetSelector,
   private val config: Config,
-  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon -> Timer(name, isDaemon) },
+  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
+    Timer(
+      "$name-${UUID.randomUUID()}",
+      isDaemon,
+    )
+  },
+  private val beaconChain: BeaconChain,
 ) : LongRunningService {
   private val log = LogManager.getLogger(this.javaClass)
 
   data class Config(
     val pollingUpdateInterval: Duration,
-    val granularity: UInt, // Resolution of the peer heights
-  ) {
-    init {
-      require(granularity > 0U) { "Granularity should not be 0!" }
-    }
-  }
+  )
 
-  private var peers = mutableMapOf<String, ULong>()
-  private var lastNotifiedTarget: ULong = 0UL // 0 is an Ok magic number, since it represents Genesis
+  private var lastNotifiedTarget: ULong? = null // 0 is an Ok magic number, since it represents Genesis
   private var isRunning = false
 
   // Marked as volatile to ensure visibility across threads
   private var poller: Timer? = null
 
   /**
-   * Rounds the block height according to the configured granularity
-   */
-  private fun roundHeight(height: ULong): ULong {
-    if (config.granularity <= 1u) return height
-
-    return (height / config.granularity.toULong()) * config.granularity.toULong()
-  }
-
-  /**
    * Updates the peer view and triggers sync target updates if needed
    */
   private fun updatePeerView() {
     log.trace("Updating peer view")
-    val newPeerHeads = peersHeadsProvider.getPeersHeads()
 
-    val roundedNewPeerHeads = newPeerHeads.mapValues { roundHeight(it.value) }
-    peers = roundedNewPeerHeads.toMutableMap()
-    log.debug("Rounded peers peersSize={}", peers.size)
+    val peersHeads = peersHeadsProvider.getPeersHeads().values.toList()
+
     // Update the state and recalculate the sync target
-    if (peers.isNotEmpty()) {
-      val newSyncTarget = targetChainHeadCalculator.selectBestSyncTarget(peers.values.toList())
-      log.trace("Selected best syncTarget={} lastNotifiedTarget={}", newSyncTarget, lastNotifiedTarget)
-      if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change
-        beaconSyncTargetUpdateHandler.onBeaconChainSyncTargetUpdated(newSyncTarget)
-        log.trace("Notified about the new syncTarget={}", newSyncTarget)
-        lastNotifiedTarget = newSyncTarget
+    val newSyncTarget =
+      if (peersHeads.isNotEmpty()) {
+        targetChainHeadCalculator.selectBestSyncTarget(peersHeads)
+      } else {
+        // If there are no peers, we return the chain head of current node, because we don't know better
+        beaconChain.getLatestBeaconState().beaconBlockHeader.number
       }
+    log.trace("Selected best syncTarget={} lastNotifiedTarget={}", newSyncTarget, lastNotifiedTarget)
+    if (newSyncTarget != lastNotifiedTarget) { // Only send an update if there's an actual target change
+      beaconSyncTargetUpdateHandler.onBeaconChainSyncTargetUpdated(newSyncTarget)
+      log.debug("Notified about the new syncTarget={}", newSyncTarget)
+      lastNotifiedTarget = newSyncTarget
     }
   }
 
@@ -109,6 +104,7 @@ class PeerChainTracker(
       poller?.cancel()
       poller = null
       isRunning = false
+      lastNotifiedTarget = null
       log.info("PeerChainTracker is stopped")
     }
   }

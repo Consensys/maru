@@ -11,32 +11,26 @@ package maru.app
 import io.vertx.core.Vertx
 import java.time.Clock
 import maru.api.ApiServer
-import maru.config.FollowersConfig
 import maru.config.MaruConfig
-import maru.config.consensus.ElFork
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ElBlockMetadata
+import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.LatestElBlockMetadataCache
 import maru.consensus.NewBlockHandler
-import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
-import maru.consensus.ProtocolStarterBlockHandler
-import maru.consensus.SealedBeaconBlockHandlerAdapter
-import maru.consensus.blockimport.FollowerBeaconBlockImporter
-import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
-import maru.consensus.delegated.ElDelegatedConsensusFactory
+import maru.consensus.qbft.DifficultyAwareQbftFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
 import maru.database.BeaconChain
+import maru.finalization.LineaFinalizationProvider
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
-import maru.p2p.SealedBeaconBlockBroadcaster
-import maru.p2p.ValidationResult
+import maru.p2p.PeerInfo
 import maru.services.LongRunningService
+import maru.subscription.InOrderFanoutSubscriptionManager
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
@@ -49,7 +43,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruApp(
   val config: MaruConfig,
-  beaconGenesisConfig: ForksSchedule,
+  val beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
   private val p2pNetwork: P2PNetwork,
@@ -60,7 +54,8 @@ class MaruApp(
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
   private val lastElBlockMetadataCache: LatestElBlockMetadataCache,
-  private val ethereumJsonRpcClient: Web3JClient,
+  private val validatorELNodeEthJsonRpcClient: Web3JClient,
+  private val validatorELNodeEngineApiWeb3JClient: Web3JClient,
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
@@ -68,19 +63,39 @@ class MaruApp(
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   init {
-    if (config.qbftOptions == null) {
+    if (config.qbft == null) {
       log.info("Qbft options are not defined. Maru is running in follower-only node")
     }
 
     metricsFacade.createGauge(
       category = MaruMetricsCategory.METADATA,
-      name = "block.height",
-      description = "Latest block height",
+      name = "el.block.height",
+      description = "Latest EL block height",
       measurementSupplier = {
         lastElBlockMetadataCache.getLatestBlockMetadata().blockNumber.toLong()
       },
     )
+
+    metricsFacade.createGauge(
+      category = MaruMetricsCategory.METADATA,
+      name = "cl.block.height",
+      description = "Latest CL block height",
+      measurementSupplier = {
+        beaconChain
+          .getLatestBeaconState()
+          .beaconBlockHeader.number
+          .toLong()
+      },
+    )
   }
+
+  private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
+    config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
+      Helpers.createWeb3jClient(
+        apiEndpointConfig = apiEndpointConfig,
+        log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
+      )
+    }
 
   fun p2pPort(): UInt = p2pNetwork.port
 
@@ -95,168 +110,133 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
-
-  @Suppress("UNCHECKED_CAST")
-  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
-    followers.followers
-      .mapValues {
-        val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague, metricsFacade)
-        FollowerBeaconBlockImporter.create(engineApiClient, finalizationProvider) as NewBlockHandler<Unit>
-      }
+  private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock, beaconChain)
 
   fun start() {
-    try {
-      vertx
-        .deployVerticle(
-          ObservabilityServer(
-            ObservabilityServer.Config(applicationName = "maru", port = config.observabilityOptions.port.toInt()),
-          ),
-        ).get()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the observability server", th)
-      throw th
+    if (finalizationProvider is LineaFinalizationProvider) {
+      start("Finalization Provider", finalizationProvider::start)
     }
-    try {
-      p2pNetwork.start().get()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the P2P network", th)
-      throw th
+    start("P2P Network") { p2pNetwork.start().get() }
+    start("Sync Service", syncControllerManager::start)
+    start("beacon Api", apiServer::start)
+    // observability shall be the last to start because of liveness/readiness probe
+    start("Observability Server") {
+      ObservabilityServer(
+        ObservabilityServer.Config(applicationName = "maru", port = config.observability.port.toInt()),
+      ).let { vertx.deployVerticle(it).get() }
     }
-    try {
-      syncControllerManager.start()
-    } catch (th: Throwable) {
-      log.error("Error while trying to start the Sync Service", th)
-      throw th
-    }
-    apiServer.start()
     log.info("Maru is up")
   }
 
   fun stop() {
-    try {
+    stop("Sync service", syncControllerManager::stop)
+    stop("P2P Network") { p2pNetwork.stop().get() }
+    if (finalizationProvider is LineaFinalizationProvider) {
+      stop("Finalization Provider", finalizationProvider::stop)
+    }
+    stop("Beacon API", apiServer::stop)
+    stop("Protocol", protocolStarter::stop)
+    stop("vertx verticles") {
       vertx.deploymentIDs().forEach {
         vertx.undeploy(it).get()
       }
-    } catch (th: Throwable) {
-      log.warn("Error while trying to stop the vertx verticles", th)
     }
-    try {
-      p2pNetwork.stop().get()
-    } catch (th: Throwable) {
-      log.warn("Error while trying to stop the P2P network", th)
-    }
-    try {
-      syncControllerManager.stop()
-    } catch (th: Throwable) {
-      log.error("Error while trying to stop the Sync Service", th)
-    }
-    protocolStarter.stop()
-    apiServer.stop()
     log.info("Maru is down")
   }
 
   override fun close() {
+    validatorELNodeEngineApiWeb3JClient.eth1Web3j.shutdown()
+    validatorELNodeEthJsonRpcClient.eth1Web3j.shutdown()
+    followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
+    p2pNetwork.close()
+    vertx.close()
+    // close db last, otherwise other components may fail trying to save data
     beaconChain.close()
   }
+
+  private fun start(
+    serviceName: String,
+    action: () -> Unit,
+  ) {
+    runCatching(action)
+      .onFailure { log.error("Failed to start {}, errorMessage={}", serviceName, it.message, it) }
+      .getOrThrow()
+  }
+
+  private fun stop(
+    serviceName: String,
+    action: () -> Unit,
+  ) = runCatching(action)
+    .getOrElse { log.warn("Failed to stop {}, errorMessage={}", serviceName, it.message, it) }
+
+  fun peersConnected(): UInt =
+    p2pNetwork
+      .getPeers()
+      .filter { it.status == PeerInfo.PeerStatus.CONNECTED }
+      .size
+      .toUInt()
 
   private fun createProtocolStarter(
     config: MaruConfig,
     beaconGenesisConfig: ForksSchedule,
     clock: Clock,
+    beaconChain: BeaconChain,
   ): Protocol {
     val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
-
-    val followerHandlersMap: Map<String, NewBlockHandler<Unit>> =
-      createFollowerHandlers(config.followers)
-    val followerBlockHandlers = followerHandlersMap + metadataCacheUpdaterHandlerEntry
-    val blockImportHandlers =
-      NewBlockHandlerMultiplexer(followerBlockHandlers)
-    val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
-
-    val qbftForkTimestamp =
-      beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class).timestampSeconds.toULong()
-    val beaconChainInitialization =
-      BeaconChainInitialization(
-        beaconChain = beaconChain,
-        genesisTimestamp = qbftForkTimestamp,
-      )
-
     val qbftFactory =
-      if (config.qbftOptions != null) {
-        val sealedBlockHandlers =
-          mutableMapOf(
-            "beacon block handlers" to adaptedBeaconBlockImporter,
-            "p2p broadcast sealed beacon block handler" to
-              SealedBeaconBlockBroadcaster(p2pNetwork),
-          )
-        val sealedBlockHandlerMultiplexer =
-          NewSealedBeaconBlockHandlerMultiplexer<Unit>(
-            handlersMap = sealedBlockHandlers,
-          )
-        QbftProtocolFactoryWithBeaconChainInitialization(
-          qbftOptions = config.qbftOptions!!,
+      if (config.qbft != null) {
+        QbftProtocolValidatorFactory(
+          qbftOptions = config.qbft!!,
           privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider()),
-          validatorElNodeConfig = config.validatorElNode,
+          validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient,
+          followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
           metricsSystem = metricsSystem,
           finalizationStateProvider = finalizationProvider,
           nextTargetBlockTimestampProvider = nextTargetBlockTimestampProvider,
-          newBlockHandler = sealedBlockHandlerMultiplexer,
           beaconChain = beaconChain,
           clock = clock,
           p2pNetwork = p2pNetwork,
-          beaconChainInitialization = beaconChainInitialization,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
+          metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
+          forksSchedule = beaconGenesisConfig,
         )
       } else {
         QbftFollowerFactory(
-          p2PNetwork = p2pNetwork,
+          p2pNetwork = p2pNetwork,
           beaconChain = beaconChain,
-          newBlockHandler = blockImportHandlers,
-          validatorElNodeConfig = config.validatorElNode,
-          beaconChainInitialization = beaconChainInitialization,
+          validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient,
+          followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
+          metadataCacheUpdaterHandlerEntry = metadataCacheUpdaterHandlerEntry,
+          finalizationStateProvider = finalizationProvider,
         )
       }
-    val delegatedConsensusNewBlockHandler =
-      NewBlockHandlerMultiplexer(
-        mapOf(metadataCacheUpdaterHandlerEntry),
+    val forkTransitionSubscriptionManager = InOrderFanoutSubscriptionManager<ForkSpec>()
+    forkTransitionSubscriptionManager.addSyncSubscriber(p2pNetwork::handleForkTransition)
+    val difficultyAwareQbftFactory =
+      DifficultyAwareQbftFactory(
+        ethereumJsonRpcClient = validatorELNodeEthJsonRpcClient.eth1Web3j,
+        postTtdProtocolFactory = qbftFactory,
       )
-
     val protocolStarter =
       ProtocolStarter.create(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
           OmniProtocolFactory(
-            elDelegatedConsensusFactory =
-              ElDelegatedConsensusFactory(
-                ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
-                newBlockHandler = delegatedConsensusNewBlockHandler,
-              ),
             qbftConsensusFactory = qbftFactory,
+            difficultyAwareQbftFactory = difficultyAwareQbftFactory,
           ),
-        elMetadataProvider = lastElBlockMetadataCache,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         syncStatusProvider = syncStatusProvider,
+        forkTransitionCheckInterval = config.protocolTransitionPollingInterval,
+        forkTransitionNotifier = forkTransitionSubscriptionManager,
       )
-
-    val protocolStarterBlockHandlerEntry = "protocol starter" to ProtocolStarterBlockHandler(protocolStarter)
-    delegatedConsensusNewBlockHandler.addHandler(
-      protocolStarterBlockHandlerEntry.first,
-    ) {
-      protocolStarterBlockHandlerEntry.second.handleNewBlock(it)
-    }
-    blockImportHandlers.addHandler(
-      protocolStarterBlockHandlerEntry.first,
-    ) {
-      protocolStarterBlockHandlerEntry.second
-        .handleNewBlock(it)
-        .thenApply { ValidationResult.Companion.Valid }
-    }
 
     return protocolStarter
   }
+
+  fun p2pNetwork(): P2PNetwork = p2pNetwork
 }

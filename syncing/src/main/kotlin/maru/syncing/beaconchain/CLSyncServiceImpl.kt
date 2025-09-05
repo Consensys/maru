@@ -12,6 +12,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import linea.kotlin.minusCoercingUnderflow
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
@@ -38,7 +39,7 @@ class CLSyncServiceImpl(
   metricsFacade: MetricsFacade,
 ) : CLSyncService,
   LongRunningService {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(this.javaClass)
   private val beaconChainPipeline = AtomicReference<BeaconChainPipeline?>(null)
   private val syncTarget = AtomicReference(0UL)
   private val started = AtomicBoolean(false)
@@ -75,13 +76,27 @@ class CLSyncServiceImpl(
     }
   }
 
+  override fun getSyncDistance(): ULong {
+    if (!started.get()) {
+      // we need to return a number to the BeaconAPI that indicates the sync distance
+      // so we will optimistically return 0UL if the service is not started
+      return 0UL
+    }
+
+    return syncTarget
+      .get()
+      .minusCoercingUnderflow(beaconChain.getLatestBeaconState().beaconBlockHeader.number)
+  }
+
+  override fun getSyncTarget(): ULong = syncTarget.get()
+
   @Synchronized
   private fun startSync() {
-    val startBlock = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1UL
+    val startBlock = beaconChain.getLatestBeaconState().beaconBlockHeader.number + 1UL
     val pipeline = pipelineFactory.createPipeline(startBlock)
 
     if (beaconChainPipeline.compareAndSet(null, pipeline)) {
-      pipeline.pipline.start(executorService).handle { _, ex ->
+      pipeline.pipeline.start(executorService).handle { _, ex ->
         if (ex != null && ex !is CancellationException) {
           log.error("Sync pipeline failed, restarting", ex)
           pipelineRestartCounter.increment()
@@ -91,16 +106,25 @@ class CLSyncServiceImpl(
         } else {
           val completedSyncTarget = pipeline.target()
           beaconChainPipeline.compareAndSet(pipeline, null)
-          log.info("Sync completed syncTarget={}", completedSyncTarget)
-          syncCompleteHanders.notifySubscribers(completedSyncTarget)
+          log.info("Sync completed completedSyncTarget={} syncTarget={}", completedSyncTarget, syncTarget.get())
+
+          if (completedSyncTarget < syncTarget.get()) {
+            log.info(
+              "Starting new sync as current target {} is higher than completed {}",
+              syncTarget.get(),
+              completedSyncTarget,
+            )
+            setSyncTarget(syncTarget.get())
+          } else {
+            syncCompleteHanders.notifySubscribers(completedSyncTarget)
+          }
         }
       }
     }
   }
 
   override fun onSyncComplete(handler: (ULong) -> Unit) {
-    val subscriptionId = handler.toString()
-    syncCompleteHanders.addSyncSubscriber(subscriptionId, handler)
+    syncCompleteHanders.addSyncSubscriber(handler)
   }
 
   override fun start() {
@@ -111,7 +135,7 @@ class CLSyncServiceImpl(
 
   override fun stop() {
     if (started.compareAndSet(true, false)) {
-      beaconChainPipeline.get()?.pipline?.abort()
+      beaconChainPipeline.get()?.pipeline?.abort()
     }
   }
 }

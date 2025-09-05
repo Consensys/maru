@@ -10,7 +10,9 @@ package maru.app
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
+import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Vertx
+import io.vertx.micrometer.MicrometerMetricsOptions
 import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Files
 import java.nio.file.Path
@@ -25,8 +27,9 @@ import maru.api.ApiServer
 import maru.api.ApiServerImpl
 import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.config.SyncingConfig
+import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkIdHashProvider
 import maru.consensus.ForkIdHashProviderImpl
@@ -39,25 +42,33 @@ import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.crypto.Hashing
 import maru.database.BeaconChain
+import maru.database.P2PState
 import maru.database.kv.KvDatabaseFactory
-import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.finalization.LineaFinalizationProvider
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.BesuMetricsSystemAdapter
 import maru.metrics.MaruMetricsCategory
+import maru.p2p.NetworkHelper
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
-import maru.serialization.ForkIdSerializers
+import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
+import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
+import maru.syncing.ELSyncService
+import maru.syncing.HighestHeadTargetSelector
+import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
+import maru.syncing.SyncController
+import maru.syncing.SyncTargetSelector
 import maru.syncing.SyncControllerManager
 import maru.syncing.SyncStatusProvider
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -67,7 +78,7 @@ import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeyS
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MaruAppFactory {
-  private val log = LogManager.getLogger(MaruAppFactory::class.java)
+  private val log = LogManager.getLogger(this.javaClass)
 
   fun create(
     config: MaruConfig,
@@ -78,19 +89,20 @@ class MaruAppFactory {
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     overridingApiServer: ApiServer? = null,
   ): MaruApp {
-    log.info("configs: {}", config)
+    log.info("configs={}", config)
+    log.info("beaconGenesisConfig={}", beaconGenesisConfig)
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val vertx =
       VertxFactory.createVertx(
-        jvmMetricsEnabled = config.observabilityOptions.jvmMetricsEnabled,
-        prometheusMetricsEnabled = config.observabilityOptions.prometheusMetricsEnabled,
+        jvmMetricsEnabled = config.observability.jvmMetricsEnabled,
+        prometheusMetricsEnabled = config.observability.prometheusMetricsEnabled,
       )
 
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
     val metricsFacade =
       MicrometerMetricsFacade(
-        BackendRegistries.getDefaultNow(),
-        "maru",
+        registry = getMetricsRegistry(),
+        metricsPrefix = "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
       )
     val besuMetricsSystemAdapter =
@@ -100,100 +112,127 @@ class MaruAppFactory {
       )
 
     ensureDirectoryExists(config.persistence.dataPath)
-    val beaconChain =
+    val kvDatabase =
       KvDatabaseFactory
         .createRocksDbDatabase(
           databasePath = config.persistence.dataPath,
           metricsSystem = besuMetricsSystemAdapter,
           metricCategory = BesuMetricsCategoryAdapter.from(MaruMetricsCategory.STORAGE),
-        )
+        ).also {
+          dbInitialization(beaconGenesisConfig, it)
+        }
 
     val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
-    val qbftForkTimestamp = qbftFork.timestampSeconds.toULong()
     val qbftConfig = qbftFork.configuration as QbftConsensusConfig
-    BeaconChainInitialization(
-      beaconChain = beaconChain,
-      genesisTimestamp = qbftForkTimestamp,
-    ).ensureDbIsInitialized(
-      validatorSet = qbftConfig.validatorSet,
-    )
 
     val forkIdHasher =
       ForkIdHasher(
-        ForkIdSerializers
-          .ForkIdSerializer,
+        ForkIdSerializer,
         Hashing::shortShaHash,
       )
     val forkIdHashProvider =
       ForkIdHashProviderImpl(
         chainId = beaconGenesisConfig.chainId,
-        beaconChain = beaconChain,
+        beaconChain = kvDatabase,
         forksSchedule = beaconGenesisConfig,
         forkIdHasher = forkIdHasher,
       )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
-        config.validatorElNode.ethApiEndpoint,
+        apiEndpointConfig = config.validatorElNode.ethApiEndpoint,
+        log = LogManager.getLogger("maru.clients.el.ethapi"),
       )
     val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
     val latestElBlockMetadataCache =
       LatestElBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
-    val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
-    val engineApiClient =
-      PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-        Helpers.createWeb3jClient(
-          config.validatorElNode.engineApiEndpoint,
-        ),
-        metricsFacade,
+    val statusMessageFactory = StatusMessageFactory(kvDatabase, forkIdHashProvider)
+
+    val engineApiWeb3jClient =
+      Helpers.createWeb3jClient(
+        apiEndpointConfig = config.validatorElNode.engineApiEndpoint,
+        log = LogManager.getLogger("maru.clients.el.engineapi"),
       )
-    val executionLayerManager = JsonRpcExecutionLayerManager(engineApiClient)
+
+    val elManagerMap =
+      ElFork.entries.associateWith {
+        val engineApiClient =
+          Helpers.buildExecutionEngineClient(
+            web3JEngineApiClient = engineApiWeb3jClient,
+            elFork = it,
+            metricsFacade = metricsFacade,
+          )
+        JsonRpcExecutionLayerManager(engineApiClient)
+      }
+
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
-    var syncControllerImpl: SyncControllerManager? = null
+    var syncControllerImpl: SyncController? = null
 
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
-        p2pConfig = config.p2pConfig,
+        p2pConfig = config.p2p,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
-        beaconChain = beaconChain,
+        beaconChain = kvDatabase,
         metricsFacade = metricsFacade,
         statusMessageFactory = statusMessageFactory,
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashProvider = forkIdHashProvider,
-        isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
+        isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
+        forkIdHasher = forkIdHasher,
+        p2PState = kvDatabase,
         syncStatusProviderProvider = { syncControllerImpl!! },
         syncConfig = config.syncing,
-      )
+        )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
-    syncControllerImpl =
-      BeaconSyncControllerImpl.create(
-        beaconChain = beaconChain,
-        elManager = executionLayerManager,
-        peersHeadsProvider = peersHeadBlockProvider,
-        validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
-        peerLookup = p2pNetwork.getPeerLookup(),
-        besuMetrics = besuMetricsSystemAdapter,
-        metricsFacade = metricsFacade,
-        peerChainTrackerConfig =
-          PeerChainTracker.Config(
-            config.syncing.peerChainHeightPollingInterval,
-            config.syncing.peerChainHeightGranularity,
-          ),
-      )
     val finalizationProvider =
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
+    syncControllerImpl =
+      if (config.p2p != null) {
+        BeaconSyncControllerImpl.create(
+          beaconChain = kvDatabase,
+          forksSchedule = beaconGenesisConfig,
+          elManagerMap = elManagerMap,
+          peersHeadsProvider = peersHeadBlockProvider,
+          targetChainHeadCalculator = createSyncTargetSelector(config.syncing.syncTargetSelection),
+          validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
+          peerLookup = p2pNetwork.getPeerLookup(),
+          besuMetrics = besuMetricsSystemAdapter,
+          metricsFacade = metricsFacade,
+          peerChainTrackerConfig =
+            PeerChainTracker.Config(
+              config.syncing.peerChainHeightPollingInterval,
+            ),
+          elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
+          finalizationProvider = finalizationProvider,
+          desyncTolerance = config.syncing.desyncTolerance,
+          pipelineConfig =
+            BeaconChainDownloadPipelineFactory.Config(
+              blockRangeRequestTimeout = config.syncing.download.blockRangeRequestTimeout,
+              backoffDelay = config.syncing.download.backoffDelay,
+              blocksBatchSize = config.syncing.download.blocksBatchSize,
+              blocksParallelism = config.syncing.download.blocksParallelism,
+              maxRetries = config.syncing.download.maxRetries,
+              useUnconditionalRandomDownloadPeer = config.syncing.download.useUnconditionalRandomDownloadPeer,
+            ),
+          allowEmptyBlocks = config.allowEmptyBlocks,
+        )
+      } else {
+        AlwaysSyncedController(kvDatabase)
+      }
 
     val apiServer =
       overridingApiServer
         ?: ApiServerImpl(
           config =
             ApiServerImpl.Config(
-              port = config.apiConfig.port,
+              port = config.api.port,
             ),
           networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
           versionProvider = MaruVersionProvider(),
-          chainDataProvider = ChainDataProviderImpl(beaconChain),
+          chainDataProvider = ChainDataProviderImpl(kvDatabase),
+          syncStatusProvider = syncControllerImpl,
+          isElOnlineProvider = { elManagerMap[ElFork.Prague]!!.isOnline().get() },
         )
 
     val maru =
@@ -206,10 +245,11 @@ class MaruAppFactory {
         finalizationProvider = finalizationProvider,
         metricsFacade = metricsFacade,
         vertx = vertx,
-        beaconChain = beaconChain,
+        beaconChain = kvDatabase,
         metricsSystem = besuMetricsSystemAdapter,
         lastElBlockMetadataCache = latestElBlockMetadataCache,
-        ethereumJsonRpcClient = ethereumJsonRpcClient,
+        validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
+        validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
         apiServer = apiServer,
         syncControllerManager = syncControllerImpl,
         syncStatusProvider = syncControllerImpl,
@@ -219,7 +259,15 @@ class MaruAppFactory {
   }
 
   companion object {
-    private val log = LogManager.getLogger(MaruApp::class.java)
+    private val log = LogManager.getLogger(MaruAppFactory::class.java)
+
+    // the second case can happen in case of concurrent access i.e. in the tests
+    private fun getMetricsRegistry(): MeterRegistry =
+      BackendRegistries.getDefaultNow() ?: BackendRegistries
+        .setupBackend(
+          MicrometerMetricsOptions(),
+          null,
+        ).let { BackendRegistries.getDefaultNow() }
 
     private fun setupFinalizationProvider(
       config: MaruConfig,
@@ -249,6 +297,7 @@ class MaruAppFactory {
                 log = LogManager.getLogger("clients.l2.eth.el"),
                 requestRetryConfig = config.validatorElNode.ethApiEndpoint.requestRetries,
                 vertx = vertx,
+                stopRetriesOnErrorPredicate = { true },
               ),
             pollingUpdateInterval = lineaConfig.l1PollingInterval,
             l1HighestBlock = lineaConfig.l1HighestBlockTag,
@@ -256,7 +305,7 @@ class MaruAppFactory {
         } ?: InstantFinalizationProvider
 
     private fun setupP2PNetwork(
-      p2pConfig: P2P?,
+      p2pConfig: P2PConfig?,
       privateKey: ByteArray,
       chainId: UInt,
       beaconChain: BeaconChain,
@@ -265,27 +314,45 @@ class MaruAppFactory {
       statusMessageFactory: StatusMessageFactory,
       besuMetricsSystem: BesuMetricsSystem,
       forkIdHashProvider: ForkIdHashProvider,
+      forkIdHasher: ForkIdHasher,
+      p2PState: P2PState,
       syncStatusProviderProvider: () -> SyncStatusProvider,
       syncConfig: SyncingConfig,
-    ): P2PNetwork =
+      ): P2PNetwork =
       p2pConfig?.let {
         P2PNetworkImpl(
           privateKeyBytes = privateKey,
-          p2pConfig = p2pConfig,
+          p2pConfig =
+            NetworkHelper
+              .selectIpV4ForP2P(
+                targetIpV4 = p2pConfig.ipAddress,
+                excludeLoopback = true,
+              ).also { log.info("using p2p ip={}", it) }
+              .let { p2pConfig.copy(ipAddress = it) },
           chainId = chainId,
-          serDe = RLPSerializers.SealedBeaconBlockSerializer,
+          serDe = RLPSerializers.SealedBeaconBlockCompressorSerializer,
           metricsFacade = metricsFacade,
           statusMessageFactory = statusMessageFactory,
           beaconChain = beaconChain,
           isBlockImportEnabledProvider = isBlockImportEnabledProvider,
           metricsSystem = besuMetricsSystem,
           forkIdHashProvider = forkIdHashProvider,
+          forkIdHasher = forkIdHasher,
+          p2PState = p2PState,
           syncStatusProviderProvider = syncStatusProviderProvider,
-          syncConfig = syncConfig,
-        )
+          syncConfig = syncConfig,        )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
         NoOpP2PNetwork
+      }
+
+    private fun createSyncTargetSelector(config: SyncingConfig.SyncTargetSelection): SyncTargetSelector =
+      when (config) {
+        is SyncingConfig.SyncTargetSelection.Highest ->
+          HighestHeadTargetSelector()
+
+        is SyncingConfig.SyncTargetSelection.MostFrequent ->
+          MostFrequentHeadTargetSelector(config.peerChainHeightGranularity)
       }
 
     private fun getOrGeneratePrivateKey(privateKeyPath: Path): ByteArray {
@@ -307,5 +374,18 @@ class MaruAppFactory {
 
   private fun ensureDirectoryExists(path: Path) {
     if (!path.exists()) Files.createDirectories(path)
+  }
+
+  private fun dbInitialization(
+    beaconGenesisConfig: ForksSchedule,
+    beaconChain: BeaconChain,
+  ) {
+    val qbftForkConfig = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
+    val beaconChainInitialization =
+      BeaconChainInitialization(
+        beaconChain = beaconChain,
+      )
+    val qbftConsensusConfig = qbftForkConfig.configuration as QbftConsensusConfig
+    beaconChainInitialization.ensureDbIsInitialized(qbftConsensusConfig.validatorSet)
   }
 }

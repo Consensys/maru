@@ -15,6 +15,7 @@ import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
 import maru.p2p.ValidationResultCode
 import maru.serialization.Deserializer
+import maru.serialization.MAX_MESSAGE_SIZE
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -59,12 +60,14 @@ class TopicHandlerWithInOrderDelivering<T>(
       }
   }
 
-  private val comparator: Comparator<Pair<T, SafeFuture<Libp2pValidationResult>>> =
-    Comparator.comparing {
-      sequenceNumberExtractor.extractSequenceNumber(it.first)
+  private val pendingEvents =
+    run {
+      val comparator: Comparator<Pair<T, SafeFuture<Libp2pValidationResult>>> =
+        Comparator.comparing {
+          sequenceNumberExtractor.extractSequenceNumber(it.first)
+        }
+      PriorityQueue<Pair<T, SafeFuture<Libp2pValidationResult>>>(comparator)
     }
-
-  private val pendingEvents = PriorityQueue<Pair<T, SafeFuture<Libp2pValidationResult>>>(comparator)
 
   override fun prepareMessage(
     payload: Bytes,
@@ -83,6 +86,7 @@ class TopicHandlerWithInOrderDelivering<T>(
       val deserializedMessage = deserializer.deserialize(message.originalMessage.toArray())
       val sequenceNumber = sequenceNumberExtractor.extractSequenceNumber(deserializedMessage)
       val nextExpectedSequenceNumber = nextExpectedSequenceNumberProvider()
+
       when {
         sequenceNumber >= nextExpectedSequenceNumber -> {
           if (pendingEvents.size < maxQueueSize) {
@@ -91,23 +95,21 @@ class TopicHandlerWithInOrderDelivering<T>(
               sequenceNumber,
               nextExpectedSequenceNumber,
             )
-            val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
-            pendingEvents.add(deserializedMessage to delayedHandlingFuture)
-            processNextPendingEvent()
-            // Note that it will be completed only when it's handled
-            delayedHandlingFuture
           } else {
-            log.warn(
-              "ignoring message with sequenceNumber={} next expectedSequenceNumber={} because queue is full size={}",
-              sequenceNumber,
-              nextExpectedSequenceNumber,
-              pendingEvents.size,
-            )
-            SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
+            // Queue is full - drop the oldest message and add the new one
+            val oldestMessage = pendingEvents.remove()
+            if (oldestMessage != null) {
+              oldestMessage.second.complete(Libp2pValidationResult.Ignore)
+              log.debug(
+                "Dropped oldest message with sequenceNumber={} to make room for new message with sequenceNumber={}",
+                sequenceNumberExtractor.extractSequenceNumber(oldestMessage.first),
+                sequenceNumber,
+              )
+            }
           }
+          addMessageToTheQueue(deserializedMessage)
         }
-
-        sequenceNumber < nextExpectedSequenceNumber -> {
+        else -> {
           log.debug(
             "ignoring outdated message with sequenceNumber={} next expectedSequenceNumber={}",
             sequenceNumber,
@@ -115,22 +117,45 @@ class TopicHandlerWithInOrderDelivering<T>(
           )
           SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
         }
-
-        else -> {
-          log.debug(
-            "Ignoring message with sequenceNumber={}, expectedSequenceNumber={}",
-            sequenceNumber,
-            nextExpectedSequenceNumber,
-          )
-          SafeFuture.completedFuture(Libp2pValidationResult.Ignore)
-        }
+      }.also {
+        processPendingEvents()
       }
     } catch (th: Throwable) {
       log.error("Unexpected exception while handling message=$message with id=${message.messageId}", th)
       SafeFuture.completedFuture(Libp2pValidationResult.Invalid)
     }
 
-  private fun processNextPendingEvent() {
+  private fun addMessageToTheQueue(deserializedMessage: T): SafeFuture<Libp2pValidationResult> {
+    val delayedHandlingFuture = SafeFuture<Libp2pValidationResult>()
+    pendingEvents.add(deserializedMessage to delayedHandlingFuture)
+    // Note that it will be completed only when it's handled
+    return delayedHandlingFuture
+  }
+
+  // Not synchronized, because it's only being called from the synchronized handleMessage
+  private fun cleanUpMessagesBehind(nextExpectedSequenceNumber: ULong) {
+    val sizeBefore = pendingEvents.size
+    while (pendingEvents.isNotEmpty() &&
+      sequenceNumberExtractor.extractSequenceNumber(pendingEvents.peek().first) <
+      nextExpectedSequenceNumber
+    ) {
+      val futureToComplete = pendingEvents.remove().second
+      futureToComplete.complete(Libp2pValidationResult.Ignore)
+    }
+
+    val eventsRemoved = sizeBefore - pendingEvents.size
+    if (eventsRemoved > 0) {
+      log.debug(
+        "Cleaned up {} old messages that are now behind expectedSequenceNumber={}",
+        eventsRemoved,
+        nextExpectedSequenceNumber,
+      )
+    }
+  }
+
+  @Synchronized
+  private fun processPendingEvents() {
+    cleanUpMessagesBehind(nextExpectedSequenceNumberProvider())
     if (pendingEvents.isNotEmpty() &&
       isHandlingEnabled() &&
       sequenceNumberExtractor.extractSequenceNumber(pendingEvents.peek().first) ==
@@ -138,7 +163,7 @@ class TopicHandlerWithInOrderDelivering<T>(
     ) {
       val (nextEventToHandle, future) = pendingEvents.remove()
       handleEvent(nextEventToHandle)
-        .whenSuccess { processNextPendingEvent() }
+        .whenSuccess { processPendingEvents() }
         .propagateTo(future)
     }
   }
@@ -168,5 +193,5 @@ class TopicHandlerWithInOrderDelivering<T>(
       },
     )
 
-  override fun getMaxMessageSize(): Int = 10485760
+  override fun getMaxMessageSize(): Int = MAX_MESSAGE_SIZE
 }

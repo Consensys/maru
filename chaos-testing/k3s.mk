@@ -3,9 +3,10 @@
 # without need to setup a full Kubernetes cluster locally.
 
 k3s-clean:
-	-@docker stop k3s-server
-	-@docker rm k3s-server
+	-@docker rm -f k3s-server >/dev/null 2>&1
 
+# To debug the k3s server, you can run:
+# docker exec -it k3s-server sh
 k3s-run:
 	@docker run -d --name k3s-server \
 		--privileged \
@@ -34,3 +35,12 @@ k3s-reload:
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-run
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-setup-kubeconfig
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-wait
+#	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) k3s-install-calico
+
+k3s-import-local-maru-image:
+	@docker save consensys/maru:local -o maru-local.tar
+	@docker exec k3s-server sh -c "mkdir -p /images"
+	@docker cp maru-local.tar k3s-server:/images/maru-local.tar
+	@echo "Importing local Maru image into k3s server..."
+	@docker exec k3s-server sh -c "ctr -n k8s.io images import /images/maru-local.tar"
+	@echo "Local Maru image imported successfully."

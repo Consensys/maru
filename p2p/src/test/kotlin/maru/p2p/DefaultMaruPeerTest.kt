@@ -9,11 +9,9 @@
 package maru.p2p
 
 import java.util.Optional
-import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import kotlin.time.Duration.Companion.seconds
-import maru.config.P2P
-import maru.p2p.MaruOutgoingRpcRequestHandler
+import maru.config.P2PConfig
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusMessageFactory
 import org.assertj.core.api.Assertions.assertThat
@@ -37,13 +35,12 @@ class DefaultMaruPeerTest {
   private val delegatePeer = mock<Peer>()
   private val rpcMethods = mock<RpcMethods>()
   private val statusMessageFactory = mock<StatusMessageFactory>()
-  private val scheduler = mock<ScheduledExecutorService>()
   private val maruPeer =
     DefaultMaruPeer(
       delegatePeer,
       rpcMethods,
       statusMessageFactory,
-      p2pConfig = P2P(ipAddress = "1.1.1.1", port = 9876u),
+      p2pConfig = P2PConfig(ipAddress = "1.1.1.1", port = 9876u),
     )
 
   @Test

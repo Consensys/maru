@@ -11,13 +11,16 @@ package maru.syncing.beaconchain.pipeline
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
+import maru.core.ext.DataGenerators.randomStatus
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
 import maru.p2p.messages.BeaconBlocksByRangeResponse
+import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -37,6 +40,16 @@ class BeaconChainDownloadPipelineFactoryTest {
   private lateinit var factory: BeaconChainDownloadPipelineFactory
   private lateinit var executorService: ExecutorService
   private lateinit var syncTargetProvider: () -> ULong
+  private val defaultBackoffDelay = 1.seconds
+  private val defaultPipelineConfig =
+    Config(
+      blockRangeRequestTimeout = 5.seconds,
+      blocksBatchSize = 10u,
+      blocksParallelism = 1u,
+      backoffDelay = defaultBackoffDelay,
+      maxRetries = 5u,
+      useUnconditionalRandomDownloadPeer = false,
+    )
 
   @BeforeEach
   fun setUp() {
@@ -49,7 +62,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(),
+        config = defaultPipelineConfig,
         syncTargetProvider = syncTargetProvider,
       )
   }
@@ -75,6 +88,7 @@ class BeaconChainDownloadPipelineFactoryTest {
       val response = mock<BeaconBlocksByRangeResponse>()
       whenever(response.blocks).thenReturn(blocks)
       whenever(peer.sendBeaconBlocksByRange(range.first, range.second)).thenReturn(completedFuture(response))
+      whenever(peer.getStatus()).thenReturn(randomStatus(125uL))
     }
 
     whenever(blockImporter.importBlock(any())).thenReturn(
@@ -83,7 +97,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     whenever(syncTargetProvider.invoke()).thenReturn(125uL)
 
     val pipeline = factory.createPipeline(100uL)
-    val completionFuture = pipeline.pipline.start(executorService)
+    val completionFuture = pipeline.pipeline.start(executorService)
 
     // Wait for completion
     completionFuture.get(5, TimeUnit.SECONDS)
@@ -110,6 +124,7 @@ class BeaconChainDownloadPipelineFactoryTest {
       val response = mock<BeaconBlocksByRangeResponse>()
       whenever(response.blocks).thenReturn(blocks)
       whenever(peer.sendBeaconBlocksByRange(range.first, range.second)).thenReturn(completedFuture(response))
+      whenever(peer.getStatus()).thenReturn(randomStatus(125uL))
     }
 
     whenever(blockImporter.importBlock(any())).thenReturn(
@@ -119,7 +134,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     whenever(syncTargetProvider.invoke()).thenReturn(119uL, 125uL, 125uL)
 
     val pipeline = factory.createPipeline(100uL)
-    val completionFuture = pipeline.pipline.start(executorService)
+    val completionFuture = pipeline.pipeline.start(executorService)
 
     // Wait for completion
     completionFuture.get(5, TimeUnit.SECONDS)
@@ -139,6 +154,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(blocks)
     whenever(peer.sendBeaconBlocksByRange(42uL, 1uL)).thenReturn(completedFuture(response))
+    whenever(peer.getStatus()).thenReturn(randomStatus(43uL))
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
@@ -146,7 +162,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     whenever(syncTargetProvider.invoke()).thenReturn(42uL)
 
     val pipeline = factory.createPipeline(42uL)
-    val completionFuture = pipeline.pipline.start(executorService)
+    val completionFuture = pipeline.pipeline.start(executorService)
 
     completionFuture.get(5, TimeUnit.SECONDS)
 
@@ -162,7 +178,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 100u),
+        config = defaultPipelineConfig.copy(blocksBatchSize = 100u),
         syncTargetProvider = { 50uL },
       )
 
@@ -174,13 +190,14 @@ class BeaconChainDownloadPipelineFactoryTest {
     val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(blocks)
     whenever(peer.sendBeaconBlocksByRange(0uL, 51uL)).thenReturn(completedFuture(response))
+    whenever(peer.getStatus()).thenReturn(randomStatus(50uL))
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
     )
 
     val pipeline = largeRequestSizeFactory.createPipeline(0uL)
-    val completionFuture = pipeline.pipline.start(executorService)
+    val completionFuture = pipeline.pipeline.start(executorService)
 
     completionFuture.get(5, TimeUnit.SECONDS)
 
@@ -205,7 +222,7 @@ class BeaconChainDownloadPipelineFactoryTest {
         blockImporter = blockImporter,
         metricsSystem = NoOpMetricsSystem(),
         peerLookup = peerLookup,
-        config = BeaconChainDownloadPipelineFactory.Config(blocksBatchSize = 0u),
+        config = defaultPipelineConfig.copy(blocksBatchSize = 0u),
         syncTargetProvider = { 0uL },
       )
     }.isInstanceOf(IllegalArgumentException::class.java)
@@ -232,11 +249,12 @@ class BeaconChainDownloadPipelineFactoryTest {
       peer.sendBeaconBlocksByRange(startBlock + 1uL, 1uL),
     ).thenReturn(completedFuture(BeaconBlocksByRangeResponse(listOf(block2))))
 
+    whenever(peer.getStatus()).thenReturn(randomStatus(ULong.MAX_VALUE))
     whenever(blockImporter.importBlock(any())).thenReturn(completedFuture(ValidationResult.Companion.Valid))
     whenever(syncTargetProvider.invoke()).thenReturn(ULong.MAX_VALUE - 1uL)
 
     val pipeline = factory.createPipeline(startBlock)
-    val completionFuture = pipeline.pipline.start(executorService)
+    val completionFuture = pipeline.pipeline.start(executorService)
 
     // Should complete without overflow errors
     completionFuture.get(5, TimeUnit.SECONDS)

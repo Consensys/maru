@@ -13,8 +13,10 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.random.Random
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -27,18 +29,23 @@ class SyncControllerThreadSafetyTest {
   private fun createController(
     blockNumber: ULong,
     clSyncService: CLSyncService = FakeCLSyncService(),
-  ): BeaconSyncControllerImpl = createSyncController(blockNumber, clSyncService)
+  ): BeaconSyncControllerImpl =
+    createSyncController(
+      blockNumber = blockNumber,
+      clSyncService = clSyncService,
+      desyncTolerance = 1UL,
+    )
 
   @BeforeEach
   fun setUp() {
     syncController = createController(50UL)
   }
 
-  @Test
+  @RepeatedTest(100)
   fun `should handle concurrent status updates without race conditions`() {
     val executor = Executors.newFixedThreadPool(3)
     val barrier = CyclicBarrier(3)
-    val iterations = 1000
+    val iterations = 10
 
     val clStatusUpdates = mutableListOf<CLSyncStatus>()
     val elStatusUpdates = mutableListOf<ELSyncStatus>()
@@ -75,8 +82,8 @@ class SyncControllerThreadSafetyTest {
       // Thread 3: Chain head updates
       executor.submit {
         barrier.await()
-        repeat(iterations) { i ->
-          val target = 100 + (i % 50)
+        repeat(iterations) {
+          val target = Random.nextInt(100)
           syncController.onBeaconChainSyncTargetUpdated(target.toULong())
           Thread.sleep(5)
         }
@@ -90,69 +97,21 @@ class SyncControllerThreadSafetyTest {
       val finalElStatus = syncController.getElSyncStatus()
       val isFullInSync = syncController.isNodeFullInSync()
 
-      assertThat(isFullInSync).isEqualTo(finalClStatus == CLSyncStatus.SYNCED && finalElStatus == ELSyncStatus.SYNCED)
-      assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING).isFalse
+      assertThat(isFullInSync)
+        .withFailMessage("finalElStatus = $finalElStatus, finalClStatus = $finalClStatus")
+        .isEqualTo(finalClStatus == CLSyncStatus.SYNCED && finalElStatus == ELSyncStatus.SYNCED)
+      assertThat(finalElStatus == ELSyncStatus.SYNCED && finalClStatus == CLSyncStatus.SYNCING)
+        .withFailMessage("finalElStatus = $finalElStatus, finalClStatus = $finalClStatus")
+        .isFalse
 
       // Verify we received status updates (exact count may vary due to concurrency)
       assertThat(clStatusUpdates).size().isGreaterThanOrEqualTo(iterations / 2)
       assertThat(elStatusUpdates).size().isGreaterThan(0)
-      assertThat(fullSyncCompletions.get()).isGreaterThan(0)
       assertThat(beaconSyncCompletions.get()).isGreaterThanOrEqualTo(iterations / 2)
     } finally {
       if (!executor.isShutdown) {
         executor.shutdownNow()
       }
-    }
-  }
-
-  @Test
-  fun `should maintain EL-follows-CL invariant under concurrent access`() {
-    val executor = Executors.newFixedThreadPool(3)
-    val latch = CountDownLatch(3)
-    val iterations = 500
-    val invariantViolations = AtomicInteger(0)
-
-    // Monitor for invariant violations: when CL starts syncing, EL should never be SYNCED
-    executor.submit {
-      repeat(iterations * 3) {
-        val stateSnapshot = syncController.captureStateSnapshot()
-        val elStatus = stateSnapshot.elStatus
-        val clStatus = stateSnapshot.clStatus
-
-        // This should never happen: CL syncing while EL is synced
-        if (clStatus == CLSyncStatus.SYNCING && elStatus == ELSyncStatus.SYNCED) {
-          invariantViolations.incrementAndGet()
-        }
-        Thread.sleep(5)
-      }
-      latch.countDown()
-    }
-
-    try {
-      // Thread 1: Rapid CL status changes
-      executor.submit {
-        repeat(iterations) { i ->
-          val status = if (i % 3 == 0) CLSyncStatus.SYNCING else CLSyncStatus.SYNCED
-          syncController.updateClSyncStatus(status)
-        }
-        latch.countDown()
-      }
-
-      // Thread 2: Rapid EL status changes
-      executor.submit {
-        repeat(iterations) { i ->
-          val status = if (i % 3 == 0) ELSyncStatus.SYNCING else ELSyncStatus.SYNCED
-          syncController.updateElSyncStatus(status)
-        }
-        latch.countDown()
-      }
-
-      assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue()
-
-      // The invariant should never be violated
-      assertThat(invariantViolations.get()).isEqualTo(0)
-    } finally {
-      executor.shutdownNow()
     }
   }
 
@@ -212,6 +171,10 @@ class SyncControllerThreadSafetyTest {
         }
 
         override fun onSyncComplete(handler: (ULong) -> Unit) {}
+
+        override fun getSyncDistance(): ULong = 0UL
+
+        override fun getSyncTarget(): ULong = 0UL
       }
 
     val controller = createController(50UL, trackingService)
@@ -236,57 +199,6 @@ class SyncControllerThreadSafetyTest {
 
         // No two consecutive calls should have the same value
         assertThat(syncTargetCalls.toSet().size == syncTargetCalls.size).isTrue
-      }
-    } finally {
-      executor.shutdownNow()
-    }
-  }
-
-  @Test
-  fun `should maintain consistent state during rapid concurrent transitions`() {
-    val executor = Executors.newFixedThreadPool(2)
-    val iterations = 1000
-    val latch = CountDownLatch(2)
-    val stateSnapshots = mutableListOf<SyncState>()
-
-    try {
-      // Thread 1: Rapid CL transitions
-      executor.submit {
-        repeat(iterations) { i ->
-          syncController.updateClSyncStatus(if (i % 2 == 0) CLSyncStatus.SYNCING else CLSyncStatus.SYNCED)
-
-          // Capture state snapshot atomically
-          val snapshot = syncController.captureStateSnapshot()
-          synchronized(stateSnapshots) {
-            stateSnapshots.add(snapshot)
-          }
-        }
-        latch.countDown()
-      }
-
-      // Thread 2: Rapid EL transitions
-      executor.submit {
-        repeat(iterations) { i ->
-          syncController.updateElSyncStatus(if (i % 2 == 0) ELSyncStatus.SYNCING else ELSyncStatus.SYNCED)
-
-          // Capture state snapshot atomically
-          val snapshot = syncController.captureStateSnapshot()
-          synchronized(stateSnapshots) {
-            stateSnapshots.add(snapshot)
-          }
-        }
-        latch.countDown()
-      }
-
-      assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue()
-
-      // Verify that EL status is never SYNCED when the CL is SYNCING (business rule invariant)
-      synchronized(stateSnapshots) {
-        stateSnapshots.forEach { snapshot ->
-          assertThat(snapshot.elStatus == ELSyncStatus.SYNCED && snapshot.clStatus == CLSyncStatus.SYNCING)
-            .withFailMessage("Found invalid state: CL=${snapshot.clStatus}, EL=${snapshot.elStatus}")
-            .isFalse()
-        }
       }
     } finally {
       executor.shutdownNow()

@@ -8,6 +8,8 @@
  */
 package maru.p2p
 
+import java.io.Closeable
+import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
@@ -66,7 +68,7 @@ fun interface SealedBeaconBlockHandler<T> {
  * 2. Sync new nodes joining the network
  * 3. Exchange QBFT messages between QBFT Validators
  */
-interface P2PNetwork {
+interface P2PNetwork : Closeable {
   /**
    * Start the P2P network service.
    *
@@ -105,6 +107,12 @@ interface P2PNetwork {
   fun getPeer(peerId: String): PeerInfo?
 
   fun getPeerLookup(): PeerLookup
+
+  fun dropPeer(peer: PeerInfo)
+
+  fun addPeer(address: String)
+
+  fun handleForkTransition(forkSpec: ForkSpec): Unit
 }
 
 data class PeerInfo(

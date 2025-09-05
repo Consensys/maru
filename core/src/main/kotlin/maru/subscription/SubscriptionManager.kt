@@ -11,9 +11,7 @@ package maru.subscription
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.jvm.internal.CallableReference
-import kotlin.random.Random
 import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
-import maru.extensions.encodeHex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -39,25 +37,19 @@ private fun <T> getSubscriberId(subscriber: (T) -> Any?): String {
         val receiverObj = findReceiverObjRef(subscriber)
         "${subscriber.owner.toString().replace("class ", "")}.${subscriber.name}@${receiverObj.hashCode()}"
       }
-      subscriber is kotlin.reflect.KFunction<*> -> {
-        println("is KFunction: ${subscriber.name}")
-        println("${subscriber.javaClass.name}@${subscriber.hashCode()}")
-        Random.nextBytes(8).encodeHex()
-      }
-
       else -> {
         // this a Lambda function, so we will use stack trace to get it declaration point
         val className =
           subscriber.javaClass.name
             .split("$")
             .first()
-        val id =
+        val lambdaDeclarationSite =
           Thread
             .currentThread()
             .stackTrace
             .find { it.className == className }
             .toString()
-        id
+        "$lambdaDeclarationSite@${subscriber.hashCode()}"
       }
     }
   return subscriberId
@@ -114,7 +106,7 @@ interface Observable<T> :
   SyncObservable<T>,
   AsyncObservable<T>
 
-interface SubscriptionManager<T> : Observable<T> {
+interface SubscriptionNotifier<T> {
   /**
    * It will notify all subscribers in a blocking manner, by order they were added.
    * If there sync and async subscribers, it will wait for async subscriber to complete
@@ -124,7 +116,7 @@ interface SubscriptionManager<T> : Observable<T> {
 
   /**
    * It will notify all subscribers asynchronously, without blocking the current thread.
-   * Subscribers notification order my not follow the order they were added.
+   * Subscriber notification order my not follow the order they were added.
    *
    * If the called does not wait on Future resolution,
    * the Order of notifications is not guaranteed, and may depend on the concrete implementation.
@@ -134,6 +126,10 @@ interface SubscriptionManager<T> : Observable<T> {
    */
   fun notifySubscribersAsync(data: T): SafeFuture<Unit>
 }
+
+interface SubscriptionManager<T> :
+  SubscriptionNotifier<T>,
+  Observable<T>
 
 /**
  * This is a simple implementation of SubscriptionManager that notifies all subscribers
@@ -190,6 +186,7 @@ class InOrderFanoutSubscriptionManager<T>(
     logIfEmptySubscribers(data)
     subscribers.forEach { subscriber ->
       try {
+        log.trace("Notifying subscriber={} with data={}", subscriber.id, data)
         subscriber.syncHandler?.invoke(data)
           ?: subscriber.asyncHandler?.invoke(data)?.join()
       } catch (th: Throwable) {
@@ -207,6 +204,7 @@ class InOrderFanoutSubscriptionManager<T>(
     val futures =
       subscribers.map { subscriber ->
         try {
+          log.trace("Notifying subscriber={} with data={}", subscriber.id, data)
           subscriber.syncHandler
             ?.let { SafeFuture.completedFuture(it.invoke(data)) }
             ?: subscriber.asyncHandler?.invoke(data)!!
@@ -264,4 +262,6 @@ class InOrderFanoutSubscriptionManager<T>(
       th,
     )
   }
+
+  override fun toString(): String = "InOrderFanoutSubscriptionManager(subscribers=${subscribers.map { it.id }})"
 }

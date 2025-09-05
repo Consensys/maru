@@ -10,11 +10,20 @@ package maru.syncing
 
 import java.lang.Exception
 import java.util.Timer
+import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
+import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkSpec
+import maru.consensus.ForksSchedule
+import maru.consensus.state.FinalizationProvider
+import maru.core.GENESIS_EXECUTION_PAYLOAD
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ExecutionPayloadStatus
+import maru.extensions.encodeHex
 import maru.services.LongRunningService
 import org.apache.logging.log4j.LogManager
 
@@ -39,6 +48,8 @@ data class ElBlockInfo(
     result = 31 * result + blockHash.contentHashCode()
     return result
   }
+
+  override fun toString(): String = "ElBlockInfo(elBlockNumber=$blockNumber, elBlockHash=${blockHash.encodeHex()})"
 }
 
 /**
@@ -49,10 +60,17 @@ data class ElBlockInfo(
  */
 class ELSyncService(
   private val beaconChain: BeaconChain,
-  private val executionLayerManager: ExecutionLayerManager,
+  private val forksSchedule: ForksSchedule,
+  private val elManagerMap: Map<ElFork, ExecutionLayerManager>,
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
-  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon -> Timer(name, isDaemon) },
+  private val finalizationProvider: FinalizationProvider,
+  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
+    Timer(
+      "$name-${UUID.randomUUID()}",
+      isDaemon,
+    )
+  },
 ) : LongRunningService {
   data class Config(
     val pollingInterval: Duration,
@@ -61,61 +79,94 @@ class ELSyncService(
   private val log = LogManager.getLogger(this.javaClass)
 
   private var poller: Timer? = null
-  private var lastELSyncTarget: ElBlockInfo? = null
-  private var currentELSyncStatus: ELSyncStatus? = null
+  private var currentElSyncTarget: ElBlockInfo? = null
 
   private fun pollTask() {
-    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().latestBeaconBlockHeader
-    val latestBeaconBlockNumber = latestBeaconBlockHeader.number
-    if (latestBeaconBlockNumber == 0UL) {
+    val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
+    val latestSealedBeaconBlock = beaconChain.getSealedBeaconBlock(beaconBlockNumber = latestBeaconBlockHeader.number)!!
+    val latestBeaconBlockBody = latestSealedBeaconBlock.beaconBlock.beaconBlockBody
+    val newElSyncTarget =
+      ElBlockInfo(
+        blockNumber = latestBeaconBlockBody.executionPayload.blockNumber,
+        blockHash = latestBeaconBlockBody.executionPayload.blockHash,
+      )
+    if (newElSyncTarget != currentElSyncTarget) {
+      log.debug("New elSyncTarget={}", newElSyncTarget)
+      currentElSyncTarget = newElSyncTarget
+    } else {
+      log.trace("Current elSyncTarget={}", currentElSyncTarget)
+    }
+
+    if (currentElSyncTarget!!.blockNumber == GENESIS_EXECUTION_PAYLOAD.blockNumber) {
       val newELSyncStatus = ELSyncStatus.SYNCED
-      if (currentELSyncStatus != newELSyncStatus) {
-        currentELSyncStatus = newELSyncStatus
-        onStatusChange(newELSyncStatus)
-      }
+      onStatusChange(newELSyncStatus)
       return
     }
 
-    val latestSealedBeaconBlock =
-      beaconChain.getSealedBeaconBlock(
-        beaconBlockNumber = latestBeaconBlockHeader.number,
-      )!!
-    val newELSyncTarget =
-      ElBlockInfo(
-        blockNumber = latestSealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber,
-        blockHash = latestSealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash,
-      )
-    if (lastELSyncTarget != newELSyncTarget) {
-      lastELSyncTarget = newELSyncTarget
-      log.info("New EL sync target = {}", newELSyncTarget)
-    }
-
+    val finalizationState = finalizationProvider(latestBeaconBlockBody)
+    val forkSpec = forksSchedule.getForkByTimestamp(latestBeaconBlockHeader.timestamp)
+    val elFork =
+      when (forkSpec.configuration) {
+        is QbftConsensusConfig -> (forkSpec.configuration as QbftConsensusConfig).elFork
+        is DifficultyAwareQbftConfig -> extractEvmForkFromDifficultyAwareQbft(forkSpec)
+        else -> throw IllegalStateException(
+          "Current fork isn't QBFT nor DifficultyAwareQbft, this case is not supported yet! forkSpec=$forkSpec",
+        )
+      }
+    val executionLayerManager =
+      elManagerMap[elFork]
+        ?: throw IllegalStateException("No execution layer manager found for EL fork: $elFork")
     val fcuResponse =
       executionLayerManager
-        .setHead(
-          headHash = newELSyncTarget.blockHash,
-          safeHash = newELSyncTarget.blockHash,
-          finalizedHash = newELSyncTarget.blockHash,
-        ).get()
+        .newPayload(latestBeaconBlockBody.executionPayload)
+        .thenCompose {
+          executionLayerManager
+            .setHead(
+              headHash = currentElSyncTarget!!.blockHash,
+              safeHash = finalizationState.safeBlockHash,
+              finalizedHash = finalizationState.finalizedBlockHash,
+            )
+        }.get()
 
     val newELSyncStatus =
       when (fcuResponse.payloadStatus.status) {
-        ExecutionPayloadStatus.SYNCING -> ELSyncStatus.SYNCING
-        ExecutionPayloadStatus.VALID -> ELSyncStatus.SYNCED
+        ExecutionPayloadStatus.SYNCING -> {
+          log.debug("EL client went out of sync")
+          ELSyncStatus.SYNCING
+        }
+
+        ExecutionPayloadStatus.VALID -> {
+          log.debug(
+            "EL client is synced newSyncTarget={}",
+            newElSyncTarget,
+          )
+          val latestClBlockNumber = beaconChain.getLatestBeaconState().beaconBlockHeader.number
+          val latestElBlockNumber =
+            beaconChain
+              .getSealedBeaconBlock(beaconBlockNumber = latestClBlockNumber)!!
+              .beaconBlock.beaconBlockBody.executionPayload.blockNumber
+          if (newElSyncTarget.blockNumber == latestElBlockNumber) {
+            ELSyncStatus.SYNCED
+          } else {
+            ELSyncStatus.SYNCING
+          }
+        }
+
         else -> throw IllegalStateException("Unexpected payload status: ${fcuResponse.payloadStatus.status}")
       }
 
-    if (currentELSyncStatus != newELSyncStatus) {
-      currentELSyncStatus = newELSyncStatus
-      onStatusChange(newELSyncStatus)
-    }
+    onStatusChange(newELSyncStatus)
   }
+
+  private fun extractEvmForkFromDifficultyAwareQbft(forkSpec: ForkSpec): ElFork =
+    ((forkSpec.configuration as DifficultyAwareQbftConfig).postTtdConfig).elFork
 
   override fun start() {
     synchronized(this) {
       if (poller != null) {
         return
       }
+      log.debug("Starting ELSyncService with polling interval: {}", config.pollingInterval)
       poller = timerFactory("ELSyncPoller", true)
       poller!!.scheduleAtFixedRate(
         timerTask {
@@ -138,8 +189,6 @@ class ELSyncService(
       }
       poller?.cancel()
       poller = null
-      lastELSyncTarget = null
-      currentELSyncStatus = null
     }
   }
 }

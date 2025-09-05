@@ -15,7 +15,7 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BeaconBlocksByRangeResponse
 import maru.p2p.messages.Status
@@ -55,7 +55,7 @@ interface MaruPeerFactory {
 class DefaultMaruPeerFactory(
   private val rpcMethods: RpcMethods,
   private val statusMessageFactory: StatusMessageFactory,
-  private val p2pConfig: P2P,
+  private val p2pConfig: P2PConfig,
 ) : MaruPeerFactory {
   override fun createMaruPeer(delegatePeer: Peer): MaruPeer =
     DefaultMaruPeer(
@@ -74,7 +74,7 @@ class DefaultMaruPeer(
     Executors.newSingleThreadScheduledExecutor(
       Thread.ofVirtual().factory(),
     ),
-  private val p2pConfig: P2P,
+  private val p2pConfig: P2PConfig,
 ) : MaruPeer {
   init {
     delegatePeer.subscribeDisconnect { _, _ -> scheduler.shutdown() }
@@ -103,7 +103,11 @@ class DefaultMaruPeer(
             }
           } else {
             updateStatus(status)
-            scheduler.schedule(this::sendStatus, p2pConfig.statusUpdate.renewal.inWholeSeconds, TimeUnit.SECONDS)
+            scheduler.schedule(
+              this::sendStatus,
+              p2pConfig.statusUpdate.refreshInterval.inWholeSeconds,
+              TimeUnit.SECONDS,
+            )
           }
         }.thenApply {}
     } catch (e: Exception) {
@@ -122,20 +126,27 @@ class DefaultMaruPeer(
     status.set(newStatus)
     log.trace("Received status update from peer={}: status={}", id, newStatus)
     if (connectionInitiatedRemotely()) {
-      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.renewal + p2pConfig.statusUpdate.renewalLeeway)
+      scheduleDisconnectIfStatusNotReceived(
+        p2pConfig.statusUpdate.refreshInterval + p2pConfig.statusUpdate.refreshIntervalLeeway,
+      )
     }
   }
 
   fun scheduleDisconnectIfStatusNotReceived(delay: Duration) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
-    scheduledDisconnect =
-      Optional.of(
-        scheduler.schedule(
-          { disconnectCleanly(DisconnectReason.REMOTE_FAULT) },
-          delay.inWholeSeconds,
-          TimeUnit.SECONDS,
-        ),
-      )
+    if (!scheduler.isShutdown) {
+      scheduledDisconnect =
+        Optional.of(
+          scheduler.schedule(
+            {
+              log.debug("Disconnecting from peerId={} by timeout", this.id)
+              disconnectCleanly(DisconnectReason.REMOTE_FAULT)
+            },
+            delay.inWholeSeconds,
+            TimeUnit.SECONDS,
+          ),
+        )
+    }
   }
 
   override fun awaitInitialStatus(): SafeFuture<Status> {

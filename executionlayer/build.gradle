@@ -19,6 +19,8 @@ plugins {
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":config"))
+
   implementation(project(":jvm-libs:mappers"))
   implementation(project(":jvm-libs:extensions"))
 
@@ -33,4 +35,5 @@ dependencies {
 
   testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', classifier: 'test-fixtures')
   testImplementation(testFixtures(project(":core")))
+  testImplementation(testFixtures('build.linea.internal:kotlin'))
 }

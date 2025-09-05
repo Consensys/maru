@@ -16,7 +16,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import maru.config.P2P
+import maru.config.P2PConfig
 import maru.config.SyncingConfig
 import maru.consensus.ForkIdHashProvider
 import maru.database.BeaconChain
@@ -39,26 +39,25 @@ import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class MaruPeerManager(
-  private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(),
   private val maruPeerFactory: MaruPeerFactory,
-  p2pConfig: P2P,
+  p2pConfig: P2PConfig,
   private val forkIdHashProvider: ForkIdHashProvider,
   private val beaconChain: BeaconChain,
   private val syncStatusProviderProvider: () -> SyncStatusProvider,
   syncConfig: SyncingConfig,
 ) : PeerHandler,
   PeerLookup {
-  init {
-    scheduler.scheduleAtFixedRate({
-      logConnectedPeers()
-    }, 20000, 20000, TimeUnit.MILLISECONDS)
-  }
+  var scheduler: ScheduledExecutorService? = null
 
-  val blocksBehindThreshold: ULong = syncConfig.peerChainHeightGranularity.toULong()
+  val blocksBehindThreshold: ULong = syncConfig.desyncTolerance
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val maxPeers = p2pConfig.maxPeers
   private val currentlySearching = AtomicBoolean(false)
+  private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
+  val peerCount: Int
+    get() = connectedPeers.size
+
   private val connectionInProgress = mutableListOf<Bytes>()
   private var discoveryService: MaruDiscoveryService? = null
   private val statusExchangingMaruPeers = mutableMapOf<NodeId, MaruPeer>()
@@ -69,32 +68,47 @@ class MaruPeerManager(
   private lateinit var syncStatusProvider: SyncStatusProvider
 
   @Volatile
-  private var stopCalled = false
+  private var started = AtomicBoolean(false)
 
   fun start(
     discoveryService: MaruDiscoveryService?,
     p2pNetwork: P2PNetwork<Peer>,
   ) {
+    if (!started.compareAndSet(false, true)) {
+      log.warn("Trying to start already started MaruPeerManager")
+      return
+    }
     this.discoveryService = discoveryService
     this.p2pNetwork = p2pNetwork
     this.syncStatusProvider = syncStatusProviderProvider()
+    if (scheduler == null) {
+      scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().factory())
+    }
+    scheduler!!.scheduleAtFixedRate({
+      logConnectedPeers()
+    }, 20000, 20000, TimeUnit.MILLISECONDS)
     searchForPeersUntilMaxReached()
   }
 
   fun stop(): SafeFuture<Unit> {
-    stopCalled = true
+    if (!started.compareAndSet(true, false)) {
+      log.warn("Trying to stop stopped MaruPeerManager")
+      return SafeFuture.completedFuture(Unit)
+    }
+    scheduler!!.shutdown()
+    scheduler = null
     return SafeFuture.completedFuture(Unit)
   }
 
   private fun searchForPeersUntilMaxReached() {
-    if (!stopCalled && currentlySearching.compareAndSet(false, true)) {
+    if (started.get() && currentlySearching.compareAndSet(false, true)) {
       discoveryService?.let { discoveryService ->
         discoveryService
           .searchForPeers()
           .orTimeout(Duration.ofSeconds(30L))
           .whenComplete { availablePeers, throwable ->
             log.trace("Finished searching for peers. Found {} peers.", availablePeers.size)
-            if (!stopCalled) {
+            if (started.get()) {
               if (throwable != null) {
                 log.debug("Failed to discover peers: {}", throwable.message, throwable)
                 discoveryService.getKnownPeers()
@@ -106,33 +120,33 @@ class MaruPeerManager(
             }
           }.whenComplete { _, _ ->
             currentlySearching.set(false)
-            log.trace("peerCount={}. maxPeers={}", connectedPeers.size, maxPeers)
-            if (!stopCalled && connectedPeers.size < maxPeers) {
-              scheduler.schedule({ searchForPeersUntilMaxReached() }, 1, TimeUnit.SECONDS)
+            log.trace("peerCount={}. maxPeers={}", peerCount, maxPeers)
+            if (started.get() && peerCount < maxPeers) {
+              scheduler!!.schedule({ searchForPeersUntilMaxReached() }, 1, TimeUnit.SECONDS)
             }
           }
       }
     }
   }
 
-  private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
-
   private fun logConnectedPeers() {
-    val peerIds = connectedPeers.keys.joinToString(", ") { it.toString() }
-    log.info("Currently connected peers: [$peerIds]")
-    log.info("Discovered nodes: [${discoveryService?.getKnownPeers()}]")
+    log.debug("Currently connected peers={}", connectedPeers.keys.toList())
+    discoveryService?.getKnownPeers()?.forEach { peer ->
+      log.info("discovered peer={}", peer)
+    }
   }
 
   override fun onConnect(peer: Peer) {
-    if (connectedPeers.size >= maxPeers) {
+    // TODO: here we could check if we want to be connected to that peer
+    if (peerCount > maxPeers) {
       // TODO: We could disconnect another peer here, based on some criteria
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
       return
     }
     val maruPeer = maruPeerFactory.createMaruPeer(peer)
-    val localBeaconChainHead = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number
+    val localBeaconChainHead = beaconChain.getLatestBeaconState().beaconBlockHeader.number
     val targetBlockNumber =
-      syncStatusProvider.getSyncTarget()?.let { it } ?: localBeaconChainHead
+      syncStatusProvider.getSyncTarget() ?: localBeaconChainHead
     statusExchangingMaruPeers[peer.id] = maruPeer
     maruPeer
       .awaitInitialStatus()
@@ -180,7 +194,7 @@ class MaruPeerManager(
   override fun onDisconnect(peer: Peer) {
     connectedPeers.remove(peer.id)
     log.trace("Peer={} disconnected", peer.id)
-    if (!stopCalled && connectedPeers.size < maxPeers) {
+    if (started.get() && peerCount < maxPeers) {
       searchForPeersUntilMaxReached()
     }
   }
@@ -199,14 +213,14 @@ class MaruPeerManager(
   private fun tryToConnectIfNotFull(peer: MaruDiscoveryPeer) {
     try {
       val peerId = getNodeId(peer)
-      if (stopCalled || p2pNetwork.isConnected(PeerAddress(peerId))) {
+      if (!started.get() || p2pNetwork.isConnected(PeerAddress(peerId))) {
         return
       }
       synchronized(connectionInProgress) {
-        if (connectedPeers.size >= maxPeers || connectionInProgress.contains(peer.nodeIdBytes)) {
+        if (peerCount >= maxPeers || connectionInProgress.contains(peer.nodeId)) {
           return
         }
-        connectionInProgress.add(peer.nodeIdBytes)
+        connectionInProgress.add(peer.nodeId)
       }
 
       p2pNetwork
@@ -215,18 +229,18 @@ class MaruPeerManager(
         .whenComplete { _, throwable ->
           try {
             if (throwable != null) {
-              log.error("Failed to connect to peer={}", peer.nodeIdBytes, throwable)
+              log.error("Failed to connect to peer={}", peer.nodeId, throwable)
             }
           } finally {
             synchronized(connectionInProgress) {
-              connectionInProgress.remove(peer.nodeIdBytes)
+              connectionInProgress.remove(peer.nodeId)
             }
           }
         }
     } catch (e: Exception) {
-      log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeIdBytes, e.message, e)
+      log.debug("Failed to initiate connection to peer={}. errorMessage={}", peer.nodeId, e.message, e)
       synchronized(connectionInProgress) {
-        connectionInProgress.remove(peer.nodeIdBytes)
+        connectionInProgress.remove(peer.nodeId)
       }
     }
   }

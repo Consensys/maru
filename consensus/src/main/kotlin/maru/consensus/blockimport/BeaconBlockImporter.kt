@@ -14,10 +14,8 @@ import maru.consensus.PrevRandaoProvider
 import maru.consensus.state.FinalizationProvider
 import maru.core.BeaconBlock
 import maru.core.BeaconState
-import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.ValidationResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -34,21 +32,19 @@ fun interface BeaconBlockImporter {
 class FollowerBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: FinalizationProvider,
+  private val importerName: String,
 ) : NewBlockHandler<ValidationResult> {
   companion object {
     fun create(
-      executionLayerEngineApiClient: ExecutionLayerEngineApiClient,
+      executionLayerManager: ExecutionLayerManager,
       finalizationStateProvider: FinalizationProvider,
-    ): NewBlockHandler<ValidationResult> {
-      val executionLayerManager =
-        JsonRpcExecutionLayerManager(
-          executionLayerEngineApiClient = executionLayerEngineApiClient,
-        )
-      return FollowerBeaconBlockImporter(
+      importerName: String,
+    ): NewBlockHandler<ValidationResult> =
+      FollowerBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = finalizationStateProvider,
+        importerName = importerName,
       )
-    }
   }
 
   private val log = LogManager.getLogger(this.javaClass)
@@ -59,7 +55,9 @@ class FollowerBeaconBlockImporter(
       .newPayload(executionPayload)
       .handleException { e ->
         log.error(
-          "Error importing execution payload for blockNumber=${executionPayload.blockNumber}",
+          "Error importing execution payload to {} for elBlockNumber={}",
+          importerName,
+          executionPayload.blockNumber,
           e,
         )
       }.thenCompose {
@@ -70,6 +68,7 @@ class FollowerBeaconBlockImporter(
             safeHash = finalizationState.safeBlockHash,
             finalizedHash = finalizationState.finalizedBlockHash,
           ).thenApply {
+            log.debug("Imported elBlockNumber={} to {}", executionPayload.blockNumber, importerName)
             ValidationResult.fromForkChoiceUpdatedResult(it)
           }
       }
@@ -81,7 +80,7 @@ class BlockBuildingBeaconBlockImporter(
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val prevRandaoProvider: PrevRandaoProvider<ULong>,
-  private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
+  private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier, ULong) -> Boolean,
   private val feeRecipient: ByteArray,
 ) : BeaconBlockImporter {
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -93,16 +92,14 @@ class BlockBuildingBeaconBlockImporter(
     val beaconBlockHeader = beaconBlock.beaconBlockHeader
     val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
     val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
-    return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier)) {
-      val nextBlockTimestamp =
-        nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(
-          beaconState
-            .latestBeaconBlockHeader.timestamp
-            .toLong(),
-        )
+    val nextBlockTimestamp =
+      nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(
+        beaconState.beaconBlockHeader.timestamp,
+      )
+    return if (shouldBuildNextBlock(beaconState, nextBlocksRoundIdentifier, nextBlockTimestamp)) {
       log.info(
         "importing block and starting build next block: " +
-          "clBlockNumber={} clBlockTimestamp={} clNextBlockTimestamp={} beaconBlockHeader={}",
+          "elBlockNumber={} elBlockTimestamp={} elNextBlockTimestamp={} beaconBlockHeader={}",
         beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         beaconBlock.beaconBlockBody.executionPayload.timestamp,
         nextBlockTimestamp,
@@ -124,7 +121,8 @@ class BlockBuildingBeaconBlockImporter(
       )
     } else {
       log.info(
-        "importing block: clBlockNumber={} clBlockHeader={}",
+        "importing block: elBlockNumber={} clBlockNumber={} clBlockHeader={}",
+        beaconBlock.beaconBlockBody.executionPayload.blockNumber,
         beaconBlockHeader.number,
         beaconBlockHeader,
       )

@@ -15,37 +15,33 @@ import com.palantir.docker.compose.configuration.ProjectName
 import com.palantir.docker.compose.connection.waiting.HealthChecks
 import java.io.File
 import java.math.BigInteger
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.app.Helpers
+import linea.kotlin.toULong
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
-import maru.config.consensus.ElFork
-import maru.consensus.NewBlockHandler
-import maru.consensus.blockimport.FollowerBeaconBlockImporter
-import maru.consensus.state.InstantFinalizationProvider
-import maru.core.BeaconBlock
-import maru.core.BeaconBlockBody
-import maru.core.BeaconBlockHeader
+import maru.config.FollowersConfig
 import maru.core.EMPTY_HASH
-import maru.core.Validator
 import maru.extensions.encodeHex
-import maru.mappers.Mappers.toDomain
-import maru.serialization.rlp.RLPSerializers
-import maru.testutils.Web3jTransactionsHelper
+import maru.extensions.fromHexToByteArray
+import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -53,35 +49,50 @@ import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import testutils.Web3jTransactionsHelper
+import testutils.maru.MaruFactory
+import testutils.maru.awaitTillMaruHasPeers
 
 class CliqueToPosTest {
   companion object {
-    private val useMaruContainer: Boolean = System.getProperty("useMaruContainer").toBoolean()
     private val dockerComposeFilePaths =
-      mutableListOf<String>(Path.of("./../docker/compose.yaml").toString()).also {
-        if (useMaruContainer) {
-          it.add(Path.of("./../docker/compose.dev.yaml").toString())
-        }
-      }
+      mutableListOf<String>(Path.of("./../docker/compose.yaml").toString())
     private val qbftCluster =
       DockerComposeRule
         .Builder()
+        .pullOnStartup(true)
         .files(DockerComposeFiles.from(*dockerComposeFilePaths.toTypedArray()))
-        .projectName(ProjectName.random())
+        .projectName(ProjectName.fromString("maru-e2e-" + UUID.randomUUID().toString().take(8)))
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
-    private lateinit var maru: MaruApp
-    private var pragueSwitchTimestamp: Long = 0
-    private val genesisDir = File("../docker/initialization")
-    private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
-    private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
-    private val log: Logger = LogManager.getLogger(this.javaClass)
+    private var forksTimestamps = emptyMap<String, ULong>()
+    private var pragueTimestamp: ULong = 0UL
+    private var ttd: ULong = 0UL
+    private lateinit var maruFactory: MaruFactory
 
-    private fun parsePragueSwitchTimestamp(): Long {
+    @TempDir
+    private lateinit var sequencerMaruTmpDir: File
+
+    private val genesisDir = File("../docker/initialization")
+    private val transactionsHelper = Web3jTransactionsHelper(TestEnvironment.sequencerL2Client)
+    private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
+    private const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX =
+      "0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+
+    // Instantiated in the networkCanBeSwitched test, used in the following tests
+    private lateinit var maruSequencer: MaruApp
+
+    // Will only be used in the sync from scratch tests
+    private var maruFollower: MaruApp? = null
+
+    private fun parseForks(forks: List<String>): Map<String, ULong> {
       val objectMapper = ObjectMapper()
       val genesisTree = objectMapper.readTree(File(genesisDir, "genesis-besu.json"))
-      val switchTime = genesisTree.at("/config/pragueTime").asLong()
-      return if (switchTime == 0L) System.currentTimeMillis() / 1000 else switchTime
+      return forks
+        .map { forkId ->
+          val switchTime = genesisTree.at("/config/$forkId").asLong()
+          forkId to switchTime.toULong()
+        }.associate { it }
     }
 
     private fun deleteGenesisFiles() {
@@ -95,54 +106,35 @@ class CliqueToPosTest {
       nethermindGenesis.delete()
     }
 
-    private fun containerShortNameToFullId(containerShortName: String) = containerShortName
-
     @BeforeAll
     @JvmStatic
     fun beforeAll() {
-      log.info("Using Maru as docker container: $useMaruContainer")
       deleteGenesisFiles()
-      dataDir.deleteRecursively()
-      dataDir.mkdirs()
       qbftCluster.before()
-      pragueSwitchTimestamp = parsePragueSwitchTimestamp()
-      if (!useMaruContainer) {
-        maru = MaruFactory.buildTestMaru(pragueSwitchTimestamp)
-      }
+      forksTimestamps = parseForks(listOf("pragueTime", "terminalTotalDifficulty"))
+      pragueTimestamp = forksTimestamps["pragueTime"]!!
+      ttd = forksTimestamps["terminalTotalDifficulty"]!!
+      maruFactory =
+        MaruFactory(
+          validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
+          pragueTimestamp = pragueTimestamp,
+          ttd = ttd,
+        )
     }
 
     @AfterAll
     @JvmStatic
     fun afterAll() {
-      File("docker_logs").mkdirs()
-      qbftCluster.dockerExecutable().execute("ps").inputStream.use {
-        Files.copy(
-          it,
-          Path.of("docker_logs/containers.txt"),
-          StandardCopyOption.REPLACE_EXISTING,
-        )
+      if (::maruSequencer.isInitialized) {
+        maruSequencer.stop()
+        maruSequencer.close()
       }
-
-      val containerShortNames =
-        TestEnvironment.allClients
-          .map { it.key }
-          .toMutableList()
-          .also { if (useMaruContainer) it.add("maru") }
-      containerShortNames.forEach { containerShortName ->
-        qbftCluster
-          .dockerExecutable()
-          .execute("logs", containerShortNameToFullId(containerShortName))
-          .inputStream
-          .use {
-            Files.copy(
-              it,
-              Path.of("docker_logs/$containerShortName.log"),
-              StandardCopyOption.REPLACE_EXISTING,
-            )
-          }
-      }
-
       qbftCluster.after()
+
+      TestEnvironment.allClients.values.forEach { web3j ->
+        web3j.shutdown()
+      }
+      log.info("Test is complete")
     }
 
     @JvmStatic
@@ -150,31 +142,118 @@ class CliqueToPosTest {
       TestEnvironment.followerExecutionClientsPostMerge.map {
         Arguments.of(it.key, it.value)
       }
+
+    private fun getBlockByNumber(
+      blockNumber: Long,
+      retreiveTransactions: Boolean = false,
+      ethClient: Web3j = TestEnvironment.sequencerL2Client,
+    ): EthBlock.Block? =
+      ethClient
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
+          retreiveTransactions,
+        ).send()
+        .block
+
+    private fun buildValidatorMaruWithMultipleFollowers(): MaruApp =
+      maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
+        ethereumJsonRpcUrl = "http://localhost:8545",
+        engineApiRpc = "http://localhost:8550",
+        dataDir = sequencerMaruTmpDir.toPath(),
+        followers =
+          FollowersConfig(
+            mapOf(
+              "follower-besu" to ApiEndpointConfig(URI.create("http://localhost:9550").toURL()),
+              "follower-erigon" to
+                ApiEndpointConfig(
+                  URI.create("http://localhost:11551").toURL(),
+                  jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
+                ),
+              "follower-nethermind" to
+                ApiEndpointConfig(
+                  URI.create("http://localhost:10550").toURL(),
+                  jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
+                ),
+              "follower-geth" to
+                ApiEndpointConfig(
+                  URI.create("http://localhost:8561").toURL(),
+                  jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
+                ),
+            ),
+          ),
+      )
+
+    private var runCounter = 0u
+    private val lastCliqueBlockNumber = 5L
+  }
+
+  private fun saveLogs(path: Path) {
+    qbftCluster.dockerExecutable().execute("ps").inputStream.use {
+      Files.copy(
+        it,
+        Path.of("$path/containers.txt"),
+        StandardCopyOption.REPLACE_EXISTING,
+      )
+    }
+    val containerShortNames =
+      TestEnvironment.allClients
+        .map { it.key }
+        .toMutableList()
+    containerShortNames.forEach { containerShortName ->
+      qbftCluster
+        .dockerExecutable()
+        .execute("logs", containerShortName)
+        .inputStream
+        .use {
+          Files.copy(
+            it,
+            Path.of("$path/$containerShortName.log"),
+            StandardCopyOption.REPLACE_EXISTING,
+          )
+        }
+    }
+  }
+
+  @AfterEach
+  fun tearDown() {
+    if (maruFollower != null) {
+      maruFollower!!.stop()
+      maruFollower!!.close()
+    }
+
+    val logsDestination = Path.of("docker_logs/run_$runCounter")
+    logsDestination.toFile().mkdirs()
+    saveLogs(logsDestination)
+    runCounter += 1u
   }
 
   @Order(1)
   @Test
   fun networkCanBeSwitched() {
-    if (!useMaruContainer) {
-      maru.start()
-    }
-    sendCliqueTransactions()
+    maruSequencer = buildValidatorMaruWithMultipleFollowers()
+    maruSequencer.start()
+    val prePragueTransactions = 10
+    sendCliqueAndParisTransactions(prePragueTransactions)
     everyoneArePeered()
-    waitTillTimestamp(pragueSwitchTimestamp)
+    val lastCliqueBlock = getBlockByNumber(lastCliqueBlockNumber)!!
+    assertThat(lastCliqueBlock.totalDifficulty.toLong()).isEqualTo(lastCliqueBlockNumber * 2L + 1L)
+    val parisBlock = getBlockByNumber(lastCliqueBlockNumber + 1)!!
+    assertThat(parisBlock.difficulty.toLong()).isEqualTo(0L)
 
-    log.info("Sequencer has switched to PoS")
-    repeat(4) {
+    val pragueTransactions = 4
+    waitTillTimestamp(pragueTimestamp, "pragueTime")
+    log.info("Sequencer has switched to Prague")
+    repeat(pragueTransactions) {
       transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
 
-    val postMergeBlock = getBlockByNumber(6)!!
-    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(parsePragueSwitchTimestamp())
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client)
+    val firstPragueBlock = getBlockByNumber(prePragueTransactions.toLong() + 1)!!
+    assertThat(firstPragueBlock.timestamp.toULong()).isGreaterThanOrEqualTo(pragueTimestamp)
 
-    waitForAllBlockHeightsToMatch()
-    if (!useMaruContainer) {
-      maru.stop()
-    }
+    val resultingBlockNumber = prePragueTransactions + pragueTransactions.toLong()
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, resultingBlockNumber)
+
+    waitForAllNodesToBeInSyncToMatch()
   }
 
   // TODO: Explore parallelization of this test
@@ -185,8 +264,6 @@ class CliqueToPosTest {
     nodeName: String,
     engineApiConfig: ApiEndpointConfig,
   ) {
-    // To fail right away in case switch failed in the first place
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client)
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
     restartNodeFromScratch(nodeName, nodeEthereumClient)
     log.info("Container $nodeName restarted")
@@ -202,19 +279,24 @@ class CliqueToPosTest {
           .timeout(30.seconds.toJavaDuration())
       }
 
-    if (nodeName.contains("besu")) {
-      // Required to change validation rules from Clique to PostMerge
-      // TODO: investigate this issue more. It was working happen with Dummy Consensus
-      syncTarget(engineApiConfig, 5)
-      awaitCondition
-        .ignoreExceptions()
-        .alias(nodeName)
-        .untilAsserted {
-          assertNodeBlockHeight(nodeEthereumClient, 5L)
-        }
-    }
+    val followerDataDir = Files.createTempDirectory("maru-$nodeName")
+    followerDataDir.toFile().deleteOnExit()
+    maruFollower =
+      maruFactory.buildTestMaruFollowerWithConsensusSwitch(
+        engineApiConfig = engineApiConfig,
+        ethereumApiConfig = engineApiConfig,
+        dataDir = followerDataDir,
+        validatorPortForStaticPeering = maruSequencer.p2pPort(),
+        desyncTolerance = 0UL,
+      )
 
+    maruFollower!!.start()
+
+    maruFollower!!.awaitTillMaruHasPeers(1u)
+    maruSequencer.awaitTillMaruHasPeers(1u)
     awaitCondition
+      .timeout(1.minutes.toJavaDuration())
+      .pollInterval(15.seconds.toJavaDuration())
       .ignoreExceptions()
       .alias(nodeName)
       .untilAsserted {
@@ -222,50 +304,35 @@ class CliqueToPosTest {
           // For some reason Erigon and Nethermind need a restart after PoS transition
           restartNodeKeepingState(nodeName, nodeEthereumClient)
         }
-        // TODO: Sync should be done entirely by Maru in the future
-        syncTarget(engineApiConfig, 9)
-        if (nodeName.contains("follower-geth")) {
-          val latestBlockFromGeth =
-            getBlockByNumber(
-              blockNumber = 9,
-              retreiveTransactions = true,
-              ethClient = nodeEthereumClient,
-            )!!
-          // For some reason it doesn't set latest block correctly, but the block is available
-          assertThat(latestBlockFromGeth).isNotNull
-        } else {
-          assertNodeBlockHeight(nodeEthereumClient)
-          assertNodeBlockPrevRandao(nodeEthereumClient)
-        }
+
+        assertNodeBlockHeight(nodeEthereumClient)
+        assertNodeBlockPrevRandao(nodeEthereumClient)
       }
   }
 
-  private fun buildBlockImportHandler(engineApiConfig: ApiEndpointConfig): NewBlockHandler<*> =
-    FollowerBeaconBlockImporter.create(
-      Helpers.buildExecutionEngineClient(
-        engineApiConfig,
-        ElFork.Prague,
-        TestEnvironment.testMetricsFacade,
-      ),
-      InstantFinalizationProvider,
-    )
-
-  private fun waitTillTimestamp(timestamp: Long) {
-    await.timeout(2.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
-      val unixTimestamp = System.currentTimeMillis() / 1000
-      log.info(
-        "Waiting {} seconds for the Prague switch at timestamp $timestamp",
-        timestamp - unixTimestamp,
-      )
-      assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
-    }
+  private fun waitTillTimestamp(
+    timestamp: ULong,
+    timestampFork: String,
+  ) {
+    val unixTimestamp = currentTimestamp()
+    log.info("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
+    await
+      .timeout(2.minutes.toJavaDuration())
+      .pollInterval(500.milliseconds.toJavaDuration())
+      .untilAsserted {
+        val unixTimestamp = currentTimestamp()
+        log.debug("Waiting ${timestamp - unixTimestamp} seconds for the $timestampFork at timestamp $timestamp")
+        assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
+      }
   }
+
+  private fun currentTimestamp(): ULong = (System.currentTimeMillis() / 1000).toULong()
 
   private fun restartNodeFromScratch(
     nodeName: String,
     nodeEthereumClient: Web3j,
   ) {
-    qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
+    qbftCluster.docker().rm(nodeName)
     qbftCluster.dockerCompose().up()
     awaitExpectedBlockNumberAfterStartup(nodeName, nodeEthereumClient)
   }
@@ -309,41 +376,22 @@ class CliqueToPosTest {
       }
   }
 
-  private fun syncTarget(
-    engineApiConfig: ApiEndpointConfig,
-    headBlockNumber: Long,
-  ) {
-    val latestBlock = getBlockByNumber(headBlockNumber, retreiveTransactions = true)!!
-
-    val latestExecutionPayload = latestBlock.toDomain()
-    val stubBeaconBlock =
-      BeaconBlock(
-        BeaconBlockHeader(
-          number = 0u,
-          round = 0u,
-          timestamp = latestExecutionPayload.timestamp,
-          proposer = Validator(latestExecutionPayload.feeRecipient),
-          parentRoot = EMPTY_HASH,
-          stateRoot = EMPTY_HASH,
-          bodyRoot = EMPTY_HASH,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        ),
-        BeaconBlockBody(emptySet(), latestExecutionPayload),
-      )
-    buildBlockImportHandler(engineApiConfig).handleNewBlock(stubBeaconBlock).get()
-  }
-
-  private fun sendCliqueTransactions() {
+  private fun sendCliqueAndParisTransactions(cliqueAndParisTransactions: Int) {
     val sequencerBlock = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
-    if (sequencerBlock.blockNumber >= BigInteger.valueOf(5)) {
+    if (sequencerBlock.blockNumber >= BigInteger.valueOf(cliqueAndParisTransactions.toLong())) {
       return
     }
-    repeat(5) { transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() } }
+    repeat(cliqueAndParisTransactions) { transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() } }
   }
 
   private fun assertNodeBlockHeight(
     web3j: Web3j,
-    expectedBlockNumber: Long = 9L,
+    expectedBlockNumber: Long =
+      TestEnvironment.sequencerL2Client
+        .ethBlockNumber()
+        .send()
+        .blockNumber
+        .toLong(),
   ) {
     val targetNodeBlockHeight = web3j.ethBlockNumber().send().blockNumber
     assertThat(targetNodeBlockHeight).isEqualTo(expectedBlockNumber)
@@ -352,8 +400,13 @@ class CliqueToPosTest {
   private fun assertNodeBlockPrevRandao(
     web3j: Web3j,
     lastPreMergeBlockNumber: Long = 5L,
-    lastPostMergeBlockNumber: Long = 9L,
   ) {
+    val lastPostMergeBlockNumber =
+      TestEnvironment.sequencerL2Client
+        .ethBlockNumber()
+        .send()
+        .blockNumber
+        .toLong()
     var lastMixHash: String? = null
     (lastPreMergeBlockNumber..lastPostMergeBlockNumber).forEach {
       val mixHash =
@@ -372,32 +425,63 @@ class CliqueToPosTest {
     }
   }
 
-  private fun waitForAllBlockHeightsToMatch() {
-    val sequencerBlockHeight =
-      TestEnvironment.sequencerL2Client
-        .ethBlockNumber()
-        .send()
-        .blockNumber
-        .toLong()
+  private fun waitForAllNodesToBeInSyncToMatch() {
+    // Send a transaction so that the Besu follower triggers a backward sync to sync to head.
+    // Besu doesn't adjust the pivot block during the initial sync and may end sync with a block below head.
+    transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
 
-    await.untilAsserted {
-      val blockHeights =
-        TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
-          .map { entry ->
-            entry.key to
-              SafeFuture.of(
-                entry.value.ethBlockNumber().sendAsync(),
-              )
-          }.map { it.first to it.second.get() }
+    data class NodeHead(
+      val node: String,
+      val blockHeight: Long,
+      val blockTimestamp: Long,
+    )
 
-      blockHeights.forEach {
-        assertThat(it.second.blockNumber)
+    await
+      .pollInterval(1.seconds.toJavaDuration())
+      .timeout(1.minutes.toJavaDuration())
+      .untilAsserted {
+        transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+
+        val expectedMinBlockHeight =
+          TestEnvironment.sequencerL2Client
+            .ethBlockNumber()
+            .send()
+            .blockNumber
+            .toLong()
+
+        val blockHeights =
+          TestEnvironment.clientsSyncablePreMergeAndPostMerge.entries
+            .map { entry ->
+              entry.value
+                // this complex logic is necessary because besu has a bug
+                // eth_getBlockByNumber(latest) sometimes returns genesis block in follower nodes
+                .ethBlockNumber()
+                .sendAsync()
+                .toSafeFuture()
+                .thenCompose { bn ->
+                  entry.value
+                    .ethGetBlockByNumber(DefaultBlockParameter.valueOf(bn.blockNumber), false)
+                    .sendAsync()
+                    .thenApply {
+                      NodeHead(
+                        entry.key,
+                        bn.blockNumber.toLong(),
+                        it.block.timestamp.toLong(),
+                      )
+                    }
+                }
+            }.let { SafeFuture.collectAll(it.stream()).get() }
+
+        val nodesOutOfSync = blockHeights.filter { it.blockHeight < expectedMinBlockHeight }
+
+        assertThat(nodesOutOfSync)
           .withFailMessage {
-            "Block height doesn't match for ${it.first}. Found ${it.second.blockNumber} " +
-              "while expecting $sequencerBlockHeight."
-          }.isEqualTo(sequencerBlockHeight)
+            "Nodes out of sync:" +
+              "\nforks=$forksTimestamps" +
+              "\nexpectedMinBlockHeight= $expectedMinBlockHeight, " +
+              "\nout of sync nodes: $nodesOutOfSync"
+          }.isEmpty()
       }
-    }
   }
 
   private fun everyoneArePeered() {
@@ -428,16 +512,4 @@ class CliqueToPosTest {
       }
     }
   }
-
-  private fun getBlockByNumber(
-    blockNumber: Long,
-    retreiveTransactions: Boolean = false,
-    ethClient: Web3j = TestEnvironment.sequencerL2Client,
-  ): EthBlock.Block? =
-    ethClient
-      .ethGetBlockByNumber(
-        DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
-        retreiveTransactions,
-      ).send()
-      .block
 }

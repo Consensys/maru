@@ -11,11 +11,17 @@ package maru.syncing
 enum class CLSyncStatus {
   SYNCING,
   SYNCED, // up to head - nearHeadBlocks
+  ;
+
+  override fun toString(): String = "CLSyncStatus.${super.toString()}"
 }
 
 enum class ELSyncStatus {
   SYNCING,
   SYNCED, // EL has latest SYNCED block from Beacon
+  ;
+
+  override fun toString(): String = "ELSyncStatus.${super.toString()}"
 }
 
 interface SyncStatusProvider {
@@ -37,5 +43,9 @@ interface SyncStatusProvider {
 
   fun onFullSyncComplete(handler: () -> Unit)
 
+  fun getBeaconSyncDistance(): ULong
+
   fun getSyncTarget(): ULong?
+
+  fun getCLSyncTarget(): ULong
 }

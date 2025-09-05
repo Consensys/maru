@@ -9,13 +9,8 @@
 package maru.app
 
 import java.io.File
-import maru.testutils.Checks.getMinedBlocks
-import maru.testutils.Checks.verifyBlockTimeWithAGapOn
-import maru.testutils.MaruFactory
-import maru.testutils.besu.BesuFactory
-import maru.testutils.besu.BesuTransactionsHelper
-import maru.testutils.besu.ethGetBlockByNumber
-import maru.testutils.besu.startWithRetry
+import linea.kotlin.decodeHex
+import linea.kotlin.toULong
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -30,6 +25,14 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.methods.response.EthBlock
+import testutils.Checks.getMinedBlocks
+import testutils.Checks.verifyBlockTime
+import testutils.besu.BesuFactory
+import testutils.besu.BesuTransactionsHelper
+import testutils.besu.ethGetBlockByNumber
+import testutils.besu.startWithRetry
+import testutils.maru.MaruFactory
+import testutils.maru.awaitTillMaruHasPeers
 
 class MaruConsensusSwitchTest {
   companion object {
@@ -43,7 +46,6 @@ class MaruConsensusSwitchTest {
   private lateinit var followerMaruNode: MaruApp
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
-  private val maruFactory = MaruFactory()
 
   @TempDir
   private lateinit var validatorMaruTmpDir: File
@@ -75,40 +77,48 @@ class MaruConsensusSwitchTest {
 
   private fun verifyConsensusSwitch(
     besuNode: BesuNode,
+    expectedBlocksInClique: Int,
     totalBlocksToProduce: Int,
-    switchTimestamp: Long,
+    pragueTimestamp: ULong,
   ) {
     val blockProducedByClique = besuNode.ethGetBlockByNumber(1UL)
-    assertThat(blockProducedByClique.extraData.length).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
+    assertThat(blockProducedByClique.extraData.decodeHex().size).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
 
-    val blockProducedByPrague = besuNode.ethGetBlockByNumber("latest")
-    assertThat(blockProducedByPrague.extraData.length).isEqualTo(24)
+    val blockProducedAfterSwitch = besuNode.ethGetBlockByNumber("latest")
+    assertThat(blockProducedAfterSwitch.extraData.decodeHex().size).isLessThanOrEqualTo(VANILLA_EXTRA_DATA_LENGTH)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
-    val switchBlock = blocks.findPragueBlock(switchTimestamp)!!
-    blocks.verifyBlockTimeWithAGapOn(switchBlock)
+    val pragueSwitchBlock = blocks.findSwitchBlock(pragueTimestamp)!!
+    val prePragueBlocks = blocks.subList(0, pragueSwitchBlock)
+    prePragueBlocks.verifyBlockTime()
+    assertThat(prePragueBlocks).hasSizeGreaterThan(expectedBlocksInClique)
+    // Check that there are Prague blocks
+    blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
   }
 
   @Test
-  fun `Follower node correctly switches from Clique to Prague after peering with Sequencer validator`() {
-    val stackStartupMargin = 30
+  fun `Follower node correctly switches from Clique to POS after peering with Sequencer validator`() {
+    val stackStartupMargin = 30UL
     val expectedBlocksInClique = 5
-    val totalBlocksToProduce = expectedBlocksInClique * 2
-    var currentTimestamp = System.currentTimeMillis() / 1000
-    val switchTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique
-    log.info("Setting Prague switch timestamp to $switchTimestamp, current timestamp: $currentTimestamp")
+    var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
+    val pragueTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
+    val totalBlocksToProduce = (pragueTimestamp - currentTimestamp).toInt()
+    val ttd = expectedBlocksInClique.toULong() * 2UL
+    log.info(
+      "Setting Prague switch timestamp to $pragueTimestamp, current timestamp: $currentTimestamp",
+    )
 
     // Initialize Besu with the same switch timestamp
     validatorBesuNode =
       BesuFactory.buildSwitchableBesu(
-        switchTimestamp = switchTimestamp,
-        expectedBlocksInClique = expectedBlocksInClique,
+        pragueTimestamp = pragueTimestamp,
+        ttd = ttd,
         validator = true,
       )
     followerBesuNode =
       BesuFactory.buildSwitchableBesu(
-        switchTimestamp = switchTimestamp,
-        expectedBlocksInClique = expectedBlocksInClique,
+        pragueTimestamp = pragueTimestamp,
+        ttd = ttd,
         validator = false,
       )
     cluster.startWithRetry(validatorBesuNode, followerBesuNode)
@@ -117,12 +127,12 @@ class MaruConsensusSwitchTest {
     val validatorEthereumJsonRpcBaseUrl = validatorBesuNode.jsonRpcBaseUrl().get()
     val validatorEngineRpcUrl = validatorBesuNode.engineRpcUrl().get()
 
+    val maruFactory = MaruFactory(pragueTimestamp = pragueTimestamp, ttd = ttd)
     validatorMaruNode =
       maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,
         engineApiRpc = validatorEngineRpcUrl,
         dataDir = validatorMaruTmpDir.toPath(),
-        switchTimestamp = switchTimestamp,
       )
     validatorMaruNode.start()
 
@@ -135,10 +145,11 @@ class MaruConsensusSwitchTest {
         engineApiRpc = followerEngineRpcUrl,
         dataDir = followerMaruTmpDir.toPath(),
         validatorPortForStaticPeering = validatorMaruNode.p2pPort(),
-        switchTimestamp = switchTimestamp,
       )
     followerMaruNode.start()
 
+    followerMaruNode.awaitTillMaruHasPeers(1u)
+    validatorMaruNode.awaitTillMaruHasPeers(1u)
     log.info("Sending transactions")
     repeat(totalBlocksToProduce) {
       transactionsHelper.run {
@@ -150,17 +161,27 @@ class MaruConsensusSwitchTest {
       }
     }
 
-    currentTimestamp = System.currentTimeMillis() / 1000
-    log.info("Current timestamp: $currentTimestamp, switch timestamp: $switchTimestamp")
-    assertThat(currentTimestamp).isGreaterThan(switchTimestamp)
+    currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
+    log.info("Current timestamp: $currentTimestamp, prague switch timestamp: $pragueTimestamp")
+    assertThat(currentTimestamp).isGreaterThan(pragueTimestamp)
 
-    verifyConsensusSwitch(validatorBesuNode, totalBlocksToProduce, switchTimestamp)
-    verifyConsensusSwitch(followerBesuNode, totalBlocksToProduce, switchTimestamp)
+    verifyConsensusSwitch(
+      besuNode = validatorBesuNode,
+      expectedBlocksInClique = expectedBlocksInClique,
+      totalBlocksToProduce = totalBlocksToProduce,
+      pragueTimestamp = pragueTimestamp,
+    )
+    verifyConsensusSwitch(
+      besuNode = followerBesuNode,
+      expectedBlocksInClique = expectedBlocksInClique,
+      totalBlocksToProduce = totalBlocksToProduce,
+      pragueTimestamp = pragueTimestamp,
+    )
   }
 
-  private fun List<EthBlock.Block>.findPragueBlock(expectedSwitchTimestamp: Long): Int? =
+  private fun List<EthBlock.Block>.findSwitchBlock(expectedSwitchTimestamp: ULong): Int? =
     this
       .indexOfFirst {
-        it.timestamp.toLong() >= expectedSwitchTimestamp
+        it.timestamp.toULong() >= expectedSwitchTimestamp
       }.takeIf { it != -1 }
 }

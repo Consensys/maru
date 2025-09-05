@@ -43,7 +43,7 @@ class BeaconChainInitialization(
 
     val tmpGenesisStateRoot =
       BeaconState(
-        latestBeaconBlockHeader = beaconBlockHeader,
+        beaconBlockHeader = beaconBlockHeader,
         validators = validatorSet,
       )
     val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
@@ -51,7 +51,7 @@ class BeaconChainInitialization(
     val genesisBlockHeader = beaconBlockHeader.copy(stateRoot = stateRootHash)
     val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
     val genesisState = BeaconState(genesisBlockHeader, validatorSet)
-    beaconChain.newUpdater().run {
+    beaconChain.newBeaconChainUpdater().run {
       putBeaconState(genesisState)
       putSealedBeaconBlock(SealedBeaconBlock(genesisBlock, emptySet()))
       commit()

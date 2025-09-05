@@ -8,14 +8,16 @@
  */
 package maru.syncing
 
-import java.util.Timer
-import java.util.TimerTask
 import kotlin.time.Duration.Companion.seconds
+import maru.core.ext.DataGenerators
+import maru.database.BeaconChain
+import maru.database.InMemoryBeaconChain
 import maru.p2p.PeersHeadBlockProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import testutils.maru.TestablePeriodicTimer
 
 class PeerChainTrackerTest {
   // Dummy implementation of PeersHeadBlockProvider for testing
@@ -49,55 +51,24 @@ class PeerChainTrackerTest {
     }
   }
 
-  // Test implementation that allows controlling the timer execution
-  internal class TestableTimer : Timer("test-timer", true) {
-    val scheduledTasks = mutableListOf<TimerTask>()
-    val delays = mutableListOf<Long>()
-    val periods = mutableListOf<Long>()
-
-    override fun scheduleAtFixedRate(
-      task: TimerTask,
-      delay: Long,
-      period: Long,
-    ) {
-      scheduledTasks.add(task)
-      delays.add(delay)
-      periods.add(period)
-    }
-
-    fun runNextTask() {
-      if (scheduledTasks.isNotEmpty()) {
-        scheduledTasks[0].run()
-      }
-    }
-
-    // Ensuring that cancel() works properly for cleanup
-    override fun cancel() {
-      super.cancel()
-      scheduledTasks.clear()
-      delays.clear()
-      periods.clear()
-    }
-  }
-
   private lateinit var peersHeadsProvider: TestPeersHeadBlockProvider
   private lateinit var syncTargetUpdateHandler: TestBeaconSyncTargetUpdateHandler
   private lateinit var targetChainHeadCalculator: TestSyncTargetSelector
   private lateinit var config: PeerChainTracker.Config
-  private lateinit var timer: TestableTimer
+  private lateinit var timer: TestablePeriodicTimer
   private lateinit var peerChainTracker: PeerChainTracker
+  private val beaconChain: BeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(7uL))
 
   @BeforeEach
   fun setUp() {
     peersHeadsProvider = TestPeersHeadBlockProvider()
     syncTargetUpdateHandler = TestBeaconSyncTargetUpdateHandler()
     targetChainHeadCalculator = TestSyncTargetSelector()
-    timer = TestableTimer()
+    timer = TestablePeriodicTimer()
 
     config =
       PeerChainTracker.Config(
         pollingUpdateInterval = 1.seconds,
-        granularity = 10u,
       )
 
     // Use the lambda to inject our testable timer
@@ -108,6 +79,7 @@ class PeerChainTrackerTest {
         targetChainHeadCalculator,
         config,
         timerFactory = { _, _ -> timer },
+        beaconChain = beaconChain,
       )
   }
 
@@ -122,9 +94,9 @@ class PeerChainTrackerTest {
     peerChainTracker.start()
 
     // Assert
-    assertThat(timer.scheduledTasks).hasSize(1)
-    assertThat(timer.delays[0]).isEqualTo(0L)
-    assertThat(timer.periods[0]).isEqualTo(1000L)
+    assertThat(timer.scheduledTask).isNotNull
+    assertThat(timer.delay).isEqualTo(0L)
+    assertThat(timer.period).isEqualTo(1000L)
   }
 
   @Test
@@ -136,32 +108,11 @@ class PeerChainTrackerTest {
     peerChainTracker.stop()
 
     // Assert
-    assertThat(timer.scheduledTasks).isEmpty()
+    assertThat(timer.scheduledTask).isNull()
   }
 
   @Test
-  fun `should round heights according to granularity`() {
-    // Arrange
-    val peersHeads =
-      mapOf(
-        "peer1" to 105UL,
-        "peer2" to 110UL,
-        "peer3" to 119UL,
-      )
-    peersHeadsProvider.setPeersHeads(peersHeads)
-
-    // Act
-    peerChainTracker.start()
-    timer.runNextTask()
-
-    // Assert - since we're using a max value selector,
-    // the result should be the max rounded value (110UL)
-    assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
-    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(110UL)
-  }
-
-  @Test
-  fun `should not notify if no changes in rounded heights`() {
+  fun `should not notify if no changes in heights`() {
     // Arrange - Initial state
     val initialPeersHeads =
       mapOf(
@@ -178,11 +129,11 @@ class PeerChainTrackerTest {
     assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
     syncTargetUpdateHandler.reset()
 
-    // Arrange - Subsequent state with small changes that don't affect rounded values
+    // Arrange - Subsequent state with small changes but not on the highest height
     val subsequentPeersHeads =
       mapOf(
         "peer1" to 101UL,
-        "peer2" to 111UL,
+        "peer2" to 110UL,
       )
     peersHeadsProvider.setPeersHeads(subsequentPeersHeads)
 
@@ -206,7 +157,7 @@ class PeerChainTrackerTest {
 
     // Assert - New target should be received
     assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
-    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(120UL)
+    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(122UL)
   }
 
   @Test
@@ -300,8 +251,8 @@ class PeerChainTrackerTest {
     val subsequentPeersHeads =
       mapOf(
         "peer1" to 100UL,
-        "peer2" to 115UL, // Different height but same rounded value (110)
-        "peer3" to 105UL, // New peer but with height that rounds to 100
+        "peer2" to 110UL,
+        "peer3" to 105UL,
       )
     peersHeadsProvider.setPeersHeads(subsequentPeersHeads)
 
@@ -314,6 +265,7 @@ class PeerChainTrackerTest {
 
   @Test
   fun `should handle empty peer list`() {
+    val latestBeaconBlockNumber = beaconChain.getLatestBeaconState().beaconBlockHeader.number
     // Arrange - Start with no peers
     peersHeadsProvider.setPeersHeads(emptyMap())
 
@@ -321,8 +273,8 @@ class PeerChainTrackerTest {
     peerChainTracker.start()
     timer.runNextTask()
 
-    // Assert - No updates should occur with empty peer list
-    assertThat(syncTargetUpdateHandler.receivedTargets).isEmpty()
+    // Assert - When there are no peers it should just set the sync target to 0
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(latestBeaconBlockNumber))
 
     // Arrange - Add peers
     val peersHeads =
@@ -335,7 +287,6 @@ class PeerChainTrackerTest {
     timer.runNextTask()
 
     // Assert - Update should occur when peers are added
-    assertThat(syncTargetUpdateHandler.receivedTargets).hasSize(1)
-    assertThat(syncTargetUpdateHandler.receivedTargets[0]).isEqualTo(100UL)
+    assertThat(syncTargetUpdateHandler.receivedTargets).hasSameElementsAs(listOf(latestBeaconBlockNumber, 100UL))
   }
 }

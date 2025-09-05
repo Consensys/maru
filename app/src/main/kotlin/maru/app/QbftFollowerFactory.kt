@@ -8,71 +8,98 @@
  */
 package maru.app
 
-import maru.config.ValidatorElNode
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
+import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
+import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
 import maru.consensus.qbft.ProposerSelectorImpl
-import maru.consensus.qbft.QbftConsensusFollower
+import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
 import maru.consensus.validation.QuorumOfSealsVerifier
 import maru.consensus.validation.SCEP256SealVerifier
+import maru.core.NoOpProtocol
 import maru.core.Protocol
 import maru.database.BeaconChain
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
 import net.consensys.linea.metrics.MetricsFacade
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftFollowerFactory(
-  val p2PNetwork: P2PNetwork,
-  val beaconChain: BeaconChain,
-  val newBlockHandler: NewBlockHandler<*>,
-  val validatorElNodeConfig: ValidatorElNode,
-  val beaconChainInitialization: BeaconChainInitialization,
-  val metricsFacade: MetricsFacade,
-  val allowEmptyBlocks: Boolean,
+  private val p2pNetwork: P2PNetwork,
+  private val beaconChain: BeaconChain,
+  private val validatorELNodeEngineApiWeb3JClient: Web3JClient,
+  private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,
+  private val metricsFacade: MetricsFacade,
+  private val allowEmptyBlocks: Boolean,
+  private val metadataCacheUpdaterHandlerEntry: Pair<String, NewBlockHandler<*>>,
+  private val finalizationStateProvider: FinalizationProvider,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)
+    val payloadValidatorExecutionLayerManager =
+      Helpers.buildExecutionLayerManager(
+        web3JEngineApiClient = validatorELNodeEngineApiWeb3JClient,
+        elFork = qbftConsensusConfig.elFork,
+        metricsFacade = metricsFacade,
+      )
+    val elPayloadValidatorNewBlockHandler =
+      FollowerBeaconBlockImporter.create(
+        executionLayerManager = payloadValidatorExecutionLayerManager,
+        finalizationStateProvider = finalizationStateProvider,
+        importerName = "payload-validator",
+      )
+    val elFollowersNewBlockHandlerMap =
+      followerELNodeEngineApiWeb3JClients.mapValues { (followerName, web3JClient) ->
+        val elFollowerExecutionLayerManager =
+          Helpers.buildExecutionLayerManager(
+            web3JEngineApiClient = web3JClient,
+            elFork = qbftConsensusConfig.elFork,
+            metricsFacade = metricsFacade,
+          )
+        FollowerBeaconBlockImporter.create(
+          executionLayerManager = elFollowerExecutionLayerManager,
+          finalizationStateProvider = finalizationStateProvider,
+          importerName = followerName,
+        )
+      }
+    val callAndForgetNewBlockHandler =
+      NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap + metadataCacheUpdaterHandlerEntry)
+
     val validatorProvider = StaticValidatorProvider(validators = qbftConsensusConfig.validatorSet)
     val stateTransition = StateTransitionImpl(validatorProvider)
     val transactionalSealedBeaconBlockImporter =
       TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition) { _, beaconBlock ->
-        newBlockHandler.handleNewBlock(beaconBlock)
+        elPayloadValidatorNewBlockHandler
+          .handleNewBlock(beaconBlock)
+          .thenCompose {
+            callAndForgetNewBlockHandler.handleNewBlock(beaconBlock) // Don't wait for the result
+            SafeFuture.completedFuture(Unit)
+          }
       }
-    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())
-    val engineApiExecutionLayerClient =
-      Helpers.buildExecutionEngineClient(
-        validatorElNodeConfig.engineApiEndpoint,
-        elFork = qbftConsensusConfig.elFork,
-        metricsFacade = metricsFacade,
-      )
-    val executionLayerManager =
-      JsonRpcExecutionLayerManager(
-        executionLayerEngineApiClient = engineApiExecutionLayerClient,
-      )
     val beaconBlockValidatorFactory =
       BeaconBlockValidatorFactoryImpl(
         beaconChain = beaconChain,
         proposerSelector = ProposerSelectorImpl,
         stateTransition = stateTransition,
-        executionLayerManager = executionLayerManager,
+        executionLayerManager = payloadValidatorExecutionLayerManager,
         allowEmptyBlocks = allowEmptyBlocks,
       )
-    val blockImporter =
+    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())
+    val payloadValidatorNewBlockImporter =
       ValidatingSealedBeaconBlockImporter(
         beaconBlockImporter = transactionalSealedBeaconBlockImporter,
         sealsVerifier = sealsVerifier,
         beaconBlockValidatorFactory = beaconBlockValidatorFactory,
       )
+    p2pNetwork.subscribeToBlocks(payloadValidatorNewBlockImporter::importBlock)
 
-    beaconChainInitialization.ensureDbIsInitialized(qbftConsensusConfig.validatorSet)
-
-    return QbftConsensusFollower(p2PNetwork, blockImporter)
+    return NoOpProtocol()
   }
 }

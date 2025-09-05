@@ -9,15 +9,12 @@
 package maru.executionlayer.client
 
 import java.util.Optional
+import maru.config.consensus.ElFork
 import maru.core.ExecutionPayload
 import maru.extensions.captureTimeSafeFuture
-import maru.extensions.getEndpoint
 import maru.mappers.Mappers.toDomainExecutionPayload
 import maru.mappers.Mappers.toExecutionPayloadV3
-import maru.metrics.MaruMetricsCategory
-import net.consensys.linea.metrics.DynamicTagTimer
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.linea.metrics.Tag
 import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
@@ -26,35 +23,14 @@ import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
 class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-  private val web3jClient: Web3JClient,
-  private val metricsFacade: MetricsFacade,
-) : ExecutionLayerEngineApiClient {
-  private val web3jEngineClient: Web3JExecutionEngineClient = Web3JExecutionEngineClient(web3jClient)
-
-  private fun <T> createRequestTimer(method: String): DynamicTagTimer<Response<T>> =
-    metricsFacade.createDynamicTagTimer<Response<T>>(
-      category = MaruMetricsCategory.ENGINE_API,
-      name = "request.latency",
-      description = "Execution Engine API request latency",
-      commonTags =
-        listOf(
-          Tag("fork", "prague"),
-          Tag("endpoint", web3jClient.getEndpoint()),
-          Tag("method", method),
-        ),
-      tagValueExtractor = {
-        when {
-          it.payload != null -> listOf(Tag("status", "success"))
-          else -> listOf(Tag("status", "failure"))
-        }
-      },
-      tagValueExtractorOnError = { listOf(Tag("status", "failure")) },
-    )
+  web3jClient: Web3JClient,
+  metricsFacade: MetricsFacade,
+) : BaseWeb3JJsonRpcExecutionLayerEngineApiClient(web3jClient = web3jClient, metricsFacade = metricsFacade) {
+  override fun getFork(): ElFork = ElFork.Prague
 
   override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
     createRequestTimer<ExecutionPayload>(method = "getPayload").captureTimeSafeFuture(
@@ -94,9 +70,6 @@ class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
     ).captureTimeSafeFuture(
       web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3())),
     )
-
-  override fun getLatestBlockHash(): SafeFuture<ByteArray> =
-    web3jEngineClient.powChainHead.thenApply { powBlock -> powBlock.blockHash.toArray() }
 
   private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =
     PayloadAttributesV3(
