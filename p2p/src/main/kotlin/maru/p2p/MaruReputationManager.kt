@@ -76,13 +76,6 @@ class MaruReputationManager(
       .map { it.shouldInitiateConnection(timeProvider.timeInMillis) }
       .orElse(true)
 
-  fun isExternalConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean =
-    peerReputations
-      .getCached(peerAddress.id)
-      // allow external connection 5 seconds earlier to prevent peers from not being able to reconnect immediately
-      .map { it.shouldInitiateConnection(timeProvider.timeInMillis) }
-      .orElse(true)
-
   override fun reportInitiatedConnectionSuccessful(peerAddress: PeerAddress) {
     getOrCreateReputation(peerAddress).reportInitiatedConnectionSuccessful()
   }
