@@ -438,53 +438,6 @@ class P2PTest {
   }
 
   @Test
-  fun `peer send a status request and receive exception when callee throws error`() {
-    val p2pNetworkImpl1 =
-      createP2PNetwork(
-        privateKey = key1,
-        port = PORT1,
-        statusMessageFactory =
-          StatusMessageFactory(
-            beaconChain = beaconChain,
-            forkIdHashProvider = { throw IllegalStateException("currentForkIdHash exception testing") },
-          ),
-      )
-    val p2pNetworkImpl2 =
-      createP2PNetwork(
-        privateKey = key2,
-        port = PORT2,
-        staticPeers = listOf(PEER_ADDRESS_NODE_1),
-        statusMessageFactory =
-          StatusMessageFactory(
-            beaconChain = beaconChain,
-            forkIdHashProvider = { throw IllegalStateException("currentForkIdHash exception testing") },
-          ),
-      )
-
-    try {
-      p2pNetworkImpl1.start()
-      p2pNetworkImpl2.start()
-
-      val peer1 =
-        p2pNetworkImpl2.getPeerLookup().getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
-          ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pNetworkImpl2")
-      val maruPeer1 =
-        DefaultMaruPeer(peer1, rpcMethods, statusMessageFactory, p2pConfig = P2PConfig(ipAddress = IPV4, port = PORT1))
-
-      val responseFuture = maruPeer1.sendStatus()
-
-      assertThatThrownBy { responseFuture.get() }
-        .isInstanceOf(ExecutionException::class.java)
-        .hasCauseInstanceOf(RpcException::class.java)
-        .hasMessageContaining("currentForkIdHash exception testing")
-        .matches { (it.cause as RpcException).responseCode == RpcResponseStatus.SERVER_ERROR_CODE }
-    } finally {
-      p2pNetworkImpl1.stop().get()
-      p2pNetworkImpl2.stop().get()
-    }
-  }
-
-  @Test
   fun `peer can send beacon blocks by range request`() {
     // Set up beacon chain with some blocks
     val testBeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))

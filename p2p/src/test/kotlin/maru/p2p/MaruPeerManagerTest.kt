@@ -149,7 +149,6 @@ class MaruPeerManagerTest {
     val peer = mock<Peer>()
     val maruPeerFactory = mock<MaruPeerFactory>()
     val maruPeer = mock<MaruPeer>()
-    val mockFutureStatus = mock<SafeFuture<Unit>>()
     val p2pConfig = mock<P2PConfig>()
     val p2pNetwork = mock<P2PNetwork<Peer>>()
     val syncConfig = mock<SyncingConfig>()
@@ -182,15 +181,10 @@ class MaruPeerManagerTest {
 
   @Test
   fun `onConnect disconnects peer when max peers limit exceeded`() {
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
     val maruPeerFactory = mock<MaruPeerFactory>()
     val p2pConfig = mock<P2PConfig>()
-    val p2pNetwork = mock<P2PNetwork<Peer>>()
     val syncConfig = mock<SyncingConfig>()
-    val mockScheduler = mock<ScheduledExecutorService>()
 
-    whenever(peer.id).thenReturn(nodeId)
     whenever(p2pConfig.maxPeers).thenReturn(5)
     whenever(syncConfig.desyncTolerance).thenReturn(32u)
 
@@ -203,11 +197,15 @@ class MaruPeerManagerTest {
         syncStatusProviderProvider = { syncStatusProvider },
         syncConfig = syncConfig,
       )
+    val mockScheduler = mock<ScheduledExecutorService>()
     manager.scheduler = mockScheduler
 
+    val p2pNetwork = mock<P2PNetwork<Peer>>()
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     // Add 5 connected peers to equal the maxPeers limit of 5
-    addConnectedPeers(5, manager)
+    addConnectedPeers(5, manager, maruPeerFactory, syncConfig)
+
+    val peer = mock<Peer>()
 
     manager.onConnect(peer)
 
@@ -452,17 +450,25 @@ class MaruPeerManagerTest {
   private fun addConnectedPeers(
     number: Int,
     manager: MaruPeerManager,
+    maruPeerFactory: MaruPeerFactory,
+    syncConfig: SyncingConfig,
   ): List<MaruPeer> {
     val peers = mutableListOf<MaruPeer>()
     for (i in 1..number) {
-      val peer = mock<MaruPeer>()
       val nodeId = mock<NodeId>()
-      whenever(peer.id).thenReturn(nodeId)
+      val peer = mock<Peer>()
+      val maruPeer = mock<MaruPeer>()
       val status = mock<Status>()
+
+      whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
+      whenever(maruPeer.awaitInitialStatus()).thenReturn(statusFuture)
+      whenever(maruPeer.id).thenReturn(nodeId)
+      whenever(peer.id).thenReturn(nodeId)
+      whenever(syncConfig.desyncTolerance).thenReturn(32u)
       whenever(status.latestBlockNumber).thenReturn(i.toULong())
-      whenever(peer.getStatus()).thenReturn(status)
-      peers.add(peer)
-      addConnectedPeer(manager, peer)
+      whenever(maruPeer.getStatus()).thenReturn(status)
+      peers.add(maruPeer)
+      addConnectedPeer(manager, maruPeer)
     }
     return peers
   }
