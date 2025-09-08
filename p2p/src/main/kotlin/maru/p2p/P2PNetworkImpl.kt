@@ -30,6 +30,7 @@ import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.messages.StatusMessageFactory
 import maru.p2p.topics.QbftMessageSerDe
+import maru.p2p.topics.SimpleTopicHandler
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import net.consensys.linea.metrics.MetricsFacade
@@ -93,13 +94,10 @@ class P2PNetworkImpl(
     )
   private val qbftMessagesSubscriptionManager = SubscriptionManager<QbftMessage>()
   private val qbftMessagesTopicHandler =
-    TopicHandlerWithInOrderDelivering(
+    SimpleTopicHandler(
       subscriptionManager = qbftMessagesSubscriptionManager,
-      sequenceNumberExtractor = { 0UL }, // QBFT messages don't have sequence numbers, so we use 0
       deserializer = qbftMessageSerDe,
       topicId = qbftTopicId,
-      isHandlingEnabled = { true }, // Always enabled for QBFT messages
-      nextExpectedSequenceNumberProvider = { 0UL }, // Always expect 0 since we don't use sequence numbers
     )
   private val broadcastMessageCounterFactory =
     metricsFacade.createCounterFactory(
@@ -132,6 +130,8 @@ class P2PNetworkImpl(
       port = p2pConfig.port,
       sealedBlocksTopicHandler = sealedBlocksTopicHandler,
       sealedBlocksTopicId = sealedBlocksTopicId,
+      qbftTopicHandler = qbftMessagesTopicHandler,
+      qbftTopicId = qbftTopicId,
       rpcMethods = rpcMethods.all(),
       maruPeerManager = maruPeerManager,
       metricsSystem = besuMetricsSystem,
