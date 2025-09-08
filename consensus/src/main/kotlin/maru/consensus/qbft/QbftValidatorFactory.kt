@@ -11,6 +11,7 @@ package maru.consensus.qbft
 import java.time.Clock
 import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import maru.config.QbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
@@ -52,6 +53,7 @@ import maru.p2p.ValidationResult
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
+import org.hyperledger.besu.consensus.common.bft.BftRoundExpiryTimeCalculator
 import org.hyperledger.besu.consensus.common.bft.BlockTimer
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
@@ -146,10 +148,16 @@ class QbftValidatorFactory(
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
     val bftEventQueue = BftEventQueue(qbftOptions.messageQueueLimit)
     val roundExpiry = qbftOptions.roundExpiry ?: forkSpec.blockTimeSeconds.toInt().seconds
+    val roundTimeExpiryCalculator =
+      if (protocolConfig.validatorSet.size == 1) {
+        ConstantRoundTimeExpiryCalculator((roundExpiry))
+      } else {
+        BftRoundExpiryTimeCalculator(roundExpiry.toJavaDuration())
+      }
     val roundTimer =
       RoundTimer(
         /* queue = */ bftEventQueue,
-        /* roundExpiryTimeCalculator = */ ConstantRoundTimeExpiryCalculator(roundExpiry),
+        /* roundExpiryTimeCalculator = */ roundTimeExpiryCalculator,
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
