@@ -145,8 +145,7 @@ class MaruPeerManager(
     }
     val maruPeer = maruPeerFactory.createMaruPeer(peer)
     val localBeaconChainHead = beaconChain.getLatestBeaconState().beaconBlockHeader.number
-    val targetBlockNumber =
-      syncStatusProvider.getSyncTarget() ?: localBeaconChainHead
+    val targetBlockNumber = syncStatusProvider.getCLSyncTarget()
     statusExchangingMaruPeers[peer.id] = maruPeer
     maruPeer
       .awaitInitialStatus()
@@ -166,7 +165,7 @@ class MaruPeerManager(
           log.debug(
             "Peer={} is too far behind our target block number={} (peer's block number={}). Disconnecting.",
             peer.id,
-            syncStatusProvider.getSyncTarget(),
+            syncStatusProvider.getCLSyncTarget(),
             status.latestBlockNumber,
           )
           maruPeer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS) // there is no better reason available

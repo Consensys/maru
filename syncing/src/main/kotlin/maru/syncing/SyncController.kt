@@ -45,7 +45,6 @@ class BeaconSyncControllerImpl(
   private val log = LogManager.getLogger(this.javaClass)
   private val lock = ReentrantReadWriteLock()
   private var currentState = SyncState(clState, elState)
-  private var currentSyncTarget: ULong? = null
 
   private val clSyncHandlers = InOrderFanoutSubscriptionManager<CLSyncStatus>()
   private val elSyncHandlers = InOrderFanoutSubscriptionManager<ELSyncStatus>()
@@ -86,8 +85,6 @@ class BeaconSyncControllerImpl(
   }
 
   override fun getBeaconSyncDistance(): ULong = clSyncService.getSyncDistance()
-
-  override fun getSyncTarget(): ULong? = lock.read { currentSyncTarget }
 
   fun updateClSyncStatus(newStatus: CLSyncStatus) {
     val callbacks: List<() -> Unit> =
@@ -333,8 +330,6 @@ class AlwaysSyncedController(
     fullSyncCompleteHandlers.notifySubscribers(Unit)
     beaconSyncCompleteHandlers.notifySubscribers(Unit)
   }
-
-  override fun getSyncTarget(): ULong = beaconChain.getLatestBeaconState().beaconBlockHeader.number
 
   override fun getCLSyncTarget(): ULong = beaconChain.getLatestBeaconState().beaconBlockHeader.number
 

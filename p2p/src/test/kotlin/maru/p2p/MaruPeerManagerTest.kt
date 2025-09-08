@@ -86,15 +86,9 @@ class MaruPeerManagerTest {
 
         override fun onFullSyncComplete(handler: () -> Unit) {}
 
-        override fun getBeaconSyncDistance(): ULong {
-          TODO("Not yet implemented")
-        }
+        override fun getBeaconSyncDistance(): ULong = 0UL
 
-        override fun getSyncTarget(): ULong? = null
-
-        override fun getCLSyncTarget(): ULong {
-          TODO("Not yet implemented")
-        }
+        override fun getCLSyncTarget(): ULong = 0UL
       }
 
     val syncStatusProvider: SyncStatusProvider = createSyncStatusProvider()
@@ -287,8 +281,6 @@ class MaruPeerManagerTest {
         override fun onFullSyncComplete(handler: () -> Unit) {}
 
         override fun getBeaconSyncDistance(): ULong = 100u
-
-        override fun getSyncTarget(): ULong = 1000u // Target block number
 
         override fun getCLSyncTarget(): ULong = 1000u
       }

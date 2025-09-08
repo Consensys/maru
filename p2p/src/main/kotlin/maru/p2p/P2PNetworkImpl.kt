@@ -334,7 +334,7 @@ class P2PNetworkImpl(
         .stringValue!!
         .toUInt()
 
-  internal val peerCount: Int
+  val peerCount: Int
     get() = maruPeerManager.getPeers().size
 
   internal fun isConnected(peer: String): Boolean {

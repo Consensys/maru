@@ -45,7 +45,5 @@ interface SyncStatusProvider {
 
   fun getBeaconSyncDistance(): ULong
 
-  fun getSyncTarget(): ULong?
-
   fun getCLSyncTarget(): ULong
 }

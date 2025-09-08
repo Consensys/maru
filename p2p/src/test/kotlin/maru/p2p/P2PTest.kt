@@ -124,8 +124,6 @@ class P2PTest {
 
         override fun getBeaconSyncDistance(): ULong = 10UL
 
-        override fun getSyncTarget(): ULong = 100UL
-
         override fun getCLSyncTarget(): ULong = 100UL
       }
 

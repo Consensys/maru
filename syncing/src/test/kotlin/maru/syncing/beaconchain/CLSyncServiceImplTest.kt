@@ -105,15 +105,9 @@ class CLSyncServiceImplTest {
 
         override fun onFullSyncComplete(handler: () -> Unit) {}
 
-        override fun getSyncTarget(): ULong? = null
+        override fun getBeaconSyncDistance(): ULong = 0UL
 
-        override fun getBeaconSyncDistance(): ULong {
-          TODO("Not yet implemented")
-        }
-
-        override fun getCLSyncTarget(): ULong {
-          TODO("Not yet implemented")
-        }
+        override fun getCLSyncTarget(): ULong = 0UL
       }
 
     fun createForkIdHashProvider(beaconChain: BeaconChain): ForkIdHashProvider {
@@ -511,7 +505,7 @@ class CLSyncServiceImplTest {
     network: P2PNetworkImpl,
     peers: Int,
   ) {
-    assertThat(network.getPeers().count()).isEqualTo(peers)
+    assertThat(network.peerCount).isEqualTo(peers)
   }
 
   private fun findFreePort(): UInt =
