@@ -265,7 +265,7 @@ class P2PNetworkImpl(
     log.trace("Subscribing on new sealed blocks")
     val subscriptionManagerHadSubscriptions = sealedBlocksSubscriptionManager.hasSubscriptions()
 
-    return sealedBlocksSubscriptionManager.subscribeToBlocks(subscriber::handleSealedBlock).also {
+    return sealedBlocksSubscriptionManager.subscribe(subscriber::handleSealedBlock).also {
       if (!subscriptionManagerHadSubscriptions) {
         log.trace(
           "First ever subscription on new sealed blocks topicId={}. Subscribing on network level",
@@ -287,7 +287,7 @@ class P2PNetworkImpl(
     log.trace("Subscribing to QBFT messages")
     val subscriptionManagerHadSubscriptions = qbftMessagesSubscriptionManager.hasSubscriptions()
 
-    return qbftMessagesSubscriptionManager.subscribeToBlocks(subscriber::handleQbftMessage).also {
+    return qbftMessagesSubscriptionManager.subscribe(subscriber::handleQbftMessage).also {
       if (!subscriptionManagerHadSubscriptions) {
         log.trace(
           "First ever subscription to QBFT messages topicId={}. Subscribing on network level",
