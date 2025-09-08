@@ -58,7 +58,7 @@ class SimpleTopicHandler<T>(
   override fun handleMessage(message: PreparedGossipMessage): SafeFuture<Libp2pValidationResult> =
     try {
       val deserializedMessage = deserializer.deserialize(message.originalMessage.toArray())
-      log.trace("Processing message immediately: {}", deserializedMessage)
+      log.trace("Processing message: {}", deserializedMessage)
 
       handleEvent(deserializedMessage)
     } catch (th: Throwable) {
