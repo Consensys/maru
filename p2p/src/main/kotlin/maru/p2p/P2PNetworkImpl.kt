@@ -57,7 +57,7 @@ class P2PNetworkImpl(
   private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
-  private val metricsSystem: BesuMetricsSystem,
+  metricsSystem: BesuMetricsSystem,
   private val statusMessageFactory: StatusMessageFactory,
   private val beaconChain: BeaconChain,
   private val forkIdHashProvider: ForkIdHashProvider,
