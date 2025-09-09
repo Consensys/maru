@@ -42,6 +42,7 @@ import org.ethereum.beacon.discovery.schema.NodeRecord
 import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
@@ -66,6 +67,13 @@ class P2PNetworkImpl(
   private val p2PState: P2PState,
   private val syncStatusProviderProvider: () -> SyncStatusProvider,
   private val syncConfig: SyncingConfig,
+  // for testing:
+  private val rpcMethodsFactory: (
+    StatusMessageFactory,
+    LineaRpcProtocolIdGenerator,
+    () -> PeerLookup,
+    BeaconChain,
+  ) -> RpcMethods = ::RpcMethods,
 ) : P2PNetwork {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   internal lateinit var maruPeerManager: MaruPeerManager
@@ -104,15 +112,25 @@ class P2PNetworkImpl(
     val privateKey = unmarshalPrivateKey(privateKeyBytes)
     val rpcIdGenerator = LineaRpcProtocolIdGenerator(chainId)
 
-    val rpcMethods = RpcMethods(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
+    val reputationManager =
+      MaruReputationManager(besuMetricsSystem, SystemTimeProvider(), this::isStaticPeer, p2pConfig.reputation)
+
+    val rpcMethods = rpcMethodsFactory(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
     maruPeerManager =
       MaruPeerManager(
-        maruPeerFactory = DefaultMaruPeerFactory(rpcMethods, statusMessageFactory, p2pConfig),
+        maruPeerFactory =
+          DefaultMaruPeerFactory(
+            rpcMethods = rpcMethods,
+            statusMessageFactory = statusMessageFactory,
+            p2pConfig = p2pConfig,
+          ),
         p2pConfig = p2pConfig,
         forkIdHashProvider = forkIdHashProvider,
         beaconChain = beaconChain,
         syncStatusProviderProvider = syncStatusProviderProvider,
         syncConfig = syncConfig,
+        reputationManager = reputationManager,
+        isStaticPeer = this::isStaticPeer,
       )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
@@ -125,6 +143,7 @@ class P2PNetworkImpl(
       maruPeerManager = maruPeerManager,
       metricsSystem = besuMetricsSystem,
       asyncRunner = asyncRunner,
+      reputationManager = reputationManager,
     )
   }
 
@@ -140,6 +159,9 @@ class P2PNetworkImpl(
       )
     }
 
+  override val localNodeRecord: NodeRecord?
+    get() = discoveryService?.getLocalNodeRecord()
+
   // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
   private val peerLookup = builtNetwork.peerLookup
   private val executor: ScheduledExecutorService =
@@ -153,10 +175,7 @@ class P2PNetworkImpl(
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String>
     get() = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
-  override val enr: String =
-    nodeRecords()
-      .first()
-      .asEnr()
+  override val enr: String? = discoveryService?.getLocalNodeRecord()?.asEnr()
   override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 
   private fun logEnr(nodeRecord: NodeRecord) {
@@ -192,7 +211,7 @@ class P2PNetworkImpl(
         nodeRecords().forEach(::logEnr)
       }
 
-  private fun nodeRecords(): List<NodeRecord> {
+  fun nodeRecords(): List<NodeRecord> {
     val enrs: List<NodeRecord> =
       (listIpsV4(excludeLoopback = true) + discoveryAddresses)
         .toSet()
@@ -209,7 +228,7 @@ class P2PNetworkImpl(
   }
 
   override fun stop(): SafeFuture<Unit> {
-    log.info("Stopping {}", this::class.simpleName)
+    log.info("Stopping={}", this::class.simpleName)
     val pmStop = maruPeerManager.stop()
     discoveryService?.stop()
     val p2pStop = p2pNetwork.stop()
@@ -265,6 +284,8 @@ class P2PNetworkImpl(
    */
   override fun unsubscribeFromBlocks(subscriptionId: Int) = sealedBlocksSubscriptionManager.unsubscribe(subscriptionId)
 
+  override fun isStaticPeer(nodeId: NodeId): Boolean = staticPeerMap.containsKey(nodeId)
+
   fun addStaticPeer(peerAddress: MultiaddrPeerAddress) {
     if (peerAddress.id == p2pNetwork.nodeId) { // Don't connect to self
       log.debug("Not adding static peer as it is the local node")
@@ -291,12 +312,12 @@ class P2PNetworkImpl(
       .connect(peerAddress)
       .whenComplete { peer: Peer?, t: Throwable? ->
         if (t != null) {
-          if (t is PeerAlreadyConnectedException) {
-            log.debug("Already connected to peer {}. Error: {}", peerAddress, t.message)
+          if (t.cause is PeerAlreadyConnectedException) {
+            log.trace("Already connected to peer={}. Error={}", peerAddress, t.message)
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
             log.trace(
-              "Failed to connect to static peer={}, retrying after {} ms. Error: {}",
+              "Failed to connect to static peer={}, retrying after {} ms. Error={}",
               peerAddress,
               p2pConfig.reconnectDelay,
               t.message,
@@ -307,7 +328,7 @@ class P2PNetworkImpl(
             }
           }
         } else {
-          log.trace("Created persistent connection to {}", peerAddress)
+          log.trace("Created persistent connection to peer={}", peerAddress)
           reconnectWhenDisconnected(peer!!, peerAddress)
         }
       }.thenApply {}
@@ -334,8 +355,8 @@ class P2PNetworkImpl(
         .stringValue!!
         .toUInt()
 
-  val peerCount: Int
-    get() = maruPeerManager.getPeers().size
+  override val peerCount: Int
+    get() = maruPeerManager.peerCount
 
   internal fun isConnected(peer: String): Boolean {
     val peerAddress =
@@ -358,7 +379,7 @@ class P2PNetworkImpl(
         .getPeer(LibP2PNodeId(PeerId.fromBase58(peer)))
         .getOrNull()
     return if (maybePeer == null) {
-      log.warn("Trying to disconnect from peer {}, but there's no connection to it!", peer)
+      log.warn("Trying to disconnect from peer={}, but there's no connection to it!", peer)
       SafeFuture.completedFuture(Unit)
     } else {
       maybePeer.disconnectCleanly(reason).thenApply { }

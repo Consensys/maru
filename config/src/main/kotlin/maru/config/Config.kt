@@ -13,6 +13,7 @@ import java.net.URL
 import java.nio.file.Path
 import kotlin.math.max
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -45,11 +46,18 @@ data class P2PConfig(
   val maxPeers: Int = 25,
   val maxUnsyncedPeers: Int = max(1, maxPeers / 10),
   val discovery: Discovery? = null,
-  val statusUpdate: StatusUpdateConfig = StatusUpdateConfig(),
+  val statusUpdate: StatusUpdate = StatusUpdate(),
+  val reputation: Reputation = Reputation(),
 ) {
   init {
     // just a sanity check to ensure the IP address is valid
     InetAddress.getByName(ipAddress)
+    require(reputation.smallChange > 0) {
+      "smallChange must be a positive number"
+    }
+    require(reputation.largeChange > reputation.smallChange) {
+      "largeChange must be greater than smallChange"
+    }
   }
 
   data class Discovery(
@@ -58,10 +66,20 @@ data class P2PConfig(
     val refreshInterval: Duration,
   )
 
-  data class StatusUpdateConfig(
+  data class StatusUpdate(
     val refreshInterval: Duration = 30.seconds,
     val refreshIntervalLeeway: Duration = 5.seconds,
     val timeout: Duration = 10.seconds,
+  )
+
+  data class Reputation(
+    val capacity: Int = 1024,
+    val largeChange: Int = 10,
+    val smallChange: Int = 3,
+    val disconnectScoreThreshold: Int = -largeChange,
+    val maxReputation: Int = 2 * largeChange,
+    val cooldownPeriod: Duration = 2.minutes,
+    val banPeriod: Duration = 1.hours,
   )
 }
 
@@ -189,7 +207,7 @@ data class SyncingConfig(
 
   data class Download(
     val blockRangeRequestTimeout: Duration = 5.seconds,
-    val blocksBatchSize: UInt = 10u,
+    val blocksBatchSize: UInt = 100u,
     val blocksParallelism: UInt = 1u,
     val maxRetries: UInt = 5u,
     val backoffDelay: Duration = 1.seconds,

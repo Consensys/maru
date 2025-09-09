@@ -36,6 +36,8 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 
 interface MaruPeer : Peer {
+  fun sendStatus(): SafeFuture<Unit>
+
   fun getStatus(): Status?
 
   fun updateStatus(newStatus: Status)
@@ -77,7 +79,10 @@ class DefaultMaruPeer(
   private val p2pConfig: P2PConfig,
 ) : MaruPeer {
   init {
-    delegatePeer.subscribeDisconnect { _, _ -> scheduler.shutdown() }
+    delegatePeer.subscribeDisconnect { _, _ ->
+      scheduledDisconnect.ifPresent { it.cancel(true) }
+      scheduler.shutdown()
+    }
   }
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -87,7 +92,7 @@ class DefaultMaruPeer(
 
   override fun getStatus(): Status? = status.get()
 
-  internal fun sendStatus(): SafeFuture<Unit> {
+  override fun sendStatus(): SafeFuture<Unit> {
     try {
       val statusMessage = statusMessageFactory.createStatusMessage()
       val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
@@ -97,17 +102,23 @@ class DefaultMaruPeer(
         .thenApply { message -> message.payload }
         .whenComplete { status, error ->
           if (error != null) {
-            disconnectImmediately(Optional.of(DisconnectReason.REMOTE_FAULT), false)
+            disconnectImmediately(Optional.of(DisconnectReason.UNRESPONSIVE), false)
             if (error.cause !is PeerDisconnectedException) {
               log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
             }
           } else {
             updateStatus(status)
-            scheduler.schedule(
-              this::sendStatus,
-              p2pConfig.statusUpdate.refreshInterval.inWholeSeconds,
-              TimeUnit.SECONDS,
-            )
+            try {
+              if (!scheduler.isShutdown) {
+                scheduler.schedule(
+                  this::sendStatus,
+                  p2pConfig.statusUpdate.refreshInterval.inWholeSeconds,
+                  TimeUnit.SECONDS,
+                )
+              }
+            } catch (e: Exception) {
+              log.trace("Failed to schedule sendStatus to peerId={}", this.id, e)
+            }
           }
         }.thenApply {}
     } catch (e: Exception) {
@@ -135,17 +146,21 @@ class DefaultMaruPeer(
   fun scheduleDisconnectIfStatusNotReceived(delay: Duration) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
     if (!scheduler.isShutdown) {
-      scheduledDisconnect =
-        Optional.of(
-          scheduler.schedule(
-            {
-              log.debug("Disconnecting from peerId={} by timeout", this.id)
-              disconnectCleanly(DisconnectReason.REMOTE_FAULT)
-            },
-            delay.inWholeSeconds,
-            TimeUnit.SECONDS,
-          ),
-        )
+      try {
+        scheduledDisconnect =
+          Optional.of(
+            scheduler.schedule(
+              {
+                log.debug("Disconnecting from peerId={} by timeout", this.id)
+                disconnectCleanly(DisconnectReason.UNRESPONSIVE)
+              },
+              delay.inWholeSeconds,
+              TimeUnit.SECONDS,
+            ),
+          )
+      } catch (e: Exception) {
+        log.trace("Failed to schedule disconnect for peerId={}", this.id, e)
+      }
     }
   }
 

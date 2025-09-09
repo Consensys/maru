@@ -40,6 +40,7 @@ import maru.consensus.StaticValidatorProvider
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
+import maru.core.SealedBeaconBlock
 import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.P2PState
@@ -57,6 +58,7 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusMessageFactory
 import maru.serialization.ForkIdSerializer
+import maru.serialization.SerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
@@ -87,6 +89,22 @@ class MaruAppFactory {
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     overridingApiServer: ApiServer? = null,
+    p2pNetworkFactory: (
+      ByteArray,
+      P2PConfig,
+      UInt,
+      SerDe<SealedBeaconBlock>,
+      MetricsFacade,
+      BesuMetricsSystem,
+      StatusMessageFactory,
+      BeaconChain,
+      ForkIdHashProvider,
+      ForkIdHasher,
+      () -> Boolean,
+      P2PState,
+      () -> SyncStatusProvider,
+      SyncingConfig,
+    ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     log.info("configs={}", config)
     log.info("beaconGenesisConfig={}", beaconGenesisConfig)
@@ -317,29 +335,44 @@ class MaruAppFactory {
       p2PState: P2PState,
       syncStatusProviderProvider: () -> SyncStatusProvider,
       syncConfig: SyncingConfig,
+      p2pNetworkFactory: (
+        ByteArray,
+        P2PConfig,
+        UInt,
+        SerDe<SealedBeaconBlock>,
+        MetricsFacade,
+        BesuMetricsSystem,
+        StatusMessageFactory,
+        BeaconChain,
+        ForkIdHashProvider,
+        ForkIdHasher,
+        () -> Boolean,
+        P2PState,
+        () -> SyncStatusProvider,
+        SyncingConfig,
+      ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     ): P2PNetwork =
       p2pConfig?.let {
-        P2PNetworkImpl(
-          privateKeyBytes = privateKey,
-          p2pConfig =
-            NetworkHelper
-              .selectIpV4ForP2P(
-                targetIpV4 = p2pConfig.ipAddress,
-                excludeLoopback = true,
-              ).also { log.info("using p2p ip={}", it) }
-              .let { p2pConfig.copy(ipAddress = it) },
-          chainId = chainId,
-          serDe = RLPSerializers.SealedBeaconBlockCompressorSerializer,
-          metricsFacade = metricsFacade,
-          statusMessageFactory = statusMessageFactory,
-          beaconChain = beaconChain,
-          isBlockImportEnabledProvider = isBlockImportEnabledProvider,
-          metricsSystem = besuMetricsSystem,
-          forkIdHashProvider = forkIdHashProvider,
-          forkIdHasher = forkIdHasher,
-          p2PState = p2PState,
-          syncStatusProviderProvider = syncStatusProviderProvider,
-          syncConfig = syncConfig,
+        p2pNetworkFactory(
+          privateKey,
+          NetworkHelper
+            .selectIpV4ForP2P(
+              targetIpV4 = p2pConfig.ipAddress,
+              excludeLoopback = true,
+            ).also { log.info("using p2p ip={}", it) }
+            .let { p2pConfig.copy(ipAddress = it) },
+          chainId,
+          RLPSerializers.SealedBeaconBlockCompressorSerializer,
+          metricsFacade,
+          besuMetricsSystem,
+          statusMessageFactory,
+          beaconChain,
+          forkIdHashProvider,
+          forkIdHasher,
+          isBlockImportEnabledProvider,
+          p2PState,
+          syncStatusProviderProvider,
+          syncConfig,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
