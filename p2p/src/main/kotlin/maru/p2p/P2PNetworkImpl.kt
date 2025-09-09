@@ -33,6 +33,7 @@ import maru.p2p.topics.QbftMessageSerDe
 import maru.p2p.topics.SimpleTopicHandler
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
+import maru.serialization.rlp.MaruCompressorRLPSerDe
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
@@ -65,7 +66,7 @@ class P2PNetworkImpl(
   private val forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
   private val p2PState: P2PState,
-  private val qbftMessageSerDe: QbftMessageSerDe = QbftMessageSerDe(),
+  private val qbftMessageSerDe: SerDe<QbftMessage> = MaruCompressorRLPSerDe(QbftMessageSerDe()),
 ) : P2PNetwork {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   internal lateinit var maruPeerManager: MaruPeerManager
