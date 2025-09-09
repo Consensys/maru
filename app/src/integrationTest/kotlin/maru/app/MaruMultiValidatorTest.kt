@@ -140,41 +140,36 @@ class MaruMultiValidatorTest {
       }
     }
 
-    checkElValidatorBlocks(blocksToProduce)
-    checkClValidatorBlocks(blocksToProduce)
+    // verify that all EL blocks are the same
+    checkValidatorBlocks(
+      blocksToProduce = blocksToProduce,
+      getValidator1Blocks = { validator1Stack.besuNode.getMinedBlocks(blocksToProduce) },
+      getValidator2Blocks = { validator2Stack.besuNode.getMinedBlocks(blocksToProduce) },
+      blocksToMetadata = ::elBlocksToMetadata,
+    )
+
+    // verify that all CL blocks are the same
+    val beaconChain = validator1Stack.maruApp.beaconChain()
+    checkValidatorBlocks(
+      blocksToProduce = blocksToProduce,
+      getValidator1Blocks = { beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()) },
+      getValidator2Blocks = { beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()) },
+      blocksToMetadata = ::clBlocksToMetadata,
+    )
   }
 
-  private fun checkElValidatorBlocks(blocksToProduce: Int) {
+  private fun <T, M> checkValidatorBlocks(
+    blocksToProduce: Int,
+    getValidator1Blocks: () -> List<T>,
+    getValidator2Blocks: () -> List<T>,
+    blocksToMetadata: (List<T>) -> List<M>,
+  ) {
     await
       .pollDelay(1.seconds.toJavaDuration())
       .timeout(30.seconds.toJavaDuration())
       .untilAsserted {
-        val blocksProducedByQbftValidator1 =
-          elBlocksToMetadata(validator1Stack.besuNode.getMinedBlocks(blocksToProduce))
-        val blocksProducedByQbftValidator2 =
-          elBlocksToMetadata(validator2Stack.besuNode.getMinedBlocks(blocksToProduce))
-        assertThat(blocksProducedByQbftValidator1)
-          .hasSize(blocksToProduce)
-        assertThat(blocksProducedByQbftValidator2)
-          .hasSize(blocksToProduce)
-        assertThat(blocksProducedByQbftValidator2)
-          .isEqualTo(blocksProducedByQbftValidator1)
-      }
-  }
-
-  private fun checkClValidatorBlocks(blocksToProduce: Int) {
-    await
-      .pollDelay(1.seconds.toJavaDuration())
-      .timeout(30.seconds.toJavaDuration())
-      .untilAsserted {
-        val blocksProducedByQbftValidator1 =
-          clBlocksToMetadata(
-            validator1Stack.maruApp.beaconChain().getSealedBeaconBlocks(1uL, blocksToProduce.toULong()),
-          )
-        val blocksProducedByQbftValidator2 =
-          clBlocksToMetadata(
-            validator1Stack.maruApp.beaconChain().getSealedBeaconBlocks(1uL, blocksToProduce.toULong()),
-          )
+        val blocksProducedByQbftValidator1 = blocksToMetadata(getValidator1Blocks())
+        val blocksProducedByQbftValidator2 = blocksToMetadata(getValidator2Blocks())
         assertThat(blocksProducedByQbftValidator1)
           .hasSize(blocksToProduce)
         assertThat(blocksProducedByQbftValidator2)
