@@ -12,7 +12,9 @@ import io.libp2p.etc.types.fromHex
 import java.math.BigInteger
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
+import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto
+import maru.extensions.encodeHex
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -138,27 +140,59 @@ class MaruMultiValidatorTest {
       }
     }
 
-    checkValidatorBlocks(blocksToProduce)
+    checkElValidatorBlocks(blocksToProduce)
+    checkClValidatorBlocks(blocksToProduce)
   }
 
-  private fun checkValidatorBlocks(blocksToProduce: Int) {
+  private fun checkElValidatorBlocks(blocksToProduce: Int) {
     await
       .pollDelay(1.seconds.toJavaDuration())
       .timeout(30.seconds.toJavaDuration())
       .untilAsserted {
-        val blocksProducedByQbftValidator = blocksToMetadata(validator1Stack.besuNode.getMinedBlocks(blocksToProduce))
-        val blocksImportedByFollower = blocksToMetadata(validator2Stack.besuNode.getMinedBlocks(blocksToProduce))
-        assertThat(blocksProducedByQbftValidator)
+        val blocksProducedByQbftValidator1 =
+          elBlocksToMetadata(validator1Stack.besuNode.getMinedBlocks(blocksToProduce))
+        val blocksProducedByQbftValidator2 =
+          elBlocksToMetadata(validator2Stack.besuNode.getMinedBlocks(blocksToProduce))
+        assertThat(blocksProducedByQbftValidator1)
           .hasSize(blocksToProduce)
-        assertThat(blocksImportedByFollower)
+        assertThat(blocksProducedByQbftValidator2)
           .hasSize(blocksToProduce)
-        assertThat(blocksImportedByFollower)
-          .isEqualTo(blocksProducedByQbftValidator)
+        assertThat(blocksProducedByQbftValidator2)
+          .isEqualTo(blocksProducedByQbftValidator1)
       }
   }
 
-  private fun blocksToMetadata(blocks: List<EthBlock.Block>): List<Pair<BigInteger, String>> =
+  private fun checkClValidatorBlocks(blocksToProduce: Int) {
+    await
+      .pollDelay(1.seconds.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
+      .untilAsserted {
+        val blocksProducedByQbftValidator1 =
+          clBlocksToMetadata(
+            validator1Stack.maruApp.beaconChain().getSealedBeaconBlocks(1uL, blocksToProduce.toULong()),
+          )
+        val blocksProducedByQbftValidator2 =
+          clBlocksToMetadata(
+            validator1Stack.maruApp.beaconChain().getSealedBeaconBlocks(1uL, blocksToProduce.toULong()),
+          )
+        assertThat(blocksProducedByQbftValidator1)
+          .hasSize(blocksToProduce)
+        assertThat(blocksProducedByQbftValidator2)
+          .hasSize(blocksToProduce)
+        assertThat(blocksProducedByQbftValidator2)
+          .isEqualTo(blocksProducedByQbftValidator1)
+      }
+  }
+
+  private fun elBlocksToMetadata(blocks: List<EthBlock.Block>): List<Pair<BigInteger, String>> =
     blocks.map {
       it.number to it.hash
+    }
+
+  private fun clBlocksToMetadata(blocks: List<SealedBeaconBlock>): List<Pair<ULong, String>> =
+    blocks.map {
+      it.beaconBlock.beaconBlockHeader.number to
+        it.beaconBlock.beaconBlockHeader.hash
+          .encodeHex()
     }
 }
