@@ -13,7 +13,7 @@ import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.RoundExpiryTimeCalculator
 
 /**
- * A [LinearRoundTimeExpiryCalculator] that uses a linear algorithm for increasing the round expiry time
+ * A [RoundExpiryTimeCalculator] that uses a linear algorithm for increasing the round expiry time.
  * This implementation calculates the round expiry time for a round as: `baseExpiryPeriod  + (round * baseExpiryPeriod * coefficient)`.
  *
  * @param baseExpiryPeriod the duration used as the base to be returned for all rounds.
