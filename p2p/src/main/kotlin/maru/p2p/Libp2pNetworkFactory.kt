@@ -107,8 +107,6 @@ class Libp2pNetworkFactory(
         { gossip.getGossipScore(it) },
       )
 
-    maruPeerManager.setPeerManager(peerManager)
-
     val host =
       createHost(
         privateKey = privateKey,
