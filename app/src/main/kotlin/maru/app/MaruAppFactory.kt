@@ -153,6 +153,7 @@ class MaruAppFactory {
         beaconChain = kvDatabase,
         forksSchedule = beaconGenesisConfig,
         forkIdHasher = forkIdHasher,
+        clock = clock,
       )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
@@ -199,6 +200,7 @@ class MaruAppFactory {
         p2PState = kvDatabase,
         syncStatusProviderProvider = { syncControllerImpl!! },
         syncConfig = config.syncing,
+        p2pNetworkFactory = p2pNetworkFactory,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =

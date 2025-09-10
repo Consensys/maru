@@ -416,6 +416,7 @@ class P2PNetworkImpl(
             ?: throw IllegalStateException("Genesis state not found"),
       )
     val newForkIdHash = forkIdHasher.hash(forkId)
+    statusMessageFactory.updateForkIdHash(newForkIdHash)
     discoveryService?.updateForkIdHash(Bytes.wrap(newForkIdHash))
   }
 }

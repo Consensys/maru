@@ -8,9 +8,12 @@
  */
 package maru.consensus
 
+import java.time.Clock
 import maru.core.Hasher
 import maru.database.BeaconChain
 import maru.serialization.Serializer
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 
 data class ForkId(
   val chainId: UInt,
@@ -45,7 +48,7 @@ class ForkIdHasher(
   fun hash(forkId: ForkId): ByteArray = hasher.hash(forkIdSerializer.serialize(forkId)).takeLast(4).toByteArray()
 }
 
-fun interface ForkIdHashProvider {
+interface ForkIdHashProvider {
   fun currentForkIdHash(): ByteArray
 }
 
@@ -54,21 +57,44 @@ class ForkIdHashProviderImpl(
   private val beaconChain: BeaconChain,
   private val forksSchedule: ForksSchedule,
   private val forkIdHasher: ForkIdHasher,
+  private val clock: Clock = Clock.systemUTC(),
 ) : ForkIdHashProvider {
+  private val log: Logger = LogManager.getLogger(this.javaClass)
+
+  init {
+    log.info("current fork id hash: ${currentForkIdHash().toHexString()}")
+    log.info("all fork id hashes: ${allForkIdHashes().map { it.toHexString()}}")
+  }
+
   override fun currentForkIdHash(): ByteArray {
     val forkId =
       ForkId(
         chainId = chainId,
         forkSpec =
           forksSchedule.getForkByTimestamp(
-            beaconChain
-              .getLatestBeaconState()
-              .beaconBlockHeader.timestamp,
+            timestamp = clock.instant().epochSecond.toULong(),
           ),
         genesisRootHash =
           beaconChain.getBeaconState(0u)?.beaconBlockHeader?.hash
             ?: throw IllegalStateException("Genesis state not found"),
       )
     return forkIdHasher.hash(forkId)
+  }
+
+  private fun allForkIdHashes(): List<ByteArray> {
+    val forkIdHashes = mutableListOf<ByteArray>()
+    forksSchedule.forks.forEach { fork ->
+      val forkId =
+        ForkId(
+          chainId = chainId,
+          forkSpec =
+            forksSchedule.getForkByTimestamp(timestamp = fork.timestampSeconds),
+          genesisRootHash =
+            beaconChain.getBeaconState(0u)?.beaconBlockHeader?.hash
+              ?: throw IllegalStateException("Genesis state not found"),
+        )
+      forkIdHashes.add(forkIdHasher.hash(forkId = forkId))
+    }
+    return forkIdHashes
   }
 }

@@ -26,7 +26,7 @@ class ForksSchedule(
   val chainId: UInt,
   forks: Collection<ForkSpec>,
 ) {
-  private val forks: NavigableSet<ForkSpec> =
+  val forks: NavigableSet<ForkSpec> =
     run {
       val newForks =
         TreeSet(

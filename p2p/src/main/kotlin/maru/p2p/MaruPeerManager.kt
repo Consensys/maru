@@ -167,17 +167,17 @@ class MaruPeerManager(
         .orTimeout(Duration.ofSeconds(15L))
         .thenApply { status ->
           if (!status.forkIdHash.contentEquals(forkIdHashProvider.currentForkIdHash())) {
-            log.debug(
+            log.info(
               "Peer={} has a different forkIdHash={} than expected={}. Disconnecting.",
               peer.id,
-              status.forkIdHash,
-              forkIdHashProvider.currentForkIdHash(),
+              status.forkIdHash.toHexString(),
+              forkIdHashProvider.currentForkIdHash().toHexString(),
             )
             maruPeer.disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
           } else if (syncStatusProvider.getCLSyncStatus() == CLSyncStatus.SYNCING &&
             status.latestBlockNumber + blocksBehindThreshold < targetBlockNumber
           ) {
-            log.debug(
+            log.info(
               "Peer={} is too far behind our target block number={} (peer's block number={}). Disconnecting.",
               peer.id,
               syncStatusProvider.getCLSyncTarget(),
@@ -188,17 +188,17 @@ class MaruPeerManager(
             status.latestBlockNumber + blocksBehindThreshold < localBeaconChainHead &&
             tooManyPeersBehind(localBeaconChainHead)
           ) {
-            log.debug("Peer={} is behind and we already have too many peers behind. Disconnecting.", peer.id)
+            log.info("Peer={} is behind and we already have too many peers behind. Disconnecting.", peer.id)
             maruPeer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS) // there is no better reason available
           } else {
             connectedPeers.put(peer.id, maruPeer)
-            log.trace("Connected to peer={} with status={}", peer.id, status)
+            log.info("Connected to peer={} with status={}", peer.id, status)
           }
         }.always {
           statusExchangingMaruPeers.remove(peer.id)
         }
     } else {
-      log.trace("Disconnecting from peer=${peer.address} due to connection not allowed yet.")
+      log.info("Disconnecting from peer=${peer.address} due to connection not allowed yet.")
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
     }
   }
@@ -211,7 +211,7 @@ class MaruPeerManager(
 
   override fun onDisconnect(peer: Peer) {
     connectedPeers.remove(peer.id)
-    log.trace("Peer={} disconnected", peer.id)
+    log.info("Peer={} disconnected", peer.id)
   }
 
   override fun getPeer(nodeId: NodeId): MaruPeer? {
