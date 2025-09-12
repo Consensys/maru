@@ -18,7 +18,7 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     shanghai_timestamp_hex=$(printf "0x%x" "$shanghai_timestamp")
     sed -i "s/%SHANGHAI_TIME%/$shanghai_timestamp_hex/g" genesis-nethermind.json
 
-    cancun_timestamp=$((shanghai_timestamp + 10))
+    cancun_timestamp=$((shanghai_timestamp + 20))
     echo "Cancun Timestamp: $cancun_timestamp"
     sed -i "s/%CANCUN_TIME%/$cancun_timestamp/g" genesis-maru.json
     sed -i "s/%CANCUN_TIME%/$cancun_timestamp/g" genesis-besu.json
@@ -26,7 +26,7 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     cancun_timestamp_hex=$(printf "0x%x" "$cancun_timestamp")
     sed -i "s/%CANCUN_TIME%/$cancun_timestamp_hex/g" genesis-nethermind.json
 
-    prague_timestamp=$((cancun_timestamp + 10))
+    prague_timestamp=$((cancun_timestamp + 20))
     echo "Prague Timestamp: $prague_timestamp"
     sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-maru.json
     sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-besu.json
