@@ -71,7 +71,10 @@ class MaruFactory(
 ) {
   init {
     // If one of pragueTimestamp, cancunTimestamp, shanghaiTimestamp is defined and some other is not, throw
-    require(!((pragueTimestamp == null).xor(cancunTimestamp == null).xor(shanghaiTimestamp == null))) {
+    require(
+      (pragueTimestamp == null && cancunTimestamp == null && shanghaiTimestamp == null) ||
+        (pragueTimestamp != null && cancunTimestamp != null && shanghaiTimestamp != null),
+    ) {
       "pragueTimestamp, cancunTimestamp and shanghaiTimestamp should be defined or all be absent!"
     }
   }
