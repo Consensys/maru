@@ -24,45 +24,38 @@ import org.hyperledger.besu.datatypes.Address
 class QbftBlockInterfaceAdapter(
   private val stateTransition: StateTransition,
 ) : QbftBlockInterface {
-
   override fun replaceRoundForCommitBlock(
     proposalBlock: QbftBlock,
     roundNumber: Int,
   ): QbftBlock {
     val beaconBlockHeader = proposalBlock.header.toBeaconBlockHeader()
-    val beaconBlockBody = proposalBlock.toBeaconBlock().beaconBlockBody
     val replacedBeaconBlockHeader =
       beaconBlockHeader.copy(
         round = roundNumber.toUInt(),
       )
-
-    // update header with new state root
-    val postState = stateTransition.processBlock(BeaconBlock(replacedBeaconBlockHeader, beaconBlockBody)).get()
-    val stateRootHeader =
-      postState.beaconBlockHeader.copy(
-        stateRoot = EMPTY_HASH,
-      )
-    val stateRoot = HashUtil.stateRoot(postState.copy(beaconBlockHeader = stateRootHeader))
-    val finalBlockHeader = stateRootHeader.copy(stateRoot = stateRoot)
-    return QbftBlockAdapter(BeaconBlock(finalBlockHeader, beaconBlockBody))
+    return processBlockWithUpdatedHeader(proposalBlock, replacedBeaconBlockHeader)
   }
 
   override fun replaceRoundAndProposerForProposalBlock(
     proposalBlock: QbftBlock,
     roundNumber: Int,
-    proposer: Address
+    proposer: Address,
   ): QbftBlock {
-    // TODO remove duplication with replaceRoundInBlock
     val beaconBlockHeader = proposalBlock.header.toBeaconBlockHeader()
-    val beaconBlockBody = proposalBlock.toBeaconBlock().beaconBlockBody
     val replacedBeaconBlockHeader =
       beaconBlockHeader.copy(
         proposer = Validator(proposer.toArrayUnsafe()),
         round = roundNumber.toUInt(),
       )
+    return processBlockWithUpdatedHeader(proposalBlock, replacedBeaconBlockHeader)
+  }
 
-    // update header with new state root
-    val postState = stateTransition.processBlock(BeaconBlock(replacedBeaconBlockHeader, beaconBlockBody)).get()
+  private fun processBlockWithUpdatedHeader(
+    proposalBlock: QbftBlock,
+    updatedHeader: maru.core.BeaconBlockHeader,
+  ): QbftBlock {
+    val beaconBlockBody = proposalBlock.toBeaconBlock().beaconBlockBody
+    val postState = stateTransition.processBlock(BeaconBlock(updatedHeader, beaconBlockBody)).get()
     val stateRootHeader =
       postState.beaconBlockHeader.copy(
         stateRoot = EMPTY_HASH,
