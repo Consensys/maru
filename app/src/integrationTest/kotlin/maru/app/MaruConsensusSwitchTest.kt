@@ -98,20 +98,23 @@ class MaruConsensusSwitchTest {
 
   @Test
   fun `follower node correctly switches from Clique to POS after peering with Sequencer validator`() {
-    val stackStartupMargin = 30UL
+    val stackStartupMargin = 20UL
     val expectedBlocksInClique = 5
     var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    val cancunTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
-    val pragueTimestamp = cancunTimestamp + 20u
+    val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
+    val cancunTimestamp = shanghaiTimestamp + 10u
+    val pragueTimestamp = cancunTimestamp + 10u
     val totalBlocksToProduce = (pragueTimestamp - currentTimestamp).toInt()
     val ttd = expectedBlocksInClique.toULong() * 2UL
     log.info(
-      "Setting Prague switch timestamp to $pragueTimestamp, current timestamp: $currentTimestamp",
+      "Setting Prague switch timestamp to $pragueTimestamp, shanghai switch to $shanghaiTimestamp, Cancun switch to " +
+        "$cancunTimestamp, current timestamp: $currentTimestamp",
     )
 
     // Initialize Besu with the same switch timestamp
     validatorBesuNode =
       BesuFactory.buildSwitchableBesu(
+        shanghaiTimestamp = shanghaiTimestamp,
         cancunTimestamp = cancunTimestamp,
         pragueTimestamp = pragueTimestamp,
         ttd = ttd,
@@ -119,6 +122,7 @@ class MaruConsensusSwitchTest {
       )
     followerBesuNode =
       BesuFactory.buildSwitchableBesu(
+        shanghaiTimestamp = shanghaiTimestamp,
         cancunTimestamp = cancunTimestamp,
         pragueTimestamp = pragueTimestamp,
         ttd = ttd,
