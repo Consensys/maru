@@ -8,6 +8,7 @@
  */
 package maru.app
 
+import maru.consensus.qbft.sortedByAddress
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
@@ -41,16 +42,17 @@ class BeaconChainInitialization(
         headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
 
+    val sortedValidators = validatorSet.sortedByAddress()
     val tmpGenesisStateRoot =
       BeaconState(
         beaconBlockHeader = beaconBlockHeader,
-        validators = validatorSet,
+        validators = sortedValidators,
       )
     val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
 
     val genesisBlockHeader = beaconBlockHeader.copy(stateRoot = stateRootHash)
     val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
-    val genesisState = BeaconState(genesisBlockHeader, validatorSet)
+    val genesisState = BeaconState(genesisBlockHeader, sortedValidators)
     beaconChain.newBeaconChainUpdater().run {
       putBeaconState(genesisState)
       putSealedBeaconBlock(SealedBeaconBlock(genesisBlock, emptySet()))
