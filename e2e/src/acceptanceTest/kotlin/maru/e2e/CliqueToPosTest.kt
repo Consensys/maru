@@ -66,6 +66,7 @@ class CliqueToPosTest {
         .waitingForService("sequencer", HealthChecks.toHaveAllPortsOpen())
         .build()
     private var forksTimestamps = emptyMap<String, ULong>()
+    private var cancunTimestamp: ULong = 0UL
     private var pragueTimestamp: ULong = 0UL
     private var ttd: ULong = 0UL
     private lateinit var maruFactory: MaruFactory
@@ -111,12 +112,14 @@ class CliqueToPosTest {
     fun beforeAll() {
       deleteGenesisFiles()
       qbftCluster.before()
-      forksTimestamps = parseForks(listOf("pragueTime", "terminalTotalDifficulty"))
+      forksTimestamps = parseForks(listOf("pragueTime", "cancunTime", "terminalTotalDifficulty"))
+      cancunTimestamp = forksTimestamps["cancunTime"]!!
       pragueTimestamp = forksTimestamps["pragueTime"]!!
       ttd = forksTimestamps["terminalTotalDifficulty"]!!
       maruFactory =
         MaruFactory(
           validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
+          cancunTimestamp = cancunTimestamp,
           pragueTimestamp = pragueTimestamp,
           ttd = ttd,
         )
@@ -240,6 +243,13 @@ class CliqueToPosTest {
     val parisBlock = getBlockByNumber(lastCliqueBlockNumber + 1)!!
     assertThat(parisBlock.difficulty.toLong()).isEqualTo(0L)
 
+    val cancunTransactions = 4
+    waitTillTimestamp(cancunTimestamp, "cancunTime")
+    log.info("Sequencer has switched to Cancun")
+    repeat(cancunTransactions) {
+      transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
+    }
+
     val pragueTransactions = 4
     waitTillTimestamp(pragueTimestamp, "pragueTime")
     log.info("Sequencer has switched to Prague")
@@ -250,8 +260,8 @@ class CliqueToPosTest {
     val firstPragueBlock = getBlockByNumber(prePragueTransactions.toLong() + 1)!!
     assertThat(firstPragueBlock.timestamp.toULong()).isGreaterThanOrEqualTo(pragueTimestamp)
 
-    val resultingBlockNumber = prePragueTransactions + pragueTransactions.toLong()
-    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, resultingBlockNumber)
+    val resultingBlockNumber = prePragueTransactions + cancunTransactions + pragueTransactions
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client, resultingBlockNumber.toLong())
 
     waitForAllNodesToBeInSyncToMatch()
   }

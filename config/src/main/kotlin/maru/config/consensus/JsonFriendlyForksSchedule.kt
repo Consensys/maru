@@ -99,9 +99,6 @@ data class JsonFriendlyForksSchedule(
   val config: Set<ForkSpec>,
 ) {
   override fun equals(other: Any?): Boolean {
-    if (other !is JsonFriendlyForksSchedule) {
-      false
-    }
     val otherTyped = other as JsonFriendlyForksSchedule
     return config.containsAll(otherTyped.config) && config.size == otherTyped.config.size
   }

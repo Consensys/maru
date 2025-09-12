@@ -10,7 +10,15 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     cp -T "genesis-geth.json.template" "genesis-geth.json"
     cp -T "genesis-nethermind.json.template" "genesis-nethermind.json"
 
-    prague_timestamp=$(($(date +%s) + 43))
+    cancun_timestamp=$(($(date +%s) + 33))
+    echo "Prague Timestamp: $cancun_timestamp"
+    sed -i "s/%CANCUN_TIME%/$cancun_timestamp/g" genesis-maru.json
+    sed -i "s/%CANCUN_TIME%/$cancun_timestamp/g" genesis-besu.json
+    sed -i "s/%CANCUN_TIME%/$cancun_timestamp/g" genesis-geth.json
+    cancun_timestamp_hex=$(printf "0x%x" $cancun_timestamp)
+    sed -i "s/%CANCUN_TIME%/$cancun_timestamp_hex/g" genesis-nethermind.json
+
+    prague_timestamp=$((cancun_timestamp + 20))
     echo "Prague Timestamp: $prague_timestamp"
     sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-maru.json
     sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-besu.json
