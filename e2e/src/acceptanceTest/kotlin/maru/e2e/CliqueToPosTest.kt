@@ -235,8 +235,8 @@ class CliqueToPosTest {
   fun networkCanBeSwitched() {
     maruSequencer = buildValidatorMaruWithMultipleFollowers()
     maruSequencer.start()
-    val prePragueTransactions = 10
-    sendCliqueAndParisTransactions(prePragueTransactions)
+    val preCancunTransactions = 10
+    sendCliqueAndParisTransactions(preCancunTransactions)
     everyoneArePeered()
     val lastCliqueBlock = getBlockByNumber(lastCliqueBlockNumber)!!
     assertThat(lastCliqueBlock.totalDifficulty.toLong()).isEqualTo(lastCliqueBlockNumber * 2L + 1L)
@@ -257,13 +257,13 @@ class CliqueToPosTest {
       transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
 
-    val firstCancunBlock = getBlockByNumber(prePragueTransactions.toLong() + 1)!!
+    val firstCancunBlock = getBlockByNumber(preCancunTransactions.toLong() + 1)!!
     assertThat(firstCancunBlock.timestamp.toULong()).isGreaterThanOrEqualTo(cancunTimestamp)
 
-    val firstPragueBlock = getBlockByNumber(prePragueTransactions.toLong() + cancunTransactions + 1)!!
+    val firstPragueBlock = getBlockByNumber(preCancunTransactions.toLong() + cancunTransactions + 1)!!
     assertThat(firstPragueBlock.timestamp.toULong()).isGreaterThanOrEqualTo(pragueTimestamp)
 
-    val resultingBlockNumber = prePragueTransactions + cancunTransactions + pragueTransactions
+    val resultingBlockNumber = preCancunTransactions + cancunTransactions + pragueTransactions
     assertNodeBlockHeight(TestEnvironment.sequencerL2Client, resultingBlockNumber.toLong())
 
     waitForAllNodesToBeInSyncToMatch()
