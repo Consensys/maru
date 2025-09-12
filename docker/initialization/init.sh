@@ -11,7 +11,7 @@ if [[ ! -f "initialization/genesis-besu.json" && ! -f "initialization/genesis-ge
     cp -T "genesis-nethermind.json.template" "genesis-nethermind.json"
 
     shanghai_timestamp=$(($(date +%s) + 33))
-    echo "Cancun Timestamp: $shanghai_timestamp"
+    echo "Shanghai Timestamp: $shanghai_timestamp"
     sed -i "s/%SHANGHAI_TIME%/$shanghai_timestamp/g" genesis-maru.json
     sed -i "s/%SHANGHAI_TIME%/$shanghai_timestamp/g" genesis-besu.json
     sed -i "s/%SHANGHAI_TIME%/$shanghai_timestamp/g" genesis-geth.json
