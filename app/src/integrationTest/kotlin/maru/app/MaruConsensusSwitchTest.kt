@@ -134,7 +134,13 @@ class MaruConsensusSwitchTest {
     val validatorEthereumJsonRpcBaseUrl = validatorBesuNode.jsonRpcBaseUrl().get()
     val validatorEngineRpcUrl = validatorBesuNode.engineRpcUrl().get()
 
-    val maruFactory = MaruFactory(pragueTimestamp = pragueTimestamp, cancunTimestamp = cancunTimestamp, ttd = ttd)
+    val maruFactory =
+      MaruFactory(
+        pragueTimestamp = pragueTimestamp,
+        cancunTimestamp = cancunTimestamp,
+        shanghaiTimestamp = shanghaiTimestamp,
+        ttd = ttd,
+      )
     validatorMaruNode =
       maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,
