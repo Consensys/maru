@@ -139,7 +139,7 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Shanghai,
+                elFork = ElFork.Cancun,
               ),
           ),
           ForkSpec(
