@@ -97,11 +97,12 @@ class MaruConsensusSwitchTest {
   }
 
   @Test
-  fun `Follower node correctly switches from Clique to POS after peering with Sequencer validator`() {
+  fun `follower node correctly switches from Clique to POS after peering with Sequencer validator`() {
     val stackStartupMargin = 30UL
     val expectedBlocksInClique = 5
     var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    val pragueTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
+    val cancunTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
+    val pragueTimestamp = cancunTimestamp + 20u
     val totalBlocksToProduce = (pragueTimestamp - currentTimestamp).toInt()
     val ttd = expectedBlocksInClique.toULong() * 2UL
     log.info(
@@ -111,12 +112,14 @@ class MaruConsensusSwitchTest {
     // Initialize Besu with the same switch timestamp
     validatorBesuNode =
       BesuFactory.buildSwitchableBesu(
+        cancunTimestamp = cancunTimestamp,
         pragueTimestamp = pragueTimestamp,
         ttd = ttd,
         validator = true,
       )
     followerBesuNode =
       BesuFactory.buildSwitchableBesu(
+        cancunTimestamp = cancunTimestamp,
         pragueTimestamp = pragueTimestamp,
         ttd = ttd,
         validator = false,
@@ -127,7 +130,7 @@ class MaruConsensusSwitchTest {
     val validatorEthereumJsonRpcBaseUrl = validatorBesuNode.jsonRpcBaseUrl().get()
     val validatorEngineRpcUrl = validatorBesuNode.engineRpcUrl().get()
 
-    val maruFactory = MaruFactory(pragueTimestamp = pragueTimestamp, ttd = ttd)
+    val maruFactory = MaruFactory(pragueTimestamp = pragueTimestamp, cancunTimestamp = cancunTimestamp, ttd = ttd)
     validatorMaruNode =
       maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
         ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,

@@ -257,7 +257,10 @@ class CliqueToPosTest {
       transactionsHelper.run { sendArbitraryTransaction().waitForInclusion() }
     }
 
-    val firstPragueBlock = getBlockByNumber(prePragueTransactions.toLong() + 1)!!
+    val firstCancunBlock = getBlockByNumber(prePragueTransactions.toLong() + 1)!!
+    assertThat(firstCancunBlock.timestamp.toULong()).isGreaterThanOrEqualTo(cancunTimestamp)
+
+    val firstPragueBlock = getBlockByNumber(prePragueTransactions.toLong() + cancunTransactions + 1)!!
     assertThat(firstPragueBlock.timestamp.toULong()).isGreaterThanOrEqualTo(pragueTimestamp)
 
     val resultingBlockNumber = prePragueTransactions + cancunTransactions + pragueTransactions
