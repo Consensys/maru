@@ -10,7 +10,6 @@ package maru.app
 
 import java.io.File
 import linea.kotlin.decodeHex
-import linea.kotlin.toULong
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -87,12 +86,12 @@ class MaruConsensusSwitchTest {
     assertThat(blockProducedAfterSwitch.extraData.decodeHex().size).isLessThanOrEqualTo(VANILLA_EXTRA_DATA_LENGTH)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
-    val pragueSwitchBlock = blocks.findSwitchBlock()!!
-    val prePragueBlocks = blocks.subList(0, pragueSwitchBlock)
-    prePragueBlocks.verifyBlockTime()
-    assertThat(prePragueBlocks).hasSize(expectedBlocksInClique)
+    val parisSwitchBlock = blocks.findSwitchBlock()!!
+    val cliqueBlocks = blocks.subList(0, parisSwitchBlock)
+    cliqueBlocks.verifyBlockTime()
+    assertThat(cliqueBlocks).hasSize(expectedBlocksInClique)
     // Check that there are Prague blocks
-    blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
+    blocks.subList(parisSwitchBlock, blocks.size).verifyBlockTime()
   }
 
   @Test
