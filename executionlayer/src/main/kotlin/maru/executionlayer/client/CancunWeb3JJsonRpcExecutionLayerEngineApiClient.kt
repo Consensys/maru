@@ -35,7 +35,7 @@ class CancunWeb3JJsonRpcExecutionLayerEngineApiClient(
 
   override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
     createRequestTimer<ExecutionPayload>(method = "getPayload").captureTimeSafeFuture(
-      web3jEngineClient.getPayloadV2(payloadId).thenApply {
+      web3jEngineClient.getPayloadV3(payloadId).thenApply {
         when {
           it.payload != null ->
             Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
@@ -72,7 +72,7 @@ class CancunWeb3JJsonRpcExecutionLayerEngineApiClient(
     createRequestTimer<ForkChoiceUpdatedResult>(
       method = "forkChoiceUpdate",
     ).captureTimeSafeFuture(
-      web3jEngineClient.forkChoiceUpdatedV2(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3())),
+      web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3())),
     )
 
   private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =

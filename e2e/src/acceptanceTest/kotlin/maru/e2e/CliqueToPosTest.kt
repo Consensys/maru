@@ -268,10 +268,14 @@ class CliqueToPosTest {
     }
 
     val firstShanghaiBlock = getBlockByNumber(preCancunTransactions.toLong() + 1)!!
-    assertThat(firstShanghaiBlock.timestamp.toULong()).isGreaterThanOrEqualTo(shanghaiTimestamp)
+    assertThat(firstShanghaiBlock.timestamp.toULong())
+      .isGreaterThanOrEqualTo(shanghaiTimestamp)
+      .isLessThan(cancunTimestamp)
 
     val firstCancunBlock = getBlockByNumber(preCancunTransactions.toLong() + shanghaiTransactions + 1)!!
-    assertThat(firstCancunBlock.timestamp.toULong()).isGreaterThanOrEqualTo(cancunTimestamp)
+    assertThat(firstCancunBlock.timestamp.toULong())
+      .isGreaterThanOrEqualTo(cancunTimestamp)
+      .isLessThan(pragueTimestamp)
 
     val firstPragueBlock =
       getBlockByNumber(preCancunTransactions.toLong() + shanghaiTransactions + cancunTransactions + 1)!!

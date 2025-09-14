@@ -79,7 +79,6 @@ class MaruConsensusSwitchTest {
     besuNode: BesuNode,
     expectedBlocksInClique: Int,
     totalBlocksToProduce: Int,
-    pragueTimestamp: ULong,
   ) {
     val blockProducedByClique = besuNode.ethGetBlockByNumber(1UL)
     assertThat(blockProducedByClique.extraData.decodeHex().size).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
@@ -88,10 +87,10 @@ class MaruConsensusSwitchTest {
     assertThat(blockProducedAfterSwitch.extraData.decodeHex().size).isLessThanOrEqualTo(VANILLA_EXTRA_DATA_LENGTH)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
-    val pragueSwitchBlock = blocks.findSwitchBlock(pragueTimestamp)!!
+    val pragueSwitchBlock = blocks.findSwitchBlock()!!
     val prePragueBlocks = blocks.subList(0, pragueSwitchBlock)
     prePragueBlocks.verifyBlockTime()
-    assertThat(prePragueBlocks).hasSizeGreaterThan(expectedBlocksInClique)
+    assertThat(prePragueBlocks).hasSize(expectedBlocksInClique)
     // Check that there are Prague blocks
     blocks.subList(pragueSwitchBlock, blocks.size).verifyBlockTime()
   }
@@ -182,19 +181,17 @@ class MaruConsensusSwitchTest {
       besuNode = validatorBesuNode,
       expectedBlocksInClique = expectedBlocksInClique,
       totalBlocksToProduce = totalBlocksToProduce,
-      pragueTimestamp = pragueTimestamp,
     )
     verifyConsensusSwitch(
       besuNode = followerBesuNode,
       expectedBlocksInClique = expectedBlocksInClique,
       totalBlocksToProduce = totalBlocksToProduce,
-      pragueTimestamp = pragueTimestamp,
     )
   }
 
-  private fun List<EthBlock.Block>.findSwitchBlock(expectedSwitchTimestamp: ULong): Int? =
+  private fun List<EthBlock.Block>.findSwitchBlock(): Int? =
     this
       .indexOfFirst {
-        it.timestamp.toULong() >= expectedSwitchTimestamp
+        it.difficulty.toInt() == 0
       }.takeIf { it != -1 }
 }
