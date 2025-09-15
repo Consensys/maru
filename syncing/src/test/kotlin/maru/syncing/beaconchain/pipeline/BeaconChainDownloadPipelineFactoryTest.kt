@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.kotlin.any
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
@@ -57,6 +58,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     peerLookup = mock()
     executorService = Executors.newCachedThreadPool()
     syncTargetProvider = mock()
+    whenever(syncTargetProvider.invoke()).thenReturn(ULong.MAX_VALUE)
     factory =
       BeaconChainDownloadPipelineFactory(
         blockImporter = blockImporter,
@@ -154,7 +156,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(blocks)
     whenever(peer.sendBeaconBlocksByRange(42uL, 1uL)).thenReturn(completedFuture(response))
-    whenever(peer.getStatus()).thenReturn(randomStatus(43uL))
+    whenever(peer.getStatus()).thenReturn(randomStatus(42uL))
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
@@ -260,4 +262,19 @@ class BeaconChainDownloadPipelineFactoryTest {
     completionFuture.get(5, TimeUnit.SECONDS)
     assertThat(completionFuture).isCompleted
   }
+
+  @Test
+  fun `pipeline target equals sync target when already synced`() {
+    whenever(syncTargetProvider.invoke()).thenReturn(100uL)
+
+    val pipeline = factory.createPipeline(101uL)
+    val completionFuture = pipeline.pipeline.start(executorService)
+
+    completionFuture.get(5, TimeUnit.SECONDS)
+
+    assertThat(pipeline.target()).isEqualTo(100uL)
+    verify(peerLookup, never()).getPeers()
+    verify(blockImporter, never()).importBlock(any())
+  }
+
 }
