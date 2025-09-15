@@ -106,11 +106,12 @@ class TransactionalSealedBeaconBlockImporter(
             elBLockNumber,
           )
           resultingState
-        }.thenPeek { resultingState ->
-          // Block import doesn't participate in the validation
+        }.thenCompose { resultingState ->
           beaconBlockImporter
             .importBlock(resultingState, sealedBeaconBlock.beaconBlock)
-            .whenException { e ->
+            .thenApply { }
+            .exceptionally { e ->
+              // Block import doesn't participate in the validation, so we want it to complete, yet ignore its result
               log.error(
                 "Failure importing a valid CL block! clBlockNumber={}, elBlockNumber={}",
                 clBlockNumber,
