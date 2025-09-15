@@ -58,7 +58,6 @@ class BeaconChainDownloadPipelineFactoryTest {
     peerLookup = mock()
     executorService = Executors.newCachedThreadPool()
     syncTargetProvider = mock()
-    whenever(syncTargetProvider.invoke()).thenReturn(ULong.MAX_VALUE)
     factory =
       BeaconChainDownloadPipelineFactory(
         blockImporter = blockImporter,
@@ -156,7 +155,7 @@ class BeaconChainDownloadPipelineFactoryTest {
     val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(blocks)
     whenever(peer.sendBeaconBlocksByRange(42uL, 1uL)).thenReturn(completedFuture(response))
-    whenever(peer.getStatus()).thenReturn(randomStatus(42uL))
+    whenever(peer.getStatus()).thenReturn(randomStatus(43uL))
 
     whenever(blockImporter.importBlock(any())).thenReturn(
       completedFuture(ValidationResult.Companion.Valid),
