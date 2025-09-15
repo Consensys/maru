@@ -112,7 +112,7 @@ class TransactionalSealedBeaconBlockImporter(
             .thenApply { }
             .exceptionally { e ->
               // Block import doesn't participate in the validation, so we want it to complete, yet ignore its result
-              log.error(
+              log.warn(
                 "Failure importing a valid CL block! clBlockNumber={}, elBlockNumber={}",
                 clBlockNumber,
                 elBLockNumber,
