@@ -275,5 +275,4 @@ class BeaconChainDownloadPipelineFactoryTest {
     verify(peerLookup, never()).getPeers()
     verify(blockImporter, never()).importBlock(any())
   }
-
 }
