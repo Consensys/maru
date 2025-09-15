@@ -208,6 +208,8 @@ class BeaconChainDownloadPipelineFactoryTest {
 
   @Test
   fun `factory creates multiple independent pipelines`() {
+    whenever(syncTargetProvider.invoke()).thenReturn(150uL)
+
     val pipeline1 = factory.createPipeline(100uL)
     val pipeline2 = factory.createPipeline(100uL)
 
@@ -274,5 +276,19 @@ class BeaconChainDownloadPipelineFactoryTest {
     assertThat(pipeline.target()).isEqualTo(100uL)
     verify(peerLookup, never()).getPeers()
     verify(blockImporter, never()).importBlock(any())
+  }
+
+  @Test
+  fun `pipeline target returns sync target when sync target changes to less than start block`() {
+    // Set sync target to 50 (less than start block 100)
+    whenever(syncTargetProvider.invoke()).thenReturn(50uL)
+
+    val pipeline = factory.createPipeline(100uL)
+    val completionFuture = pipeline.pipeline.start(executorService)
+
+    completionFuture.get(5, TimeUnit.SECONDS)
+
+    // Should return the current sync target (50) since startBlock (100) > currentSyncTarget (50)
+    assertThat(pipeline.target()).isEqualTo(50uL)
   }
 }
