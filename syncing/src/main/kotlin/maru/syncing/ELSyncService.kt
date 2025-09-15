@@ -14,7 +14,9 @@ import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
 import maru.core.GENESIS_EXECUTION_PAYLOAD
@@ -102,12 +104,13 @@ class ELSyncService(
     }
 
     val finalizationState = finalizationProvider(latestBeaconBlockBody)
-    val forkSpec = forksSchedule.getForkByTimestamp(latestBeaconBlockHeader.timestamp.toLong())
+    val forkSpec = forksSchedule.getForkByTimestamp(latestBeaconBlockHeader.timestamp)
     val elFork =
       when (forkSpec.configuration) {
         is QbftConsensusConfig -> (forkSpec.configuration as QbftConsensusConfig).elFork
+        is DifficultyAwareQbftConfig -> extractEvmForkFromDifficultyAwareQbft(forkSpec)
         else -> throw IllegalStateException(
-          "Current fork isn't QBFT, this case is not supported yet! forkSpec=$forkSpec",
+          "Current fork isn't QBFT nor DifficultyAwareQbft, this case is not supported yet! forkSpec=$forkSpec",
         )
       }
     val executionLayerManager =
@@ -155,34 +158,35 @@ class ELSyncService(
     onStatusChange(newELSyncStatus)
   }
 
+  private fun extractEvmForkFromDifficultyAwareQbft(forkSpec: ForkSpec): ElFork =
+    ((forkSpec.configuration as DifficultyAwareQbftConfig).postTtdConfig).elFork
+
+  @Synchronized
   override fun start() {
-    synchronized(this) {
-      if (poller != null) {
-        return
-      }
-      log.debug("Starting ELSyncService with polling interval: {}", config.pollingInterval)
-      poller = timerFactory("ELSyncPoller", true)
-      poller!!.scheduleAtFixedRate(
-        timerTask {
-          try {
-            pollTask()
-          } catch (e: Exception) {
-            log.warn("ELSyncService poll task exception", e)
-          }
-        },
-        0,
-        config.pollingInterval.inWholeMilliseconds,
-      )
+    if (poller != null) {
+      return
     }
+    log.debug("Starting ELSyncService with polling interval: {}", config.pollingInterval)
+    poller = timerFactory("ELSyncPoller", true)
+    poller!!.scheduleAtFixedRate(
+      timerTask {
+        try {
+          pollTask()
+        } catch (e: Exception) {
+          log.warn("Poll task failed: errorMessage={}", e.message, e)
+        }
+      },
+      0,
+      config.pollingInterval.inWholeMilliseconds,
+    )
   }
 
+  @Synchronized
   override fun stop() {
-    synchronized(this) {
-      if (poller == null) {
-        return
-      }
-      poller?.cancel()
-      poller = null
+    if (poller == null) {
+      return
     }
+    poller?.cancel()
+    poller = null
   }
 }

@@ -20,6 +20,7 @@ import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
+import maru.consensus.qbft.DifficultyAwareQbftFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.crypto.Crypto
@@ -27,7 +28,6 @@ import maru.database.BeaconChain
 import maru.finalization.LineaFinalizationProvider
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
-import maru.p2p.PeerInfo
 import maru.services.LongRunningService
 import maru.subscription.InOrderFanoutSubscriptionManager
 import maru.syncing.SyncStatusProvider
@@ -45,7 +45,7 @@ class MaruApp(
   val beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
-  private val p2pNetwork: P2PNetwork,
+  val p2pNetwork: P2PNetwork,
   private val privateKeyProvider: () -> ByteArray,
   private val finalizationProvider: FinalizationProvider,
   private val vertx: Vertx,
@@ -170,9 +170,7 @@ class MaruApp(
 
   fun peersConnected(): UInt =
     p2pNetwork
-      .getPeers()
-      .filter { it.status == PeerInfo.PeerStatus.CONNECTED }
-      .size
+      .peerCount
       .toUInt()
 
   private fun createProtocolStarter(
@@ -215,12 +213,18 @@ class MaruApp(
       }
     val forkTransitionSubscriptionManager = InOrderFanoutSubscriptionManager<ForkSpec>()
     forkTransitionSubscriptionManager.addSyncSubscriber(p2pNetwork::handleForkTransition)
+    val difficultyAwareQbftFactory =
+      DifficultyAwareQbftFactory(
+        ethereumJsonRpcClient = validatorELNodeEthJsonRpcClient.eth1Web3j,
+        postTtdProtocolFactory = qbftFactory,
+      )
     val protocolStarter =
       ProtocolStarter.create(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
           OmniProtocolFactory(
             qbftConsensusFactory = qbftFactory,
+            difficultyAwareQbftFactory = difficultyAwareQbftFactory,
           ),
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         syncStatusProvider = syncStatusProvider,
