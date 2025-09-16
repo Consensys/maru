@@ -65,9 +65,21 @@ import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
  */
 class MaruFactory(
   validatorPrivateKey: ByteArray = generatePrivateKey(),
+  shanghaiTimestamp: ULong? = null,
+  cancunTimestamp: ULong? = null,
   pragueTimestamp: ULong? = null,
   ttd: ULong? = null,
 ) {
+  init {
+    // If one of pragueTimestamp, cancunTimestamp, shanghaiTimestamp is defined and some other is not, throw
+    require(
+      (pragueTimestamp == null && cancunTimestamp == null && shanghaiTimestamp == null) ||
+        (pragueTimestamp != null && cancunTimestamp != null && shanghaiTimestamp != null),
+    ) {
+      "pragueTimestamp, cancunTimestamp and shanghaiTimestamp should be defined or all be absent!"
+    }
+  }
+
   companion object {
     val defaultReconnectDelay = 500.milliseconds
     val defaultSyncingConfig =
@@ -110,7 +122,7 @@ class MaruFactory(
     )
 
   private val beaconGenesisConfig: ForksSchedule =
-    if (pragueTimestamp != null) {
+    if (pragueTimestamp != null && cancunTimestamp != null && shanghaiTimestamp != null) {
       ForksSchedule(
         1337u,
         setOf(
@@ -124,6 +136,24 @@ class MaruFactory(
                   elFork = ElFork.Paris,
                 ),
                 terminalTotalDifficulty = ttd!!,
+              ),
+          ),
+          ForkSpec(
+            timestampSeconds = shanghaiTimestamp,
+            blockTimeSeconds = 1u,
+            configuration =
+              QbftConsensusConfig(
+                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                elFork = ElFork.Shanghai,
+              ),
+          ),
+          ForkSpec(
+            timestampSeconds = cancunTimestamp,
+            blockTimeSeconds = 1u,
+            configuration =
+              QbftConsensusConfig(
+                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                elFork = ElFork.Cancun,
               ),
           ),
           ForkSpec(
