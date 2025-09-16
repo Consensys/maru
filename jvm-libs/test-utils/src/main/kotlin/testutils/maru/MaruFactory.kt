@@ -40,7 +40,7 @@ import maru.config.ValidatorElNode
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -54,7 +54,7 @@ import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
-import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
@@ -287,9 +287,9 @@ class MaruFactory(
       SerDe<SealedBeaconBlock>,
       MetricsFacade,
       BesuMetricsSystem,
-      StatusMessageFactory,
+      StatusManager,
       BeaconChain,
-      ForkIdHashProvider,
+      ForkIdHashManager,
       ForkIdHasher,
       () -> Boolean,
       P2PState,
@@ -385,9 +385,9 @@ class MaruFactory(
       SerDe<SealedBeaconBlock>,
       MetricsFacade,
       BesuMetricsSystem,
-      StatusMessageFactory,
+      StatusManager,
       BeaconChain,
-      ForkIdHashProvider,
+      ForkIdHashManager,
       ForkIdHasher,
       () -> Boolean,
       P2PState,
@@ -448,9 +448,9 @@ class MaruFactory(
       SerDe<SealedBeaconBlock>,
       MetricsFacade,
       BesuMetricsSystem,
-      StatusMessageFactory,
+      StatusManager,
       BeaconChain,
-      ForkIdHashProvider,
+      ForkIdHashManager,
       ForkIdHasher,
       () -> Boolean,
       P2PState,
@@ -518,9 +518,9 @@ class MaruFactory(
       SerDe<SealedBeaconBlock>,
       MetricsFacade,
       BesuMetricsSystem,
-      StatusMessageFactory,
+      StatusManager,
       BeaconChain,
-      ForkIdHashProvider,
+      ForkIdHashManager,
       ForkIdHasher,
       () -> Boolean,
       P2PState,

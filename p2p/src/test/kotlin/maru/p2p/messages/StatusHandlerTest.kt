@@ -27,7 +27,7 @@ import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 class StatusHandlerTest {
   @Test
   fun `responds with current status`() {
-    val statusMessageFactory = mock<StatusMessageFactory>()
+    val statusManager = mock<StatusManager>()
     val localBeaconState = DataGenerators.randomBeaconState(0U)
     val forkIdHash = Random.nextBytes(32)
     val localStatusMessage =
@@ -40,11 +40,12 @@ class StatusHandlerTest {
           localBeaconState.beaconBlockHeader.number,
         ),
       )
-    whenever(statusMessageFactory.createStatusMessage()).thenReturn(localStatusMessage)
+    whenever(statusManager.createStatusMessage()).thenReturn(localStatusMessage)
+    whenever(statusManager.check(any())).thenReturn(true)
 
     val peer = mock<MaruPeer>()
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
-    val statusHandler = StatusHandler(statusMessageFactory)
+    val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(0U)
     val remoteStatusMessage =
       Message(
@@ -62,11 +63,10 @@ class StatusHandlerTest {
 
   @Test
   fun `updates peer status`() {
-    val statusMessageFactory = mock<StatusMessageFactory>()
+    val statusManager = mock<StatusManager>()
     val forkIdHash = Random.nextBytes(32)
     val blockHash = Random.nextBytes(32)
     val blockNumber = 0UL
-
     val statusMessage = mock<Message<Status, RpcMessageType>>()
     val status = Status(forkIdHash, blockHash, blockNumber)
     val remoteBeaconState = DataGenerators.randomBeaconState(0U)
@@ -77,12 +77,13 @@ class StatusHandlerTest {
         latestBlockNumber = remoteBeaconState.beaconBlockHeader.number,
       )
 
-    whenever(statusMessageFactory.createStatusMessage()).thenReturn(statusMessage)
+    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.createStatusMessage()).thenReturn(statusMessage)
     whenever(statusMessage.payload).thenReturn(status)
 
     val peer = mock<MaruPeer>()
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
-    val statusHandler = StatusHandler(statusMessageFactory)
+    val statusHandler = StatusHandler(statusManager)
     val remoteStatusMessage =
       Message(
         RpcMessageType.STATUS,
@@ -96,7 +97,7 @@ class StatusHandlerTest {
 
   @Test
   fun `updates peer status when forkIdHasJustChangedTo returns true`() {
-    val statusMessageFactory = mock<StatusMessageFactory>()
+    val statusManager = mock<StatusManager>()
     val forkIdHash = ByteArray(32) { 0x00.toByte() }
     val otherForkIdHash = ByteArray(32) { 0xFF.toByte() }
     val blockHash = Random.nextBytes(32)
@@ -112,13 +113,13 @@ class StatusHandlerTest {
         latestBlockNumber = remoteBeaconState.beaconBlockHeader.number,
       )
 
-    whenever(statusMessageFactory.createStatusMessage()).thenReturn(statusMessage)
-    whenever(statusMessageFactory.forkIdHasJustChangedFrom(any())).thenReturn(true)
+    whenever(statusManager.createStatusMessage()).thenReturn(statusMessage)
+    whenever(statusManager.check(any())).thenReturn(true)
     whenever(statusMessage.payload).thenReturn(status)
 
     val peer = mock<MaruPeer>()
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
-    val statusHandler = StatusHandler(statusMessageFactory)
+    val statusHandler = StatusHandler(statusManager)
     val remoteStatusMessage =
       Message(
         RpcMessageType.STATUS,
@@ -132,14 +133,15 @@ class StatusHandlerTest {
 
   @Test
   fun `handles request with Rpc exception`() {
-    val statusMessageFactory = mock<StatusMessageFactory>()
-    whenever(statusMessageFactory.createStatusMessage()).thenAnswer {
+    val statusManager = mock<StatusManager>()
+    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.createStatusMessage()).thenAnswer {
       throw RpcException(RpcResponseStatus.RESOURCE_UNAVAILABLE, "createStatusMessage exception testing")
     }
 
     val peer = mock<MaruPeer>()
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
-    val statusHandler = StatusHandler(statusMessageFactory)
+    val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(0U)
     val remoteStatusMessage =
       Message(
@@ -164,7 +166,7 @@ class StatusHandlerTest {
 
   @Test
   fun `disconnects peer when forkIdHash is wrong`() {
-    val statusMessageFactory = mock<StatusMessageFactory>()
+    val statusManager = mock<StatusManager>()
     val forkIdHash = ByteArray(32) { 0x00.toByte() }
     val wrongForkIdHash = ByteArray(32) { 0xFF.toByte() }
     val blockHash = Random.nextBytes(32)
@@ -180,13 +182,13 @@ class StatusHandlerTest {
         latestBlockNumber = remoteBeaconState.beaconBlockHeader.number,
       )
 
-    whenever(statusMessageFactory.createStatusMessage()).thenReturn(statusMessage)
-    whenever(statusMessageFactory.forkIdHasJustChangedFrom(any())).thenReturn(false)
+    whenever(statusManager.createStatusMessage()).thenReturn(statusMessage)
+    whenever(statusManager.check(any())).thenReturn(false)
     whenever(statusMessage.payload).thenReturn(status)
 
     val peer = mock<MaruPeer>()
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
-    val statusHandler = StatusHandler(statusMessageFactory)
+    val statusHandler = StatusHandler(statusManager)
     val remoteStatusMessage =
       Message(
         RpcMessageType.STATUS,
@@ -200,14 +202,15 @@ class StatusHandlerTest {
 
   @Test
   fun `handles request with exception`() {
-    val statusMessageFactory = mock<StatusMessageFactory>()
-    whenever(statusMessageFactory.createStatusMessage()).thenThrow(
+    val statusManager = mock<StatusManager>()
+    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.createStatusMessage()).thenThrow(
       IllegalStateException("createStatusMessage exception testing"),
     )
 
     val peer = mock<MaruPeer>()
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
-    val statusHandler = StatusHandler(statusMessageFactory)
+    val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(0U)
     val remoteStatusMessage =
       Message(
@@ -228,5 +231,41 @@ class StatusHandlerTest {
         "Handling request failed with unexpected error: createStatusMessage exception testing",
       ),
     )
+  }
+
+  @Test
+  fun `disconnects peer when status is invalid`() {
+    val statusManager = mock<StatusManager>()
+    val localBeaconState = DataGenerators.randomBeaconState(0U)
+    val forkIdHash = Random.nextBytes(32)
+    val localStatusMessage =
+      Message(
+        RpcMessageType.STATUS,
+        Version.V1,
+        Status(
+          forkIdHash,
+          localBeaconState.beaconBlockHeader.hash,
+          localBeaconState.beaconBlockHeader.number,
+        ),
+      )
+    whenever(statusManager.createStatusMessage()).thenReturn(localStatusMessage)
+    whenever(statusManager.check(any())).thenReturn(false)
+
+    val peer = mock<MaruPeer>()
+    val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
+    val statusHandler = StatusHandler(statusManager)
+    val remoteBeaconState = DataGenerators.randomBeaconState(0U)
+    val remoteStatusMessage =
+      Message(
+        RpcMessageType.STATUS,
+        Version.V1,
+        Status(
+          forkIdHash,
+          remoteBeaconState.beaconBlockHeader.hash,
+          remoteBeaconState.beaconBlockHeader.number,
+        ),
+      )
+    statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
+    verify(peer).disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
   }
 }

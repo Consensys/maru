@@ -19,7 +19,7 @@ import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 
 class StatusHandler(
-  private val statusMessageFactory: StatusMessageFactory,
+  private val statusManager: StatusManager,
 ) : RpcMessageHandler<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>> {
   private val log = LogManager.getLogger(this.javaClass)
 
@@ -29,19 +29,15 @@ class StatusHandler(
     callback: ResponseCallback<Message<Status, RpcMessageType>>,
   ) {
     try {
-      val localStatusMessage = statusMessageFactory.createStatusMessage()
-      val messageForkId = message.payload.forkIdHash
-      if (!localStatusMessage.payload.forkIdHash.contentEquals(messageForkId) &&
-        !statusMessageFactory.forkIdHasJustChangedFrom(messageForkId)
-      ) {
-//          log.warn(
-//            "Disconnecting peer ${peer.id} due to fork ID mismatch. Peer fork ID: ${messageForkId.toHexString()}, local fork ID: ${localStatusMessage.payload.forkIdHash.toHexString()}",
-//          )
+      if (!statusManager.check(message.payload)) {
+        log.warn(
+          "Disconnecting peer=${peer.id} due to fork ID mismatch.",
+        )
         peer.disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
         return
       }
       peer.updateStatus(message.payload)
-      callback.respondAndCompleteSuccessfully(localStatusMessage)
+      callback.respondAndCompleteSuccessfully(statusManager.createStatusMessage())
     } catch (e: RpcException) {
       log.error("handling request failed with RpcException", e)
       callback.completeWithErrorResponse(e)

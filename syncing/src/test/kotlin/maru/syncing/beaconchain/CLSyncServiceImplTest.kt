@@ -20,8 +20,8 @@ import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
-import maru.consensus.ForkIdHashProvider
-import maru.consensus.ForkIdHashProviderImpl
+import maru.consensus.ForkIdHashManager
+import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -42,7 +42,7 @@ import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.PeerLookup
-import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.messages.StatusManager
 import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
@@ -110,7 +110,7 @@ class CLSyncServiceImplTest {
         override fun getCLSyncTarget(): ULong = 0UL
       }
 
-    fun createForkIdHashProvider(beaconChain: BeaconChain): ForkIdHashProvider {
+    fun createForkIdHashProvider(beaconChain: BeaconChain): ForkIdHashManager {
       val consensusConfig: ConsensusConfig =
         QbftConsensusConfig(
           validatorSet =
@@ -122,7 +122,7 @@ class CLSyncServiceImplTest {
         )
       val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0UL, 1U, consensusConfig)))
 
-      return ForkIdHashProviderImpl(
+      return ForkIdHashManagerImpl(
         chainId = CHAIN_ID,
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
@@ -422,7 +422,7 @@ class CLSyncServiceImplTest {
     p2PState: P2PState,
   ): P2PNetworkImpl {
     val forkIdHashProvider = createForkIdHashProvider(beaconChain)
-    val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
+    val statusManager = StatusManager(beaconChain, forkIdHashProvider)
     val p2pNetworkImpl =
       P2PNetworkImpl(
         privateKeyBytes = key,
@@ -435,10 +435,10 @@ class CLSyncServiceImplTest {
         chainId = CHAIN_ID,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetricsFacade,
-        statusMessageFactory = statusMessageFactory,
+        statusManager = statusManager,
         beaconChain = beaconChain,
         metricsSystem = TestMetricsSystemAdapter,
-        forkIdHashProvider = forkIdHashProvider,
+        forkIdHashManager = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
         forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
         p2PState = p2PState,

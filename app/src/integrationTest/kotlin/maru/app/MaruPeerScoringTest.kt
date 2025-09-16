@@ -24,14 +24,14 @@ import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdHasher
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.database.P2PState
 import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.DefaultBlockRetrievalStrategy
-import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
@@ -202,9 +202,9 @@ class MaruPeerScoringTest {
           serDe: SerDe<SealedBeaconBlock>,
           metricsFacade: MetricsFacade,
           metricsSystem: MetricsSystem,
-          smf: StatusMessageFactory,
+          smf: StatusManager,
           chain: BeaconChain,
-          forkIdHashProvider: ForkIdHashProvider,
+          forkIdHashManager: ForkIdHashManager,
           forkIdHasher: ForkIdHasher,
           isBlockImportEnabledProvider: () -> Boolean,
           p2pState: P2PState,
@@ -220,7 +220,7 @@ class MaruPeerScoringTest {
             metricsSystem = metricsSystem,
             smf = smf,
             chain = chain,
-            forkIdHashProvider = forkIdHashProvider,
+            forkIdHashManager = forkIdHashManager,
             forkIdHasher = forkIdHasher,
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,

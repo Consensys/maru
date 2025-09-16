@@ -11,6 +11,7 @@ package maru.consensus
 import java.util.NavigableSet
 import java.util.TreeSet
 import kotlin.reflect.KClass
+import org.apache.logging.log4j.LogManager
 
 data class ForkSpec(
   val timestampSeconds: ULong,
@@ -26,6 +27,8 @@ class ForksSchedule(
   val chainId: UInt,
   forks: Collection<ForkSpec>,
 ) {
+  private val log = LogManager.getLogger(this.javaClass)
+
   val forks: NavigableSet<ForkSpec> =
     run {
       val newForks =
@@ -36,6 +39,7 @@ class ForksSchedule(
         )
       newForks.addAll(forks)
       require(newForks.size == forks.size) { "Fork timestamps must be unique" }
+      log.info("ForksSchedule created with forks: $newForks")
       newForks
     }
 
@@ -51,6 +55,14 @@ class ForksSchedule(
         .minByOrNull { it.timestampSeconds }
 
     return nextFork
+  }
+
+  fun getPreviousForkByTimestamp(timestamp: ULong): ForkSpec? {
+    val previousFork =
+      forks
+        .filter { it.timestampSeconds < timestamp }
+        .maxByOrNull { it.timestampSeconds }
+    return previousFork
   }
 
   fun <T : ConsensusConfig> getForkByConfigType(configClass: KClass<T>): ForkSpec {

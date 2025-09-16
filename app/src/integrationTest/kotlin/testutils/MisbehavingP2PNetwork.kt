@@ -11,7 +11,7 @@ package testutils
 import kotlin.time.Duration
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdHasher
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
@@ -20,7 +20,7 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.RpcMethods
 import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BlockRetrievalStrategy
-import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
@@ -33,9 +33,9 @@ class MisbehavingP2PNetwork(
   serDe: SerDe<SealedBeaconBlock>,
   metricsFacade: MetricsFacade,
   metricsSystem: BesuMetricsSystem,
-  smf: StatusMessageFactory,
+  smf: StatusManager,
   chain: BeaconChain,
-  forkIdHashProvider: ForkIdHashProvider,
+  forkIdHashManager: ForkIdHashManager,
   forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
   p2pState: P2PState,
@@ -51,9 +51,9 @@ class MisbehavingP2PNetwork(
       serDe = serDe,
       metricsFacade = metricsFacade,
       metricsSystem = metricsSystem,
-      statusMessageFactory = smf,
+      statusManager = smf,
       beaconChain = chain,
-      forkIdHashProvider = forkIdHashProvider,
+      forkIdHashManager = forkIdHashManager,
       forkIdHasher = forkIdHasher,
       isBlockImportEnabledProvider = isBlockImportEnabledProvider,
       p2PState = p2pState,

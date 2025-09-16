@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.consensus.ForkIdHashProvider
 import maru.database.BeaconChain
 import maru.p2p.discovery.MaruDiscoveryService
 import maru.syncing.CLSyncStatus
@@ -35,7 +34,6 @@ class MaruPeerManager(
   p2pConfig: P2PConfig,
   private val reputationManager: MaruReputationManager,
   private val isStaticPeer: (NodeId) -> Boolean,
-  private val forkIdHashProvider: ForkIdHashProvider,
   private val beaconChain: BeaconChain,
   private val syncStatusProviderProvider: () -> SyncStatusProvider,
   syncConfig: SyncingConfig,
@@ -121,39 +119,34 @@ class MaruPeerManager(
     if (isAStaticPeer || reputationManager.isConnectionInitiationAllowed(peer.address)) {
       val maruPeer = maruPeerFactory.createMaruPeer(peer)
       val localBeaconChainHead = beaconChain.getLatestBeaconState().beaconBlockHeader.number
-      val targetBlockNumber = syncStatusProvider.getCLSyncTarget()
       statusExchangingMaruPeers[peer.id] = maruPeer
       maruPeer
-        .awaitInitialStatus()
+        .awaitInitialStatusAndCheckForkIdHash()
         .orTimeout(Duration.ofSeconds(15L))
-        .thenApply { status ->
-          if (!status.forkIdHash.contentEquals(forkIdHashProvider.currentForkIdHash())) {
-            log.info(
-              "Peer={} has a different forkIdHash={} than expected={}. Disconnecting.",
-              peer.id,
-              status.forkIdHash.toHexString(),
-              forkIdHashProvider.currentForkIdHash().toHexString(),
-            )
-            maruPeer.disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
-          } else if (syncStatusProvider.getCLSyncStatus() == CLSyncStatus.SYNCING &&
-            status.latestBlockNumber + blocksBehindThreshold < targetBlockNumber
-          ) {
-            log.info(
-              "Peer={} is too far behind our target block number={} (peer's block number={}). Disconnecting.",
-              peer.id,
-              syncStatusProvider.getCLSyncTarget(),
-              status.latestBlockNumber,
-            )
-            maruPeer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS) // there is no better reason available
-          } else if (syncStatusProvider.getCLSyncStatus() == CLSyncStatus.SYNCED &&
-            status.latestBlockNumber + blocksBehindThreshold < localBeaconChainHead &&
-            tooManyPeersBehind(localBeaconChainHead)
-          ) {
-            log.info("Peer={} is behind and we already have too many peers behind. Disconnecting.", peer.id)
-            maruPeer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS) // there is no better reason available
+        .whenComplete { status, throwable ->
+          if (throwable != null) {
+            log.info("Failed to get status from peer={}", peer.id, throwable)
           } else {
-            connectedPeers.put(peer.id, maruPeer)
-            log.info("Connected to peer={} with status={}", peer.id, status)
+            if (syncStatusProvider.getCLSyncStatus() == CLSyncStatus.SYNCING &&
+              status.latestBlockNumber + blocksBehindThreshold < syncStatusProvider.getCLSyncTarget()
+            ) {
+              log.info(
+                "Peer={} is too far behind our target block number={} (peer's block number={}). Disconnecting.",
+                peer.id,
+                syncStatusProvider.getCLSyncTarget(),
+                status.latestBlockNumber,
+              )
+              maruPeer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS) // there is no better reason available
+            } else if (syncStatusProvider.getCLSyncStatus() == CLSyncStatus.SYNCED &&
+              status.latestBlockNumber + blocksBehindThreshold < localBeaconChainHead &&
+              tooManyPeersBehind(localBeaconChainHead)
+            ) {
+              log.info("Peer={} is behind and we already have too many peers behind. Disconnecting.", peer.id)
+              maruPeer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS) // there is no better reason available
+            } else {
+              connectedPeers[peer.id] = maruPeer
+              log.info("Connected to peer={} with status={}", peer.id, status)
+            }
           }
         }.always {
           statusExchangingMaruPeers.remove(peer.id)

@@ -16,13 +16,14 @@ import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
-import maru.consensus.ForkIdHashProvider
-import maru.consensus.ForkIdHashProviderImpl
+import maru.consensus.ForkIdHashManager
+import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
+import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.p2p.messages.Status
 import maru.serialization.ForkIdSerializer
@@ -54,7 +55,7 @@ class MaruPeerManagerTest {
     val reputationManager =
       MaruReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), { _: NodeId -> false }, P2PConfig.Reputation())
 
-    fun createForkIdHashProvider(): ForkIdHashProvider {
+    fun createForkIdHashProvider(): ForkIdHashManager {
       val consensusConfig: ConsensusConfig =
         QbftConsensusConfig(
           validatorSet =
@@ -66,7 +67,7 @@ class MaruPeerManagerTest {
         )
       val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0UL, 1U, consensusConfig)))
 
-      return ForkIdHashProviderImpl(
+      return ForkIdHashManagerImpl(
         chainId = chainId,
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
@@ -74,7 +75,7 @@ class MaruPeerManagerTest {
       )
     }
 
-    val forkIdHashProvider: ForkIdHashProvider = createForkIdHashProvider()
+    val forkIdHashManager: ForkIdHashManager = createForkIdHashProvider()
 
     private fun createSyncStatusProvider(): SyncStatusProvider =
       object : SyncStatusProvider {
@@ -104,7 +105,7 @@ class MaruPeerManagerTest {
     val statusFuture =
       SafeFuture<Status>.completedFuture(
         Status(
-          forkIdHash = forkIdHashProvider.currentForkIdHash(),
+          forkIdHash = forkIdHashManager.currentHash(),
           latestBlockNumber = 0u,
           latestStateRoot = ByteArray(32) { 0x00 },
         ),
@@ -126,7 +127,7 @@ class MaruPeerManagerTest {
     whenever(peer.connectionInitiatedLocally()).thenReturn(true)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
-    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusFuture)
+    whenever(maruPeer.awaitInitialStatusAndCheckForkIdHash()).thenReturn(statusFuture)
     whenever(maruPeer.address).thenReturn(mock())
     whenever(p2pConfig.maxPeers).thenReturn(10)
     whenever(syncConfig.desyncTolerance).thenReturn(32u)
@@ -135,12 +136,11 @@ class MaruPeerManagerTest {
       MaruPeerManager(
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
+        reputationManager = reputationManager,
+        isStaticPeer = { false },
         beaconChain = beaconChain,
         syncStatusProviderProvider = { syncStatusProvider },
         syncConfig = syncConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
       )
     manager.scheduler = mockScheduler
     manager.start(discoveryService = null, p2pNetwork = mock())
@@ -167,19 +167,18 @@ class MaruPeerManagerTest {
     whenever(maruPeer.sendStatus()).thenReturn(SafeFuture.completedFuture(Unit))
     whenever(maruPeer.address).thenReturn(mock())
     whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusFuture) // Uses correct fork ID hash
+    whenever(maruPeer.awaitInitialStatusAndCheckForkIdHash()).thenReturn(statusFuture) // Uses correct fork ID hash
     whenever(syncConfig.desyncTolerance).thenReturn(32u)
 
     val manager =
       MaruPeerManager(
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
+        reputationManager = reputationManager,
+        isStaticPeer = { false },
         beaconChain = beaconChain,
         syncStatusProviderProvider = { syncStatusProvider },
         syncConfig = syncConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
@@ -205,12 +204,11 @@ class MaruPeerManagerTest {
       MaruPeerManager(
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
+        reputationManager = reputationManager,
+        isStaticPeer = { false },
         beaconChain = beaconChain,
         syncStatusProviderProvider = { syncStatusProvider },
         syncConfig = syncConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
       )
     val mockScheduler = mock<ScheduledExecutorService>()
     manager.scheduler = mockScheduler
@@ -226,54 +224,6 @@ class MaruPeerManagerTest {
     manager.onConnect(peer)
 
     verify(peer).disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
-  }
-
-  @Test
-  fun `onConnect disconnects peer when fork ID hash mismatch`() {
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
-    val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
-    val p2pConfig = mock<P2PConfig>()
-    val p2pNetwork = mock<P2PNetwork<Peer>>()
-    val syncConfig = mock<SyncingConfig>()
-
-    // Create status with different fork ID hash
-    val differentForkIdHash = ByteArray(32) { 0xFF.toByte() }
-    val statusWithDifferentForkId =
-      SafeFuture.completedFuture(
-        Status(
-          forkIdHash = differentForkIdHash,
-          latestBlockNumber = 0u,
-          latestStateRoot = ByteArray(32) { 0x00 },
-        ),
-      )
-
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(peer.address).thenReturn(mock())
-    whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(p2pConfig.statusUpdate).thenReturn(P2PConfig.StatusUpdate())
-    whenever(p2pNetwork.peerCount).thenReturn(5)
-    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusWithDifferentForkId)
-    whenever(syncConfig.desyncTolerance).thenReturn(32u)
-
-    val manager =
-      MaruPeerManager(
-        maruPeerFactory = maruPeerFactory,
-        p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
-        beaconChain = beaconChain,
-        syncStatusProviderProvider = { syncStatusProvider },
-        syncConfig = syncConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
-      )
-    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
-    manager.onConnect(peer)
-
-    verify(maruPeer).disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
-    assertThat(manager.getPeer(nodeId)).isNull()
   }
 
   @Test
@@ -314,7 +264,7 @@ class MaruPeerManagerTest {
     val statusFarBehind =
       SafeFuture.completedFuture(
         Status(
-          forkIdHash = forkIdHashProvider.currentForkIdHash(),
+          forkIdHash = forkIdHashManager.currentHash(),
           latestBlockNumber = 900u, // 1000 (sync target) - 900 = 100 > 32 (blocksBehindThreshold)
           latestStateRoot = ByteArray(32) { 0x00 },
         ),
@@ -325,19 +275,18 @@ class MaruPeerManagerTest {
     whenever(p2pConfig.maxPeers).thenReturn(10)
     whenever(p2pNetwork.peerCount).thenReturn(5)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusFarBehind)
+    whenever(maruPeer.awaitInitialStatusAndCheckForkIdHash()).thenReturn(statusFarBehind)
     whenever(syncConfig.desyncTolerance).thenReturn(32u)
 
     val manager =
       MaruPeerManager(
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
+        reputationManager = reputationManager,
+        isStaticPeer = { false },
         beaconChain = beaconChain,
         syncStatusProviderProvider = { syncingStatusProvider },
         syncConfig = syncConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
@@ -361,7 +310,7 @@ class MaruPeerManagerTest {
     val statusBehind =
       SafeFuture.completedFuture(
         Status(
-          forkIdHash = forkIdHashProvider.currentForkIdHash(),
+          forkIdHash = forkIdHashManager.currentHash(),
           latestBlockNumber = 50u, // Behind current head
           latestStateRoot = ByteArray(32) { 0x00 },
         ),
@@ -369,7 +318,7 @@ class MaruPeerManagerTest {
 
     // Mock beacon chain to return current head
     val mockBeaconState = DataGenerators.randomBeaconState(number = currentHead, timestamp = 0uL)
-    val mockBeaconChain = mock<maru.database.BeaconChain>()
+    val mockBeaconChain = mock<BeaconChain>()
     whenever(mockBeaconChain.getLatestBeaconState()).thenReturn(mockBeaconState)
 
     whenever(peer.id).thenReturn(nodeId)
@@ -377,19 +326,18 @@ class MaruPeerManagerTest {
     whenever(p2pConfig.maxPeers).thenReturn(10) // maxPeers / 10 = 1, so 1 peer behind is too many
     whenever(p2pNetwork.peerCount).thenReturn(5)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusBehind)
+    whenever(maruPeer.awaitInitialStatusAndCheckForkIdHash()).thenReturn(statusBehind)
     whenever(syncConfig.desyncTolerance).thenReturn(32u)
 
     val manager =
       MaruPeerManager(
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
         beaconChain = mockBeaconChain,
-        syncStatusProviderProvider = { syncStatusProvider }, // SYNCED status
         syncConfig = syncConfig,
         reputationManager = reputationManager,
         isStaticPeer = { false },
+        syncStatusProviderProvider = { syncStatusProvider },
       )
 
     // Add one peer that's already behind to trigger "too many peers behind" condition
@@ -428,19 +376,18 @@ class MaruPeerManagerTest {
     whenever(p2pConfig.maxPeers).thenReturn(10)
     whenever(p2pNetwork.peerCount).thenReturn(5)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.awaitInitialStatus()).thenReturn(pendingStatusFuture)
+    whenever(maruPeer.awaitInitialStatusAndCheckForkIdHash()).thenReturn(pendingStatusFuture)
     whenever(syncConfig.desyncTolerance).thenReturn(32u)
 
     val manager =
       MaruPeerManager(
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
+        reputationManager = reputationManager,
+        isStaticPeer = { false },
         beaconChain = beaconChain,
         syncStatusProviderProvider = { syncStatusProvider },
         syncConfig = syncConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
@@ -451,7 +398,7 @@ class MaruPeerManagerTest {
     // Complete the status exchange successfully
     pendingStatusFuture.complete(
       Status(
-        forkIdHash = forkIdHashProvider.currentForkIdHash(),
+        forkIdHash = forkIdHashManager.currentHash(),
         latestBlockNumber = 0u,
         latestStateRoot = ByteArray(32) { 0x00 },
       ),
@@ -492,7 +439,8 @@ class MaruPeerManagerTest {
       MaruPeerManager(
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
+        reputationManager = reputationManager,
+        isStaticPeer = { false },
         beaconChain = beaconChain,
         syncStatusProviderProvider = { syncStatusProvider },
         syncConfig =
@@ -501,8 +449,6 @@ class MaruPeerManagerTest {
             peerChainHeightPollingInterval = 1.seconds,
             elSyncStatusRefreshInterval = 1.seconds,
           ),
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
@@ -525,7 +471,7 @@ class MaruPeerManagerTest {
     whenever(peer.id).thenReturn(nodeId)
     whenever(peer.address).thenReturn(address)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.awaitInitialStatus()).thenReturn(statusFuture)
+    whenever(maruPeer.awaitInitialStatusAndCheckForkIdHash()).thenReturn(statusFuture)
     whenever(p2pConfig.maxPeers).thenReturn(10)
     whenever(reputationManager.isConnectionInitiationAllowed(address)).thenReturn(true)
     whenever(p2pNetwork.peerCount).thenReturn(0)
@@ -535,7 +481,8 @@ class MaruPeerManagerTest {
       MaruPeerManager(
         maruPeerFactory = maruPeerFactory,
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
+        reputationManager = reputationManager,
+        isStaticPeer = { false },
         beaconChain = beaconChain,
         syncStatusProviderProvider = { syncStatusProvider },
         syncConfig =
@@ -544,8 +491,6 @@ class MaruPeerManagerTest {
             peerChainHeightPollingInterval = 1.seconds,
             elSyncStatusRefreshInterval = 1.seconds,
           ),
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
       )
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
