@@ -8,10 +8,16 @@
  */
 package maru.consensus.qbft.adapters
 
+import maru.consensus.ValidatorProvider
+import maru.consensus.state.StateTransitionImpl
 import maru.core.BeaconBlock
 import maru.core.ext.DataGenerators
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.mock
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftBlockInterfaceAdapterTest {
   @Test
@@ -22,9 +28,19 @@ class QbftBlockInterfaceAdapterTest {
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
+    val stateTransition = createMockStateTransition()
+    val adapter = QbftBlockInterfaceAdapter(stateTransition)
     val updatedBlock =
-      QbftBlockInterfaceAdapter().replaceRoundInBlock(qbftBlock, 20)
+      adapter.replaceRoundInBlock(qbftBlock, 20)
     val updatedBeaconBlockHeader = updatedBlock.header.toBeaconBlockHeader()
     assertEquals(updatedBeaconBlockHeader.round, 20u)
+  }
+
+  private fun createMockStateTransition(): StateTransitionImpl {
+    val validatorProvider = mock<ValidatorProvider>()
+    val validators = DataGenerators.randomValidators()
+    whenever(validatorProvider.getValidatorsForBlock(any()))
+      .thenReturn(SafeFuture.completedFuture(validators))
+    return StateTransitionImpl(validatorProvider = validatorProvider)
   }
 }
