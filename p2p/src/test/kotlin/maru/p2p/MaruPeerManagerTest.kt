@@ -9,7 +9,6 @@
 package maru.p2p
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ScheduledExecutorService
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
@@ -114,7 +113,6 @@ class MaruPeerManagerTest {
 
   @Test
   fun `creates maru peer through factory when peer connects`() {
-    val mockScheduler = mock<ScheduledExecutorService>()
     val nodeId = mock<NodeId>()
     val peer = mock<Peer>()
     val maruPeerFactory = mock<MaruPeerFactory>()
@@ -142,7 +140,6 @@ class MaruPeerManagerTest {
         syncStatusProviderProvider = { syncStatusProvider },
         syncConfig = syncConfig,
       )
-    manager.scheduler = mockScheduler
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
 
@@ -210,8 +207,6 @@ class MaruPeerManagerTest {
         syncStatusProviderProvider = { syncStatusProvider },
         syncConfig = syncConfig,
       )
-    val mockScheduler = mock<ScheduledExecutorService>()
-    manager.scheduler = mockScheduler
 
     val p2pNetwork = mock<P2PNetwork<Peer>>()
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)

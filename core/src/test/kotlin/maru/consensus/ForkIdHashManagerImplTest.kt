@@ -116,7 +116,7 @@ class ForkIdHashManagerImplTest {
     val nextForkId = ForkId(chainId, forkSpec3, genesisHash)
     val nextForkIdHash = forkIdHasher.hash(nextForkId)
 
-    // Should be within allowed window, as clock is constant and at timestamp for the current fork
+    // Should be within allowed window
     assertThat(manager.check(nextForkIdHash)).isTrue
   }
 

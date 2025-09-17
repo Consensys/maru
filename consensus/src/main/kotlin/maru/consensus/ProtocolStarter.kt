@@ -131,7 +131,7 @@ class ProtocolStarter(
         newProtocol,
         nextForkSpec,
       )
-    log.info("switching protocol: fromProtocol={} toProtocol={}", currentProtocolWithFork, newProtocolWithFork)
+    log.debug("switching protocol: fromProtocol={} toProtocol={}", currentProtocolWithFork, newProtocolWithFork)
     currentProtocolWithForkReference.set(newProtocolWithFork)
     currentProtocolWithFork?.protocol?.stop()
 

@@ -39,7 +39,6 @@ class ForksSchedule(
         )
       newForks.addAll(forks)
       require(newForks.size == forks.size) { "Fork timestamps must be unique" }
-      log.info("ForksSchedule created with forks: $newForks")
       newForks
     }
 

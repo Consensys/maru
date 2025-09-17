@@ -21,7 +21,11 @@ class StatusManager(
   fun createStatusMessage(): Message<Status, RpcMessageType> {
     val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
     val statusPayload =
-      Status(forkIdHash = forkIdHashManager.currentHash(), latestBeaconBlockHeader.hash, latestBeaconBlockHeader.number)
+      Status(
+        forkIdHash = forkIdHashManager.currentHash(),
+        latestStateRoot = latestBeaconBlockHeader.hash,
+        latestBlockNumber = latestBeaconBlockHeader.number,
+      )
     val statusMessage =
       Message(
         type = RpcMessageType.STATUS,
@@ -31,5 +35,5 @@ class StatusManager(
     return statusMessage
   }
 
-  fun check(otherStatus: Status): Boolean = forkIdHashManager.check(otherStatus.forkIdHash)
+  fun check(otherStatus: Status): Boolean = forkIdHashManager.check(otherForkIdHash = otherStatus.forkIdHash)
 }

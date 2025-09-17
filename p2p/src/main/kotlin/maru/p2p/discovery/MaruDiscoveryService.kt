@@ -72,8 +72,8 @@ class MaruDiscoveryService(
           log.trace("Failed to cast value for the forkId hash to Bytes")
           return false
         }
-      if (forkId != Bytes.wrap(forkIdHashManager.currentHash())) {
-        log.trace(
+      if (!forkIdHashManager.check(forkId.toArray())) {
+        log.info(
           "Peer {} is on a different chain. Expected: {}, Found: {}",
           node.nodeId,
           Bytes.wrap(forkIdHashManager.currentHash()),

@@ -90,7 +90,6 @@ class ForkIdHashManagerImpl(
     previousForkIdHash = previousForkByTimestamp?.let { getForkIdHashForForkSpec(it) }
     currentForkIdHash = getForkIdHashForForkSpec(currentForkByTimestamp)
     nextForkIdHash = nextForkByTimestamp?.let { getForkIdHashForForkSpec(it) }
-//    allForkIdHashes().forEach { log.info("ForkIdHash: {}", it.toHexString()) }
   }
 
   private var _genesisRootHash: ByteArray? = null
@@ -119,14 +118,6 @@ class ForkIdHashManagerImpl(
   override fun check(otherForkIdHash: ByteArray): Boolean {
     if (otherForkIdHash.contentEquals(currentForkIdHash)) return true
     val currentTime = clock.instant().epochSecond.toULong()
-    log.info("Checking fork id hash for time: {}", currentTime)
-    log.info("Current ForkIdHash: {}", currentForkIdHash.toHexString())
-    log.info("Previous ForkIdHash: {}", previousForkIdHash?.toHexString())
-    log.info("Current Fork Timestamp: {}", currentForkTimestamp)
-    log.info("Next Fork Timestamp: {}", nextForkTimestamp)
-    log.info("Next ForkIdHash: {}", nextForkIdHash?.toHexString())
-    log.info("Other ForkIdHash: {}", otherForkIdHash.toHexString())
-    log.info("Allowed Time Window: {}", allowedTimeWindowSeconds)
     // The allowedTimeWindowSeconds allows for time drift, network latency, etc.
     // The poll interval should be the maximum time between the two nodes switching forks (without time drift).
     // Current block time is subtracted from the current fork timestamp, because that is what we do in the fork update logic.
@@ -151,15 +142,12 @@ class ForkIdHashManagerImpl(
   override fun update(newForkSpec: ForkSpec) {
     val newForkIdHash = getForkIdHashForForkSpec(newForkSpec)
     if (getForkIdHashForForkSpec(newForkSpec).contentEquals(currentForkIdHash)) {
-      // currentForkIdHash has already been set by the initialization.
-      log.info(
-        "Initial update call, no action taken. Current ForkIdHash: ${currentForkIdHash.toHexString()} Next ForkIdHash: ${nextForkIdHash?.toHexString()} update to: ${newForkIdHash.toHexString()}",
-      )
+      // currentForkIdHash has already been set during initialization.
       return
     }
-    log.info("ForkIdHash updated to {}", newForkIdHash.toHexString())
-    log.info("expected ForIdHash: ${nextForkIdHash?.toHexString()}")
-    require(nextForkIdHash != null && newForkIdHash.contentEquals(nextForkIdHash)) { "Inconsistent fork id hashes" }
+    require(nextForkIdHash != null && newForkIdHash.contentEquals(nextForkIdHash)) {
+      "Inconsistent fork id hashes: $nextForkIdHash vs $newForkIdHash"
+    }
 
     val nextFork = forksSchedule.getNextForkByTimestamp(clock.instant().epochSecond.toULong())
     previousForkIdHash = currentForkIdHash
@@ -172,21 +160,4 @@ class ForkIdHashManagerImpl(
     currentBlockTime = newForkSpec.blockTimeSeconds
     nextBlockTime = nextFork?.blockTimeSeconds ?: 0U
   }
-
-//  private fun allForkIdHashes(): List<ByteArray> {
-//    val forkIdHashes = mutableListOf<ByteArray>()
-//    forksSchedule.forks.forEach { fork ->
-//      val forkId =
-//        ForkId(
-//          chainId = chainId,
-//          forkSpec =
-//            forksSchedule.getForkByTimestamp(timestamp = fork.timestampSeconds),
-//          genesisRootHash =
-//            beaconChain.getBeaconState(0u)?.beaconBlockHeader?.hash
-//              ?: throw IllegalStateException("Genesis state not found"),
-//        )
-//      forkIdHashes.add(forkIdHasher.hash(forkId = forkId))
-//    }
-//    return forkIdHashes
-//  }
 }

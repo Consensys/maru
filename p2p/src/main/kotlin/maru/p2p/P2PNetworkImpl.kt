@@ -357,17 +357,8 @@ class P2PNetworkImpl(
   override val peerCount: Int
     get() = maruPeerManager.peerCount
 
-  internal fun isConnected(peer: String): Boolean {
-    val peerAddress =
-      PeerAddress(
-        LibP2PNodeId(
-          PeerId.fromBase58(
-            peer,
-          ),
-        ),
-      )
-    return p2pNetwork.isConnected(peerAddress)
-  }
+  internal fun isConnected(peer: String): Boolean =
+    maruPeerManager.getPeer(LibP2PNodeId(PeerId.fromBase58(peer))) != null
 
   internal fun dropPeer(
     peer: String,

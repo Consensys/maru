@@ -103,7 +103,9 @@ class DefaultMaruPeer(
         .whenComplete { status, error ->
           if (error != null) {
             disconnectImmediately(Optional.of(DisconnectReason.UNRESPONSIVE), false)
-            log.info("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
+            if (error.cause !is PeerDisconnectedException) {
+              log.debug("Failed to send status message to peer={}: errorMessage={}", this.id, error.message, error)
+            }
           } else {
             updateStatus(status)
             try {
@@ -115,7 +117,7 @@ class DefaultMaruPeer(
                 )
               }
             } catch (e: Exception) {
-              log.info("Failed to schedule sendStatus to peerId={}", this.id, e)
+              log.trace("Failed to schedule sendStatus to peerId={}", this.id, e)
             }
           }
         }.thenApply {}
@@ -138,7 +140,7 @@ class DefaultMaruPeer(
       initialStatusUpdateFuture.complete(newStatus)
     }
     status.set(newStatus)
-    log.info("Received status update from peer={}: status={}", id, newStatus)
+    log.trace("Received status update from peer={}: status={}", id, newStatus)
     if (connectionInitiatedRemotely()) {
       scheduleDisconnectIfStatusNotReceived(
         p2pConfig.statusUpdate.refreshInterval + p2pConfig.statusUpdate.refreshIntervalLeeway,
@@ -154,7 +156,7 @@ class DefaultMaruPeer(
           Optional.of(
             scheduler.schedule(
               {
-                log.trace("Disconnecting from peerId={} by timeout", this.id)
+                log.debug("Disconnecting from peerId={} by timeout", this.id)
                 disconnectCleanly(DisconnectReason.UNRESPONSIVE)
               },
               delay.inWholeMilliseconds,
