@@ -73,7 +73,7 @@ class MaruDiscoveryService(
           return false
         }
       if (!forkIdHashManager.check(forkId.toArray())) {
-        log.info(
+        log.trace(
           "Peer {} is on a different chain. Expected: {}, Found: {}",
           node.nodeId,
           Bytes.wrap(forkIdHashManager.currentHash()),

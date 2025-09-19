@@ -76,15 +76,10 @@ class ForkIdHashManagerImpl(
   private var nextBlockTime: UInt
 
   init {
-    log.info("ForkSchedule: {}", forksSchedule)
     val timestamp = clock.instant().epochSecond.toULong()
-    log.info("Current timestamp: $timestamp")
     val previousForkSpec = forksSchedule.getPreviousForkByTimestamp(timestamp)
-    log.info("Previous fork spec: $previousForkSpec")
     val currentForkSpec = forksSchedule.getForkByTimestamp(timestamp)
-    log.info("Current fork spec: $currentForkSpec")
     val nextForkSpec = forksSchedule.getNextForkByTimestamp(timestamp)
-    log.info("Next fork spec: $nextForkSpec")
 
     currentForkTimestamp = currentForkSpec.timestampSeconds
     nextForkTimestamp = nextForkSpec?.timestampSeconds ?: ULong.MAX_VALUE
@@ -141,14 +136,11 @@ class ForkIdHashManagerImpl(
     ) { // this is the case where we haven't switched fork yet
       return true
     }
-    log.info(
-      "Checked ForkIdHash ${otherForkIdHash.toHexString()}, but it is not equal to current (${currentForkIdHash.toHexString()}), next (${nextForkIdHash?.toHexString()}), or previous (${previousForkIdHash?.toHexString()}) fork id hash",
-    )
     return false
   }
 
   override fun update(newForkSpec: ForkSpec) {
-    log.info(
+    log.debug(
       "Updating fork id hash to ${getForkIdHashForForkSpec(newForkSpec).toHexString()} for fork spec=$newForkSpec",
     )
     val newForkIdHash = getForkIdHashForForkSpec(newForkSpec)
@@ -157,10 +149,8 @@ class ForkIdHashManagerImpl(
       forksSchedule.getPreviousForkByTimestamp(newForkSpec.timestampSeconds)?.let {
         getForkIdHashForForkSpec(it)
       }
-    log.info("previousForkIdHash: ${previousForkIdHash?.toHexString()}")
 
     currentForkIdHash = newForkIdHash
-    log.info("currentForkIdHash: ${currentForkIdHash.toHexString()}")
 
     val nextFork = forksSchedule.getNextForkByTimestamp(newForkSpec.timestampSeconds)
     nextForkIdHash =
@@ -169,7 +159,6 @@ class ForkIdHashManagerImpl(
       } else {
         null
       }
-    log.info("nextForkIdHash: ${nextForkIdHash?.toHexString()}")
 
     currentForkTimestamp = newForkSpec.timestampSeconds
     nextForkTimestamp = nextFork?.timestampSeconds ?: ULong.MAX_VALUE
