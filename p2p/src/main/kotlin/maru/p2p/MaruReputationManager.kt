@@ -13,7 +13,11 @@ import java.util.EnumSet
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.Volatile
+import kotlin.jvm.optionals.getOrNull
 import kotlin.math.min
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import maru.config.P2PConfig
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.MaruMetricsCategory
@@ -68,6 +72,11 @@ class MaruReputationManager(
   override fun reportInitiatedConnectionFailed(peerAddress: PeerAddress) {
     getOrCreateReputation(peerAddress)
       .reportInitiatedConnectionFailed(timeProvider.timeInMillis)
+    log.trace(
+      "Reporting initiated connection failed: peer={}, reputation={}",
+      peerAddress,
+      getOrCreateReputation(peerAddress),
+    )
   }
 
   override fun isConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean =
@@ -75,9 +84,22 @@ class MaruReputationManager(
       .getCached(peerAddress.id)
       .map { it.shouldInitiateConnection(timeProvider.timeInMillis) }
       .orElse(true)
+      .also {
+        log.trace(
+          "Checking if connection initiation is allowed: peer={}, allowed={}, reputation={}",
+          peerAddress,
+          it,
+          getOrCreateReputation(peerAddress),
+        )
+      }
 
   override fun reportInitiatedConnectionSuccessful(peerAddress: PeerAddress) {
     getOrCreateReputation(peerAddress).reportInitiatedConnectionSuccessful()
+    log.trace(
+      "Reporting connection: peer={}, reputation={}",
+      peerAddress,
+      getOrCreateReputation(peerAddress),
+    )
   }
 
   override fun reportDisconnection(
@@ -93,6 +115,13 @@ class MaruReputationManager(
     )
     getOrCreateReputation(peerAddress)
       .reportDisconnection(timeProvider.timeInMillis, reason, locallyInitiated)
+    log.trace(
+      "Reporting disconnection: peer={}, reason={}, locallyInitiated={}, reputation={}",
+      peerAddress,
+      reason.orElse(null),
+      locallyInitiated,
+      getOrCreateReputation(peerAddress),
+    )
   }
 
   override fun adjustReputation(
@@ -181,8 +210,17 @@ class MaruReputationManager(
     override fun toString(): String =
       MoreObjects
         .toStringHelper(this)
-        .add("suitableAfter", suitableAfter)
-        .add("score", score)
+        .add(
+          "suitableAfter",
+          suitableAfter
+            .getOrNull()
+            ?.let {
+              Instant
+                .fromEpochMilliseconds(it.longValue())
+                .toLocalDateTime(TimeZone.currentSystemDefault())
+                .toString()
+            },
+        ).add("score", score)
         .toString()
   }
 }
