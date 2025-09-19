@@ -32,6 +32,8 @@ import testutils.maru.awaitTillMaruHasPeers
 class MaruValidatorRestartTest {
   private lateinit var cluster: Cluster
   private lateinit var transactionsHelper: BesuTransactionsHelper
+  private lateinit var validatorStack: PeeringNodeNetworkStack
+  private lateinit var followerStack: PeeringNodeNetworkStack
   private val maruFactory = MaruFactory()
   private val log = LogManager.getLogger(this.javaClass)
 
@@ -44,20 +46,24 @@ class MaruValidatorRestartTest {
         ThreadBesuNodeRunner(),
       )
     transactionsHelper = BesuTransactionsHelper()
+    validatorStack = PeeringNodeNetworkStack()
+    followerStack =
+      PeeringNodeNetworkStack(
+        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+      )
   }
 
   @AfterEach
   fun tearDown() {
+    followerStack.maruApp.stop()
+    followerStack.maruApp.close()
+    validatorStack.maruApp.stop()
+    validatorStack.maruApp.close()
     cluster.close()
   }
 
   @Test
   fun `Maru validator restarted from scratch is able to sync state`() {
-    val validatorStack = PeeringNodeNetworkStack()
-    val followerStack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
     PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
 
     val cooldownPeriod = 2.seconds
@@ -147,10 +153,5 @@ class MaruValidatorRestartTest {
 
     validatorStack.besuNode.assertMinedBlocks(2 * blocksToProduce)
     followerStack.besuNode.assertMinedBlocks(2 * blocksToProduce)
-
-    followerStack.maruApp.stop()
-    followerStack.maruApp.close()
-    validatorStack.maruApp.stop()
-    validatorStack.maruApp.close()
   }
 }

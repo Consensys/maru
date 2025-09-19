@@ -27,6 +27,8 @@ import testutils.maru.MaruFactory
 class MaruFollowerDelayedStartTest {
   private lateinit var cluster: Cluster
   private lateinit var transactionsHelper: BesuTransactionsHelper
+  private lateinit var validatorStack: PeeringNodeNetworkStack
+  private lateinit var followerStack: PeeringNodeNetworkStack
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
 
@@ -43,12 +45,16 @@ class MaruFollowerDelayedStartTest {
 
   @AfterEach
   fun tearDown() {
+    followerStack.maruApp.stop()
+    followerStack.maruApp.close()
+    validatorStack.maruApp.stop()
+    validatorStack.maruApp.close()
     cluster.close()
   }
 
   @Test
   fun `follower can sync and accept transactions after delayed start`() {
-    val validatorStack = PeeringNodeNetworkStack()
+    validatorStack = PeeringNodeNetworkStack()
     PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack)
 
     val validatorMaruApp =
@@ -73,7 +79,7 @@ class MaruFollowerDelayedStartTest {
 
     validatorStack.besuNode.assertMinedBlocks(blocksToProduce)
 
-    val followerStack =
+    followerStack =
       PeeringNodeNetworkStack(
         besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
       )
@@ -103,10 +109,5 @@ class MaruFollowerDelayedStartTest {
 
     validatorStack.besuNode.assertMinedBlocks(2 * blocksToProduce)
     followerStack.besuNode.assertMinedBlocks(2 * blocksToProduce)
-
-    followerStack.maruApp.stop()
-    followerStack.maruApp.close()
-    validatorStack.maruApp.stop()
-    validatorStack.maruApp.close()
   }
 }
