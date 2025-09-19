@@ -8,7 +8,6 @@
  */
 package maru.app
 
-import java.net.ServerSocket
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import org.apache.logging.log4j.LogManager
@@ -24,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import testutils.Checks.assertMinedBlocks
 import testutils.PeeringNodeNetworkStack
+import testutils.TestUtils.findFreePort
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
@@ -60,6 +60,7 @@ class MaruValidatorRestartTest {
       )
     PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
 
+    val cooldownPeriod = 2.seconds
     val followerMaruApp =
       maruFactory.buildTestMaruFollowerWithDiscovery(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
@@ -67,9 +68,14 @@ class MaruValidatorRestartTest {
         dataDir = followerStack.tmpDir,
         p2pPort = findFreePort(),
         discoveryPort = findFreePort(),
+        cooldownPeriod = cooldownPeriod,
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
+
+    val followerENR =
+      followerStack.maruApp.p2pNetwork.localNodeRecord
+        ?.asEnr()
 
     val validatorMaruApp =
       maruFactory.buildTestMaruValidatorWithDiscovery(
@@ -78,9 +84,8 @@ class MaruValidatorRestartTest {
         dataDir = validatorStack.tmpDir,
         p2pPort = findFreePort(),
         discoveryPort = findFreePort(),
-        bootnode =
-          followerStack.maruApp.p2pNetwork.localNodeRecord
-            ?.asEnr(),
+        bootnode = followerENR,
+        cooldownPeriod = cooldownPeriod,
       )
     validatorStack.setMaruApp(validatorMaruApp)
     validatorStack.maruApp.start()
@@ -106,9 +111,13 @@ class MaruValidatorRestartTest {
     validatorStack.maruApp.close()
 
     await
-      .timeout(60.seconds.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
       .pollInterval(1.seconds.toJavaDuration())
       .until { followerStack.maruApp.peersConnected() == 0u }
+
+    // Wait for an atleast cooldown period before restart
+    // This avoids any connection refusal due to cooldown not elapsed
+    Thread.sleep((cooldownPeriod + 5.seconds).toJavaDuration())
 
     val newValidatorMaruApp =
       maruFactory.buildTestMaruValidatorWithDiscovery(
@@ -117,15 +126,14 @@ class MaruValidatorRestartTest {
         dataDir = validatorStack.tmpDir,
         p2pPort = findFreePort(),
         discoveryPort = findFreePort(),
-        bootnode =
-          followerStack.maruApp.p2pNetwork.localNodeRecord
-            ?.asEnr(),
+        bootnode = followerENR,
+        cooldownPeriod = cooldownPeriod,
       )
     validatorStack.setMaruApp(newValidatorMaruApp)
     validatorStack.maruApp.start()
 
-    validatorStack.maruApp.awaitTillMaruHasPeers(1u, timeout = 60.seconds)
-    followerStack.maruApp.awaitTillMaruHasPeers(1u, timeout = 60.seconds)
+    validatorStack.maruApp.awaitTillMaruHasPeers(1u)
+    followerStack.maruApp.awaitTillMaruHasPeers(1u)
 
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -145,14 +153,4 @@ class MaruValidatorRestartTest {
     validatorStack.maruApp.stop()
     validatorStack.maruApp.close()
   }
-
-  private fun findFreePort(): UInt =
-    runCatching {
-      ServerSocket(0).use { socket ->
-        socket.reuseAddress = true
-        socket.localPort.toUInt()
-      }
-    }.getOrElse {
-      throw IllegalStateException("Could not find a free port", it)
-    }
 }
