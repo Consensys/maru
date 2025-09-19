@@ -230,6 +230,7 @@ class MaruApp(
         syncStatusProvider = syncStatusProvider,
         forkTransitionCheckInterval = config.protocolTransitionPollingInterval,
         forkTransitionNotifier = forkTransitionSubscriptionManager,
+        clock = clock,
       )
 
     return protocolStarter
