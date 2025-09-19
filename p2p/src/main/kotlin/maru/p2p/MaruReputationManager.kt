@@ -70,12 +70,15 @@ class MaruReputationManager(
   }
 
   override fun reportInitiatedConnectionFailed(peerAddress: PeerAddress) {
-    getOrCreateReputation(peerAddress)
-      .reportInitiatedConnectionFailed(timeProvider.timeInMillis)
+    val reputation =
+      getOrCreateReputation(peerAddress)
+        .also {
+          it.reportInitiatedConnectionFailed(timeProvider.timeInMillis)
+        }
     log.trace(
       "Reporting initiated connection failed: peer={}, reputation={}",
       peerAddress,
-      getOrCreateReputation(peerAddress),
+      reputation,
     )
   }
 
@@ -89,16 +92,16 @@ class MaruReputationManager(
           "Checking if connection initiation is allowed: peer={}, allowed={}, reputation={}",
           peerAddress,
           it,
-          getOrCreateReputation(peerAddress),
+          peerReputations.getCached(peerAddress.id),
         )
       }
 
   override fun reportInitiatedConnectionSuccessful(peerAddress: PeerAddress) {
-    getOrCreateReputation(peerAddress).reportInitiatedConnectionSuccessful()
+    val reputation = getOrCreateReputation(peerAddress).also { it.reportInitiatedConnectionSuccessful() }
     log.trace(
       "Reporting connection: peer={}, reputation={}",
       peerAddress,
-      getOrCreateReputation(peerAddress),
+      reputation,
     )
   }
 
@@ -107,20 +110,16 @@ class MaruReputationManager(
     reason: Optional<DisconnectReason>,
     locallyInitiated: Boolean,
   ) {
-    log.trace(
-      "Reporting disconnection: peer={}, reason={}, locallyInitiated={}",
-      peerAddress,
-      reason.orElse(null),
-      locallyInitiated,
-    )
-    getOrCreateReputation(peerAddress)
-      .reportDisconnection(timeProvider.timeInMillis, reason, locallyInitiated)
+    val reputation =
+      getOrCreateReputation(peerAddress).also {
+        it.reportDisconnection(timeProvider.timeInMillis, reason, locallyInitiated)
+      }
     log.trace(
       "Reporting disconnection: peer={}, reason={}, locallyInitiated={}, reputation={}",
       peerAddress,
       reason.orElse(null),
       locallyInitiated,
-      getOrCreateReputation(peerAddress),
+      reputation,
     )
   }
 

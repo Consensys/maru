@@ -8,9 +8,6 @@
  */
 package testutils.maru
 
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import maru.app.MaruApp
 import org.awaitility.Awaitility.await
 import org.awaitility.core.ConditionFactory
@@ -18,14 +15,6 @@ import org.awaitility.core.ConditionFactory
 fun MaruApp.awaitTillMaruHasPeers(
   numberOfPeers: UInt,
   await: ConditionFactory = await(),
-  timeout: Duration? = null,
 ) {
-  if (timeout == null) {
-    await.until { this.peersConnected() >= numberOfPeers }
-  } else {
-    await
-      .timeout(timeout.toJavaDuration())
-      .pollInterval(1.seconds.toJavaDuration())
-      .until { this.peersConnected() >= numberOfPeers }
-  }
+  await.until { this.peersConnected() >= numberOfPeers }
 }
