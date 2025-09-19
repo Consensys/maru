@@ -21,6 +21,9 @@ data class ForkSpec(
   init {
     require(blockTimeSeconds > 0UL) { "blockTimeSeconds must be greater or equal to 1 second" }
   }
+
+  override fun toString(): String =
+    "ForkSpec(timestampSeconds=$timestampSeconds, blockTimeSeconds=$blockTimeSeconds, configuration=$configuration)"
 }
 
 class ForksSchedule(
@@ -47,21 +50,17 @@ class ForksSchedule(
       "No fork found for $timestamp, first known fork is at ${forks.last.timestampSeconds}",
     )
 
-  fun getNextForkByTimestamp(timestamp: ULong): ForkSpec? {
-    val nextFork =
-      forks
-        .filter { it.timestampSeconds > timestamp }
-        .minByOrNull { it.timestampSeconds }
-
-    return nextFork
-  }
+  fun getNextForkByTimestamp(timestamp: ULong): ForkSpec? =
+    forks
+      .reversed()
+      .firstOrNull { timestamp < it.timestampSeconds }
 
   fun getPreviousForkByTimestamp(timestamp: ULong): ForkSpec? {
-    val previousFork =
+    val previousForks =
       forks
-        .filter { it.timestampSeconds < timestamp }
-        .maxByOrNull { it.timestampSeconds }
-    return previousFork
+        .filter { timestamp >= it.timestampSeconds }
+        .take(2)
+    return previousForks.getOrNull(1)
   }
 
   fun <T : ConsensusConfig> getForkByConfigType(configClass: KClass<T>): ForkSpec {

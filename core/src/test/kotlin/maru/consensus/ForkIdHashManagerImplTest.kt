@@ -133,4 +133,18 @@ class ForkIdHashManagerImplTest {
     // Should be outside the allowed window
     assertThat(manager.check(nextForkIdHash)).isFalse
   }
+
+  @Test
+  fun `update fails if no next fork id hash is available`() {
+    val clock = mock<Clock>()
+    `when`(clock.instant()).thenReturn(Instant.ofEpochSecond(20), Instant.ofEpochSecond(21))
+    val manager = ForkIdHashManagerImpl(chainId, beaconChain, forksSchedule, forkIdHasher, clock)
+
+    // Get previous fork id hash
+    val nextForkId = ForkId(chainId, forkSpec3, genesisHash)
+    val nextForkIdHash = forkIdHasher.hash(nextForkId)
+
+    // Should be outside the allowed window
+    assertThat(manager.check(nextForkIdHash)).isFalse
+  }
 }

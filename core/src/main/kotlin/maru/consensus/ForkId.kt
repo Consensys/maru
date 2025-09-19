@@ -76,20 +76,25 @@ class ForkIdHashManagerImpl(
   private var nextBlockTime: UInt
 
   init {
+    log.info("ForkSchedule: {}", forksSchedule)
     val timestamp = clock.instant().epochSecond.toULong()
-    val previousForkByTimestamp = forksSchedule.getPreviousForkByTimestamp(timestamp)
-    val currentForkByTimestamp = forksSchedule.getForkByTimestamp(timestamp)
-    val nextForkByTimestamp = forksSchedule.getNextForkByTimestamp(timestamp)
+    log.info("Current timestamp: $timestamp")
+    val previousForkSpec = forksSchedule.getPreviousForkByTimestamp(timestamp)
+    log.info("Previous fork spec: $previousForkSpec")
+    val currentForkSpec = forksSchedule.getForkByTimestamp(timestamp)
+    log.info("Current fork spec: $currentForkSpec")
+    val nextForkSpec = forksSchedule.getNextForkByTimestamp(timestamp)
+    log.info("Next fork spec: $nextForkSpec")
 
-    currentForkTimestamp = currentForkByTimestamp.timestampSeconds
-    nextForkTimestamp = nextForkByTimestamp?.timestampSeconds ?: ULong.MAX_VALUE
+    currentForkTimestamp = currentForkSpec.timestampSeconds
+    nextForkTimestamp = nextForkSpec?.timestampSeconds ?: ULong.MAX_VALUE
 
     currentBlockTime = forksSchedule.getForkByTimestamp(timestamp).blockTimeSeconds
-    nextBlockTime = nextForkByTimestamp?.blockTimeSeconds ?: 0U
+    nextBlockTime = nextForkSpec?.blockTimeSeconds ?: 0U
 
-    previousForkIdHash = previousForkByTimestamp?.let { getForkIdHashForForkSpec(it) }
-    currentForkIdHash = getForkIdHashForForkSpec(currentForkByTimestamp)
-    nextForkIdHash = nextForkByTimestamp?.let { getForkIdHashForForkSpec(it) }
+    previousForkIdHash = previousForkSpec?.let { getForkIdHashForForkSpec(it) }
+    currentForkIdHash = getForkIdHashForForkSpec(currentForkSpec)
+    nextForkIdHash = nextForkSpec?.let { getForkIdHashForForkSpec(it) }
   }
 
   private var _genesisRootHash: ByteArray? = null
@@ -136,23 +141,35 @@ class ForkIdHashManagerImpl(
     ) { // this is the case where we haven't switched fork yet
       return true
     }
+    log.info(
+      "Checked ForkIdHash ${otherForkIdHash.toHexString()}, but it is not equal to current (${currentForkIdHash.toHexString()}), next (${nextForkIdHash?.toHexString()}), or previous (${previousForkIdHash?.toHexString()}) fork id hash",
+    )
     return false
   }
 
   override fun update(newForkSpec: ForkSpec) {
+    log.info(
+      "Updating fork id hash to ${getForkIdHashForForkSpec(newForkSpec).toHexString()} for fork spec=$newForkSpec",
+    )
     val newForkIdHash = getForkIdHashForForkSpec(newForkSpec)
-    if (getForkIdHashForForkSpec(newForkSpec).contentEquals(currentForkIdHash)) {
-      // currentForkIdHash has already been set during initialization.
-      return
-    }
-    require(nextForkIdHash != null && newForkIdHash.contentEquals(nextForkIdHash)) {
-      "Inconsistent fork id hashes: $nextForkIdHash vs $newForkIdHash"
-    }
 
-    val nextFork = forksSchedule.getNextForkByTimestamp(clock.instant().epochSecond.toULong())
-    previousForkIdHash = currentForkIdHash
+    previousForkIdHash =
+      forksSchedule.getPreviousForkByTimestamp(newForkSpec.timestampSeconds)?.let {
+        getForkIdHashForForkSpec(it)
+      }
+    log.info("previousForkIdHash: ${previousForkIdHash?.toHexString()}")
+
     currentForkIdHash = newForkIdHash
-    nextForkIdHash = nextFork?.let { getForkIdHashForForkSpec(it) }
+    log.info("currentForkIdHash: ${currentForkIdHash.toHexString()}")
+
+    val nextFork = forksSchedule.getNextForkByTimestamp(newForkSpec.timestampSeconds)
+    nextForkIdHash =
+      if (nextFork != null) {
+        getForkIdHashForForkSpec(nextFork)
+      } else {
+        null
+      }
+    log.info("nextForkIdHash: ${nextForkIdHash?.toHexString()}")
 
     currentForkTimestamp = newForkSpec.timestampSeconds
     nextForkTimestamp = nextFork?.timestampSeconds ?: ULong.MAX_VALUE
