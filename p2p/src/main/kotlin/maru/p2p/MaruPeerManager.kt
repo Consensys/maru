@@ -140,7 +140,7 @@ class MaruPeerManager(
       }
     } else {
       log.trace("Disconnecting from peer={} due to connection not allowed yet.", peer.address)
-      peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
+      peer.disconnectCleanly(DisconnectReason.RATE_LIMITING)
     }
   }
 
