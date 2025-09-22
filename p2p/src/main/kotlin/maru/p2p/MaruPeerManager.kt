@@ -8,8 +8,6 @@
  */
 package maru.p2p
 
-import io.libp2p.core.PeerId
-import io.libp2p.crypto.keys.unmarshalSecp256k1PublicKey
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -24,8 +22,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
-import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
@@ -49,11 +45,7 @@ class MaruPeerManager(
   private var searchTaskFuture: ScheduledFuture<*>? = null
   private val connectionInProgress = mutableListOf<Bytes>()
   private var discoveryService: MaruDiscoveryService? = null
-
   private lateinit var p2pNetwork: P2PNetwork<Peer>
-
-  val peerCount: Int
-    get() = connectedPeers.size
 
   @Volatile
   private var started = AtomicBoolean(false)
@@ -133,10 +125,8 @@ class MaruPeerManager(
   }
 
   override fun onConnect(peer: Peer) {
-    // TODO: here we could check if we want to be connected to that peer
     val isAStaticPeer = isStaticPeer(peer.id)
     if (!isAStaticPeer && peerCount >= maxPeers) {
-      // TODO: We could disconnect another peer here, based on some criteria
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
       return
     }
@@ -149,7 +139,7 @@ class MaruPeerManager(
         maruPeer.scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
       }
     } else {
-      log.trace("Disconnecting from peer=${peer.address} due to connection not allowed yet.")
+      log.trace("Disconnecting from peer={} due to connection not allowed yet.", peer.address)
       peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
     }
   }
@@ -159,9 +149,14 @@ class MaruPeerManager(
     log.trace("Peer={} disconnected", peer.id)
   }
 
-  override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers[nodeId]
+  private fun actuallyConnectedPeers(): Map<NodeId, MaruPeer> = connectedPeers.filter { it.value.isConnected }
 
-  override fun getPeers(): List<MaruPeer> = connectedPeers.values.filter { it.isConnected }.toList()
+  override fun getPeer(nodeId: NodeId): MaruPeer? = actuallyConnectedPeers()[nodeId]
+
+  val peerCount: Int
+    get() = actuallyConnectedPeers().size
+
+  override fun getPeers(): List<MaruPeer> = actuallyConnectedPeers().values.toList()
 
   private fun tryToConnect(peer: MaruDiscoveryPeer) {
     try {
@@ -207,10 +202,5 @@ class MaruPeerManager(
         connectionInProgress.remove(peer.nodeId)
       }
     }
-  }
-
-  fun getNodeId(peer: DiscoveryPeer): LibP2PNodeId {
-    val pubKey = unmarshalSecp256k1PublicKey(peer.publicKey.toArrayUnsafe())
-    return LibP2PNodeId(PeerId.fromPubKey(pubKey))
   }
 }
