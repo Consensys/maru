@@ -161,7 +161,7 @@ class MaruPeerManager(
 
   override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers[nodeId]
 
-  override fun getPeers(): List<MaruPeer> = connectedPeers.values.toList()
+  override fun getPeers(): List<MaruPeer> = connectedPeers.values.filter { it.isConnected }.toList()
 
   private fun tryToConnect(peer: MaruDiscoveryPeer) {
     try {
