@@ -9,6 +9,7 @@
 package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Ok
+import kotlin.test.assertEquals
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.consensus.state.StateTransitionImpl
@@ -43,11 +44,11 @@ class QbftBlockInterfaceAdapterTest {
     val stateTransition = createMockStateTransition()
     val adapter = QbftBlockInterfaceAdapter(stateTransition)
     val updatedBlock =
-      adapter.replaceRoundInBlock(qbftBlock, 20)
+      adapter.replaceRoundForCommitBlock(qbftBlock, 20)
     val updatedBeaconBlockHeader = updatedBlock.header.toBeaconBlockHeader()
 
-    assertThat(updatedBeaconBlockHeader.round).isEqualTo(25u)
-    assertThat(updatedBeaconBlockHeader.proposer).isEqualTo(newProposer)
+    assertThat(updatedBeaconBlockHeader.round).isEqualTo(20u)
+    assertThat(updatedBeaconBlockHeader.proposer).isEqualTo(beaconBlock.beaconBlockHeader.proposer)
   }
 
   @Test
@@ -84,7 +85,7 @@ class QbftBlockInterfaceAdapterTest {
     val qbftBlock = QbftBlockAdapter(beaconBlock)
     val stateTransition = createMockStateTransition(validators)
     val adapter = QbftBlockInterfaceAdapter(stateTransition)
-    val updatedBlock = adapter.replaceRoundInBlock(qbftBlock, 20)
+    val updatedBlock = adapter.replaceRoundForCommitBlock(qbftBlock, 20)
 
     val updatedBeaconBlock = updatedBlock.toBeaconBlock()
     val validationResult = StateRootValidator(stateTransition).validateBlock(updatedBeaconBlock).get()
