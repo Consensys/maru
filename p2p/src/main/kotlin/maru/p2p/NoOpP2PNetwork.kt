@@ -11,6 +11,7 @@ package maru.p2p
 import java.util.UUID
 import maru.consensus.ForkSpec
 import org.apache.logging.log4j.LogManager
+import org.ethereum.beacon.discovery.schema.NodeRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 
@@ -58,7 +59,10 @@ object NoOpP2PNetwork : P2PNetwork {
   override val nodeId: String = UUID.randomUUID().toString()
   override val nodeAddresses: List<String> = emptyList()
   override val discoveryAddresses: List<String> = emptyList()
+  override val localNodeRecord: NodeRecord?
+    get() = null
   override val enr: String? = null
+  override val peerCount: Int = 0
 
   override fun getPeers(): List<PeerInfo> = emptyList()
 
@@ -85,5 +89,8 @@ object NoOpP2PNetwork : P2PNetwork {
 
   override fun handleForkTransition(forkSpec: ForkSpec) = Unit
 
-  override fun close() = Unit
+  override fun isStaticPeer(nodeId: NodeId): Boolean = false
+
+  override fun close() {
+  }
 }

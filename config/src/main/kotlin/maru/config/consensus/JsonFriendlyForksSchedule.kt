@@ -24,7 +24,7 @@ import kotlin.collections.component2
 import kotlin.collections.map
 import kotlin.collections.toSet
 import kotlin.reflect.KType
-import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
 import maru.consensus.ForkSpec
@@ -67,10 +67,13 @@ object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
     obj: Node,
   ): ConfigResult<ConsensusConfig> =
     when (type) {
-      "delegated" -> {
+      "difficultyAwareQbft" -> {
         val terminalTotalDifficulty = obj.getString("terminaltotaldifficulty").toULong()
         val postTtdQbftSpec = mapObjectToConfiguration("qbft", obj["postttdconfig"]).getUnsafe()
-        ElDelegatedConfig(postTtdQbftSpec, terminalTotalDifficulty).valid()
+        require(postTtdQbftSpec is QbftConsensusConfig) {
+          "DifficultyAwareQbft only supports QBFT as the post TTD protocol"
+        }
+        DifficultyAwareQbftConfig(postTtdQbftSpec, terminalTotalDifficulty).valid()
       }
       "qbft" ->
         QbftConsensusConfig(
@@ -97,10 +100,9 @@ data class JsonFriendlyForksSchedule(
 ) {
   override fun equals(other: Any?): Boolean {
     if (other !is JsonFriendlyForksSchedule) {
-      false
+      return false
     }
-    val otherTyped = other as JsonFriendlyForksSchedule
-    return config.containsAll(otherTyped.config) && config.size == otherTyped.config.size
+    return config.containsAll(other.config) && config.size == other.config.size
   }
 
   fun domainFriendly(): ForksSchedule = ForksSchedule(chainId, config)

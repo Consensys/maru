@@ -9,16 +9,15 @@
 package maru.serialization
 
 import maru.config.consensus.ElFork
-import maru.config.consensus.delegated.ElDelegatedConfig
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
-class ElDelegatedConfigSerializerTest {
-  private val serializer = ElDelegatedConfigSerializer
+class DifficultyAwareQbftConfigSerializerTest {
+  private val serializer = DifficultyAwareQbftConfigSerializer
 
   @Test
   fun `serialization is deterministic for same input`() {
@@ -30,14 +29,14 @@ class ElDelegatedConfigSerializerTest {
         elFork = ElFork.Prague,
       )
 
-    val elDelegatedConfig =
-      ElDelegatedConfig(
+    val difficultyAwareQbftConfig =
+      DifficultyAwareQbftConfig(
         postTtdConfig = qbftConfig,
         terminalTotalDifficulty = 1000UL,
       )
 
-    val serialized1 = serializer.serialize(elDelegatedConfig)
-    val serialized2 = serializer.serialize(elDelegatedConfig)
+    val serialized1 = serializer.serialize(difficultyAwareQbftConfig)
+    val serialized2 = serializer.serialize(difficultyAwareQbftConfig)
 
     assertThat(serialized1).isEqualTo(serialized2)
   }
@@ -48,17 +47,17 @@ class ElDelegatedConfigSerializerTest {
     val qbftConfig =
       QbftConsensusConfig(
         validatorSet = setOf(validator),
-        elFork = ElFork.Shanghai,
+        elFork = ElFork.Cancun,
       )
 
     val config1 =
-      ElDelegatedConfig(
+      DifficultyAwareQbftConfig(
         postTtdConfig = qbftConfig,
         terminalTotalDifficulty = 1000UL,
       )
 
     val config2 =
-      ElDelegatedConfig(
+      DifficultyAwareQbftConfig(
         postTtdConfig = qbftConfig,
         terminalTotalDifficulty = 2000UL,
       )
@@ -75,17 +74,17 @@ class ElDelegatedConfigSerializerTest {
     val qbftConfig =
       QbftConsensusConfig(
         validatorSet = setOf(validator),
-        elFork = ElFork.Shanghai,
+        elFork = ElFork.Cancun,
       )
 
     val normalTtdConfig =
-      ElDelegatedConfig(
+      DifficultyAwareQbftConfig(
         postTtdConfig = qbftConfig,
         terminalTotalDifficulty = 1000UL,
       )
 
     val maxTtdConfig =
-      ElDelegatedConfig(
+      DifficultyAwareQbftConfig(
         postTtdConfig = qbftConfig,
         terminalTotalDifficulty = ULong.MAX_VALUE,
       )
@@ -101,7 +100,7 @@ class ElDelegatedConfigSerializerTest {
     val validator = Validator(ByteArray(20) { 0x01 })
 
     val configParis =
-      ElDelegatedConfig(
+      DifficultyAwareQbftConfig(
         postTtdConfig =
           QbftConsensusConfig(
             validatorSet = setOf(validator),
@@ -110,18 +109,18 @@ class ElDelegatedConfigSerializerTest {
         terminalTotalDifficulty = 500UL,
       )
 
-    val configShanghai =
-      ElDelegatedConfig(
+    val configCancun =
+      DifficultyAwareQbftConfig(
         postTtdConfig =
           QbftConsensusConfig(
             validatorSet = setOf(validator),
-            elFork = ElFork.Shanghai,
+            elFork = ElFork.Cancun,
           ),
         terminalTotalDifficulty = 500UL,
       )
 
     val configPrague =
-      ElDelegatedConfig(
+      DifficultyAwareQbftConfig(
         postTtdConfig =
           QbftConsensusConfig(
             validatorSet = setOf(validator),
@@ -131,29 +130,12 @@ class ElDelegatedConfigSerializerTest {
       )
 
     val serializedParis = serializer.serialize(configParis)
-    val serializedShanghai = serializer.serialize(configShanghai)
+    val serializedCancun = serializer.serialize(configCancun)
     val serializedPrague = serializer.serialize(configPrague)
 
     // Each fork should produce different serialization
-    assertThat(serializedParis).isNotEqualTo(serializedShanghai)
-    assertThat(serializedShanghai).isNotEqualTo(serializedPrague)
+    assertThat(serializedParis).isNotEqualTo(serializedCancun)
+    assertThat(serializedCancun).isNotEqualTo(serializedPrague)
     assertThat(serializedParis).isNotEqualTo(serializedPrague)
-  }
-
-  @Test
-  fun `throws exception when postTtdConfig is not QbftConsensusConfig`() {
-    // Create a mock ConsensusConfig that is not QbftConsensusConfig
-    val mockConfig = object : maru.consensus.ConsensusConfig {}
-
-    val elDelegatedConfig =
-      ElDelegatedConfig(
-        postTtdConfig = mockConfig,
-        terminalTotalDifficulty = 1000UL,
-      )
-
-    assertThatThrownBy {
-      serializer.serialize(elDelegatedConfig)
-    }.isInstanceOf(IllegalArgumentException::class.java)
-      .hasMessageContaining("only QbftConsensusConfig serialization is implemented for postTtdConfig!")
   }
 }
