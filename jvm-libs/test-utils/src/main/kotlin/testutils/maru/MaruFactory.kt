@@ -64,10 +64,10 @@ import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
  */
 class MaruFactory(
   validatorPrivateKey: ByteArray = generatePrivateKey(),
-  shanghaiTimestamp: ULong? = null,
-  cancunTimestamp: ULong? = null,
-  pragueTimestamp: ULong? = null,
-  ttd: ULong? = null,
+  private val shanghaiTimestamp: ULong? = null,
+  private val cancunTimestamp: ULong? = null,
+  private val pragueTimestamp: ULong? = null,
+  private val ttd: ULong? = null,
 ) {
   init {
     // If one of pragueTimestamp, cancunTimestamp, shanghaiTimestamp is defined and some other is not, throw
@@ -123,6 +123,8 @@ class MaruFactory(
 
   private fun buildForkSchedule(
     pragueTimestamp: ULong?,
+    cancunTimestamp: ULong?,
+    shanghaiTimestamp: ULong?,
     ttd: ULong?,
     validatorSet: Set<Validator>,
   ): ForksSchedule =
@@ -238,8 +240,6 @@ class MaruFactory(
     desyncTolerance: ULong = 10UL,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
-    val beaconGenesisConfig = beaconGenesisConfig
-
     val syncingConfig =
       SyncingConfig(
         peerChainHeightPollingInterval = 1.seconds,
@@ -258,7 +258,6 @@ class MaruFactory(
       )
     return buildApp(
       config = config,
-      beaconGenesisConfig = beaconGenesisConfig,
       overridingP2PNetwork = overridingP2PNetwork,
     )
   }
@@ -331,7 +330,14 @@ class MaruFactory(
   ): MaruApp =
     MaruAppFactory().create(
       config = config,
-      beaconGenesisConfig = buildForkSchedule(pragueTimestamp, ttd, initialValidators),
+      beaconGenesisConfig =
+        buildForkSchedule(
+          pragueTimestamp,
+          cancunTimestamp,
+          shanghaiTimestamp,
+          ttd,
+          initialValidators,
+        ),
       overridingP2PNetwork = overridingP2PNetwork,
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
@@ -649,7 +655,6 @@ class MaruFactory(
     followers: FollowersConfig = FollowersConfig(emptyMap()),
     syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
-    val beaconGenesisConfig = beaconGenesisConfig
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
     val config =
       buildMaruConfig(
