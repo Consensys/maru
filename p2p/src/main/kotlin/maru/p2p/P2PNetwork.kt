@@ -13,8 +13,8 @@ import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
-import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.ethereum.beacon.discovery.schema.NodeRecord
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 
