@@ -79,7 +79,7 @@ class MaruMultiValidatorTest {
   }
 
   @Test
-  fun `Maru with multiple validators is able to produce blocks`() {
+  fun `maru with multiple validators is able to produce blocks`() {
     val initialValidators =
       setOf(key1, key2)
         .map {
