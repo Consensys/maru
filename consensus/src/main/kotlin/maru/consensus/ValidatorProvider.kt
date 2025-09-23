@@ -8,7 +8,7 @@
  */
 package maru.consensus
 
-import maru.consensus.qbft.sortedByAddress
+import java.util.SequencedSet
 import maru.core.Validator
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -16,9 +16,12 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * Provides access to the set of validators for a given block.
  */
 interface ValidatorProvider {
-  fun getValidatorsAfterBlock(blockNumber: ULong): SafeFuture<Set<Validator>> = getValidatorsForBlock(blockNumber + 1u)
+  fun getValidatorsAfterBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>> =
+    getValidatorsForBlock(
+      blockNumber + 1u,
+    )
 
-  fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>>
+  fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>>
 }
 
 /**
@@ -27,9 +30,8 @@ interface ValidatorProvider {
 class StaticValidatorProvider(
   validators: Set<Validator>,
 ) : ValidatorProvider {
-  private val validators: Set<Validator> =
-    validators.sortedByAddress()
+  private val validators: SequencedSet<Validator> = validators.toSortedSet()
 
-  override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> =
+  override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>> =
     SafeFuture.completedFuture(validators)
 }

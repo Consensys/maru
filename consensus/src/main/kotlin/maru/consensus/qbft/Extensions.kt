@@ -18,9 +18,3 @@ fun BeaconBlockHeader.toConsensusRoundIdentifier(): ConsensusRoundIdentifier =
   ConsensusRoundIdentifier(this.number.toLong(), this.round.toInt())
 
 fun Validator.toAddress(): Address = Address.wrap(Bytes.wrap(address))
-
-fun Set<Validator>.sortedByAddress(): Set<Validator> =
-  this
-    .sortedWith { v1, v2 ->
-      Bytes.wrap(v1.address).compareTo(Bytes.wrap(v2.address))
-    }.toSet()
