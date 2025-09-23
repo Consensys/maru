@@ -52,6 +52,7 @@ jobs:
           echo "All filter outputs: ${{ toJSON(steps.filter.outputs) }}"
 
   debug:
+    name: Debug Filters outputs
     needs: [ filter-commit-changes ]
     runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-small ]
     steps:
