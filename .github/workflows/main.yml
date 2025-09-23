@@ -29,6 +29,7 @@ jobs:
         with:
           base: ${{ github.ref }}
           list-files: "json"
+          predicate-quantifier: 'every'
           filters: |
             has-changes-requiring-build:
               - '**'
@@ -66,6 +67,7 @@ jobs:
     secrets: inherit
 
   build-for-testing:
+    needs: [ filter-commit-changes ]
     if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
