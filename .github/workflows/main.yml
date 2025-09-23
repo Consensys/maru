@@ -29,7 +29,6 @@ jobs:
         with:
           base: ${{ github.ref }}
           list-files: "json"
-          predicate-quantifier: 'every'
           filters: |
             has-changes-requiring-build:
               - '**'
