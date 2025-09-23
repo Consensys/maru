@@ -41,6 +41,14 @@ jobs:
             chaos-tests-changes:
               - 'chaos-testing/**'
 
+      - name: Debug filter outputs
+        run: |
+          echo "has-changes-requiring-build: ${{ steps.filter.outputs.has-changes-requiring-build }}"
+          echo "chaos-tests-changes: ${{ steps.filter.outputs.chaos-tests-changes }}"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "All filter outputs: ${{ toJSON(steps.filter.outputs) }}"
+
   testing:
     needs: [ filter-commit-changes ]
     if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
