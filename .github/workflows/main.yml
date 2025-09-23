@@ -18,7 +18,7 @@ jobs:
     outputs:
       has-changes-requiring-build: ${{ steps.filter.outputs.has-changes-requiring-build }}
       forced-false: 'false'
-      chaos-testing: ${{ steps.filter.outputs.chaos-testing }}
+      chaos-tests-changes: ${{ steps.filter.outputs.chaos-tests-changes }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,14 +32,30 @@ jobs:
           predicate-quantifier: 'every'
           filters: |
             has-changes-requiring-build:
-              - '**'
-              - '!**/*.md'
-              - '!docs/**'
-              - '!chaos-testing/**'
-            chaos-testing:
+              - '.github/**'
+              - '**/src/**'
+              - '**/Makefile'
+              - 'docker/**'
+              - 'gradle/**'
+              - 'gradlew'
+              - 'gradlew.bat'
+              - '**/*.gradle'
+              - '**/*.properties'
+            chaos-tests-changes:
+              - '.github/**'
               - 'chaos-testing/**'
-              - '!**/*.md'
-              - '!docs/**'
+
+#      - name: Filter Out commit changes
+#        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
+#        id: filter-out
+#        with:
+#          base: ${{ github.ref }}
+#          list-files: "json"
+#          predicate-quantifier: 'every'
+#          filters: |
+#            has-changes-requiring-build:
+#              - '!**/*.md'
+#              - '!docs/**'
 
   testing:
     needs: [ filter-commit-changes ]
@@ -60,7 +76,7 @@ jobs:
 
   chaos-testing:
     needs: [ filter-commit-changes ]
-    if: ${{ always() && !cancelled() && (needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' || needs.filter-commit-changes.outputs.chaos-testing == 'true')}}
+    if: ${{ always() && !cancelled() && (needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' || needs.filter-commit-changes.outputs.chaos-tests-changes == 'true')}}
     uses: ./.github/workflows/chaos-testing.yml
     with:
       consensus-client-changed: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
