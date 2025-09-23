@@ -16,8 +16,8 @@ jobs:
     runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-small]
     name: Filter commit changes
     outputs:
-      has-changes-requiring-build: ${{ steps.filter-out.outputs.has-changes-requiring-build }}
-      chaos-testing: ${{ steps.filter-out.outputs.chaos-testing }}
+      has-changes-requiring-build: ${{ steps.filter.outputs.has-changes-requiring-build }}
+      chaos-testing: ${{ steps.filter.outputs.chaos-testing }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
