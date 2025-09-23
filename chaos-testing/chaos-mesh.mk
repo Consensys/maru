@@ -2,7 +2,7 @@ socketPath ?= /run/containerd/containerd.sock
 chaos-mesh-install:
 	-@helm repo add chaos-mesh https://charts.chaos-mesh.org >/dev/null 2>&1 || true
 	@helm repo update
-	@echo "socketPath=$(socketPath)"
+	@echo "socketPath=$(socketPath) KUBECONFIG=$(KUBECONFIG)"
 	helm --kubeconfig $(KUBECONFIG) install chaos-mesh chaos-mesh/chaos-mesh \
 		--namespace chaos-mesh --create-namespace \
 		--version 2.7.2 \
