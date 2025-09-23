@@ -41,7 +41,7 @@ class MaruPeerManager(
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val maxPeers = p2pConfig.maxPeers
   private val currentlySearching = AtomicBoolean(false)
-  private val connectedPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
+  private val peers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
   private var searchTaskFuture: ScheduledFuture<*>? = null
   private val connectionInProgress = mutableListOf<Bytes>()
   private var discoveryService: MaruDiscoveryService? = null
@@ -116,7 +116,7 @@ class MaruPeerManager(
   }
 
   private fun logConnectedPeers() {
-    log.info("Currently connected peers={}", connectedPeers.keys.toList())
+    log.info("Currently connected peers={}", peers.keys.toList())
     if (log.isDebugEnabled) {
       discoveryService?.getKnownPeers()?.forEach { peer ->
         log.debug("discovered peer={}", peer)
@@ -132,7 +132,7 @@ class MaruPeerManager(
     }
     if (isAStaticPeer || reputationManager.isConnectionInitiationAllowed(peer.address)) {
       val maruPeer = maruPeerFactory.createMaruPeer(peer)
-      connectedPeers[peer.id] = maruPeer
+      peers[peer.id] = maruPeer
       if (maruPeer.connectionInitiatedLocally()) {
         maruPeer.sendStatus()
       } else {
@@ -145,18 +145,18 @@ class MaruPeerManager(
   }
 
   override fun onDisconnect(peer: Peer) {
-    connectedPeers.remove(peer.id)
+    peers.remove(peer.id)
     log.trace("Peer={} disconnected", peer.id)
   }
 
-  private fun actuallyConnectedPeers(): Map<NodeId, MaruPeer> = connectedPeers.filter { it.value.isConnected }
+  private fun connectedPeers(): Map<NodeId, MaruPeer> = peers.filter { it.value.isConnected }
 
-  override fun getPeer(nodeId: NodeId): MaruPeer? = actuallyConnectedPeers()[nodeId]
+  override fun getPeer(nodeId: NodeId): MaruPeer? = connectedPeers()[nodeId]
 
   val peerCount: Int
-    get() = actuallyConnectedPeers().size
+    get() = connectedPeers().size
 
-  override fun getPeers(): List<MaruPeer> = actuallyConnectedPeers().values.toList()
+  override fun getPeers(): List<MaruPeer> = connectedPeers().values.toList()
 
   private fun tryToConnect(peer: MaruDiscoveryPeer) {
     try {
