@@ -21,6 +21,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Filter commit changes
         uses: dorny/paths-filter@v3
         id: filter
@@ -37,6 +38,7 @@ jobs:
         with:
           base: ${{ github.ref }}
           list-files: "json"
+          predicate-quantifier: 'every'
           filters: |
             has-changes-requiring-build:
               - '!**/*.md'
