@@ -24,6 +24,9 @@ chaos-mesh-install-on-aws-eks:
 chaos-mesh-uninstall:
 	-@kubectl delete ns chaos-mesh --wait=true >/dev/null 2>&1
 
+chaos-mesh-reinstall:
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-reinstall-k3s
+
 chaos-mesh-reinstall-k3s:
 	-@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-uninstall
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) chaos-mesh-install-on-k3s
