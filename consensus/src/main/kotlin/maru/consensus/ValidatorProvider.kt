@@ -10,7 +10,6 @@ package maru.consensus
 
 import maru.consensus.qbft.sortedByAddress
 import maru.core.Validator
-import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
@@ -28,13 +27,9 @@ interface ValidatorProvider {
 class StaticValidatorProvider(
   validators: Set<Validator>,
 ) : ValidatorProvider {
-  private val log = LogManager.getLogger(this.javaClass)
-
   private val validators: Set<Validator> =
     validators.sortedByAddress()
 
-  override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> {
-    log.debug("Providing static validators for block {}: {}", blockNumber, validators)
-    return SafeFuture.completedFuture(validators)
-  }
+  override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> =
+    SafeFuture.completedFuture(validators)
 }
