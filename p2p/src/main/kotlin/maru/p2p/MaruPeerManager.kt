@@ -63,16 +63,19 @@ class MaruPeerManager(
     if (scheduler == null) {
       scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().factory())
     }
-    scheduler!!.scheduleAtFixedRate({
-      logConnectedPeers()
-    }, 20000, 20000, TimeUnit.MILLISECONDS)
+    scheduler!!.scheduleAtFixedRate(
+      /* command = */ this::logConnectedPeers,
+      /* initialDelay = */ 5,
+      /* period = */ 20,
+      /* unit = */ TimeUnit.SECONDS,
+    )
     if (discoveryService != null) {
       searchTaskFuture =
-        scheduler!!.scheduleAtFixedRate(
-          /* command = */ this::logConnectedPeers,
-          /* initialDelay = */ 5,
-          /* period = */ 20,
-          /* unit = */ TimeUnit.SECONDS,
+        scheduler!!.scheduleWithFixedDelay(
+          { runSearchTask(discoveryService) },
+          0,
+          1000,
+          TimeUnit.MILLISECONDS,
         )
     }
   }
