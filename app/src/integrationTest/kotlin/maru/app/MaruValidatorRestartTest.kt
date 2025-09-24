@@ -66,7 +66,6 @@ class MaruValidatorRestartTest {
   fun `Maru validator restarted from scratch is able to sync state`() {
     PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
 
-    val cooldownPeriod = 2.seconds
     val followerMaruApp =
       maruFactory.buildTestMaruFollowerWithDiscovery(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
@@ -74,7 +73,6 @@ class MaruValidatorRestartTest {
         dataDir = followerStack.tmpDir,
         p2pPort = findFreePort(),
         discoveryPort = findFreePort(),
-        cooldownPeriod = cooldownPeriod,
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
@@ -91,7 +89,6 @@ class MaruValidatorRestartTest {
         p2pPort = findFreePort(),
         discoveryPort = findFreePort(),
         bootnode = followerENR,
-        cooldownPeriod = cooldownPeriod,
       )
     validatorStack.setMaruApp(validatorMaruApp)
     validatorStack.maruApp.start()
@@ -121,10 +118,6 @@ class MaruValidatorRestartTest {
       .pollInterval(1.seconds.toJavaDuration())
       .until { followerStack.maruApp.peersConnected() == 0u }
 
-    // Wait for an atleast cooldown period before restart
-    // This avoids any connection refusal due to cooldown not elapsed
-    Thread.sleep((cooldownPeriod + 5.seconds).toJavaDuration())
-
     val newValidatorMaruApp =
       maruFactory.buildTestMaruValidatorWithDiscovery(
         ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
@@ -133,7 +126,6 @@ class MaruValidatorRestartTest {
         p2pPort = findFreePort(),
         discoveryPort = findFreePort(),
         bootnode = followerENR,
-        cooldownPeriod = cooldownPeriod,
       )
     validatorStack.setMaruApp(newValidatorMaruApp)
     validatorStack.maruApp.start()
