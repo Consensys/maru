@@ -56,9 +56,9 @@ abstract class CallAndForgetFutureMultiplexer<I>(
         SafeFuture
           .of {
             try {
-              log.debug("Handling $handlerName")
+              log.trace("calling handler='{}'", handlerName)
               handler(input).also {
-                log.debug("$handlerName handling completed successfully")
+                log.trace("handler='{}' completed successfully", handlerName)
               }
             } catch (ex: Exception) {
               log.logError(handlerName, input, ex)
