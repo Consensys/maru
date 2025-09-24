@@ -68,11 +68,11 @@ class MaruPeerManager(
     }, 20000, 20000, TimeUnit.MILLISECONDS)
     if (discoveryService != null) {
       searchTaskFuture =
-        scheduler!!.scheduleWithFixedDelay(
-          { runSearchTask(discoveryService) },
-          0,
-          1000,
-          TimeUnit.MILLISECONDS,
+        scheduler!!.scheduleAtFixedRate(
+          /* command = */ this::logConnectedPeers,
+          /* initialDelay = */ 5,
+          /* period = */ 20,
+          /* unit = */ TimeUnit.SECONDS,
         )
     }
   }
