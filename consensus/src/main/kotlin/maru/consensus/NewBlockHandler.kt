@@ -75,7 +75,7 @@ abstract class CallAndForgetFutureMultiplexer<I>(
 
 class NewBlockHandlerMultiplexer(
   handlersMap: Map<String, NewBlockHandler<*>>,
-  log: Logger = LogManager.getLogger(NewBlockHandlerMultiplexer::javaClass),
+  log: Logger = LogManager.getLogger(NewBlockHandlerMultiplexer::class.java),
 ) : CallAndForgetFutureMultiplexer<BeaconBlock>(
     handlersMap = blockHandlersToGenericHandlers(handlersMap),
     log = log,
