@@ -260,7 +260,6 @@ class MaruAppFactory {
         vertx = vertx,
         beaconChain = kvDatabase,
         metricsSystem = besuMetricsSystemAdapter,
-        lastElBlockMetadataCache = latestElBlockMetadataCache,
         validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
         validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
         apiServer = apiServer,
