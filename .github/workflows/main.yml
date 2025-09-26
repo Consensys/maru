@@ -48,7 +48,7 @@ jobs:
         run: |
           echo "has-changes-requiring-build: ${{ steps.filter.outputs.has-changes-requiring-build }}"
           echo "chaos-tests-changes: ${{ steps.filter.outputs.chaos-tests-changes }}"
-          echo "run-tests-changes: ${{ steps.filter.outputs.run-chaos-tests }}"
+          echo "run-chaos-tests: ${{ steps.filter.outputs.run-chaos-tests }}"
           echo "Event name: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
           echo "All filter outputs: ${{ toJSON(steps.filter.outputs) }}"
@@ -62,6 +62,7 @@ jobs:
         run: |
           echo "has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}"
           echo "chaos-tests-changes: ${{ needs.filter-commit-changes.outputs.chaos-tests-changes }}"
+          echo "run-chaos-tests: ${{ needs.filter-commit-changes.outputs.run-chaos-tests }}"
           echo "Event name: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
 
