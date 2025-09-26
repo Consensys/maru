@@ -68,7 +68,8 @@ class JsonRpcExecutionLayerManager(
   }
 
   override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> {
-    if (payloadId.get() == null) {
+    val payloadId = this.payloadId.get()
+    if (payloadId == null) {
       return SafeFuture.failedFuture(
         IllegalStateException(
           "finishBlockBuilding is called before setHeadAndStartBlockBuilding was completed",
@@ -77,7 +78,7 @@ class JsonRpcExecutionLayerManager(
     }
 
     return executionLayerEngineApiClient
-      .getPayload(Bytes8(Bytes.wrap(payloadId.get())))
+      .getPayload(Bytes8(Bytes.wrap(payloadId)))
       .thenApply { payloadResponse ->
         if (payloadResponse.isSuccess) {
           payloadResponse.payload
