@@ -8,6 +8,7 @@
  */
 package maru.executionlayer.manager
 
+import java.util.concurrent.atomic.AtomicReference
 import maru.core.ExecutionPayload
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.mappers.Mappers.toDomain
@@ -24,7 +25,7 @@ class JsonRpcExecutionLayerManager(
 ) : ExecutionLayerManager {
   private val log = LogManager.getLogger(this.javaClass)
 
-  private var payloadId: ByteArray? = null
+  private var payloadId = AtomicReference<ByteArray>()
 
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
@@ -59,30 +60,33 @@ class JsonRpcExecutionLayerManager(
       if (it.payloadId == null) {
         throw IllegalStateException("Unexpected FCU result. Payload ID is null! $it")
       } else {
-        payloadId = it.payloadId
+        payloadId.set(it.payloadId)
       }
     }
   }
 
   override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> {
-    if (payloadId == null) {
+    if (payloadId.get() == null) {
       return SafeFuture.failedFuture(
         IllegalStateException(
           "finishBlockBuilding is called before setHeadAndStartBlockBuilding was completed",
         ),
       )
     }
-    return executionLayerEngineApiClient.getPayload(Bytes8(Bytes.wrap(payloadId!!))).thenApply { payloadResponse ->
-      if (payloadResponse.isSuccess) {
-        payloadResponse.payload
-      } else {
-        throw IllegalStateException(
-          "engine_getPayload request failed! " +
-            "fork=${executionLayerEngineApiClient.getFork()} " +
-            "Cause: " + payloadResponse.errorMessage,
-        )
+
+    return executionLayerEngineApiClient
+      .getPayload(Bytes8(Bytes.wrap(payloadId.get())))
+      .thenApply { payloadResponse ->
+        if (payloadResponse.isSuccess) {
+          payloadResponse.payload
+        } else {
+          throw IllegalStateException(
+            "engine_getPayload request failed: " +
+              "fork=${executionLayerEngineApiClient.getFork()} " +
+              "Cause: " + payloadResponse.errorMessage,
+          )
+        }
       }
-    }
   }
 
   override fun setHead(
@@ -143,7 +147,7 @@ class JsonRpcExecutionLayerManager(
           executionPayload.blockNumber,
           executionLayerEngineApiClient.getFork(),
         )
-        payloadId = null // Not necessary, but it helps to reinforce the order of calls
+        payloadId.set(null) // Not necessary, but it helps to reinforce the order of calls
         payloadStatusResponse.payload.asInternalExecutionPayload().toDomain()
       } else {
         throw IllegalStateException(
