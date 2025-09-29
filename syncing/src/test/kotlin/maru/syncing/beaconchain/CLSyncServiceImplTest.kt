@@ -9,6 +9,7 @@
 package maru.syncing.beaconchain
 
 import java.net.ServerSocket
+import java.util.SequencedSet
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -138,7 +139,7 @@ class CLSyncServiceImplTest {
   private lateinit var keypair: KeyPair
   private lateinit var targetBeaconChain: BeaconChain
   private lateinit var sourceBeaconChain: BeaconChain
-  private lateinit var validators: Set<Validator>
+  private lateinit var validators: SequencedSet<Validator>
   private lateinit var targetP2pNetwork: P2PNetworkImpl
   private lateinit var sourceP2pNetwork: P2PNetworkImpl
   private lateinit var clSyncService: CLSyncServiceImpl
@@ -158,7 +159,8 @@ class CLSyncServiceImplTest {
   fun setUp() {
     signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     keypair = signatureAlgorithm.generateKeyPair()
-    validators = setOf(Validator(Util.publicKeyToAddress(keypair.publicKey).toArray()))
+    validators =
+      sortedSetOf(Validator(Util.publicKeyToAddress(keypair.publicKey).toArray()))
 
     val genesisTimestamp = DataGenerators.randomTimestamp()
     val (genesisBeaconState, genesisBeaconBlock) = DataGenerators.genesisState(genesisTimestamp, validators)
@@ -457,7 +459,7 @@ class CLSyncServiceImplTest {
     beaconChain: BeaconChain,
     genesisBeaconBlock: SealedBeaconBlock,
     genesisTimestamp: ULong,
-    validators: Set<Validator>,
+    validators: SequencedSet<Validator>,
     signatureAlgorithm: SignatureAlgorithm,
     keypair: KeyPair,
   ) {

@@ -78,7 +78,7 @@ class MaruPeerScoringTest {
   }
 
   @Test
-  fun `node get's in sync with default block retrieval strategy`() {
+  fun `node gets in sync with default block retrieval strategy`() {
     val maruNodeSetup =
       setUpNodes(blockRetrievalStrategy = DefaultBlockRetrievalStrategy())
 
@@ -102,8 +102,8 @@ class MaruPeerScoringTest {
     val maruNodeSetup =
       setUpNodes(
         blockRetrievalStrategy = FourEmptyResponsesStrategy(),
-        banPeriod = 10.minutes,
-        cooldownPeriod = 1000.milliseconds,
+        banPeriod = 10.seconds,
+        followerCooldownPeriod = 10.minutes,
       )
 
     try {
@@ -118,7 +118,7 @@ class MaruPeerScoringTest {
             maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0,
           )
         }
-      // reconnects after cooldown and finishes syncing
+      // reconnects after ban period and finishes syncing
       await
         .atMost(20.seconds.toJavaDuration())
         .pollInterval(200.milliseconds.toJavaDuration())
@@ -141,7 +141,7 @@ class MaruPeerScoringTest {
       setUpNodes(
         blockRangeRequestTimeout = timeout,
         blockRetrievalStrategy = TimeOutResponsesStrategy(delay = delay),
-        cooldownPeriod = 20.seconds,
+        validatorCooldownPeriod = 20.seconds,
       )
     try {
       sleep((delay - 1.seconds).inWholeMilliseconds)
@@ -164,7 +164,8 @@ class MaruPeerScoringTest {
   fun setUpNodes(
     blockRetrievalStrategy: BlockRetrievalStrategy,
     banPeriod: Duration = 10.seconds,
-    cooldownPeriod: Duration = 10.seconds,
+    validatorCooldownPeriod: Duration = 10.seconds,
+    followerCooldownPeriod: Duration = 10.seconds,
     blockRangeRequestTimeout: Duration = 5.seconds,
   ): MaruNodeSetup {
     fakeLineaContract = FakeLineaRollupSmartContractClient()
@@ -194,7 +195,7 @@ class MaruPeerScoringTest {
         overridingLineaContractClient = fakeLineaContract,
         p2pPort = tcpPort,
         discoveryPort = udpPort,
-        cooldownPeriod = cooldownPeriod,
+        cooldownPeriod = validatorCooldownPeriod,
         p2pNetworkFactory = {
           privateKeyBytes: ByteArray,
           p2pConfig: P2PConfig,
@@ -272,7 +273,7 @@ class MaruPeerScoringTest {
         p2pPort = tcpPortFollower,
         discoveryPort = udpPortFollower,
         banPeriod = banPeriod,
-        cooldownPeriod = cooldownPeriod,
+        cooldownPeriod = followerCooldownPeriod,
         blockRangeRequestTimeout = blockRangeRequestTimeout,
       )
     followerStack.setMaruApp(followerMaruApp)
