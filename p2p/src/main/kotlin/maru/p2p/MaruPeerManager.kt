@@ -50,7 +50,7 @@ class MaruPeerManager(
   private var discoveryTask: PeerDiscoveryTask? = null
 
   private val peers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
-  private val statusExchangingMaruPeers = mutableMapOf<NodeId, MaruPeer>()
+  private val statusExchangingMaruPeers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
 
   private var scheduler: ScheduledExecutorService? = null
   private lateinit var p2pNetwork: P2PNetwork<Peer>
