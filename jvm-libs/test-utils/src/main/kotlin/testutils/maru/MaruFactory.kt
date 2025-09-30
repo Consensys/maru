@@ -602,6 +602,7 @@ class MaruFactory(
         p2pConfig = p2pConfig,
         overridingLineaContractClient = overridingLineaContractClient,
         syncingConfig = syncingConfig,
+        enablePayloadValidation = enablePayloadValidation,
       )
     return buildApp(
       config,
