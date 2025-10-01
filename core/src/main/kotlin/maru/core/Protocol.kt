@@ -11,5 +11,7 @@ package maru.core
 interface Protocol {
   fun start()
 
-  fun stop()
+  fun pause()
+
+  fun close()
 }

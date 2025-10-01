@@ -11,7 +11,6 @@ package maru.app
 import maru.config.ApiEndpointConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.CallAndForgetFutureMultiplexer
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.state.FinalizationProvider

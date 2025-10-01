@@ -12,18 +12,23 @@ import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.Protocol
 import maru.p2p.P2PNetwork
 import maru.p2p.ValidationResult
+import org.apache.logging.log4j.LogManager
 
 class QbftConsensusFollower(
   private val p2pNetwork: P2PNetwork,
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
 ) : Protocol {
-  private var subscriptionId = 0
+  private val log = LogManager.getLogger(this.javaClass)
+  val subscriptionId = p2pNetwork.subscribeToBlocks(blockImporter::importBlock)
 
   override fun start() {
-    subscriptionId = p2pNetwork.subscribeToBlocks(blockImporter::importBlock)
+    log.info("Starting the QbftConsensusFollower block import")
   }
 
-  override fun stop() {
+  override fun pause() { }
+
+  override fun close() {
+    log.info("Stopping the QbftConsensusFollower block import")
     p2pNetwork.unsubscribeFromBlocks(subscriptionId)
   }
 }

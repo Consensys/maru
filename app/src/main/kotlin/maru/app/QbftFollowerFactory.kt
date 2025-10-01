@@ -10,7 +10,6 @@ package maru.app
 
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
-import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter

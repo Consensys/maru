@@ -13,11 +13,9 @@ import maru.config.QbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
-import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
 import maru.consensus.SealedBeaconBlockHandlerAdapter
-import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.qbft.QbftValidatorFactory
 import maru.consensus.state.FinalizationProvider
@@ -100,7 +98,7 @@ class QbftProtocolValidatorFactory(
     }
     syncStatusProvider.onClSyncStatusUpdate {
       if (it == CLSyncStatus.SYNCING) {
-        qbftProtocol.stop()
+        qbftProtocol.pause()
       }
     }
 
