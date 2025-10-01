@@ -17,12 +17,12 @@ import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
 import maru.consensus.qbft.ProposerSelectorImpl
+import maru.consensus.qbft.QbftConsensusFollower
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
 import maru.consensus.validation.QuorumOfSealsVerifier
 import maru.consensus.validation.SCEP256SealVerifier
-import maru.core.NoOpProtocol
 import maru.core.Protocol
 import maru.database.BeaconChain
 import maru.p2p.P2PNetwork
@@ -97,8 +97,7 @@ class QbftFollowerFactory(
         sealsVerifier = sealsVerifier,
         beaconBlockValidatorFactory = beaconBlockValidatorFactory,
       )
-    p2pNetwork.subscribeToBlocks(payloadValidatorNewBlockImporter::importBlock)
 
-    return NoOpProtocol()
+    return QbftConsensusFollower(p2pNetwork, payloadValidatorNewBlockImporter)
   }
 }
