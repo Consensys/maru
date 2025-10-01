@@ -156,8 +156,7 @@ class MaruAppFactory {
           config.p2p
             ?.forkidAllowedTimeWindowSeconds
             ?.inWholeSeconds
-            ?.toULong() ?: 5U,
-        protocolTransitionPollingInterval = config.protocolTransitionPollingInterval.inWholeSeconds.toULong(),
+            ?.toULong() ?: 20U,
       )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(

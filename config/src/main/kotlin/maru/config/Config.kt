@@ -48,7 +48,7 @@ data class P2PConfig(
   val discovery: Discovery? = null,
   val statusUpdate: StatusUpdate = StatusUpdate(),
   val reputation: Reputation = Reputation(),
-  val forkidAllowedTimeWindowSeconds: Duration = 5.seconds,
+  val forkidAllowedTimeWindowSeconds: Duration = 20.seconds,
 ) {
   init {
     // just a sanity check to ensure the IP address is valid

@@ -62,18 +62,19 @@ class ForkIdHashManagerImpl(
   private val forksSchedule: ForksSchedule,
   private val forkIdHasher: ForkIdHasher,
   private val clock: Clock = Clock.systemUTC(),
-  private val allowedTimeWindowSeconds: ULong = 5U,
-  private val protocolTransitionPollingInterval: ULong = 1U,
+  private val allowedTimeWindowSeconds: ULong = 20U,
 ) : ForkIdHashManager {
-  private val log: Logger = LogManager.getLogger(this.javaClass)
+  data class State(
+    var previousForkIdHash: ByteArray?,
+    var currentForkIdHash: ByteArray,
+    var nextForkIdHash: ByteArray?,
+    var currentForkTimestamp: ULong,
+    var nextForkTimestamp: ULong,
+    var currentBlockTime: UInt,
+  )
 
-  private var previousForkIdHash: ByteArray?
-  private var currentForkIdHash: ByteArray
-  private var nextForkIdHash: ByteArray?
-  private var currentForkTimestamp: ULong
-  private var nextForkTimestamp: ULong
-  private var currentBlockTime: UInt
-  private var nextBlockTime: UInt
+  private val log: Logger = LogManager.getLogger(this.javaClass)
+  private val state: State
 
   init {
     val timestamp = clock.instant().epochSecond.toULong()
@@ -81,15 +82,15 @@ class ForkIdHashManagerImpl(
     val currentForkSpec = forksSchedule.getForkByTimestamp(timestamp)
     val nextForkSpec = forksSchedule.getNextForkByTimestamp(timestamp)
 
-    currentForkTimestamp = currentForkSpec.timestampSeconds
-    nextForkTimestamp = nextForkSpec?.timestampSeconds ?: ULong.MAX_VALUE
-
-    currentBlockTime = forksSchedule.getForkByTimestamp(timestamp).blockTimeSeconds
-    nextBlockTime = nextForkSpec?.blockTimeSeconds ?: 0U
-
-    previousForkIdHash = previousForkSpec?.let { getForkIdHashForForkSpec(it) }
-    currentForkIdHash = getForkIdHashForForkSpec(currentForkSpec)
-    nextForkIdHash = nextForkSpec?.let { getForkIdHashForForkSpec(it) }
+    state =
+      State(
+        currentForkTimestamp = currentForkSpec.timestampSeconds,
+        nextForkTimestamp = nextForkSpec?.timestampSeconds ?: ULong.MAX_VALUE,
+        currentBlockTime = forksSchedule.getForkByTimestamp(timestamp).blockTimeSeconds,
+        previousForkIdHash = previousForkSpec?.let { getForkIdHashForForkSpec(it) },
+        currentForkIdHash = getForkIdHashForForkSpec(currentForkSpec),
+        nextForkIdHash = nextForkSpec?.let { getForkIdHashForForkSpec(it) },
+      )
   }
 
   private var _genesisRootHash: ByteArray? = null
@@ -102,37 +103,33 @@ class ForkIdHashManagerImpl(
       return _genesisRootHash!!
     }
 
-  override fun currentHash(): ByteArray = currentForkIdHash
+  override fun currentHash(): ByteArray = state.currentForkIdHash
 
   private fun getForkIdHashForForkSpec(forkSpec: ForkSpec): ByteArray {
     val forkId =
       ForkId(
         chainId = chainId,
-        forkSpec =
-        forkSpec,
+        forkSpec = forkSpec,
         genesisRootHash = genesisRootHash,
       )
     return forkIdHasher.hash(forkId)
   }
 
   override fun check(otherForkIdHash: ByteArray): Boolean {
-    if (otherForkIdHash.contentEquals(currentForkIdHash)) return true
+    if (otherForkIdHash.contentEquals(state.currentForkIdHash)) return true
     val currentTime = clock.instant().epochSecond.toULong()
     // The allowedTimeWindowSeconds allows for time drift, network latency, etc.
     // The poll interval should be the maximum time between the two nodes switching forks (without time drift).
     // Current block time is subtracted from the current fork timestamp, because that is what we do in the fork update logic.
-    // 1U for rounding errors.
-    if (previousForkIdHash != null &&
-      currentTime <=
-      currentForkTimestamp - currentBlockTime + protocolTransitionPollingInterval + allowedTimeWindowSeconds + 1U &&
-      otherForkIdHash.contentEquals(previousForkIdHash)
+    if (state.previousForkIdHash != null &&
+      currentTime <= state.currentForkTimestamp + allowedTimeWindowSeconds &&
+      otherForkIdHash.contentEquals(state.previousForkIdHash)
     ) { // this is the case where we have already switched fork
       return true
     }
-    if (nextForkIdHash != null &&
-      currentTime + protocolTransitionPollingInterval + allowedTimeWindowSeconds + 1U >=
-      nextForkTimestamp - currentBlockTime &&
-      otherForkIdHash.contentEquals(nextForkIdHash)
+    if (state.nextForkIdHash != null &&
+      currentTime + allowedTimeWindowSeconds >= state.nextForkTimestamp &&
+      otherForkIdHash.contentEquals(state.nextForkIdHash)
     ) { // this is the case where we haven't switched fork yet
       return true
     }
@@ -145,25 +142,24 @@ class ForkIdHashManagerImpl(
     )
     val newForkIdHash = getForkIdHashForForkSpec(newForkSpec)
 
-    previousForkIdHash =
+    state.previousForkIdHash =
       forksSchedule.getPreviousForkByTimestamp(newForkSpec.timestampSeconds)?.let {
         getForkIdHashForForkSpec(it)
       }
 
-    currentForkIdHash = newForkIdHash
+    state.currentForkIdHash = newForkIdHash
 
     val nextFork = forksSchedule.getNextForkByTimestamp(newForkSpec.timestampSeconds)
-    nextForkIdHash =
+    state.nextForkIdHash =
       if (nextFork != null) {
         getForkIdHashForForkSpec(nextFork)
       } else {
         null
       }
 
-    currentForkTimestamp = newForkSpec.timestampSeconds
-    nextForkTimestamp = nextFork?.timestampSeconds ?: ULong.MAX_VALUE
+    state.currentForkTimestamp = newForkSpec.timestampSeconds
+    state.nextForkTimestamp = nextFork?.timestampSeconds ?: ULong.MAX_VALUE
 
-    currentBlockTime = newForkSpec.blockTimeSeconds
-    nextBlockTime = nextFork?.blockTimeSeconds ?: 0U
+    state.currentBlockTime = newForkSpec.blockTimeSeconds
   }
 }
