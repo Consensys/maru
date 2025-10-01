@@ -272,11 +272,6 @@ configFiles:
           "@privateKey": "0x202454d1b4e72c41ebf58150030f649648d3cf5590297fb6718e27039ed9c86d",
           "@comment": "Operator account"
         },
-        "0x0000F90827F1C53a10cb7A02335B175320002935": {
-          "balance": "0",
-          "nonce": "1",
-          "code": "0x3373fffffffffffffffffffffffffffffffffffffffe14604657602036036042575f35600143038111604257611fff81430311604257611fff9006545f5260205ff35b5f5ffd5b5f35611fff60014303065500"
-        },
         "0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02": {
           "balance": "0",
           "nonce": "1",
