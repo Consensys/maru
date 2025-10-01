@@ -54,23 +54,13 @@ class QbftFollowerFactory(
         finalizationStateProvider = finalizationStateProvider,
         importerName = "payload-validator",
       )
-    val elFollowersNewBlockHandlerMap =
-      followerELNodeEngineApiWeb3JClients.mapValues { (followerName, web3JClient) ->
-        val elFollowerExecutionLayerManager =
-          Helpers.buildExecutionLayerManager(
-            web3JEngineApiClient = web3JClient,
-            elFork = qbftConsensusConfig.elFork,
-            metricsFacade = metricsFacade,
-          )
-        FollowerBeaconBlockImporter.create(
-          executionLayerManager = elFollowerExecutionLayerManager,
-          finalizationStateProvider = finalizationStateProvider,
-          importerName = followerName,
-        )
-      }
-    val callAndForgetNewBlockHandler =
-      NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)
-
+    val blockImportHandlers =
+      Helpers.createBlockImportHandlers(
+        qbftConsensusConfig = qbftConsensusConfig,
+        metricsFacade = metricsFacade,
+        finalizationStateProvider = finalizationStateProvider,
+        followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+      )
     val validatorProvider = StaticValidatorProvider(validators = qbftConsensusConfig.validatorSet)
     val stateTransition = StateTransitionImpl(validatorProvider)
     val transactionalSealedBeaconBlockImporter =
@@ -78,7 +68,7 @@ class QbftFollowerFactory(
         elPayloadValidatorNewBlockHandler
           .handleNewBlock(beaconBlock)
           .thenCompose {
-            callAndForgetNewBlockHandler.handleNewBlock(beaconBlock) // Don't wait for the result
+            blockImportHandlers.handleNewBlock(beaconBlock) // Don't wait for the result
             SafeFuture.completedFuture(Unit)
           }
       }

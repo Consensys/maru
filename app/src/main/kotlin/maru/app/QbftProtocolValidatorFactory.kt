@@ -63,22 +63,13 @@ class QbftProtocolValidatorFactory(
         elFork = qbftConsensusConfig.elFork,
         metricsFacade = metricsFacade,
       )
-    val elFollowersNewBlockHandlerMap =
-      followerELNodeEngineApiWeb3JClients.mapValues { (followerName, web3JClient) ->
-        val elFollowerExecutionLayerManager =
-          Helpers.buildExecutionLayerManager(
-            web3JEngineApiClient = web3JClient,
-            elFork = qbftConsensusConfig.elFork,
-            metricsFacade = metricsFacade,
-          )
-        FollowerBeaconBlockImporter.create(
-          executionLayerManager = elFollowerExecutionLayerManager,
-          finalizationStateProvider = finalizationStateProvider,
-          importerName = followerName,
-        )
-      }
     val blockImportHandlers =
-      NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)
+      Helpers.createBlockImportHandlers(
+        qbftConsensusConfig = qbftConsensusConfig,
+        metricsFacade = metricsFacade,
+        finalizationStateProvider = finalizationStateProvider,
+        followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+      )
     val sealedBlockHandlers =
       mutableMapOf(
         "beacon block handlers" to SealedBeaconBlockHandlerAdapter(blockImportHandlers),
