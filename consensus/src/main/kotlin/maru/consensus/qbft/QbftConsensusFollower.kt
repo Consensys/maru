@@ -21,11 +21,9 @@ class QbftConsensusFollower(
   private val log = LogManager.getLogger(this.javaClass)
   val subscriptionId = p2pNetwork.subscribeToBlocks(blockImporter::importBlock)
 
-  override fun start() {
-    log.info("Starting the QbftConsensusFollower block import")
-  }
+  override fun start() {}
 
-  override fun pause() { }
+  override fun pause() {}
 
   override fun close() {
     log.info("Stopping the QbftConsensusFollower block import")
