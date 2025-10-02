@@ -87,6 +87,7 @@ data class P2PConfig(
 data class ValidatorElNode(
   val ethApiEndpoint: ApiEndpointConfig,
   val engineApiEndpoint: ApiEndpointConfig,
+  val payloadValidationEnabled: Boolean,
 )
 
 data class QbftConfig(

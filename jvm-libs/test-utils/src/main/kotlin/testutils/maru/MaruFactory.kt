@@ -197,6 +197,7 @@ class MaruFactory(
     apiConfig: ApiConfig = ApiConfig(port = 0u),
     syncingConfig: SyncingConfig = defaultSyncingConfig,
     allowEmptyBlocks: Boolean = false,
+    enablePayloadValidation: Boolean = true,
   ): MaruConfig {
     val lineaConfig =
       overridingLineaContractClient?.let {
@@ -215,6 +216,7 @@ class MaruFactory(
         ValidatorElNode(
           ethApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
           engineApiEndpoint = ApiEndpointConfig(URI.create(engineApiRpc).toURL()),
+          payloadValidationEnabled = enablePayloadValidation,
         ),
       p2p = p2pConfig,
       followers = followers,
@@ -272,6 +274,7 @@ class MaruFactory(
     apiConfig: ApiConfig = ApiConfig(port = 0u),
     syncingConfig: SyncingConfig = defaultSyncingConfig,
     allowEmptyBlocks: Boolean = false,
+    enablePayloadValidation: Boolean = true,
   ): MaruConfig {
     val lineaConfig =
       overridingLineaContractClient?.let {
@@ -290,6 +293,7 @@ class MaruFactory(
         ValidatorElNode(
           ethApiEndpoint = ethereumApiEndpointConfig,
           engineApiEndpoint = engineApiEndpointConfig,
+          payloadValidationEnabled = enablePayloadValidation,
         ),
       p2p = p2pConfig,
       followers = followers,
@@ -595,6 +599,7 @@ class MaruFactory(
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     allowEmptyBlocks: Boolean = false,
     syncingConfig: SyncingConfig = defaultSyncingConfig,
+    enablePayloadValidation: Boolean = true,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val config =
@@ -606,6 +611,7 @@ class MaruFactory(
         p2pConfig = p2pConfig,
         overridingLineaContractClient = overridingLineaContractClient,
         syncingConfig = syncingConfig,
+        enablePayloadValidation = enablePayloadValidation,
       )
     return buildApp(
       config,
