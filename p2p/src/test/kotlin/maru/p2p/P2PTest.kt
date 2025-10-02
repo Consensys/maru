@@ -166,14 +166,7 @@ class P2PTest {
           p2pConfig = P2PConfig(ipAddress = IPV4, port = PORT1),
           reputationManager = reputationManager,
           isStaticPeer = { false },
-          beaconChain = beaconChain,
           syncStatusProviderProvider = syncStatusProviderProvider,
-          syncConfig =
-            SyncingConfig(
-              peerChainHeightPollingInterval = 1.minutes,
-              syncTargetSelection = SyncingConfig.SyncTargetSelection.Highest,
-              elSyncStatusRefreshInterval = 1.seconds,
-            ),
         )
       return rpcMethods
     }

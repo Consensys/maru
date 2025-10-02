@@ -36,9 +36,11 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 
 interface MaruPeer : Peer {
+  fun getStatus(): Status?
+
   fun sendStatus(): SafeFuture<Unit>
 
-  fun getStatus(): Status?
+  fun expectStatus(): Unit
 
   fun updateStatus(newStatus: Status)
 
@@ -46,8 +48,6 @@ interface MaruPeer : Peer {
     startBlockNumber: ULong,
     count: ULong,
   ): SafeFuture<BeaconBlocksByRangeResponse>
-
-  fun awaitInitialStatusAndCheckForkIdHash(): SafeFuture<Status>
 }
 
 fun MaruPeer.toLogString(): String {
@@ -139,11 +139,7 @@ class DefaultMaruPeer(
     scheduledDisconnect.ifPresent { it.cancel(false) }
     if (!statusManager.check(newStatus)) {
       disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
-      initialStatusUpdateFuture.completeExceptionally(IllegalStateException("Invalid status received form peer={$id}"))
       return
-    }
-    if (status.get() == null) {
-      initialStatusUpdateFuture.complete(newStatus)
     }
     status.set(newStatus)
     log.trace("Received status update from peer={}: status={}", id, newStatus)
@@ -175,13 +171,10 @@ class DefaultMaruPeer(
     }
   }
 
-  override fun awaitInitialStatusAndCheckForkIdHash(): SafeFuture<Status> {
-    if (connectionInitiatedLocally()) {
-      sendStatus()
-    } else {
-      scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
-    }
-    return initialStatusUpdateFuture
+  override fun expectStatus() {
+    scheduleDisconnectIfStatusNotReceived(
+      p2pConfig.statusUpdate.timeout + p2pConfig.statusUpdate.refreshIntervalLeeway,
+    )
   }
 
   override fun sendBeaconBlocksByRange(

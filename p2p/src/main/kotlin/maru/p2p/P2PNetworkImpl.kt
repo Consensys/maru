@@ -127,9 +127,7 @@ class P2PNetworkImpl(
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
         isStaticPeer = this::isStaticPeer,
-        beaconChain = beaconChain,
         syncStatusProviderProvider = syncStatusProviderProvider,
-        syncConfig = syncConfig,
       )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
