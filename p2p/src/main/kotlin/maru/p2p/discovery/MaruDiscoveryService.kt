@@ -16,8 +16,8 @@ import kotlin.concurrent.timerTask
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
 import maru.config.P2PConfig
-import maru.consensus.ForkIdHashManager
 import maru.database.P2PState
+import maru.p2p.ForkIdHashManager
 import maru.services.LongRunningService
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
@@ -220,7 +220,6 @@ class MaruDiscoveryService(
           p2pConfig.discovery!!.port.toInt(),
           p2pConfig.port.toInt(),
         ).customField(FORK_ID_HASH_FIELD_NAME, Bytes.wrap(forkIdHashManager.currentHash()))
-    // TODO: do we want more custom fields to identify version/topics/role/something else?
 
     return nodeRecordBuilder.build()
   }

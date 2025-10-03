@@ -40,8 +40,6 @@ import maru.config.ValidatorElNode
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider
@@ -51,6 +49,8 @@ import maru.crypto.Crypto
 import maru.database.BeaconChain
 import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
+import maru.p2p.ForkIdHashManager
+import maru.p2p.ForkIdHasher
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl

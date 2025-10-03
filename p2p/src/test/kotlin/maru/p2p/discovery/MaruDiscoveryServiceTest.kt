@@ -20,9 +20,6 @@ import maru.config.P2PConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
-import maru.consensus.ForkId
-import maru.consensus.ForkIdHashManagerImpl
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.core.ext.DataGenerators
@@ -30,6 +27,9 @@ import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
 import maru.database.P2PState
+import maru.p2p.ForkId
+import maru.p2p.ForkIdHashManagerImpl
+import maru.p2p.ForkIdHasher
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.discovery.MaruDiscoveryService.Companion.convertSafeNodeRecordToDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService.Companion.isValidNodeRecord
@@ -85,6 +85,7 @@ class MaruDiscoveryServiceTest {
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
         forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+        initialTimestamp = 1UL,
       )
 
     val otherForkSpec = ForkSpec(1UL, 1u, consensusConfig)

@@ -31,9 +31,6 @@ import maru.config.P2PConfig
 import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHashManagerImpl
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.state.FinalizationProvider
@@ -48,6 +45,9 @@ import maru.finalization.LineaFinalizationProvider
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.BesuMetricsSystemAdapter
 import maru.metrics.MaruMetricsCategory
+import maru.p2p.ForkIdHashManager
+import maru.p2p.ForkIdHashManagerImpl
+import maru.p2p.ForkIdHasher
 import maru.p2p.NetworkHelper
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
@@ -151,12 +151,7 @@ class MaruAppFactory {
         beaconChain = kvDatabase,
         forksSchedule = beaconGenesisConfig,
         forkIdHasher = forkIdHasher,
-        clock = clock,
-        allowedTimeWindowSeconds =
-          config.p2p
-            ?.forkidAllowedTimeWindowSeconds
-            ?.inWholeSeconds
-            ?.toULong() ?: 20U,
+        initialTimestamp = clock.instant().epochSecond.toULong(),
       )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(

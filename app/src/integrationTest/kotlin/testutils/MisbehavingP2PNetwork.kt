@@ -11,11 +11,11 @@ package testutils
 import kotlin.time.Duration
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.database.P2PState
+import maru.p2p.ForkIdHashManager
+import maru.p2p.ForkIdHasher
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.RpcMethods
 import maru.p2p.messages.BeaconBlocksByRangeRequest

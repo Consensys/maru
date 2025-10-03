@@ -11,9 +11,9 @@ package maru.serialization
 import kotlin.random.Random
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ForkId
 import maru.consensus.ForkSpec
 import maru.core.ext.DataGenerators
+import maru.p2p.ForkId
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 

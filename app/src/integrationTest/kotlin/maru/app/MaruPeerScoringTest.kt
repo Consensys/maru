@@ -24,11 +24,11 @@ import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.database.P2PState
+import maru.p2p.ForkIdHashManager
+import maru.p2p.ForkIdHasher
 import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.DefaultBlockRetrievalStrategy
 import maru.p2p.messages.StatusManager

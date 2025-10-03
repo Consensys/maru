@@ -9,7 +9,7 @@
 package maru.serialization
 
 import java.nio.ByteBuffer
-import maru.consensus.ForkId
+import maru.p2p.ForkId
 
 object ForkIdSerializer : Serializer<ForkId> {
   override fun serialize(value: ForkId): ByteArray {

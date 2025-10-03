@@ -8,8 +8,8 @@
  */
 package maru.p2p.messages
 
-import maru.consensus.ForkIdHashManager
 import maru.database.BeaconChain
+import maru.p2p.ForkIdHashManager
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version

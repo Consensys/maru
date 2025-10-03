@@ -14,9 +14,6 @@ import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHashManagerImpl
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.core.ext.DataGenerators
@@ -103,10 +100,9 @@ class MaruPeerManagerTest {
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
         forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+        initialTimestamp = 1U,
       )
     }
-
-    val forkIdHashManager: ForkIdHashManager = createForkIdHashManager()
 
     private fun createSyncStatusProvider(): SyncStatusProvider =
       object : SyncStatusProvider {

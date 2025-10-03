@@ -22,9 +22,6 @@ import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHashManagerImpl
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.core.BeaconBlockHeader
@@ -128,7 +125,6 @@ class P2PTest {
 
     private val beaconChain: InMemoryBeaconChain =
       InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
-    private val genesisRootHash = beaconChain.getBeaconState(0UL)?.beaconBlockHeader?.hash
     private val forkIdHashManager: ForkIdHashManager = createForkIdHashManager()
     private val statusManager: StatusManager = StatusManager(beaconChain, forkIdHashManager)
     private val rpcMethods = createRpcMethods()
@@ -188,29 +184,11 @@ class P2PTest {
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
         forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+        initialTimestamp = 1UL,
       )
     }
 
     var successfullForkIdHashes = 0
-
-    class ForkIdHashManagerWithExceptionOnSecondCall : ForkIdHashManager {
-      override fun currentHash(): ByteArray {
-        if (successfullForkIdHashes < 1) {
-          successfullForkIdHashes++
-          return forkIdHashManager.currentHash()
-        } else {
-          throw IllegalStateException("currentForkIdHash exception testing")
-        }
-      }
-
-      override fun check(otherForkIdHash: ByteArray): Boolean {
-        TODO("Not yet implemented")
-      }
-
-      override fun update(newForkSpec: ForkSpec) {
-        TODO("Not yet implemented")
-      }
-    }
 
     private fun createP2PNetwork(
       privateKey: ByteArray,

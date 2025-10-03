@@ -21,9 +21,6 @@ import maru.config.SyncingConfig
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHashManagerImpl
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.StaticValidatorProvider
@@ -41,6 +38,9 @@ import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
 import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
+import maru.p2p.ForkIdHashManager
+import maru.p2p.ForkIdHashManagerImpl
+import maru.p2p.ForkIdHasher
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.PeerLookup
 import maru.p2p.messages.StatusManager
@@ -128,6 +128,7 @@ class CLSyncServiceImplTest {
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
         forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+        initialTimestamp = 1UL,
       )
     }
   }
@@ -169,8 +170,20 @@ class CLSyncServiceImplTest {
 
     sourceNodePort = findFreePort()
     targetNodePort = findFreePort()
-    targetP2pNetwork = createNetwork(targetBeaconChain, targetNodeKey, targetNodePort, InMemoryP2PState())
-    sourceP2pNetwork = createNetwork(sourceBeaconChain, sourceNodeKey, sourceNodePort, InMemoryP2PState())
+    targetP2pNetwork =
+      createNetwork(
+        beaconChain = targetBeaconChain,
+        key = targetNodeKey,
+        port = targetNodePort,
+        p2PState = InMemoryP2PState(),
+      )
+    sourceP2pNetwork =
+      createNetwork(
+        beaconChain = sourceBeaconChain,
+        key = sourceNodeKey,
+        port = sourceNodePort,
+        p2PState = InMemoryP2PState(),
+      )
 
     createBlocks(
       beaconChain = sourceBeaconChain,
