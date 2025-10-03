@@ -31,7 +31,7 @@ class StatusHandler(
     try {
       if (!statusManager.check(message.payload)) {
         log.warn(
-          "Disconnecting peer={} due to fork ID mismatch. expectedForkIdHash={}, actualForkIdHash={}",
+          "Disconnecting peer={}, forkIdHash={} due to fork ID mismatch!",
           peer.id,
           peer.getStatus()?.forkIdHash,
         )
