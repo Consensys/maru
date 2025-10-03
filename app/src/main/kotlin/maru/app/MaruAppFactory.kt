@@ -196,7 +196,7 @@ class MaruAppFactory {
         statusManager = statusManager,
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashManager = forkIdHashProvider,
-        isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
+        isBlockImportEnabledProvider = { syncControllerImpl!!.isBeaconChainSynced() },
         forkIdHasher = forkIdHasher,
         p2PState = kvDatabase,
         syncStatusProviderProvider = { syncControllerImpl!! },
