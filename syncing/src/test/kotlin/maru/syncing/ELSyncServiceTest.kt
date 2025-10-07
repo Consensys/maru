@@ -50,8 +50,8 @@ class ELSyncServiceTest {
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
-        blockValidatorHandler = blockValidatorHandler,
-        blockImportHandler = blockImportHandler,
+        eLValidatorBlockImportHandler = blockValidatorHandler,
+        followerELBLockImportHandler = blockImportHandler,
         onStatusChange = onStatusChange,
         config = config,
         timerFactory = { _, _ -> timer },
@@ -96,8 +96,8 @@ class ELSyncServiceTest {
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
-        blockValidatorHandler = blockValidatorHandler,
-        blockImportHandler = blockImportHandler,
+        eLValidatorBlockImportHandler = blockValidatorHandler,
+        followerELBLockImportHandler = blockImportHandler,
         onStatusChange = onStatusChange,
         config = config,
         timerFactory = { _, _ -> timer },

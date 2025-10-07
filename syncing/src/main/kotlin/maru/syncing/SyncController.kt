@@ -232,8 +232,8 @@ class BeaconSyncControllerImpl(
         ELSyncService(
           config = elSyncServiceConfig,
           beaconChain = beaconChain,
-          blockValidatorHandler = blockValidatorHandler,
-          blockImportHandler = blockImportHandler,
+          eLValidatorBlockImportHandler = blockValidatorHandler,
+          followerELBLockImportHandler = blockImportHandler,
           onStatusChange = controller::updateElSyncStatus,
         )
 

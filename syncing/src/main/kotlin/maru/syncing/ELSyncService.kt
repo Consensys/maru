@@ -55,8 +55,8 @@ data class ElBlockInfo(
  */
 class ELSyncService(
   private val beaconChain: BeaconChain,
-  private val blockValidatorHandler: NewBlockHandler<ForkChoiceUpdatedResult>,
-  private val blockImportHandler: NewBlockHandler<Unit>,
+  private val eLValidatorBlockImportHandler: NewBlockHandler<ForkChoiceUpdatedResult>,
+  private val followerELBLockImportHandler: NewBlockHandler<Unit>,
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
   private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
@@ -96,7 +96,17 @@ class ELSyncService(
       onStatusChange(newELSyncStatus)
       return
     }
-    val fcuResponse = blockValidatorHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).get()
+    val fcuResponse = eLValidatorBlockImportHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).get()
+    // Call and forget, best effort
+    followerELBLockImportHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).whenException { ex ->
+      log.warn(
+        "Block import to followers failed: clBlockNumber={}, elBlockNumber={} errorMessage={}",
+        latestBeaconBlockHeader.number,
+        latestBeaconBlockBody.executionPayload.blockNumber,
+        ex.message,
+        ex,
+      )
+    }
 
     val newELSyncStatus =
       when (fcuResponse.payloadStatus.status) {
@@ -106,17 +116,6 @@ class ELSyncService(
         }
 
         ExecutionPayloadStatus.VALID -> {
-          // Call and forget, best effort
-          blockImportHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).whenException { ex ->
-            log.warn(
-              "Block import to followers failed: clBlockNumber={}, elBlockNumber={} errorMessage={}",
-              latestBeaconBlockHeader.number,
-              latestBeaconBlockBody.executionPayload.blockNumber,
-              ex.message,
-              ex,
-            )
-          }
-
           log.debug(
             "EL client is synced newSyncTarget={}",
             newElSyncTarget,
