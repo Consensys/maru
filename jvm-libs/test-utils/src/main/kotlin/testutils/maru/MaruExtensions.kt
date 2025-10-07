@@ -23,6 +23,6 @@ fun MaruApp.awaitTillMaruHasPeers(
 ) {
   await
     .timeout(timeout.toJavaDuration())
-    .pollInterval (pollingInterval.toJavaDuration())
+    .pollInterval(pollingInterval.toJavaDuration())
     .until { this.peersConnected() >= numberOfPeers }
 }
