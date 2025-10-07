@@ -36,6 +36,7 @@ import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
 import maru.consensus.StaticValidatorProvider
+import maru.consensus.blockimport.ElForkAwareBlockImporter
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.core.SealedBeaconBlock
@@ -222,12 +223,19 @@ class MaruAppFactory {
             forksSchedule = beaconGenesisConfig,
             metricsFacade = metricsFacade,
             followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+            finalizationProvider = finalizationProvider,
+          )
+        val blockValidatorHandler =
+          ElForkAwareBlockImporter(
+            forksSchedule = beaconGenesisConfig,
+            elManagerMap = elManagerMap,
+            importerName = "El sync payload validator",
+            finalizationProvider = finalizationProvider,
           )
         BeaconSyncControllerImpl.create(
           beaconChain = kvDatabase,
+          blockValidatorHandler = blockValidatorHandler,
           blockImportHandler = elSyncBlockImportHandlers,
-          forksSchedule = beaconGenesisConfig,
-          elManagerMap = elManagerMap,
           peersHeadsProvider = peersHeadBlockProvider,
           targetChainHeadCalculator = createSyncTargetSelector(config.syncing.syncTargetSelection),
           validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
@@ -239,7 +247,6 @@ class MaruAppFactory {
               config.syncing.peerChainHeightPollingInterval,
             ),
           elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
-          finalizationProvider = finalizationProvider,
           desyncTolerance = config.syncing.desyncTolerance,
           pipelineConfig =
             BeaconChainDownloadPipelineFactory.Config(

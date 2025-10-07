@@ -13,13 +13,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import linea.kotlin.minusCoercingUnderflow
-import maru.config.consensus.ElFork
-import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
 import maru.consensus.ValidatorProvider
-import maru.consensus.state.FinalizationProvider
 import maru.database.BeaconChain
-import maru.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.p2p.PeerLookup
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
@@ -198,9 +195,8 @@ class BeaconSyncControllerImpl(
   companion object {
     fun create(
       beaconChain: BeaconChain,
-      forksSchedule: ForksSchedule,
+      blockValidatorHandler: NewBlockHandler<ForkChoiceUpdatedResult>,
       blockImportHandler: NewBlockHandler<Unit>,
-      elManagerMap: Map<ElFork, ExecutionLayerManager>,
       peersHeadsProvider: PeersHeadBlockProvider,
       targetChainHeadCalculator: SyncTargetSelector,
       peerChainTrackerConfig: PeerChainTracker.Config,
@@ -209,7 +205,6 @@ class BeaconSyncControllerImpl(
       besuMetrics: MetricsSystem,
       metricsFacade: MetricsFacade,
       elSyncServiceConfig: ELSyncService.Config,
-      finalizationProvider: FinalizationProvider,
       desyncTolerance: ULong,
       pipelineConfig: BeaconChainDownloadPipelineFactory.Config,
       allowEmptyBlocks: Boolean = true,
@@ -235,13 +230,11 @@ class BeaconSyncControllerImpl(
 
       val elSyncService =
         ELSyncService(
-          beaconChain = beaconChain,
-          blockImportHandler = blockImportHandler,
-          forksSchedule = forksSchedule,
-          elManagerMap = elManagerMap,
-          onStatusChange = controller::updateElSyncStatus,
-          finalizationProvider = finalizationProvider,
           config = elSyncServiceConfig,
+          beaconChain = beaconChain,
+          blockValidatorHandler = blockValidatorHandler,
+          blockImportHandler = blockImportHandler,
+          onStatusChange = controller::updateElSyncStatus,
         )
 
       val peerChainTracker =

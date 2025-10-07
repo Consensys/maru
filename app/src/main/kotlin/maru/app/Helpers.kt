@@ -112,6 +112,7 @@ object Helpers {
     forksSchedule: ForksSchedule,
     metricsFacade: MetricsFacade,
     followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,
+    finalizationProvider: FinalizationProvider,
   ): NewBlockHandlerMultiplexer {
     val elFollowersNewBlockHandlerMap =
       followerELNodeEngineApiWeb3JClients.mapValues { (followerName, web3JClient) ->
@@ -127,6 +128,7 @@ object Helpers {
           forksSchedule = forksSchedule,
           elManagerMap = elManagerMap,
           importerName = followerName,
+          finalizationProvider = finalizationProvider,
         )
       }
     return NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)

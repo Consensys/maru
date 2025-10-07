@@ -15,15 +15,12 @@ import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.DifficultyAwareQbftConfig
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
-import maru.consensus.state.FinalizationProvider
 import maru.core.GENESIS_EXECUTION_PAYLOAD
 import maru.database.BeaconChain
-import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ExecutionPayloadStatus
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.extensions.encodeHex
 import maru.services.LongRunningService
 import org.apache.logging.log4j.LogManager
@@ -61,12 +58,10 @@ data class ElBlockInfo(
  */
 class ELSyncService(
   private val beaconChain: BeaconChain,
-  private val forksSchedule: ForksSchedule,
-  private val elManagerMap: Map<ElFork, ExecutionLayerManager>,
+  private val blockValidatorHandler: NewBlockHandler<ForkChoiceUpdatedResult>,
   private val blockImportHandler: NewBlockHandler<Unit>,
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
-  private val finalizationProvider: FinalizationProvider,
   private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
     Timer(
       "$name-${UUID.randomUUID()}",
@@ -104,31 +99,7 @@ class ELSyncService(
       onStatusChange(newELSyncStatus)
       return
     }
-
-    val finalizationState = finalizationProvider(latestBeaconBlockBody)
-    val forkSpec = forksSchedule.getForkByTimestamp(latestBeaconBlockHeader.timestamp)
-    val elFork =
-      when (forkSpec.configuration) {
-        is QbftConsensusConfig -> (forkSpec.configuration as QbftConsensusConfig).elFork
-        is DifficultyAwareQbftConfig -> extractEvmForkFromDifficultyAwareQbft(forkSpec)
-        else -> throw IllegalStateException(
-          "Current fork isn't QBFT nor DifficultyAwareQbft, this case is not supported yet! forkSpec=$forkSpec",
-        )
-      }
-    val executionLayerManager =
-      elManagerMap[elFork]
-        ?: throw IllegalStateException("No execution layer manager found for EL fork: $elFork")
-    val fcuResponse =
-      executionLayerManager
-        .newPayload(latestBeaconBlockBody.executionPayload)
-        .thenCompose {
-          executionLayerManager
-            .setHead(
-              headHash = currentElSyncTarget!!.blockHash,
-              safeHash = finalizationState.safeBlockHash,
-              finalizedHash = finalizationState.finalizedBlockHash,
-            )
-        }.get()
+    val fcuResponse = blockValidatorHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).get()
 
     val newELSyncStatus =
       when (fcuResponse.payloadStatus.status) {

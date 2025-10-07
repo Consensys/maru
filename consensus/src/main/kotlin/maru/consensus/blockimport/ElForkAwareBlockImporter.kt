@@ -14,8 +14,10 @@ import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
+import maru.consensus.state.FinalizationProvider
 import maru.core.BeaconBlock
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -27,7 +29,8 @@ class ElForkAwareBlockImporter(
   private val forksSchedule: ForksSchedule,
   private val elManagerMap: Map<ElFork, ExecutionLayerManager>,
   private val importerName: String,
-) : NewBlockHandler<Unit> {
+  private val finalizationProvider: FinalizationProvider,
+) : NewBlockHandler<ForkChoiceUpdatedResult> {
   companion object {
     /**
      * Extracts the EL fork from a ForkSpec based on its consensus configuration.
@@ -44,7 +47,7 @@ class ElForkAwareBlockImporter(
 
   private val log = LogManager.getLogger(this.javaClass)
 
-  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
+  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
     val forkSpec = forksSchedule.getForkByTimestamp(beaconBlock.beaconBlockHeader.timestamp)
     val elFork = forkSpec.extractElFork()
 
@@ -64,7 +67,15 @@ class ElForkAwareBlockImporter(
           elFork,
           e,
         )
-      }.thenApply {
+      }.thenCompose {
+        val finalizationState = finalizationProvider(beaconBlock.beaconBlockBody)
+        executionLayerManager.setHead(
+          beaconBlock.beaconBlockBody.executionPayload.blockHash,
+          finalizationState
+            .safeBlockHash,
+          finalizationState.finalizedBlockHash,
+        )
+      }.thenPeek {
         log.debug(
           "Imported elBlockNumber={} to {} with elFork={}",
           executionPayload.blockNumber,
