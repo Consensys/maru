@@ -94,7 +94,7 @@ class MaruValidatorRestartTest {
     validatorStack.maruApp.start()
 
     log.info(
-      "Follower: ${followerStack.maruApp.p2pNetwork.nodeId}, valiator: ${validatorStack.maruApp.p2pNetwork.nodeId}",
+      "Follower: ${followerStack.maruApp.p2pNetwork.nodeId}, validator: ${validatorStack.maruApp.p2pNetwork.nodeId}",
     )
 
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
@@ -134,7 +134,7 @@ class MaruValidatorRestartTest {
     validatorStack.setMaruApp(newValidatorMaruApp)
     validatorStack.maruApp.start()
 
-    log.info("Restarted valiator: ${newValidatorMaruApp.p2pNetwork.nodeId}")
+    log.info("Restarted validator: ${newValidatorMaruApp.p2pNetwork.nodeId}")
 
     validatorStack.maruApp.awaitTillMaruHasPeers(1u)
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
