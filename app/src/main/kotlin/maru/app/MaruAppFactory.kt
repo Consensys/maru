@@ -192,14 +192,6 @@ class MaruAppFactory {
         )
       }
 
-    // Create fork-aware block import handlers for ELSyncService (handles blocks across different forks)
-    val elSyncBlockImportHandlers =
-      Helpers.createElSyncBlockImportHandlers(
-        forksSchedule = beaconGenesisConfig,
-        metricsFacade = metricsFacade,
-        followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
-      )
-
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
     var syncControllerImpl: SyncController? = null
 
@@ -226,6 +218,12 @@ class MaruAppFactory {
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
     syncControllerImpl =
       if (config.p2p != null) {
+        val elSyncBlockImportHandlers =
+          Helpers.createElSyncBlockImportHandlers(
+            forksSchedule = beaconGenesisConfig,
+            metricsFacade = metricsFacade,
+            followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+          )
         BeaconSyncControllerImpl.create(
           beaconChain = kvDatabase,
           blockImportHandler = elSyncBlockImportHandlers,
