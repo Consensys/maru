@@ -131,10 +131,8 @@ class MaruManyFollowerElsTest {
 
   @Test
   fun `Maru follower with FollowersConfig imports blocks when started simultaneously with validator`() {
-    // Start Maru follower node with FollowersConfig
     startMaruFollower()
 
-    // Verify genesis blocks match across all nodes
     val validatorGenesis = validatorStack.besuNode.ethGetBlockByNumber("earliest", false)
     val followerGenesis = followerStack.besuNode.ethGetBlockByNumber("earliest", false)
     val followerBesuGenesis = followerBesu.ethGetBlockByNumber("earliest", false)
@@ -142,7 +140,6 @@ class MaruManyFollowerElsTest {
     assertThat(followerGenesis).isEqualTo(validatorGenesis)
     assertThat(followerBesuGenesis).isEqualTo(validatorGenesis)
 
-    // Produce blocks on the validator
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -154,7 +151,6 @@ class MaruManyFollowerElsTest {
       }
     }
 
-    // Assert all 3 Besu nodes have the same blocks
     Checks.checkAllNodesHaveSameBlocks(
       blocksToProduce,
       validatorStack.besuNode,
@@ -165,7 +161,6 @@ class MaruManyFollowerElsTest {
 
   @Test
   fun `Maru follower with FollowersConfig imports blocks when started after validator has produced blocks`() {
-    // Produce initial blocks before starting Maru follower
     val initialBlocksToProduce = 5
     log.info("Producing $initialBlocksToProduce blocks before starting Maru follower")
     repeat(initialBlocksToProduce) {
@@ -178,17 +173,14 @@ class MaruManyFollowerElsTest {
       }
     }
 
-    // Wait for initial blocks to be produced on validator Besu
     Checks.checkAllNodesHaveSameBlocks(
       initialBlocksToProduce,
       validatorStack.besuNode,
     )
 
-    // Now start Maru follower node with FollowersConfig (after blocks have been produced)
     log.info("Starting Maru follower after $initialBlocksToProduce blocks have been produced")
     startMaruFollower()
 
-    // Wait for follower stack Besu and follower Besu to sync initial blocks
     log.info("Waiting for Maru follower to sync initial $initialBlocksToProduce blocks")
     Checks.checkAllNodesHaveSameBlocks(
       initialBlocksToProduce,
@@ -197,7 +189,6 @@ class MaruManyFollowerElsTest {
       followerBesu,
     )
 
-    // Produce additional blocks after Maru follower has started
     val additionalBlocksToProduce = 5
     val totalBlocks = initialBlocksToProduce + additionalBlocksToProduce
     log.info("Producing $additionalBlocksToProduce additional blocks")
@@ -211,7 +202,6 @@ class MaruManyFollowerElsTest {
       }
     }
 
-    // Assert all 3 Besu nodes have the same blocks (initial + additional)
     Checks.checkAllNodesHaveSameBlocks(
       totalBlocks,
       validatorStack.besuNode,
