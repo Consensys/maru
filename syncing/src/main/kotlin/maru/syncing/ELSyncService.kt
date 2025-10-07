@@ -108,15 +108,13 @@ class ELSyncService(
         ExecutionPayloadStatus.VALID -> {
           // Call and forget, best effort
           blockImportHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).whenException { ex ->
-            if (ex != null) {
-              log.warn(
-                "Block import to followers failed: clBlockNumber={}, elBlockNumber={} errorMessage={}",
-                latestBeaconBlockHeader.number,
-                latestBeaconBlockBody.executionPayload.blockNumber,
-                ex.message,
-                ex,
-              )
-            }
+            log.warn(
+              "Block import to followers failed: clBlockNumber={}, elBlockNumber={} errorMessage={}",
+              latestBeaconBlockHeader.number,
+              latestBeaconBlockBody.executionPayload.blockNumber,
+              ex.message,
+              ex,
+            )
           }
 
           log.debug(
