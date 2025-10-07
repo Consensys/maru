@@ -219,7 +219,7 @@ class MaruAppFactory {
             )
           }
         val elSyncBlockImportHandlers =
-          Helpers.createElSyncBlockImportHandlers(
+          Helpers.createForkAwareBlockImportHandlers(
             forksSchedule = beaconGenesisConfig,
             metricsFacade = metricsFacade,
             followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,

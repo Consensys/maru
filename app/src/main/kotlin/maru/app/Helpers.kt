@@ -108,7 +108,7 @@ object Helpers {
     return NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)
   }
 
-  fun createElSyncBlockImportHandlers(
+  fun createForkAwareBlockImportHandlers(
     forksSchedule: ForksSchedule,
     metricsFacade: MetricsFacade,
     followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,
