@@ -65,14 +65,14 @@ class MaruValidatorRestartTest {
   @Test
   fun `Maru validator restarted from scratch is able to sync state`() {
     PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
-
+    val freePorts = List(6) { findFreePort() }
     val followerMaruApp =
       maruFactory.buildTestMaruFollowerWithDiscovery(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
-        p2pPort = findFreePort(),
-        discoveryPort = findFreePort(),
+        p2pPort = freePorts[0],
+        discoveryPort = freePorts[1],
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
@@ -86,12 +86,16 @@ class MaruValidatorRestartTest {
         ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
         dataDir = validatorStack.tmpDir,
-        p2pPort = findFreePort(),
-        discoveryPort = findFreePort(),
+        p2pPort = freePorts[2],
+        discoveryPort = freePorts[3],
         bootnode = followerENR,
       )
     validatorStack.setMaruApp(validatorMaruApp)
     validatorStack.maruApp.start()
+
+    log.info(
+      "Follower: ${followerStack.maruApp.p2pNetwork.nodeId}, valiator: ${validatorStack.maruApp.p2pNetwork.nodeId}",
+    )
 
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
     validatorStack.maruApp.awaitTillMaruHasPeers(1u)
@@ -123,12 +127,14 @@ class MaruValidatorRestartTest {
         ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
         dataDir = validatorStack.tmpDir,
-        p2pPort = findFreePort(),
-        discoveryPort = findFreePort(),
+        p2pPort = freePorts[4],
+        discoveryPort = freePorts[5],
         bootnode = followerENR,
       )
     validatorStack.setMaruApp(newValidatorMaruApp)
     validatorStack.maruApp.start()
+
+    log.info("Restarted valiator: ${newValidatorMaruApp.p2pNetwork.nodeId}")
 
     validatorStack.maruApp.awaitTillMaruHasPeers(1u)
     followerStack.maruApp.awaitTillMaruHasPeers(1u)

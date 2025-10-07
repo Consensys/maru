@@ -176,7 +176,7 @@ class MaruReputationManager(
         ) {
           suitableAfter = Optional.of(disconnectTime.plus(banPeriod))
           score.set(DEFAULT_SCORE)
-        } else {
+        } else if (locallyInitiated) {
           suitableAfter = Optional.of(disconnectTime.plus(cooldownPeriod))
         }
       }

@@ -523,7 +523,7 @@ class MaruFactory(
     discoveryPort: UInt = 0u,
     bootnode: String? = null,
     banPeriod: Duration = 10.seconds,
-    cooldownPeriod: Duration = 2.seconds,
+    cooldownPeriod: Duration = 10.seconds,
     allowEmptyBlocks: Boolean = false,
     blockRangeRequestTimeout: Duration = 5.seconds,
     syncingConfig: SyncingConfig =
