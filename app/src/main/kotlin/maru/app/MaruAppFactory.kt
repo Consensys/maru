@@ -29,8 +29,8 @@ import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
@@ -198,7 +198,13 @@ class MaruAppFactory {
         statusManager = statusManager,
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashManager = forkIdHashProvider,
-        isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
+        isBlockImportEnabledProvider = {
+          if (config.validatorElNode.payloadValidationEnabled) {
+            syncControllerImpl!!.isNodeFullInSync()
+          } else {
+            syncControllerImpl!!.isBeaconChainSynced()
+          }
+        },
         forkIdHasher = forkIdHasher,
         p2PState = kvDatabase,
         syncStatusProviderProvider = { syncControllerImpl!! },

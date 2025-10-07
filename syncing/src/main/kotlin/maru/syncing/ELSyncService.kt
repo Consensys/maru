@@ -13,9 +13,6 @@ import java.util.Timer
 import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
-import maru.config.consensus.ElFork
-import maru.config.consensus.qbft.DifficultyAwareQbftConfig
-import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
 import maru.core.GENESIS_EXECUTION_PAYLOAD
 import maru.database.BeaconChain
@@ -110,9 +107,16 @@ class ELSyncService(
 
         ExecutionPayloadStatus.VALID -> {
           // Call and forget, best effort
-          blockImportHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).handle { _, ex ->
+          blockImportHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).whenException { ex ->
             if (ex != null) {
-              log.warn("Block import to followers failed: errorMessage={}", ex.message, ex)
+              log.warn(
+                "Block import to followers failed: clBlockNumber={}, elBlockNumber={} errorMessage={}",
+                ex
+                  .message,
+                latestBeaconBlockHeader.number,
+                latestBeaconBlockBody.executionPayload.blockNumber,
+                ex,
+              )
             }
           }
 
@@ -137,9 +141,6 @@ class ELSyncService(
 
     onStatusChange(newELSyncStatus)
   }
-
-  private fun extractEvmForkFromDifficultyAwareQbft(forkSpec: ForkSpec): ElFork =
-    ((forkSpec.configuration as DifficultyAwareQbftConfig).postTtdConfig).elFork
 
   @Synchronized
   override fun start() {

@@ -8,9 +8,9 @@
  */
 package maru.consensus.blockimport
 
-import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler

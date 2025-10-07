@@ -9,7 +9,7 @@
 package maru.app
 
 import maru.config.ApiEndpointConfig
-import maru.config.consensus.ElFork
+import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.blockimport.ElForkAwareBlockImporter
