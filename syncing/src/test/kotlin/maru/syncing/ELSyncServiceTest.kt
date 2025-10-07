@@ -16,6 +16,7 @@ import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.NewBlockHandler
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.InstantFinalizationProvider
@@ -70,11 +71,14 @@ class ELSyncServiceTest {
         InMemoryBeaconChain(initialBeaconState = it.first, initialBeaconBlock = it.second)
       }
     val finalizationProvider: FinalizationProvider = InstantFinalizationProvider
+    val blockImportHandler =
+      NewBlockHandler<Unit> { SafeFuture.completedFuture(Unit) }
 
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
+        blockImportHandler = blockImportHandler,
         elManagerMap = emptyMap(),
         onStatusChange = onStatusChange,
         config = config,
@@ -109,10 +113,13 @@ class ELSyncServiceTest {
       }
     val finalizationProvider: FinalizationProvider = InstantFinalizationProvider
     val executionLayerManager = mock<ExecutionLayerManager>()
+    val blockImportHandler =
+      NewBlockHandler<Unit> { SafeFuture.completedFuture(Unit) }
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
+        blockImportHandler = blockImportHandler,
         elManagerMap = mapOf(ElFork.Cancun to executionLayerManager),
         onStatusChange = onStatusChange,
         config = config,
@@ -190,10 +197,13 @@ class ELSyncServiceTest {
         finalizedBlockHash = customFinalizedBlockHash,
       )
     }
+    val blockImportHandler =
+      NewBlockHandler<Unit> { SafeFuture.completedFuture(Unit) }
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
+        blockImportHandler = blockImportHandler,
         elManagerMap = mapOf(ElFork.Cancun to executionLayerManager),
         onStatusChange = { },
         config = config,

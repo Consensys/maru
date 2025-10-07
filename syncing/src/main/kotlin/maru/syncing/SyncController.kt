@@ -15,6 +15,7 @@ import kotlin.concurrent.write
 import linea.kotlin.minusCoercingUnderflow
 import maru.config.consensus.ElFork
 import maru.consensus.ForksSchedule
+import maru.consensus.NewBlockHandler
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationProvider
 import maru.database.BeaconChain
@@ -198,6 +199,7 @@ class BeaconSyncControllerImpl(
     fun create(
       beaconChain: BeaconChain,
       forksSchedule: ForksSchedule,
+      blockImportHandler: NewBlockHandler<Unit>,
       elManagerMap: Map<ElFork, ExecutionLayerManager>,
       peersHeadsProvider: PeersHeadBlockProvider,
       targetChainHeadCalculator: SyncTargetSelector,
@@ -234,6 +236,7 @@ class BeaconSyncControllerImpl(
       val elSyncService =
         ELSyncService(
           beaconChain = beaconChain,
+          blockImportHandler = blockImportHandler,
           forksSchedule = forksSchedule,
           elManagerMap = elManagerMap,
           onStatusChange = controller::updateElSyncStatus,

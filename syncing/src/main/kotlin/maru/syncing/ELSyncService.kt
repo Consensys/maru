@@ -18,6 +18,7 @@ import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.NewBlockHandler
 import maru.consensus.state.FinalizationProvider
 import maru.core.GENESIS_EXECUTION_PAYLOAD
 import maru.database.BeaconChain
@@ -62,6 +63,7 @@ class ELSyncService(
   private val beaconChain: BeaconChain,
   private val forksSchedule: ForksSchedule,
   private val elManagerMap: Map<ElFork, ExecutionLayerManager>,
+  private val blockImportHandler: NewBlockHandler<Unit>,
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
   private val finalizationProvider: FinalizationProvider,
@@ -136,6 +138,13 @@ class ELSyncService(
         }
 
         ExecutionPayloadStatus.VALID -> {
+          // Call and forget, best effort
+          blockImportHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).handle { _, ex ->
+            if (ex != null) {
+              log.warn("Block import to followers failed: errorMessage={}", ex.message, ex)
+            }
+          }
+
           log.debug(
             "EL client is synced newSyncTarget={}",
             newElSyncTarget,

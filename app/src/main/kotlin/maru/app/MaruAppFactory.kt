@@ -73,6 +73,7 @@ import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
@@ -183,6 +184,22 @@ class MaruAppFactory {
         JsonRpcExecutionLayerManager(engineApiClient)
       }
 
+    val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
+      config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
+        Helpers.createWeb3jClient(
+          apiEndpointConfig = apiEndpointConfig,
+          log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
+        )
+      }
+
+    // Create fork-aware block import handlers for ELSyncService (handles blocks across different forks)
+    val elSyncBlockImportHandlers =
+      Helpers.createElSyncBlockImportHandlers(
+        forksSchedule = beaconGenesisConfig,
+        metricsFacade = metricsFacade,
+        followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+      )
+
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
     var syncControllerImpl: SyncController? = null
 
@@ -211,6 +228,7 @@ class MaruAppFactory {
       if (config.p2p != null) {
         BeaconSyncControllerImpl.create(
           beaconChain = kvDatabase,
+          blockImportHandler = elSyncBlockImportHandlers,
           forksSchedule = beaconGenesisConfig,
           elManagerMap = elManagerMap,
           peersHeadsProvider = peersHeadBlockProvider,
@@ -255,26 +273,23 @@ class MaruAppFactory {
           isElOnlineProvider = { elManagerMap[ElFork.Prague]!!.isOnline().get() },
         )
 
-    val maru =
-      MaruApp(
-        config = config,
-        beaconGenesisConfig = beaconGenesisConfig,
-        clock = clock,
-        p2pNetwork = p2pNetwork,
-        privateKeyProvider = { privateKey },
-        finalizationProvider = finalizationProvider,
-        metricsFacade = metricsFacade,
-        vertx = vertx,
-        beaconChain = kvDatabase,
-        metricsSystem = besuMetricsSystemAdapter,
-        validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
-        validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
-        apiServer = apiServer,
-        syncControllerManager = syncControllerImpl,
-        syncStatusProvider = syncControllerImpl,
-      )
-
-    return maru
+    return MaruApp(
+      config = config,
+      beaconGenesisConfig = beaconGenesisConfig,
+      clock = clock,
+      p2pNetwork = p2pNetwork,
+      privateKeyProvider = { privateKey },
+      finalizationProvider = finalizationProvider,
+      metricsFacade = metricsFacade,
+      vertx = vertx,
+      beaconChain = kvDatabase,
+      metricsSystem = besuMetricsSystemAdapter,
+      validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
+      validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
+      apiServer = apiServer,
+      syncControllerManager = syncControllerImpl,
+      syncStatusProvider = syncControllerImpl,
+    )
   }
 
   companion object {
