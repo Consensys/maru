@@ -184,14 +184,6 @@ class MaruAppFactory {
         JsonRpcExecutionLayerManager(engineApiClient)
       }
 
-    val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
-      config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
-        Helpers.createWeb3jClient(
-          apiEndpointConfig = apiEndpointConfig,
-          log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
-        )
-      }
-
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
     var syncControllerImpl: SyncController? = null
 
@@ -218,6 +210,13 @@ class MaruAppFactory {
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
     syncControllerImpl =
       if (config.p2p != null) {
+        val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
+          config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
+            Helpers.createWeb3jClient(
+              apiEndpointConfig = apiEndpointConfig,
+              log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
+            )
+          }
         val elSyncBlockImportHandlers =
           Helpers.createElSyncBlockImportHandlers(
             forksSchedule = beaconGenesisConfig,
