@@ -9,9 +9,11 @@
 package maru.consensus.blockimport
 
 import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.DifficultyAwareQbftConfig
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
-import maru.consensus.extractElFork
 import maru.core.BeaconBlock
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
@@ -26,6 +28,20 @@ class ElForkAwareBlockImporter(
   private val elManagerMap: Map<ElFork, ExecutionLayerManager>,
   private val importerName: String,
 ) : NewBlockHandler<Unit> {
+  companion object {
+    /**
+     * Extracts the EL fork from a ForkSpec based on its consensus configuration.
+     */
+    fun ForkSpec.extractElFork(): ElFork =
+      when (configuration) {
+        is QbftConsensusConfig -> (configuration as QbftConsensusConfig).elFork
+        is DifficultyAwareQbftConfig -> (configuration as DifficultyAwareQbftConfig).postTtdConfig.elFork
+        else -> throw IllegalStateException(
+          "Current fork isn't QBFT nor DifficultyAwareQbft, this case is not supported yet! forkSpec=$this",
+        )
+      }
+  }
+
   private val log = LogManager.getLogger(this.javaClass)
 
   override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
