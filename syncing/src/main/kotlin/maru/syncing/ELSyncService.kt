@@ -111,10 +111,9 @@ class ELSyncService(
             if (ex != null) {
               log.warn(
                 "Block import to followers failed: clBlockNumber={}, elBlockNumber={} errorMessage={}",
-                ex
-                  .message,
                 latestBeaconBlockHeader.number,
                 latestBeaconBlockBody.executionPayload.blockNumber,
+                ex.message,
                 ex,
               )
             }
