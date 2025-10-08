@@ -2,6 +2,14 @@ plugins {
   id 'maru.kotlin-common-minimal-conventions'
 }
 
+configurations.all {
+  // Exclude old Besu dependencies (25.4.0) that come from Teku 25.4.1 transitively.
+  // These exclusions apply globally but only affect Teku's transitive dependencies
+  // since we explicitly depend on Besu via the BOM which provides the correct versions.
+  exclude group: 'org.hyperledger.besu.internal', module: 'metrics-core'
+  exclude group: 'org.hyperledger.besu', module: 'plugin-api'
+}
+
 dependencies {
   //<utils>
   implementation("tech.pegasys.teku.internal:async") {
