@@ -9,17 +9,20 @@
 package maru.syncing.beaconchain
 
 import java.net.ServerSocket
+import java.util.SequencedSet
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
-import maru.config.consensus.ElFork
+import maru.config.SyncingConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
-import maru.consensus.ForkIdHashProvider
-import maru.consensus.ForkIdHashProviderImpl
+import maru.consensus.ElFork
+import maru.consensus.ForkIdHashManager
+import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -40,9 +43,12 @@ import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.PeerLookup
-import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.messages.StatusManager
 import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
+import maru.syncing.CLSyncStatus
+import maru.syncing.ELSyncStatus
+import maru.syncing.SyncStatusProvider
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import net.consensys.linea.metrics.Counter
 import net.consensys.linea.metrics.MetricsFacade
@@ -81,6 +87,49 @@ class CLSyncServiceImplTest {
       "0x0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
         .fromHexToByteArray()
     private val backoffDelay = 1.seconds
+
+    private fun getSyncStatusProvider(): SyncStatusProvider =
+      object : SyncStatusProvider {
+        override fun getCLSyncStatus(): CLSyncStatus = CLSyncStatus.SYNCED
+
+        override fun getElSyncStatus(): ELSyncStatus = ELSyncStatus.SYNCED
+
+        override fun onClSyncStatusUpdate(handler: (newStatus: CLSyncStatus) -> Unit) {}
+
+        override fun onElSyncStatusUpdate(handler: (newStatus: ELSyncStatus) -> Unit) {}
+
+        override fun isBeaconChainSynced(): Boolean = true
+
+        override fun isELSynced(): Boolean = true
+
+        override fun onBeaconSyncComplete(handler: () -> Unit) {}
+
+        override fun onFullSyncComplete(handler: () -> Unit) {}
+
+        override fun getBeaconSyncDistance(): ULong = 0UL
+
+        override fun getCLSyncTarget(): ULong = 0UL
+      }
+
+    fun createForkIdHashProvider(beaconChain: BeaconChain): ForkIdHashManager {
+      val consensusConfig: ConsensusConfig =
+        QbftConsensusConfig(
+          validatorSet =
+            setOf(
+              Validator(ByteArray(20) { 0 }),
+              Validator(ByteArray(20) { 1 }),
+            ),
+          elFork = ElFork.Prague,
+        )
+      val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0UL, 1U, consensusConfig)))
+
+      return ForkIdHashManagerImpl(
+        chainId = CHAIN_ID,
+        beaconChain = beaconChain,
+        forksSchedule = forksSchedule,
+        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+      )
+    }
   }
 
   private var sourceNodePort: UInt = 0u
@@ -90,7 +139,7 @@ class CLSyncServiceImplTest {
   private lateinit var keypair: KeyPair
   private lateinit var targetBeaconChain: BeaconChain
   private lateinit var sourceBeaconChain: BeaconChain
-  private lateinit var validators: Set<Validator>
+  private lateinit var validators: SequencedSet<Validator>
   private lateinit var targetP2pNetwork: P2PNetworkImpl
   private lateinit var sourceP2pNetwork: P2PNetworkImpl
   private lateinit var clSyncService: CLSyncServiceImpl
@@ -110,7 +159,8 @@ class CLSyncServiceImplTest {
   fun setUp() {
     signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     keypair = signatureAlgorithm.generateKeyPair()
-    validators = setOf(Validator(Util.publicKeyToAddress(keypair.publicKey).toArray()))
+    validators =
+      sortedSetOf(Validator(Util.publicKeyToAddress(keypair.publicKey).toArray()))
 
     val genesisTimestamp = DataGenerators.randomTimestamp()
     val (genesisBeaconState, genesisBeaconBlock) = DataGenerators.genesisState(genesisTimestamp, validators)
@@ -374,7 +424,7 @@ class CLSyncServiceImplTest {
     p2PState: P2PState,
   ): P2PNetworkImpl {
     val forkIdHashProvider = createForkIdHashProvider(beaconChain)
-    val statusMessageFactory = StatusMessageFactory(beaconChain, forkIdHashProvider)
+    val statusManager = StatusManager(beaconChain, forkIdHashProvider)
     val p2pNetworkImpl =
       P2PNetworkImpl(
         privateKeyBytes = key,
@@ -387,13 +437,20 @@ class CLSyncServiceImplTest {
         chainId = CHAIN_ID,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetricsFacade,
-        statusMessageFactory = statusMessageFactory,
+        statusManager = statusManager,
         beaconChain = beaconChain,
         metricsSystem = TestMetricsSystemAdapter,
-        forkIdHashProvider = forkIdHashProvider,
+        forkIdHashManager = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
         forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
         p2PState = p2PState,
+        syncStatusProviderProvider = { getSyncStatusProvider() },
+        syncConfig =
+          SyncingConfig(
+            peerChainHeightPollingInterval = 1.minutes,
+            syncTargetSelection = SyncingConfig.SyncTargetSelection.Highest,
+            elSyncStatusRefreshInterval = 1.seconds,
+          ),
       )
     return p2pNetworkImpl
   }
@@ -402,7 +459,7 @@ class CLSyncServiceImplTest {
     beaconChain: BeaconChain,
     genesisBeaconBlock: SealedBeaconBlock,
     genesisTimestamp: ULong,
-    validators: Set<Validator>,
+    validators: SequencedSet<Validator>,
     signatureAlgorithm: SignatureAlgorithm,
     keypair: KeyPair,
   ) {
@@ -436,26 +493,6 @@ class CLSyncServiceImplTest {
     updater.commit()
   }
 
-  fun createForkIdHashProvider(beaconChain: BeaconChain): ForkIdHashProvider {
-    val consensusConfig: ConsensusConfig =
-      QbftConsensusConfig(
-        validatorSet =
-          setOf(
-            DataGenerators.randomValidator(),
-            DataGenerators.randomValidator(),
-          ),
-        elFork = ElFork.Prague,
-      )
-    val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0UL, 1u, consensusConfig)))
-
-    return ForkIdHashProviderImpl(
-      chainId = CHAIN_ID,
-      beaconChain = beaconChain,
-      forksSchedule = forksSchedule,
-      forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
-    )
-  }
-
   private fun awaitUntilAsserted(
     timeout: Long = 6000L,
     timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
@@ -470,7 +507,7 @@ class CLSyncServiceImplTest {
     network: P2PNetworkImpl,
     peers: Int,
   ) {
-    assertThat(network.getPeers().count()).isEqualTo(peers)
+    assertThat(network.peerCount).isEqualTo(peers)
   }
 
   private fun findFreePort(): UInt =

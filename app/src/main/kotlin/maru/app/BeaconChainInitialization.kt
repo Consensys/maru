@@ -42,7 +42,7 @@ class BeaconChainInitialization(
         headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
 
-    val sortedValidators = validatorSet.sortedByAddress()
+    val sortedValidators = validatorSet.toSortedSet()
     val tmpGenesisStateRoot =
       BeaconState(
         beaconBlockHeader = beaconBlockHeader,

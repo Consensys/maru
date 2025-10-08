@@ -19,7 +19,7 @@ import maru.config.P2PConfig
 import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BeaconBlocksByRangeResponse
 import maru.p2p.messages.Status
-import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.messages.StatusManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -40,14 +40,20 @@ interface MaruPeer : Peer {
 
   fun sendStatus(): SafeFuture<Unit>
 
+  fun expectStatus(): Unit
+
   fun updateStatus(newStatus: Status)
 
   fun sendBeaconBlocksByRange(
     startBlockNumber: ULong,
     count: ULong,
   ): SafeFuture<BeaconBlocksByRangeResponse>
+}
 
-  fun scheduleDisconnectIfStatusNotReceived(delay: Duration)
+fun MaruPeer.toLogString(): String {
+  // e.g 16Uiu2HAmNp6gzhT3GwJQjUw6awr3o75SEr9ZVWVfVX3Fq22ERsKS|/ip4/10.42.0.84/tcp/45166|91
+  // useful to see which peer we are connected to and reported head
+  return "{id=$id, addr=${this.address.toExternalForm()}, lastClBlockNumber=${getStatus()?.latestBlockNumber}}"
 }
 
 interface MaruPeerFactory {
@@ -56,14 +62,14 @@ interface MaruPeerFactory {
 
 class DefaultMaruPeerFactory(
   private val rpcMethods: RpcMethods,
-  private val statusMessageFactory: StatusMessageFactory,
+  private val statusManager: StatusManager,
   private val p2pConfig: P2PConfig,
 ) : MaruPeerFactory {
   override fun createMaruPeer(delegatePeer: Peer): MaruPeer =
     DefaultMaruPeer(
       delegatePeer = delegatePeer,
       rpcMethods = rpcMethods,
-      statusMessageFactory = statusMessageFactory,
+      statusManager = statusManager,
       p2pConfig = p2pConfig,
     )
 }
@@ -71,7 +77,7 @@ class DefaultMaruPeerFactory(
 class DefaultMaruPeer(
   private val delegatePeer: Peer,
   private val rpcMethods: RpcMethods,
-  private val statusMessageFactory: StatusMessageFactory,
+  private val statusManager: StatusManager,
   private val scheduler: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor(
       Thread.ofVirtual().factory(),
@@ -87,13 +93,13 @@ class DefaultMaruPeer(
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val status = AtomicReference<Status?>(null)
-  private var scheduledDisconnect: Optional<ScheduledFuture<*>> = Optional.empty()
+  internal var scheduledDisconnect: Optional<ScheduledFuture<*>> = Optional.empty()
 
   override fun getStatus(): Status? = status.get()
 
   override fun sendStatus(): SafeFuture<Unit> {
     try {
-      val statusMessage = statusMessageFactory.createStatusMessage()
+      val statusMessage = statusManager.createStatusMessage()
       val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
         sendRpcMessage(statusMessage, rpcMethods.status())
       scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
@@ -130,6 +136,10 @@ class DefaultMaruPeer(
 
   override fun updateStatus(newStatus: Status) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
+    if (!statusManager.check(newStatus)) {
+      disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
+      return
+    }
     status.set(newStatus)
     log.trace("Received status update from peer={}: status={}", id, newStatus)
     if (connectionInitiatedRemotely()) {
@@ -139,7 +149,7 @@ class DefaultMaruPeer(
     }
   }
 
-  override fun scheduleDisconnectIfStatusNotReceived(delay: Duration) {
+  fun scheduleDisconnectIfStatusNotReceived(delay: Duration) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
     if (!scheduler.isShutdown) {
       try {
@@ -150,14 +160,20 @@ class DefaultMaruPeer(
                 log.debug("Disconnecting from peerId={} by timeout", this.id)
                 disconnectCleanly(DisconnectReason.UNRESPONSIVE)
               },
-              delay.inWholeSeconds,
-              TimeUnit.SECONDS,
+              delay.inWholeMilliseconds,
+              TimeUnit.MILLISECONDS,
             ),
           )
       } catch (e: Exception) {
         log.trace("Failed to schedule disconnect for peerId={}", this.id, e)
       }
     }
+  }
+
+  override fun expectStatus() {
+    scheduleDisconnectIfStatusNotReceived(
+      p2pConfig.statusUpdate.timeout + p2pConfig.statusUpdate.refreshIntervalLeeway,
+    )
   }
 
   override fun sendBeaconBlocksByRange(
@@ -193,9 +209,15 @@ class DefaultMaruPeer(
   override fun disconnectImmediately(
     reason: Optional<DisconnectReason>,
     locallyInitiated: Boolean,
-  ) = delegatePeer.disconnectImmediately(reason, locallyInitiated)
+  ) {
+    scheduler.shutdown()
+    delegatePeer.disconnectImmediately(reason, locallyInitiated)
+  }
 
-  override fun disconnectCleanly(reason: DisconnectReason?): SafeFuture<Void> = delegatePeer.disconnectCleanly(reason)
+  override fun disconnectCleanly(reason: DisconnectReason?): SafeFuture<Void> {
+    scheduler.shutdown()
+    return delegatePeer.disconnectCleanly(reason)
+  }
 
   override fun setDisconnectRequestHandler(handler: DisconnectRequestHandler) =
     delegatePeer.setDisconnectRequestHandler(handler)

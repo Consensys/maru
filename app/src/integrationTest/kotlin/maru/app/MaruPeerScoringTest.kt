@@ -22,11 +22,23 @@ import kotlinx.coroutines.launch
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
+import maru.config.P2PConfig
+import maru.config.SyncingConfig
+import maru.consensus.ForkIdHashManager
+import maru.consensus.ForkIdHasher
+import maru.core.SealedBeaconBlock
+import maru.database.BeaconChain
+import maru.database.P2PState
 import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.DefaultBlockRetrievalStrategy
+import maru.p2p.messages.StatusManager
+import maru.serialization.SerDe
+import maru.syncing.SyncStatusProvider
+import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
+import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
@@ -66,7 +78,7 @@ class MaruPeerScoringTest {
   }
 
   @Test
-  fun `node get's in sync with default block retrieval strategy`() {
+  fun `node gets in sync with default block retrieval strategy`() {
     val maruNodeSetup =
       setUpNodes(blockRetrievalStrategy = DefaultBlockRetrievalStrategy())
 
@@ -90,8 +102,8 @@ class MaruPeerScoringTest {
     val maruNodeSetup =
       setUpNodes(
         blockRetrievalStrategy = FourEmptyResponsesStrategy(),
-        banPeriod = 10.minutes,
-        cooldownPeriod = 1000.milliseconds,
+        banPeriod = 10.seconds,
+        followerCooldownPeriod = 10.minutes,
       )
 
     try {
@@ -106,7 +118,7 @@ class MaruPeerScoringTest {
             maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0,
           )
         }
-      // reconnects after cooldown and finishes syncing
+      // reconnects after ban period and finishes syncing
       await
         .atMost(20.seconds.toJavaDuration())
         .pollInterval(200.milliseconds.toJavaDuration())
@@ -129,7 +141,7 @@ class MaruPeerScoringTest {
       setUpNodes(
         blockRangeRequestTimeout = timeout,
         blockRetrievalStrategy = TimeOutResponsesStrategy(delay = delay),
-        cooldownPeriod = 20.seconds,
+        validatorCooldownPeriod = 20.seconds,
       )
     try {
       sleep((delay - 1.seconds).inWholeMilliseconds)
@@ -152,7 +164,8 @@ class MaruPeerScoringTest {
   fun setUpNodes(
     blockRetrievalStrategy: BlockRetrievalStrategy,
     banPeriod: Duration = 10.seconds,
-    cooldownPeriod: Duration = 10.seconds,
+    validatorCooldownPeriod: Duration = 10.seconds,
+    followerCooldownPeriod: Duration = 10.seconds,
     blockRangeRequestTimeout: Duration = 5.seconds,
   ): MaruNodeSetup {
     fakeLineaContract = FakeLineaRollupSmartContractClient()
@@ -182,20 +195,22 @@ class MaruPeerScoringTest {
         overridingLineaContractClient = fakeLineaContract,
         p2pPort = tcpPort,
         discoveryPort = udpPort,
-        cooldownPeriod = cooldownPeriod,
+        cooldownPeriod = validatorCooldownPeriod,
         p2pNetworkFactory = {
-          privateKeyBytes,
-          p2pConfig,
-          chainId,
-          serDe,
-          metricsFacade,
-          metricsSystem,
-          smf,
-          chain,
-          forkIdHashProvider,
-          forkIdHasher,
-          isBlockImportEnabledProvider,
-          p2pState,
+          privateKeyBytes: ByteArray,
+          p2pConfig: P2PConfig,
+          chainId: UInt,
+          serDe: SerDe<SealedBeaconBlock>,
+          metricsFacade: MetricsFacade,
+          metricsSystem: MetricsSystem,
+          statusManager: StatusManager,
+          chain: BeaconChain,
+          forkIdHashManager: ForkIdHashManager,
+          forkIdHasher: ForkIdHasher,
+          isBlockImportEnabledProvider: () -> Boolean,
+          p2pState: P2PState,
+          syncStatusProviderProvider: () -> SyncStatusProvider,
+          syncConfig: SyncingConfig,
           ->
           MisbehavingP2PNetwork(
             privateKeyBytes = privateKeyBytes,
@@ -204,12 +219,14 @@ class MaruPeerScoringTest {
             serDe = serDe,
             metricsFacade = metricsFacade,
             metricsSystem = metricsSystem,
-            smf = smf,
+            statusManager = statusManager,
             chain = chain,
-            forkIdHashProvider = forkIdHashProvider,
+            forkIdHashManager = forkIdHashManager,
             forkIdHasher = forkIdHasher,
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,
+            syncStatusProviderProvider = syncStatusProviderProvider,
+            syncConfig = syncConfig,
             blockRetrievalStrategy = blockRetrievalStrategy,
           ).p2pNetwork
         },
@@ -256,7 +273,7 @@ class MaruPeerScoringTest {
         p2pPort = tcpPortFollower,
         discoveryPort = udpPortFollower,
         banPeriod = banPeriod,
-        cooldownPeriod = cooldownPeriod,
+        cooldownPeriod = followerCooldownPeriod,
         blockRangeRequestTimeout = blockRangeRequestTimeout,
       )
     followerStack.setMaruApp(followerMaruApp)

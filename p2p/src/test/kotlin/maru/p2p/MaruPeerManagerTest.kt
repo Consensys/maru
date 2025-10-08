@@ -8,8 +8,24 @@
  */
 package maru.p2p
 
-import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ConcurrentHashMap
 import maru.config.P2PConfig
+import maru.config.SyncingConfig
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
+import maru.consensus.ForkIdHashManager
+import maru.consensus.ForkIdHashManagerImpl
+import maru.consensus.ForkIdHasher
+import maru.consensus.ForkSpec
+import maru.consensus.ForksSchedule
+import maru.core.ext.DataGenerators
+import maru.crypto.Hashing
+import maru.database.InMemoryBeaconChain
+import maru.serialization.ForkIdSerializer
+import maru.syncing.CLSyncStatus
+import maru.syncing.ELSyncStatus
+import maru.syncing.SyncStatusProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Test
@@ -20,34 +36,121 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
+import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerAddress
+import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
-import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork as TekuP2PNetwork
 
 class MaruPeerManagerTest {
+  private object Fixtures {
+    fun peerAddress(id: NodeId = mock()): PeerAddress = mock<PeerAddress>().also { whenever(it.id).thenReturn(id) }
+
+    fun tekuPeer(
+      id: NodeId = mock(),
+      address: PeerAddress = peerAddress(id),
+      initiatedLocally: Boolean = true,
+    ): Peer =
+      mock<Peer>().also {
+        whenever(it.id).thenReturn(id)
+        whenever(it.address).thenReturn(address)
+        whenever(it.connectionInitiatedLocally()).thenReturn(initiatedLocally)
+        whenever(it.connectionInitiatedRemotely()).thenReturn(!initiatedLocally)
+      }
+
+    fun maruPeer(
+      initiatedLocally: Boolean = true,
+      isConnected: Boolean = true,
+      address: PeerAddress = mock(),
+    ): MaruPeer {
+      val id = address.id ?: mock<NodeId>()
+
+      return mock<MaruPeer>().also {
+        whenever(it.connectionInitiatedLocally()).thenReturn(initiatedLocally)
+        whenever(it.isConnected).thenReturn(isConnected)
+        whenever(it.address).thenReturn(address)
+        whenever(it.id).thenReturn(id)
+      }
+    }
+  }
+
   companion object {
+    private val chainId = 1337u
+    private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     val reputationManager =
-      MaruReputationManager(NoOpMetricsSystem(), SystemTimeProvider(), { _: NodeId -> false }, P2PConfig.Reputation())
+      MaruReputationManager(
+        metricsSystem = NoOpMetricsSystem(),
+        timeProvider = SystemTimeProvider(),
+        isStaticPeer = { _: NodeId -> false },
+        reputationConfig = P2PConfig.Reputation(),
+      )
+
+    fun createForkIdHashManager(): ForkIdHashManager {
+      val consensusConfig: ConsensusConfig =
+        QbftConsensusConfig(
+          validatorSet =
+            setOf(
+              DataGenerators.randomValidator(),
+              DataGenerators.randomValidator(),
+            ),
+          elFork = ElFork.Prague,
+        )
+      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0UL, 1U, consensusConfig)))
+
+      return ForkIdHashManagerImpl(
+        chainId = chainId,
+        beaconChain = beaconChain,
+        forksSchedule = forksSchedule,
+        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+      )
+    }
+
+    val forkIdHashManager: ForkIdHashManager = createForkIdHashManager()
+
+    private fun createSyncStatusProvider(): SyncStatusProvider =
+      object : SyncStatusProvider {
+        override fun getCLSyncStatus(): CLSyncStatus = CLSyncStatus.SYNCED
+
+        override fun getElSyncStatus(): ELSyncStatus = ELSyncStatus.SYNCED
+
+        override fun onClSyncStatusUpdate(handler: (newStatus: CLSyncStatus) -> Unit) {}
+
+        override fun onElSyncStatusUpdate(handler: (newStatus: ELSyncStatus) -> Unit) {}
+
+        override fun isBeaconChainSynced(): Boolean = true
+
+        override fun isELSynced(): Boolean = true
+
+        override fun onBeaconSyncComplete(handler: () -> Unit) {}
+
+        override fun onFullSyncComplete(handler: () -> Unit) {}
+
+        override fun getBeaconSyncDistance(): ULong = 0UL
+
+        override fun getCLSyncTarget(): ULong = 0UL
+      }
+
+    val syncStatusProvider: SyncStatusProvider = createSyncStatusProvider()
   }
 
   @Test
   fun `does not schedule timeout when connection is initiated locally`() {
-    val mockScheduler = mock<ScheduledExecutorService>()
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
+    val peer = Fixtures.tekuPeer(id = mock(), initiatedLocally = true)
     val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
+    val maruPeer = Fixtures.maruPeer()
     val p2pConfig = mock<P2PConfig>()
+    val syncConfig = mock<SyncingConfig>()
 
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(peer.address).thenReturn(mock())
-    whenever(peer.connectionInitiatedLocally()).thenReturn(true)
+    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
+    whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(syncConfig.desyncTolerance).thenReturn(32u)
+
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
     whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
     whenever(maruPeer.address).thenReturn(mock())
     whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(syncConfig.desyncTolerance).thenReturn(32u)
 
     val manager =
       MaruPeerManager(
@@ -55,98 +158,9 @@ class MaruPeerManagerTest {
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
         isStaticPeer = { false },
-      )
-    manager.start(discoveryService = null, p2pNetwork = mock())
-    manager.onConnect(peer)
+      ) { syncStatusProvider }
 
-    verify(mockScheduler, never()).schedule(any<Runnable>(), any(), any())
-    verify(maruPeer).sendStatus()
-  }
-
-  @Test
-  fun `sends status message immediately for locally initiated connections`() {
-    val mockScheduler = mock<ScheduledExecutorService>()
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
-    val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
-    val mockFutureStatus = mock<SafeFuture<Unit>>()
-    val p2pConfig = mock<P2PConfig>()
-
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(peer.address).thenReturn(mock())
-    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
-    whenever(maruPeer.sendStatus()).thenReturn(mockFutureStatus)
-    whenever(maruPeer.address).thenReturn(mock())
-    whenever(p2pConfig.maxPeers).thenReturn(10)
-
-    val manager =
-      MaruPeerManager(
-        maruPeerFactory = maruPeerFactory,
-        p2pConfig = p2pConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
-      )
-    manager.start(discoveryService = null, p2pNetwork = mock())
-    manager.onConnect(peer)
-
-    verify(maruPeer).sendStatus()
-    verify(mockScheduler, never()).schedule(any<Runnable>(), any(), any())
-  }
-
-  @Test
-  fun `does not send status message for remotely initiated connections`() {
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
-    val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
-    val p2pConfig = mock<P2PConfig>()
-
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(peer.address).thenReturn(mock())
-    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.connectionInitiatedLocally()).thenReturn(false)
-    whenever(maruPeer.getStatus()).thenReturn(null)
-    whenever(maruPeer.address).thenReturn(mock())
-    whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(p2pConfig.statusUpdate).thenReturn(P2PConfig.StatusUpdate())
-
-    val manager =
-      MaruPeerManager(
-        maruPeerFactory = maruPeerFactory,
-        p2pConfig = p2pConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
-      )
-    manager.start(discoveryService = null, p2pNetwork = mock())
-    manager.onConnect(peer)
-
-    verify(maruPeer, never()).sendStatus()
-  }
-
-  @Test
-  fun `creates maru peer through factory when peer connects`() {
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
-    val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
-    val p2pConfig = mock<P2PConfig>()
-
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(peer.address).thenReturn(mock())
-    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
-    whenever(maruPeer.address).thenReturn(mock())
-    whenever(p2pConfig.maxPeers).thenReturn(10)
-
-    val manager =
-      MaruPeerManager(
-        maruPeerFactory = maruPeerFactory,
-        p2pConfig = p2pConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = { false },
-      )
+    // Act
     manager.start(discoveryService = null, p2pNetwork = mock())
     manager.onConnect(peer)
 
@@ -154,21 +168,20 @@ class MaruPeerManagerTest {
   }
 
   @Test
-  fun `stores connected peer in manager for retrieval`() {
+  fun `onConnect successfully connects peer when all conditions are met`() {
     val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
+    val peer = Fixtures.tekuPeer(nodeId, initiatedLocally = true)
     val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
+    val maruPeer = Fixtures.maruPeer()
     val p2pConfig = mock<P2PConfig>()
+    val p2pNetwork = mock<P2PNetwork<Peer>>()
+    val syncConfig = mock<SyncingConfig>()
 
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(peer.address).thenReturn(mock())
-    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(maruPeer.connectionInitiatedLocally()).thenReturn(false)
-    whenever(maruPeer.getStatus()).thenReturn(null)
-    whenever(maruPeer.address).thenReturn(mock())
     whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(p2pConfig.statusUpdate).thenReturn(P2PConfig.StatusUpdate())
+    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
+    whenever(maruPeer.sendStatus()).thenReturn(SafeFuture.completedFuture(Unit))
+    whenever(p2pConfig.maxPeers).thenReturn(10)
+    whenever(syncConfig.desyncTolerance).thenReturn(32u)
 
     val manager =
       MaruPeerManager(
@@ -176,39 +189,26 @@ class MaruPeerManagerTest {
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
         isStaticPeer = { false },
-      )
-    manager.start(discoveryService = null, p2pNetwork = mock())
+      ) { syncStatusProvider }
+    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
 
+    // Verify peer was not disconnected
+    verify(maruPeer, never()).disconnectCleanly(any())
+    verify(peer, never()).disconnectCleanly(any())
+
+    // Verify peer is stored and retrievable
     assertThat(manager.getPeer(nodeId)).isEqualTo(maruPeer)
   }
 
   @Test
-  fun `does not connect or add peer if reputation manager disallows connection`() {
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
+  fun `onConnect disconnects peer when max peers limit exceeded`() {
     val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
     val p2pConfig = mock<P2PConfig>()
-    val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
-    val address = mock<PeerAddress>()
+    val syncConfig = mock<SyncingConfig>()
 
-    val reputationManager =
-      MaruReputationManager(
-        NoOpMetricsSystem(),
-        SystemTimeProvider(),
-        { _: NodeId -> false }, // always banned
-        P2PConfig.Reputation(),
-      )
-
-    whenever(peer.id).thenReturn(nodeId)
-    whenever(peer.address).thenReturn(address)
-    whenever(address.id).thenReturn(nodeId)
-    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(p2pConfig.maxPeers).thenReturn(10)
-    whenever(p2pNetwork.peerCount).thenReturn(0)
-
-    reputationManager.adjustReputation(peer.address, ReputationAdjustment.LARGE_PENALTY)
+    whenever(p2pConfig.maxPeers).thenReturn(5)
+    whenever(syncConfig.desyncTolerance).thenReturn(32u)
 
     val manager =
       MaruPeerManager(
@@ -216,32 +216,69 @@ class MaruPeerManagerTest {
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
         isStaticPeer = { false },
-      )
+      ) { syncStatusProvider }
+
+    val p2pNetwork = mock<P2PNetwork<Peer>>()
+    manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
+    // Add 5 connected peers to equal the maxPeers limit of 5
+    addConnectedPeers(5, manager)
+
+    val peer = Fixtures.tekuPeer(id = mock(), initiatedLocally = true)
+
+    manager.onConnect(peer)
+
+    verify(peer).disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
+  }
+
+  @Test
+  fun `does not connect or add peer if reputation manager disallows connection`() {
+    // Arrange
+    val nodeId: NodeId = mock()
+    val address = Fixtures.peerAddress(nodeId)
+    val peer = Fixtures.tekuPeer(id = nodeId, address = address, initiatedLocally = true)
+    val maruPeerFactory = mock<MaruPeerFactory>()
+    val maruPeer = Fixtures.maruPeer()
+    val p2pConfig = P2PConfig()
+    val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
+
+    val reputationManager = mock<MaruReputationManager>()
+    whenever(reputationManager.isConnectionInitiationAllowed(address)).thenReturn(false)
+
+    whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
+
+    val manager =
+      MaruPeerManager(
+        maruPeerFactory = maruPeerFactory,
+        p2pConfig = p2pConfig,
+        reputationManager = reputationManager,
+        isStaticPeer = { false },
+      ) { syncStatusProvider }
+
+    // Act
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
 
+    // Assert
     verify(maruPeerFactory, never()).createMaruPeer(peer)
     assertThat(manager.getPeer(nodeId)).isNull()
   }
 
   @Test
   fun `connects and adds peer if reputation manager allows connection`() {
-    val nodeId = mock<NodeId>()
-    val peer = mock<Peer>()
+    // Arrange
+    val nodeId: NodeId = mock()
+    val address = Fixtures.peerAddress(nodeId)
+    val peer = Fixtures.tekuPeer(id = nodeId, address = address, initiatedLocally = true)
     val maruPeerFactory = mock<MaruPeerFactory>()
-    val maruPeer = mock<MaruPeer>()
-    val p2pConfig = mock<P2PConfig>()
+    val maruPeer = Fixtures.maruPeer()
+    val p2pConfig = P2PConfig(maxPeers = 10)
     val reputationManager = mock<MaruReputationManager>()
     val p2pNetwork = mock<TekuP2PNetwork<Peer>>()
-    val address = mock<PeerAddress>()
 
     whenever(peer.id).thenReturn(nodeId)
     whenever(peer.address).thenReturn(address)
     whenever(maruPeerFactory.createMaruPeer(peer)).thenReturn(maruPeer)
-    whenever(p2pConfig.maxPeers).thenReturn(10)
     whenever(reputationManager.isConnectionInitiationAllowed(address)).thenReturn(true)
-    whenever(p2pNetwork.peerCount).thenReturn(0)
-    whenever(maruPeer.connectionInitiatedLocally()).thenReturn(true)
 
     val manager =
       MaruPeerManager(
@@ -249,11 +286,98 @@ class MaruPeerManagerTest {
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
         isStaticPeer = { false },
-      )
+      ) { syncStatusProvider }
+
+    // Act
     manager.start(discoveryService = null, p2pNetwork = p2pNetwork)
     manager.onConnect(peer)
 
+    // Assert
     assertThat(manager.getPeer(nodeId)).isEqualTo(maruPeer)
     verify(maruPeerFactory).createMaruPeer(peer)
+  }
+
+  @Test
+  fun `getPeers and peerCount only include actually connected peers`() {
+    // Arrange
+    val nodeId1: NodeId = mock()
+    val nodeId2: NodeId = mock()
+
+    val libp2pPeer1 = Fixtures.tekuPeer(id = nodeId1, initiatedLocally = true)
+    val libp2pPeer2 = Fixtures.tekuPeer(id = nodeId2, initiatedLocally = true)
+
+    val maruPeerFactory = mock<MaruPeerFactory>()
+
+    val maruPeer1 =
+      Fixtures.maruPeer(
+        initiatedLocally = true,
+        isConnected = true,
+      )
+    val maruPeer2 =
+      Fixtures.maruPeer(
+        initiatedLocally = true,
+        isConnected = true,
+      )
+    val p2pConfig = P2PConfig()
+
+    whenever(maruPeerFactory.createMaruPeer(libp2pPeer1)).thenReturn(maruPeer1)
+    whenever(maruPeerFactory.createMaruPeer(libp2pPeer2)).thenReturn(maruPeer2)
+    whenever(maruPeer1.sendStatus()).thenReturn(SafeFuture.completedFuture(Unit))
+    whenever(maruPeer2.sendStatus()).thenReturn(SafeFuture.completedFuture(Unit))
+
+    val manager =
+      MaruPeerManager(
+        maruPeerFactory = maruPeerFactory,
+        p2pConfig = p2pConfig,
+        reputationManager = reputationManager,
+        isStaticPeer = { true },
+        syncStatusProviderProvider = { syncStatusProvider },
+      )
+
+    // Act
+    manager.start(discoveryService = null, p2pNetwork = mock())
+    manager.onConnect(libp2pPeer1)
+    manager.onConnect(libp2pPeer2)
+
+    // Assert
+    assertThat(manager.peerCount).isEqualTo(2)
+    assertThat(manager.getPeers()).containsExactlyInAnyOrder(maruPeer1, maruPeer2)
+
+    // Arrange 2
+    whenever(maruPeer2.isConnected).thenReturn(false)
+
+    // Assert 2
+    assertThat(manager.peerCount).isEqualTo(1)
+    assertThat(manager.getPeers()).containsExactly(maruPeer1)
+    assertThat(manager.getPeer(nodeId2)).isNull()
+    assertThat(manager.getPeer(nodeId1)).isEqualTo(maruPeer1)
+  }
+
+  private fun addConnectedPeer(
+    manager: MaruPeerManager,
+    maruPeer: MaruPeer,
+  ) {
+    // Use reflection to add the existing peer to connectedPeers
+    val peersField = MaruPeerManager::class.java.getDeclaredField("peers")
+    peersField.isAccessible = true
+    @Suppress("UNCHECKED_CAST")
+    val peers = peersField.get(manager) as ConcurrentHashMap<NodeId, MaruPeer>
+    peers[maruPeer.id] = maruPeer
+  }
+
+  private fun addConnectedPeers(
+    number: Int,
+    manager: MaruPeerManager,
+  ): List<MaruPeer> {
+    val peers = mutableListOf<MaruPeer>()
+    for (i in 1..number) {
+      val nodeId = mock<NodeId>()
+      val address = Fixtures.peerAddress(nodeId)
+      val maruPeer = Fixtures.maruPeer(address = address)
+
+      peers.add(maruPeer)
+      addConnectedPeer(manager, maruPeer)
+    }
+    return peers
   }
 }

@@ -8,16 +8,21 @@
  */
 package maru.config.consensus.qbft
 
-import maru.config.consensus.ElFork
 import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
 import maru.core.Validator
 
 data class QbftConsensusConfig(
   val validatorSet: Set<Validator>,
   val elFork: ElFork,
-) : ConsensusConfig
+) : ConsensusConfig {
+  override fun toString(): String = "QbftConsensusConfig(validatorSet=$validatorSet, elFork=$elFork)"
+}
 
 data class DifficultyAwareQbftConfig(
   val postTtdConfig: QbftConsensusConfig,
   val terminalTotalDifficulty: ULong,
-) : ConsensusConfig
+) : ConsensusConfig {
+  override fun toString(): String =
+    "DifficultyAwareQbftConfig(postTtdConfig=$postTtdConfig, terminalTotalDifficulty=$terminalTotalDifficulty)"
+}

@@ -29,15 +29,13 @@ import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ForkIdHashProvider
-import maru.consensus.ForkIdHashProviderImpl
+import maru.consensus.ElFork
+import maru.consensus.ForkIdHashManager
+import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
-import maru.consensus.LatestElBlockMetadataCache
 import maru.consensus.StaticValidatorProvider
-import maru.consensus.Web3jMetadataProvider
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.core.SealedBeaconBlock
@@ -56,7 +54,7 @@ import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.P2PPeersHeadBlockProvider
-import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.messages.StatusManager
 import maru.serialization.ForkIdSerializer
 import maru.serialization.SerDe
 import maru.serialization.rlp.RLPSerializers
@@ -67,6 +65,7 @@ import maru.syncing.HighestHeadTargetSelector
 import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
+import maru.syncing.SyncStatusProvider
 import maru.syncing.SyncTargetSelector
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
@@ -95,12 +94,14 @@ class MaruAppFactory {
       SerDe<SealedBeaconBlock>,
       MetricsFacade,
       BesuMetricsSystem,
-      StatusMessageFactory,
+      StatusManager,
       BeaconChain,
-      ForkIdHashProvider,
+      ForkIdHashManager,
       ForkIdHasher,
       () -> Boolean,
       P2PState,
+      () -> SyncStatusProvider,
+      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     log.info("configs={}", config)
@@ -145,21 +146,25 @@ class MaruAppFactory {
         Hashing::shortShaHash,
       )
     val forkIdHashProvider =
-      ForkIdHashProviderImpl(
+      ForkIdHashManagerImpl(
         chainId = beaconGenesisConfig.chainId,
         beaconChain = kvDatabase,
         forksSchedule = beaconGenesisConfig,
         forkIdHasher = forkIdHasher,
+        clock = clock,
+        allowedTimeWindowSeconds =
+          config.p2p
+            ?.forkidAllowedTimeWindowSeconds
+            ?.inWholeSeconds
+            ?.toULong() ?: 20U,
       )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
         apiEndpointConfig = config.validatorElNode.ethApiEndpoint,
         log = LogManager.getLogger("maru.clients.el.ethapi"),
       )
-    val asyncMetadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
-    val latestElBlockMetadataCache =
-      LatestElBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
-    val statusMessageFactory = StatusMessageFactory(kvDatabase, forkIdHashProvider)
+
+    val statusManager = StatusManager(kvDatabase, forkIdHashProvider)
 
     val engineApiWeb3jClient =
       Helpers.createWeb3jClient(
@@ -188,12 +193,20 @@ class MaruAppFactory {
         chainId = beaconGenesisConfig.chainId,
         beaconChain = kvDatabase,
         metricsFacade = metricsFacade,
-        statusMessageFactory = statusMessageFactory,
+        statusManager = statusManager,
         besuMetricsSystem = besuMetricsSystemAdapter,
-        forkIdHashProvider = forkIdHashProvider,
-        isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
+        forkIdHashManager = forkIdHashProvider,
+        isBlockImportEnabledProvider = {
+          if (config.validatorElNode.payloadValidationEnabled) {
+            syncControllerImpl!!.isNodeFullInSync()
+          } else {
+            syncControllerImpl!!.isBeaconChainSynced()
+          }
+        },
         forkIdHasher = forkIdHasher,
         p2PState = kvDatabase,
+        syncStatusProviderProvider = { syncControllerImpl!! },
+        syncConfig = config.syncing,
         p2pNetworkFactory = p2pNetworkFactory,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
@@ -260,7 +273,6 @@ class MaruAppFactory {
         vertx = vertx,
         beaconChain = kvDatabase,
         metricsSystem = besuMetricsSystemAdapter,
-        lastElBlockMetadataCache = latestElBlockMetadataCache,
         validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
         validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
         apiServer = apiServer,
@@ -324,11 +336,13 @@ class MaruAppFactory {
       beaconChain: BeaconChain,
       isBlockImportEnabledProvider: () -> Boolean,
       metricsFacade: MetricsFacade,
-      statusMessageFactory: StatusMessageFactory,
+      statusManager: StatusManager,
       besuMetricsSystem: BesuMetricsSystem,
-      forkIdHashProvider: ForkIdHashProvider,
+      forkIdHashManager: ForkIdHashManager,
       forkIdHasher: ForkIdHasher,
       p2PState: P2PState,
+      syncStatusProviderProvider: () -> SyncStatusProvider,
+      syncConfig: SyncingConfig,
       p2pNetworkFactory: (
         ByteArray,
         P2PConfig,
@@ -336,12 +350,14 @@ class MaruAppFactory {
         SerDe<SealedBeaconBlock>,
         MetricsFacade,
         BesuMetricsSystem,
-        StatusMessageFactory,
+        StatusManager,
         BeaconChain,
-        ForkIdHashProvider,
+        ForkIdHashManager,
         ForkIdHasher,
         () -> Boolean,
         P2PState,
+        () -> SyncStatusProvider,
+        SyncingConfig,
       ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     ): P2PNetwork =
       p2pConfig?.let {
@@ -357,12 +373,14 @@ class MaruAppFactory {
           RLPSerializers.SealedBeaconBlockCompressorSerializer,
           metricsFacade,
           besuMetricsSystem,
-          statusMessageFactory,
+          statusManager,
           beaconChain,
-          forkIdHashProvider,
+          forkIdHashManager,
           forkIdHasher,
           isBlockImportEnabledProvider,
           p2PState,
+          syncStatusProviderProvider,
+          syncConfig,
         )
       } ?: run {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")

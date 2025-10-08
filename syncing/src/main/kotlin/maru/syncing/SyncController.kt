@@ -13,7 +13,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import linea.kotlin.minusCoercingUnderflow
-import maru.config.consensus.ElFork
+import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationProvider
@@ -55,7 +55,7 @@ class BeaconSyncControllerImpl(
     clSyncService.onSyncComplete { syncTarget ->
       updateClSyncStatus(CLSyncStatus.SYNCED)
     }
-    onFullSyncComplete { log.info("El client is synced now") }
+    onFullSyncComplete { log.info("Maru is fully synced now") }
   }
 
   override fun getCLSyncStatus(): CLSyncStatus = lock.read { currentState.clStatus }

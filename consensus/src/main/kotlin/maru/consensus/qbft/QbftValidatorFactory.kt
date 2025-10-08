@@ -88,6 +88,7 @@ class QbftValidatorFactory(
   private val p2PNetwork: P2PNetwork,
   private val allowEmptyBlocks: Boolean,
   private val forksSchedule: ForksSchedule,
+  private val payloadValidationEnabled: Boolean,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
@@ -188,7 +189,7 @@ class QbftValidatorFactory(
         beaconChain = beaconChain,
         proposerSelector = proposerSelector,
         stateTransition = stateTransition,
-        executionLayerManager = executionLayerManager,
+        executionLayerManager = if (payloadValidationEnabled) executionLayerManager else null,
         allowEmptyBlocks = allowEmptyBlocks,
       )
     val protocolSchedule =

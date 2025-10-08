@@ -8,18 +8,20 @@
  */
 package maru.consensus
 
-import maru.consensus.qbft.sortedByAddress
+import java.util.SequencedSet
 import maru.core.Validator
-import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
  * Provides access to the set of validators for a given block.
  */
 interface ValidatorProvider {
-  fun getValidatorsAfterBlock(blockNumber: ULong): SafeFuture<Set<Validator>> = getValidatorsForBlock(blockNumber + 1u)
+  fun getValidatorsAfterBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>> =
+    getValidatorsForBlock(
+      blockNumber + 1u,
+    )
 
-  fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>>
+  fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>>
 }
 
 /**
@@ -28,13 +30,8 @@ interface ValidatorProvider {
 class StaticValidatorProvider(
   validators: Set<Validator>,
 ) : ValidatorProvider {
-  private val log = LogManager.getLogger(this.javaClass)
+  private val validators: SequencedSet<Validator> = validators.toSortedSet()
 
-  private val validators: Set<Validator> =
-    validators.sortedByAddress()
-
-  override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> {
-    log.debug("Providing static validators for block {}: {}", blockNumber, validators)
-    return SafeFuture.completedFuture(validators)
-  }
+  override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<SequencedSet<Validator>> =
+    SafeFuture.completedFuture(validators)
 }
