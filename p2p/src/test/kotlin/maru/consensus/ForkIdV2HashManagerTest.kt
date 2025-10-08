@@ -71,7 +71,7 @@ class ForkIdV2HashManagerTest {
     ForkSpec(
       timestampSeconds = ts,
       blockTimeSeconds = 1U,
-      configuration = QbftConsensusConfig(setOf(validator), elFork),
+      configuration = QbftConsensusConfig(setOf(validator), fork = ChainFork(ClFork.QBFT_PHASE0, elFork)),
     )
 
   private fun forkIdManager(

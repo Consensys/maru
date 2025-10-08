@@ -37,6 +37,8 @@ import maru.config.QbftConfig
 import maru.config.SyncingConfig
 import maru.config.SyncingConfig.SyncTargetSelection
 import maru.config.ValidatorElNode
+import maru.consensus.ChainFork
+import maru.consensus.ClFork
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
@@ -132,7 +134,7 @@ class MaruFactory(
               DifficultyAwareQbftConfig(
                 QbftConsensusConfig(
                   validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                  elFork = ElFork.Paris,
+                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
                 ),
                 terminalTotalDifficulty = ttd!!,
               ),
@@ -143,7 +145,7 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Shanghai,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
               ),
           ),
           ForkSpec(
@@ -152,7 +154,7 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Cancun,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
               ),
           ),
           ForkSpec(
@@ -161,7 +163,7 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Prague,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
               ),
           ),
         ),
@@ -176,7 +178,7 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Prague,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
               ),
           ),
         ),

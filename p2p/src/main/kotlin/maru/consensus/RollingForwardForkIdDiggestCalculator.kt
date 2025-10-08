@@ -13,7 +13,6 @@ import maru.core.Hasher
 import maru.crypto.Hashing
 import maru.crypto.Keccak256Hasher
 import maru.database.BeaconChain
-import maru.serialization.ForkSpecSerializer
 
 internal fun interface ForkDiggestCalculator {
   fun calculateForkDigests(forks: List<ForkSpec>): List<ForkInfo>
@@ -41,7 +40,7 @@ class RollingForwardForkIdDiggestCalculator(
       genesisForkIdDigest = genesisForkIdDigest,
       forks = forks,
       forkIdDigester = forkIdDigester::hash,
-      forkSpecDigester = ForkSpecSerializer::serialize,
+      forkSpecDigester = ForkSpecDigester::serialize,
     )
   }
 

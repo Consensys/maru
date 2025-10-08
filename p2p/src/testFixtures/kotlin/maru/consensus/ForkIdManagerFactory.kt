@@ -26,7 +26,7 @@ object ForkIdManagerFactory {
             DataGenerators.randomValidator(),
             DataGenerators.randomValidator(),
           ),
-        elFork = elFork,
+        fork = ChainFork(ClFork.QBFT_PHASE0, elFork = elFork),
       ),
     forks: List<ForkSpec> = listOf(ForkSpec(0UL, 1u, consensusConfig)),
     peeringForkMismatchLeewayTime: Duration = 5.minutes,

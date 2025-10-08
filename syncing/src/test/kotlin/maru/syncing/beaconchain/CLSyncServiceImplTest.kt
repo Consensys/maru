@@ -16,11 +16,12 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
+import maru.consensus.ChainFork
+import maru.consensus.ClFork
 import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdManagerFactory
-import maru.consensus.ForkSpec
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.DelayedQbftBlockCreator
@@ -113,14 +114,14 @@ class CLSyncServiceImplTest {
               Validator(ByteArray(20) { 0 }),
               Validator(ByteArray(20) { 1 }),
             ),
-          elFork = ElFork.Prague,
+          fork = ChainFork(ClFork.QBFT_PHASE0, elFork = ElFork.Prague),
         )
 
       return ForkIdManagerFactory.createForkIdHashManager(
         chainId = CHAIN_ID,
         beaconChain = beaconChain,
         elFork = ElFork.Prague,
-        forks = listOf(ForkSpec(0UL, 1U, consensusConfig)),
+        consensusConfig = consensusConfig,
       )
     }
   }
