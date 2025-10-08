@@ -82,6 +82,7 @@ class Libp2pNetworkFactory(
       .gossipHistoryLength(6)
       .DLow(5)
       .floodPublishMaxMessageSizeThreshold(1 shl 14) // 16KiB
+      .gossipFactor(1.0)
       .build()
     val gossipRouterBuilder =
       GossipRouterBuilder().apply {
