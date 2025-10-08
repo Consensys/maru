@@ -10,6 +10,9 @@ package maru.p2p.messages
 
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
+import maru.serialization.MAX_MESSAGE_SIZE
+import maru.serialization.rlp.RLPSerDe
+import maru.serialization.rlp.RLPSerializers
 
 /**
  * Strategy interface for block retrieval logic.
@@ -35,4 +38,35 @@ class DefaultBlockRetrievalStrategy : BlockRetrievalStrategy {
       startBlockNumber = request.startBlockNumber,
       count = maxBlocks,
     )
+}
+
+/**
+ * Implementation that retrieves blocks from the beacon chain and ensures their serialized size
+ * would not exceed the given size limit
+ */
+class SizeLimitBlockRetrievalStrategy(
+  private val sealedBeaconBlockSerDe: RLPSerDe<SealedBeaconBlock> = RLPSerializers.SealedBeaconBlockSerializer,
+  private val sizeLimit: Int = (MAX_MESSAGE_SIZE * 0.95).toInt(),
+) : BlockRetrievalStrategy {
+  override fun getBlocks(
+    beaconChain: BeaconChain,
+    request: BeaconBlocksByRangeRequest,
+    maxBlocks: ULong,
+  ): List<SealedBeaconBlock> {
+    val sealedBeaconBlocks = mutableListOf<SealedBeaconBlock>()
+    var sumOfSerializedBlockSize = 0
+    var blockNumber = request.startBlockNumber
+    val blockRange = request.startBlockNumber..request.startBlockNumber + maxBlocks - 1U
+
+    while (sumOfSerializedBlockSize < sizeLimit && blockRange.contains(blockNumber)) {
+      val sealedBlock =
+        beaconChain.getSealedBeaconBlock(blockNumber)
+          ?: throw IllegalStateException("Missing sealed beacon block $blockNumber")
+      sealedBeaconBlocks.add(sealedBlock)
+      sumOfSerializedBlockSize += sealedBeaconBlockSerDe.serialize(sealedBlock).size
+      blockNumber++
+    }
+
+    return sealedBeaconBlocks
+  }
 }
