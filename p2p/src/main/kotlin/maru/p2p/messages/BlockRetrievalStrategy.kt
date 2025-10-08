@@ -66,11 +66,11 @@ class SizeLimitBlockRetrievalStrategy(
           ?: throw IllegalStateException("Missing sealed beacon block $blockNumber")
 
       sumOfSerializedBlockSize += sealedBeaconBlockSerDe.serialize(sealedBlock).size
-      
+
       if (sumOfSerializedBlockSize <= sizeLimit) {
         sealedBeaconBlocks.add(sealedBlock)
       }
-      
+
       blockNumber++
     }
 
