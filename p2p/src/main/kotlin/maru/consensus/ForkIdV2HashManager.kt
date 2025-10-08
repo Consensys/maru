@@ -10,24 +10,20 @@ package maru.consensus
 
 import java.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
-import maru.crypto.Hashing
-import maru.crypto.Keccak256Hasher
 import maru.database.BeaconChain
-import maru.serialization.ForkSpecSerializer
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
 
-class ForkIdV2HashManager(
+data class ForkInfo(
+  val forkSpec: ForkSpec,
+  val forkIdDigest: ByteArray,
+)
+
+class ForkIdV2HashManager internal constructor(
   private val clock: Clock,
-  private val genesisForkIdDigest: ByteArray,
-  private val forkIdDigester: (ForkIdV2) -> ByteArray,
-  private val forkSpecDigester: (ForkSpec) -> ByteArray,
-  private val forks: List<ForkSpec>,
-  private val peeringForkMismatchLeewayTime: Duration = 5.minutes,
+  private val forks: List<ForkInfo>,
+  private val peeringForkMismatchLeewayTime: Duration,
 ) : ForkIdHashManagerV2 {
   init {
     require(forks.isNotEmpty()) { "empty forks list" }
@@ -38,35 +34,17 @@ class ForkIdV2HashManager(
       chainId: UInt,
       beaconChain: BeaconChain,
       forks: List<ForkSpec>,
-      peeringForkMismatchLeewayTime: Duration = 5.minutes,
+      peeringForkMismatchLeewayTime: Duration,
       clock: Clock,
-    ): ForkIdHashManagerV2 {
-      val forkIdDigester = ForkIdV2Digester(hasher = Hashing::keccak)
-      val genesisBeaconBlockHash =
-        beaconChain
-          .getBeaconState(0UL)!!
-          .beaconBlockHeader
-          .hash
+    ): ForkIdV2HashManager {
+      val digestsCalculator = RollingForwardForkIdDiggestCalculator(chainId, beaconChain)
       return ForkIdV2HashManager(
         clock = clock,
-        genesisForkIdDigest =
-          genesisForkIdDigest(
-            genesisBeaconBlockHash = genesisBeaconBlockHash,
-            chainId = chainId,
-            hasher = Keccak256Hasher,
-          ),
-        forkIdDigester = forkIdDigester::hash,
-        forkSpecDigester = ForkSpecSerializer::serialize,
         peeringForkMismatchLeewayTime = peeringForkMismatchLeewayTime,
-        forks = forks,
+        forks = digestsCalculator.calculateForkDigests(forks),
       )
     }
   }
-
-  private data class ForkInfo(
-    val forkSpec: ForkSpec,
-    val forkIdDigest: ByteArray,
-  )
 
   @OptIn(ExperimentalTime::class)
   private fun ForkInfo.isWithinLeeway(): Boolean {
@@ -77,37 +55,21 @@ class ForkIdV2HashManager(
     return forkTime in currentTimeMinusLeeway..currentTimePlusLeeway
   }
 
-  private val log: Logger = LogManager.getLogger(this.javaClass)
-
   /**
    *  List of [ForkInfo] sorted by their [ForkSpec.timestampSeconds] descending order (newest first).
    */
-  private val forksInfo: List<ForkInfo> = forkSpecsDigests(forks, forkSpecDigester)
-
-  private fun forkSpecsDigests(
-    forks: List<ForkSpec>,
-    forkSpecDigester: (ForkSpec) -> ByteArray,
-  ): List<ForkInfo> {
-    var prevForkDigest = genesisForkIdDigest
-    return forks
-      .sortedBy { it.timestampSeconds }
-      .map { forkSpec ->
-        val forkIdDigest = forkIdDigester(ForkIdV2(prevForkDigest, forkSpecDigester(forkSpec)))
-        prevForkDigest = forkIdDigest
-        ForkInfo(forkSpec, forkIdDigest)
-      }.reversed()
-  }
+  internal val forksInfo: List<ForkInfo> = forks.sortedBy { it.forkSpec.timestampSeconds }.reversed()
 
   private fun currentForkIndex(): Int {
     val currentTimestamp = clock.instant().epochSecond.toULong()
     return forksInfo.indexOfFirst { currentTimestamp >= it.forkSpec.timestampSeconds }
   }
 
-  private fun currentFork(): ForkInfo = forksInfo[currentForkIndex()]
+  internal fun currentFork(): ForkInfo = forksInfo[currentForkIndex()]
 
-  private fun nextFork(): ForkInfo? = forksInfo.getOrNull(index = currentForkIndex() + 1)
+  internal fun nextFork(): ForkInfo? = forksInfo.getOrNull(index = currentForkIndex() - 1)
 
-  private fun prevFork(): ForkInfo? = forksInfo.getOrNull(index = currentForkIndex() - 1)
+  internal fun prevFork(): ForkInfo? = forksInfo.getOrNull(index = currentForkIndex() + 1)
 
   override fun currentForkHash(): ByteArray = currentFork().forkIdDigest
 

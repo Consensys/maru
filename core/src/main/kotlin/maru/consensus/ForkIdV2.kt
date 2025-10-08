@@ -38,20 +38,3 @@ fun forkIdToBytes(forkIdV2: ForkIdV2): ByteArray {
       .put(forkIdV2.forkSpecDigest)
   return buffer.array()
 }
-
-fun genesisForkIdDigest(
-  genesisBeaconBlockHash: ByteArray,
-  chainId: UInt,
-  hasher: Hasher,
-): ByteArray {
-  val bytes =
-    ByteBuffer
-      .allocate(genesisBeaconBlockHash.size + Int.SIZE_BYTES)
-      .put(genesisBeaconBlockHash)
-      .putInt(chainId.toInt())
-      .array()
-  return hasher
-    .hash(bytes)
-    .takeLast(4)
-    .toByteArray()
-}
