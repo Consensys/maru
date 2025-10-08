@@ -77,13 +77,14 @@ class Libp2pNetworkFactory(
       sealedBlocksTopicHandler,
     )
 
-    val gossipParams = GossipParamsBuilder()
-      .heartbeatInterval(700.milliseconds.toJavaDuration())
-      .gossipHistoryLength(6)
-      .DLow(5)
-      .floodPublishMaxMessageSizeThreshold(1 shl 14) // 16KiB
-      .gossipFactor(1.0)
-      .build()
+    val gossipParams =
+      GossipParamsBuilder()
+        .heartbeatInterval(700.milliseconds.toJavaDuration())
+        .gossipHistoryLength(6)
+        .DLow(5)
+        .floodPublishMaxMessageSizeThreshold(1 shl 14) // 16KiB
+        .gossipFactor(1.0)
+        .build()
     val gossipRouterBuilder =
       GossipRouterBuilder().apply {
         params = gossipParams
