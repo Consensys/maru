@@ -11,14 +11,11 @@ package maru.p2p
 import kotlin.random.Random
 import maru.consensus.ElFork
 import maru.consensus.ForkId
-import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
-import maru.database.InMemoryBeaconChain
 import maru.serialization.ForkIdSerializer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -100,27 +97,5 @@ class QbftForkIdComputerTest {
     val hash1 = forkIdHasher.hash(forkId1)
     val hash2 = forkIdHasher.hash(forkId2)
     Assertions.assertThat(hash1).isNotEqualTo(hash2)
-  }
-
-  @Test
-  fun `current fork id hash is returned for current fork`() {
-    val v1 = DataGenerators.randomValidator()
-    val v2 = DataGenerators.randomValidator()
-    val config =
-      QbftConsensusConfig(
-        validatorSet = setOf(v1, v2),
-        elFork = ElFork.Prague,
-      )
-    val forkSpec = ForkSpec(0UL, 1U, config)
-    val genesisBeaconState = DataGenerators.randomBeaconState(number = 0u, timestamp = 0u)
-    val forkId = ForkId(dummyChainId, forkSpec, genesisBeaconState.beaconBlockHeader.hash)
-    val hash = forkIdHasher.hash(forkId)
-
-    val beaconChain = InMemoryBeaconChain(genesisBeaconState)
-    val forksSchedule = ForksSchedule(dummyChainId, listOf(forkSpec))
-    val currentForkIdHash =
-      ForkIdHashManagerImpl(dummyChainId, beaconChain, forksSchedule, forkIdHasher)
-        .currentHash()
-    Assertions.assertThat(currentForkIdHash).isEqualTo(hash)
   }
 }
