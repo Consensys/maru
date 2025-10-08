@@ -17,10 +17,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2PConfig
-import maru.config.SyncingConfig
-import maru.consensus.ForkId
 import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
@@ -62,11 +59,9 @@ class P2PNetworkImpl(
   private val statusManager: StatusManager,
   private val beaconChain: BeaconChain,
   private val forkIdHashManager: ForkIdHashManager,
-  private val forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
   private val p2PState: P2PState,
   private val syncStatusProviderProvider: () -> SyncStatusProvider,
-  private val syncConfig: SyncingConfig,
   // for testing:
   private val rpcMethodsFactory: (
     StatusManager,
@@ -396,16 +391,6 @@ class P2PNetworkImpl(
   }
 
   override fun handleForkTransition(forkSpec: ForkSpec) {
-    val forkId =
-      ForkId(
-        chainId = chainId,
-        forkSpec = forkSpec,
-        genesisRootHash =
-          beaconChain.getBeaconState(0u)?.beaconBlockHeader?.hash
-            ?: throw IllegalStateException("Genesis state not found"),
-      )
-    val newForkIdHash = forkIdHasher.hash(forkId)
-    forkIdHashManager.update(forkSpec)
-    discoveryService?.updateForkIdHash(Bytes.wrap(newForkIdHash))
+    discoveryService?.updateForkIdHash(Bytes.wrap(forkIdHashManager.currentHash()))
   }
 }

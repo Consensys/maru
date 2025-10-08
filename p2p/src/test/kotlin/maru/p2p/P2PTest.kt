@@ -20,20 +20,17 @@ import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
 import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
-import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusManager
-import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
@@ -121,8 +118,7 @@ class P2PTest {
         override fun getCLSyncTarget(): ULong = 100UL
       }
 
-    private val beaconChain: InMemoryBeaconChain =
-      InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
+    private val beaconChain: InMemoryBeaconChain = InMemoryBeaconChain.fromGenesis()
     private val forkIdHashManager: ForkIdHashManager =
       createForkIdHashManager(
         chainId = chainId,
@@ -200,10 +196,8 @@ class P2PTest {
         metricsSystem = NoOpMetricsSystem(),
         forkIdHashManager = forkIdHashManager,
         isBlockImportEnabledProvider = { true },
-        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
         p2PState = p2PState,
         syncStatusProviderProvider = { getSyncStatusProvider() },
-        syncConfig = syncConfig,
       )
   }
 

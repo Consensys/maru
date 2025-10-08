@@ -65,7 +65,7 @@ class MaruDiscoveryServiceTest {
     private val key3 = "0x4437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".decodeHex()
 
     private val chainId = 1337u
-    private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
+    private val beaconChain = InMemoryBeaconChain.fromGenesis()
     val consensusConfig: ConsensusConfig =
       QbftConsensusConfig(
         validatorSet =

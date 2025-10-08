@@ -22,9 +22,7 @@ import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.config.P2PConfig
-import maru.config.SyncingConfig
 import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.database.P2PState
@@ -206,11 +204,9 @@ class MaruPeerScoringTest {
           statusManager: StatusManager,
           chain: BeaconChain,
           forkIdHashManager: ForkIdHashManager,
-          forkIdHasher: ForkIdHasher,
           isBlockImportEnabledProvider: () -> Boolean,
           p2pState: P2PState,
           syncStatusProviderProvider: () -> SyncStatusProvider,
-          syncConfig: SyncingConfig,
           ->
           MisbehavingP2PNetwork(
             privateKeyBytes = privateKeyBytes,
@@ -222,11 +218,9 @@ class MaruPeerScoringTest {
             statusManager = statusManager,
             chain = chain,
             forkIdHashManager = forkIdHashManager,
-            forkIdHasher = forkIdHasher,
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,
             syncStatusProviderProvider = syncStatusProviderProvider,
-            syncConfig = syncConfig,
             blockRetrievalStrategy = blockRetrievalStrategy,
           ).p2pNetwork
         },

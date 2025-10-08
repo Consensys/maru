@@ -9,11 +9,16 @@
 package maru.core
 
 import maru.serialization.SerDe
+import maru.serialization.Serializer
 
 typealias HeaderHashFunction = (BeaconBlockHeader) -> ByteArray
 
 fun interface Hasher {
-  fun hash(serializedBytes: ByteArray): ByteArray
+  fun hash(input: ByteArray): ByteArray
+}
+
+fun interface ObjHasher<T> {
+  fun hash(obj: T): ByteArray
 }
 
 /**
@@ -33,4 +38,10 @@ object HashUtil {
     val serialized = serDe.serialize(t)
     return hasher.hash(serialized)
   }
+
+  fun <T> hashWithSerializer(
+    obj: T,
+    serializer: Serializer<T>,
+    hasher: Hasher,
+  ): ByteArray = hasher.hash(serializer.serialize(obj))
 }

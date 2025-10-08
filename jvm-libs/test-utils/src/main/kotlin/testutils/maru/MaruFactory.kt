@@ -40,7 +40,6 @@ import maru.config.ValidatorElNode
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
@@ -324,11 +323,9 @@ class MaruFactory(
       StatusManager,
       BeaconChain,
       ForkIdHashManager,
-      ForkIdHasher,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
-      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp =
     MaruAppFactory().create(
@@ -422,11 +419,9 @@ class MaruFactory(
       StatusManager,
       BeaconChain,
       ForkIdHashManager,
-      ForkIdHasher,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
-      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort)
@@ -485,11 +480,9 @@ class MaruFactory(
       StatusManager,
       BeaconChain,
       ForkIdHashManager,
-      ForkIdHasher,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
-      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =
@@ -555,11 +548,9 @@ class MaruFactory(
       StatusManager,
       BeaconChain,
       ForkIdHashManager,
-      ForkIdHasher,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
-      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =
