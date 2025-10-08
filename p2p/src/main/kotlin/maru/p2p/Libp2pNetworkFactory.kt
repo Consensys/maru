@@ -27,6 +27,8 @@ import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import java.util.Optional
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.toJavaDuration
 import maru.core.SealedBeaconBlock
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import org.apache.tuweni.bytes.Bytes
@@ -76,7 +78,7 @@ class Libp2pNetworkFactory(
       sealedBlocksTopicHandler,
     )
 
-    val gossipParams = GossipParamsBuilder().heartbeatInterval(1.seconds).build()
+    val gossipParams = GossipParamsBuilder().heartbeatInterval(700.milliseconds.toJavaDuration()).build()
     val gossipRouterBuilder =
       GossipRouterBuilder().apply {
         params = gossipParams
