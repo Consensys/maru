@@ -8,4 +8,5 @@
  */
 package maru.serialization
 
-const val MAX_MESSAGE_SIZE: Int = 1048576
+const val MAX_MESSAGE_SIZE: Int = 10485760
+const val MAX_COMPRESSED_MESSAGE_SIZE: Int = 1048576
