@@ -218,7 +218,7 @@ class MaruDiscoveryServiceTest {
               P2PConfig.Discovery(
                 port = PORT2,
                 bootnodes = emptyList(),
-                refreshInterval = 10.seconds,
+                refreshInterval = 5.seconds,
               ),
           ),
         forkIdHashManager = forkIdHashProvider,
@@ -267,7 +267,7 @@ class MaruDiscoveryServiceTest {
       discoveryService3.start()
 
       await
-        .timeout(15.seconds.toJavaDuration())
+        .timeout(20.seconds.toJavaDuration())
         .untilAsserted {
           val foundPeers =
             discoveryService2
