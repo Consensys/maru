@@ -15,7 +15,6 @@ import io.libp2p.core.crypto.PrivKey
 import io.libp2p.core.dsl.host
 import io.libp2p.core.multiformats.Multiaddr
 import io.libp2p.core.mux.StreamMuxerProtocol
-import io.libp2p.etc.types.seconds
 import io.libp2p.pubsub.PubsubApiImpl
 import io.libp2p.pubsub.gossip.Gossip
 import io.libp2p.pubsub.gossip.GossipPeerScoreParams
@@ -82,6 +81,7 @@ class Libp2pNetworkFactory(
       .heartbeatInterval(700.milliseconds.toJavaDuration())
       .gossipHistoryLength(6)
       .DLow(5)
+      .floodPublishMaxMessageSizeThreshold(1 shl 14) // 16KiB
       .build()
     val gossipRouterBuilder =
       GossipRouterBuilder().apply {
