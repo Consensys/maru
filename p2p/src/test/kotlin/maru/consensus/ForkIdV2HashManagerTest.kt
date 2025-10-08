@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Test
 class ForkIdV2HashManagerTest {
   private lateinit var clock: MutableClock
   private lateinit var beaconChain: BeaconChain
-  private val chainId: UInt = 1u
   private val validator = Validator(ByteArray(20) { 0x02 })
   private lateinit var forks: Map<ElFork, ForkInfo>
 
