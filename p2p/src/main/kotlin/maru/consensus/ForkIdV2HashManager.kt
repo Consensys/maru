@@ -20,6 +20,29 @@ data class ForkInfo(
   val forkIdDigest: ByteArray,
 )
 
+interface ForkIdHashManagerV2 : ForkIdHashManager {
+  /**
+   *  Returns the highest fork hash known to this node,
+   *  based on its local genesis file configuration.
+   */
+  fun highestForkHash(): ByteArray
+
+  /**
+   *  Returns the current fork hash, based on the latest beacon block timestamp.
+   */
+  fun currentForkHash(): ByteArray
+
+  fun isValidForkIdForPeering(otherForkIdHash: ByteArray): Boolean
+
+  // Fallback default for quick prototyping
+  // FIXME, remove this later on
+  override fun currentHash(): ByteArray = currentForkHash()
+
+  override fun check(otherForkIdHash: ByteArray): Boolean = isValidForkIdForPeering(otherForkIdHash)
+
+  override fun update(newForkSpec: ForkSpec) = Unit // no-op
+}
+
 class ForkIdV2HashManager internal constructor(
   private val clock: Clock,
   private val forks: List<ForkInfo>,
