@@ -11,28 +11,21 @@ package maru.p2p.discovery
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Optional
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import linea.kotlin.decodeHex
 import linea.kotlin.toULong
 import maru.config.P2PConfig
-import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
-import maru.consensus.ForkId
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
-import maru.consensus.ForkSpec
-import maru.consensus.QbftConsensusConfig
-import maru.core.ext.DataGenerators
-import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
 import maru.database.P2PState
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.discovery.MaruDiscoveryService.Companion.convertSafeNodeRecordToDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService.Companion.isValidNodeRecord
-import maru.serialization.ForkIdSerializer
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
@@ -66,25 +59,12 @@ class MaruDiscoveryServiceTest {
 
     private val chainId = 1337u
     private val beaconChain = InMemoryBeaconChain.fromGenesis()
-    val consensusConfig: ConsensusConfig =
-      QbftConsensusConfig(
-        validatorSet =
-          setOf(
-            DataGenerators.randomValidator(),
-            DataGenerators.randomValidator(),
-          ),
-        elFork = ElFork.Prague,
-      )
-    val forkSpec = ForkSpec(0UL, 1u, consensusConfig)
     private val forkIdHashProvider =
       createForkIdHashManager(
         chainId = chainId,
         beaconChain = beaconChain,
-        consensusConfig = consensusConfig,
-        forks = listOf(forkSpec),
+        elFork = ElFork.Prague,
       )
-
-    val otherForkSpec = ForkSpec(1UL, 1u, consensusConfig)
   }
 
   private lateinit var p2PState: P2PState
@@ -95,7 +75,7 @@ class MaruDiscoveryServiceTest {
   private val dummyAddr = Optional.of(InetSocketAddress(InetAddress.getByName("1.1.1.1"), 1234))
 
   private fun createValidNodeRecord(
-    forkIdHash: ByteArray? = forkIdHashProvider.currentHash(),
+    forkIdHash: ByteArray? = forkIdHashProvider.currentForkHash(),
     tcpAddress: Optional<InetSocketAddress> = dummyAddr,
   ): NodeRecord {
     val nrBuilder =
@@ -144,7 +124,7 @@ class MaruDiscoveryServiceTest {
 
     assertEquals(publicKey, peer.publicKey)
     assertEquals(dummyAddr.get(), peer.nodeAddress)
-    assertEquals(Bytes.wrap(forkIdHashProvider.currentHash()), peer.forkIdBytes)
+    assertEquals(Bytes.wrap(forkIdHashProvider.currentForkHash()), peer.forkIdBytes)
   }
 
   @Test
@@ -160,7 +140,7 @@ class MaruDiscoveryServiceTest {
         .toULong(),
     ).isEqualTo(sequenceNumberAfterInitialization)
 
-    service.updateForkIdHash(Bytes.wrap("update 1".toByteArray()))
+    service.updateForkIdHash("update 1".toByteArray())
     assertThat(p2PState.getLocalNodeRecordSequenceNumber()).isEqualTo(sequenceNumberAfterInitialization + 1uL)
     assertThat(
       service
@@ -170,7 +150,7 @@ class MaruDiscoveryServiceTest {
         .toULong(),
     ).isEqualTo(sequenceNumberAfterInitialization + 1uL)
 
-    service.updateForkIdHash(Bytes.wrap("update 2".toByteArray()))
+    service.updateForkIdHash("update 2".toByteArray())
     assertThat(p2PState.getLocalNodeRecordSequenceNumber()).isEqualTo(sequenceNumberAfterInitialization + 2uL)
     assertThat(
       service
@@ -185,24 +165,11 @@ class MaruDiscoveryServiceTest {
 
   @Test
   fun `updateForkIdHash updates local`() {
-    val localNodeRecordBefore = service.getLocalNodeRecord()
+    val nextForkId = Random.nextBytes(4)
+    service.updateForkIdHash(nextForkId)
 
-    val differentForkId =
-      ForkId(
-        chainId = chainId + 2u,
-        forkSpec = otherForkSpec,
-        genesisRootHash = ByteArray(32),
-      )
-    val differentForkIdHash =
-      Bytes.wrap(
-        ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash).hash(differentForkId),
-      )
-    service.updateForkIdHash(differentForkIdHash)
-
-    val localNodeRecordAfter = service.getLocalNodeRecord()
-    val actual = localNodeRecordAfter.get(FORK_ID_HASH_FIELD_NAME)
-    assertThat(actual).isNotEqualTo(localNodeRecordBefore.get(FORK_ID_HASH_FIELD_NAME))
-    assertThat(actual).isEqualTo(differentForkIdHash)
+    assertThat(service.getLocalNodeRecord().get(FORK_ID_HASH_FIELD_NAME))
+      .isEqualTo(Bytes.wrap(nextForkId))
   }
 
   @Test

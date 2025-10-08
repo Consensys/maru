@@ -22,7 +22,7 @@ class StatusManager(
     val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
     val statusPayload =
       Status(
-        forkIdHash = forkIdHashManager.currentHash(),
+        forkIdHash = forkIdHashManager.currentForkHash(),
         latestStateRoot = latestBeaconBlockHeader.hash,
         latestBlockNumber = latestBeaconBlockHeader.number,
       )
@@ -35,5 +35,6 @@ class StatusManager(
     return statusMessage
   }
 
-  fun check(otherStatus: Status): Boolean = forkIdHashManager.check(otherForkIdHash = otherStatus.forkIdHash)
+  fun check(otherStatus: Status): Boolean =
+    forkIdHashManager.isValidForkIdForPeering(otherForkIdHash = otherStatus.forkIdHash)
 }

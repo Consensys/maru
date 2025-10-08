@@ -391,6 +391,6 @@ class P2PNetworkImpl(
   }
 
   override fun handleForkTransition(forkSpec: ForkSpec) {
-    discoveryService?.updateForkIdHash(Bytes.wrap(forkIdHashManager.currentHash()))
+    discoveryService?.updateForkIdHash(forkIdHashManager.currentForkHash())
   }
 }

@@ -408,7 +408,7 @@ class P2PTest {
       val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
       val expectedStatus =
         Status(
-          forkIdHash = forkIdHashManager.currentHash(),
+          forkIdHash = forkIdHashManager.currentForkHash(),
           latestStateRoot = latestBeaconBlockHeader.hash,
           latestBlockNumber = latestBeaconBlockHeader.number,
         )

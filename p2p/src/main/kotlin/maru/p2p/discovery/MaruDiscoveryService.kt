@@ -73,11 +73,11 @@ class MaruDiscoveryService(
           log.trace("Failed to cast value for the forkId hash to Bytes")
           return false
         }
-      if (!forkIdHashManager.check(forkId.toArray())) {
+      if (!forkIdHashManager.isValidForkIdForPeering(forkId.toArray())) {
         log.trace(
           "peer={} is on a different forkId: localForkId={} peerForkId={}",
           node.nodeId,
-          forkIdHashManager.currentHash().encodeHex(),
+          forkIdHashManager.currentForkHash().encodeHex(),
           forkId,
         )
         return false
@@ -172,10 +172,10 @@ class MaruDiscoveryService(
     discoverySystem.stop()
   }
 
-  fun updateForkIdHash(forkIdHash: Bytes) {
+  fun updateForkIdHash(forkIdHash: ByteArray) {
     discoverySystem.updateCustomFieldValue(
       FORK_ID_HASH_FIELD_NAME,
-      forkIdHash,
+      Bytes.wrap(forkIdHash),
     )
   }
 
@@ -220,7 +220,7 @@ class MaruDiscoveryService(
           p2pConfig.ipAddress,
           p2pConfig.discovery!!.port.toInt(),
           p2pConfig.port.toInt(),
-        ).customField(FORK_ID_HASH_FIELD_NAME, Bytes.wrap(forkIdHashManager.currentHash()))
+        ).customField(FORK_ID_HASH_FIELD_NAME, Bytes.wrap(forkIdHashManager.currentForkHash()))
     // TODO: do we want more custom fields to identify version/topics/role/something else?
 
     return nodeRecordBuilder.build()
