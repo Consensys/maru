@@ -9,8 +9,8 @@
 package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Ok
-import kotlin.test.assertEquals
 import java.util.SequencedSet
+import kotlin.test.assertEquals
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.consensus.state.StateTransitionImpl
