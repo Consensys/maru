@@ -43,8 +43,15 @@ fun genesisForkIdDigest(
   genesisBeaconBlockHash: ByteArray,
   chainId: UInt,
   hasher: Hasher,
-): ByteArray =
-  hasher
-    .hash(genesisBeaconBlockHash + ByteBuffer.allocate(Int.SIZE_BYTES).putInt(chainId.toInt()).array())
+): ByteArray {
+  val bytes =
+    ByteBuffer
+      .allocate(genesisBeaconBlockHash.size + Int.SIZE_BYTES)
+      .put(genesisBeaconBlockHash)
+      .putInt(chainId.toInt())
+      .array()
+  return hasher
+    .hash(bytes)
     .takeLast(4)
     .toByteArray()
+}
