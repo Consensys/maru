@@ -18,7 +18,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
-import maru.config.SyncingConfig
 import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
 import maru.core.BeaconBlockHeader
@@ -88,12 +87,6 @@ class P2PTest {
     private val key2 = "0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".fromHex()
     private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
     private val p2PState = InMemoryP2PState()
-    private val syncConfig =
-      SyncingConfig(
-        peerChainHeightPollingInterval = 1.minutes,
-        syncTargetSelection = SyncingConfig.SyncTargetSelection.Highest,
-        elSyncStatusRefreshInterval = 1.seconds,
-      )
 
     private fun getSyncStatusProvider(): SyncStatusProvider =
       object : SyncStatusProvider {

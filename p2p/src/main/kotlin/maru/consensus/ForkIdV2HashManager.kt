@@ -14,11 +14,15 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
+import maru.crypto.Hashing
+import maru.crypto.Keccak256Hasher
+import maru.database.BeaconChain
+import maru.serialization.ForkSpecSerializer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
 class ForkIdV2HashManager(
-  private val clock: Clock = Clock.systemUTC(),
+  private val clock: Clock,
   private val genesisForkIdDigest: ByteArray,
   private val forkIdDigester: (ForkIdV2) -> ByteArray,
   private val forkSpecDigester: (ForkSpec) -> ByteArray,
@@ -29,6 +33,36 @@ class ForkIdV2HashManager(
     require(forks.isNotEmpty()) { "empty forks list" }
   }
 
+  companion object {
+    fun create(
+      chainId: UInt,
+      beaconChain: BeaconChain,
+      forks: List<ForkSpec>,
+      peeringForkMismatchLeewayTime: Duration = 5.minutes,
+      clock: Clock,
+    ): ForkIdHashManagerV2 {
+      val forkIdDigester = ForkIdV2Digester(hasher = Hashing::keccak)
+      val genesisBeaconBlockHash =
+        beaconChain
+          .getBeaconState(0UL)!!
+          .beaconBlockHeader
+          .hash
+      return ForkIdV2HashManager(
+        clock = clock,
+        genesisForkIdDigest =
+          genesisForkIdDigest(
+            genesisBeaconBlockHash = genesisBeaconBlockHash,
+            chainId = chainId,
+            hasher = Keccak256Hasher,
+          ),
+        forkIdDigester = forkIdDigester::hash,
+        forkSpecDigester = ForkSpecSerializer::serialize,
+        peeringForkMismatchLeewayTime = peeringForkMismatchLeewayTime,
+        forks = forks,
+      )
+    }
+  }
+
   private data class ForkInfo(
     val forkSpec: ForkSpec,
     val forkIdDigest: ByteArray,
@@ -36,7 +70,7 @@ class ForkIdV2HashManager(
 
   @OptIn(ExperimentalTime::class)
   private fun ForkInfo.isWithinLeeway(): Boolean {
-    val forkTime = Instant.Companion.fromEpochSeconds(forkSpec.timestampSeconds.toLong())
+    val forkTime = Instant.fromEpochSeconds(forkSpec.timestampSeconds.toLong())
     val currentTime = clock.instant().toKotlinInstant()
     val currentTimeMinusLeeway = currentTime.minus(peeringForkMismatchLeewayTime)
     val currentTimePlusLeeway = currentTime.plus(peeringForkMismatchLeewayTime)

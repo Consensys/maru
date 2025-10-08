@@ -31,18 +31,14 @@ import maru.config.P2PConfig
 import maru.config.SyncingConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdV2Digester
 import maru.consensus.ForkIdV2HashManager
 import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.blockimport.ElForkAwareBlockImporter
-import maru.consensus.genesisForkIdDigest
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.core.SealedBeaconBlock
-import maru.crypto.Hashing
-import maru.crypto.Keccak256Hasher
 import maru.database.BeaconChain
 import maru.database.P2PState
 import maru.database.kv.KvDatabaseFactory
@@ -58,7 +54,6 @@ import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.P2PPeersHeadBlockProvider
 import maru.p2p.messages.StatusManager
-import maru.serialization.ForkSpecSerializer
 import maru.serialization.SerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.AlwaysSyncedController
@@ -356,31 +351,14 @@ class MaruAppFactory {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
         return NoOpP2PNetwork
       }
-
       val forkIdHashManager =
-        run {
-          val forkIdDigester = ForkIdV2Digester(hasher = Hashing::keccak)
-          val genesisBeaconBlockHash =
-            beaconChain
-              .getSealedBeaconBlock(0UL)!!
-              // initialized above in dbInitialization(), safe !!
-              .beaconBlock
-              .beaconBlockHeader
-              .hash
-          ForkIdV2HashManager(
-            clock = clock,
-            genesisForkIdDigest =
-              genesisForkIdDigest(
-                genesisBeaconBlockHash = genesisBeaconBlockHash,
-                chainId = chainId,
-                hasher = Keccak256Hasher,
-              ),
-            forkIdDigester = forkIdDigester::hash,
-            forkSpecDigester = ForkSpecSerializer::serialize,
-            peeringForkMismatchLeewayTime = p2pConfig.peeringForkMismatchLeewayTime,
-            forks = forkSchedule.forks.toList(),
-          )
-        }
+        ForkIdV2HashManager.create(
+          chainId = chainId,
+          beaconChain = beaconChain,
+          forks = forkSchedule.forks.toList(),
+          peeringForkMismatchLeewayTime = p2pConfig.peeringForkMismatchLeewayTime,
+          clock = clock,
+        )
       val statusManager = StatusManager(beaconChain, forkIdHashManager)
 
       return p2pNetworkFactory(
