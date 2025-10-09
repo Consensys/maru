@@ -192,7 +192,7 @@ class MaruApp(
         )
       }
     val forkTransitionSubscriptionManager = InOrderFanoutSubscriptionManager<ForkSpec>()
-    // forkTransitionSubscriptionManager.addSyncSubscriber(p2pNetwork::handleForkTransition)
+    forkTransitionSubscriptionManager.addSyncSubscriber(p2pNetwork::handleForkTransition)
     val difficultyAwareQbftFactory =
       DifficultyAwareQbftFactory(
         ethereumJsonRpcClient = validatorELNodeEthJsonRpcClient.eth1Web3j,
