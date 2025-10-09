@@ -13,8 +13,12 @@ import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
+import linea.kotlin.encodeHex
+import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
 import maru.database.BeaconChain
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 
 data class ForkInfo(
   val forkSpec: ForkSpec,
@@ -37,6 +41,32 @@ data class ForkInfo(
     result = 31 * result + forkIdDigest.contentHashCode()
     return result
   }
+
+  /**
+   * {ts=1653855232 time=2025-10-09T11:53:52Z ttd=3200000000 fork=QBFT_Phase0/Paris forkId=0xasdsd},
+   * {ts=1653855232 time=2025-10-09T11:53:52Z fork=QBFT_Phase0/Shanghai forkDigest=0xasdsd}
+   */
+  @OptIn(ExperimentalTime::class)
+  fun toLogString(): String =
+    StringBuilder()
+      .append("{")
+      .append("ts=")
+      .append(forkSpec.timestampSeconds.toLong())
+      .append(" time=")
+      .append(Instant.fromEpochSeconds(forkSpec.timestampSeconds.toLong()))
+      .apply {
+        if (forkSpec.configuration is DifficultyAwareQbftConfig) {
+          append(" ttd=")
+          append((forkSpec.configuration as DifficultyAwareQbftConfig).terminalTotalDifficulty)
+        }
+      }.append(" fork=")
+      .append(forkSpec.configuration.fork.clFork)
+      .append("/")
+      .append(forkSpec.configuration.fork.elFork)
+      .append(" forkDigest=")
+      .append(forkIdDigest.encodeHex())
+      .append("}")
+      .toString()
 }
 
 interface ForkPeeringManager {
@@ -58,26 +88,11 @@ class LenientForkPeeringManager internal constructor(
   private val clock: Clock,
   private val forks: List<ForkInfo>,
   private val peeringForkMismatchLeewayTime: Duration,
+  private val log: Logger = LogManager.getLogger(LenientForkPeeringManager::class.java),
 ) : ForkPeeringManager {
   init {
     require(forks.isNotEmpty()) { "empty forks list" }
-  }
-
-  companion object {
-    fun create(
-      chainId: UInt,
-      beaconChain: BeaconChain,
-      forks: List<ForkSpec>,
-      peeringForkMismatchLeewayTime: Duration,
-      clock: Clock,
-    ): LenientForkPeeringManager {
-      val digestsCalculator = RollingForwardForkIdDigestCalculator(chainId, beaconChain)
-      return LenientForkPeeringManager(
-        clock = clock,
-        peeringForkMismatchLeewayTime = peeringForkMismatchLeewayTime,
-        forks = digestsCalculator.calculateForkDigests(forks),
-      )
-    }
+    logForksInfo(forks, log)
   }
 
   @OptIn(ExperimentalTime::class)
@@ -111,6 +126,12 @@ class LenientForkPeeringManager internal constructor(
 
   override fun isValidForPeering(otherForkIdHash: ByteArray): Boolean {
     val currentFork = currentFork()
+    log.debug(
+      "validating peer connection: currentFork={} peerForkId={}",
+      { currentFork.toLogString() },
+      { otherForkIdHash.encodeHex() },
+    )
+
     if (currentFork.forkIdDigest.contentEquals(otherForkIdHash)) {
       // most probable case
       return true
@@ -121,6 +142,11 @@ class LenientForkPeeringManager internal constructor(
       // possible cases:
       // A - peer has outdated genesis file, missing latest fork configs
       // B - peer has a different genesis file, a real network fork
+      log.info(
+        "invalid peer fork: reason=FORK_UNKNOWN currentFork={} peerForkId={}",
+        currentFork.toLogString(),
+        otherForkIdHash.encodeHex(),
+      )
       return false
     }
     // to handle cases around network switching to the next fork
@@ -129,12 +155,50 @@ class LenientForkPeeringManager internal constructor(
       // A - peer has already switched to the next fork
       return true
     }
-    val previousFork = prevFork()
-    if (otherPeerFork == previousFork && currentFork().isWithinLeeway()) {
+    if (otherPeerFork == prevFork() && currentFork().isWithinLeeway()) {
       // B - we already switched to the next fork, peer still on the previous fork
       // but allow to connect because we just switched recently and is within leeway
       return true
     }
+
+    log.info(
+      "invalid peer fork: reason=FORK_MISMATCH currentFork={} peerFork={} currentTime={} leeway={}",
+      currentFork.toLogString(),
+      otherPeerFork.toLogString(),
+      clock.instant(),
+      peeringForkMismatchLeewayTime,
+    )
     return false
+  }
+
+  companion object {
+    fun create(
+      chainId: UInt,
+      beaconChain: BeaconChain,
+      forks: List<ForkSpec>,
+      peeringForkMismatchLeewayTime: Duration,
+      clock: Clock,
+    ): LenientForkPeeringManager {
+      val digestsCalculator = RollingForwardForkIdDigestCalculator(chainId, beaconChain)
+      return LenientForkPeeringManager(
+        clock = clock,
+        peeringForkMismatchLeewayTime = peeringForkMismatchLeewayTime,
+        forks = digestsCalculator.calculateForkDigests(forks),
+      )
+    }
+
+    @OptIn(ExperimentalTime::class)
+    fun logForksInfo(
+      forks: List<ForkInfo>,
+      log: Logger = LogManager.getLogger(LenientForkPeeringManager::class.java),
+    ) {
+      val ascendingForks =
+        forks
+          .sortedBy { it.forkSpec.timestampSeconds }
+          .reversed()
+      log.info(
+        "forks: ${ascendingForks.joinToString(",", "[", "]", transform = ForkInfo::toLogString)}",
+      )
+    }
   }
 }
