@@ -41,7 +41,6 @@ import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
-import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
@@ -55,6 +54,7 @@ import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
+import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
@@ -324,7 +324,7 @@ class MaruFactory(
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
@@ -420,7 +420,7 @@ class MaruFactory(
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
@@ -481,7 +481,7 @@ class MaruFactory(
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
@@ -549,7 +549,7 @@ class MaruFactory(
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,

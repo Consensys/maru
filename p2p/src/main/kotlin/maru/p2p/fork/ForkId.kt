@@ -6,14 +6,14 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus
+package maru.p2p.fork
 
 import java.nio.ByteBuffer
 import kotlin.time.ExperimentalTime
 import maru.core.Hasher
 import maru.core.ObjHasher
 
-data class ForkIdV2
+data class ForkId
   @OptIn(ExperimentalTime::class)
   constructor(
     val prevForkIdDigest: ByteArray,
@@ -22,15 +22,15 @@ data class ForkIdV2
 
 class ForkIdV2Digester(
   private val hasher: Hasher,
-  private val serializer: (ForkIdV2) -> ByteArray = ::forkIdToBytes,
-) : ObjHasher<ForkIdV2> {
-  override fun hash(obj: ForkIdV2): ByteArray {
+  private val serializer: (ForkId) -> ByteArray = ::forkIdToBytes,
+) : ObjHasher<ForkId> {
+  override fun hash(obj: ForkId): ByteArray {
     val hash = hasher.hash(serializer(obj))
     return hash.sliceArray(hash.size - 4 until hash.size)
   }
 }
 
-fun forkIdToBytes(forkIdV2: ForkIdV2): ByteArray {
+fun forkIdToBytes(forkIdV2: ForkId): ByteArray {
   val buffer =
     ByteBuffer
       .allocate(forkIdV2.prevForkIdDigest.size + forkIdV2.forkSpecDigest.size)

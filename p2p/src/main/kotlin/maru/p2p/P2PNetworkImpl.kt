@@ -17,7 +17,6 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2PConfig
-import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
@@ -26,6 +25,7 @@ import maru.database.P2PState
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
+import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
@@ -58,7 +58,7 @@ class P2PNetworkImpl(
   metricsSystem: BesuMetricsSystem,
   private val statusManager: StatusManager,
   private val beaconChain: BeaconChain,
-  private val forkIdHashManager: ForkIdHashManager,
+  private val forkIdHashManager: ForkPeeringManager,
   isBlockImportEnabledProvider: () -> Boolean,
   private val p2PState: P2PState,
   private val syncStatusProviderProvider: () -> SyncStatusProvider,

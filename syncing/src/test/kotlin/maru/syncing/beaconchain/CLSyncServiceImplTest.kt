@@ -20,7 +20,6 @@ import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
-import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdManagerFactory
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
@@ -39,6 +38,7 @@ import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.PeerLookup
+import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
@@ -106,7 +106,7 @@ class CLSyncServiceImplTest {
         override fun getCLSyncTarget(): ULong = 0UL
       }
 
-    fun createForkIdHashProvider(beaconChain: BeaconChain): ForkIdHashManager {
+    fun createForkIdHashProvider(beaconChain: BeaconChain): ForkPeeringManager {
       val consensusConfig: ConsensusConfig =
         QbftConsensusConfig(
           validatorSet =

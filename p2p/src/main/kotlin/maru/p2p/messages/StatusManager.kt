@@ -8,15 +8,15 @@
  */
 package maru.p2p.messages
 
-import maru.consensus.ForkIdHashManager
 import maru.database.BeaconChain
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
+import maru.p2p.fork.ForkPeeringManager
 
 class StatusManager(
   private val beaconChain: BeaconChain,
-  private val forkIdHashManager: ForkIdHashManager,
+  private val forkIdHashManager: ForkPeeringManager,
 ) {
   fun createStatusMessage(): Message<Status, RpcMessageType> {
     val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader

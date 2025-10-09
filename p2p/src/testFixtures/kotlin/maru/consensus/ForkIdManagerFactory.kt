@@ -13,6 +13,8 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
+import maru.p2p.fork.ForkPeeringManager
+import maru.p2p.fork.LenientForkPeeringManager
 
 object ForkIdManagerFactory {
   fun createForkIdHashManager(
@@ -31,8 +33,8 @@ object ForkIdManagerFactory {
     forks: List<ForkSpec> = listOf(ForkSpec(0UL, 1u, consensusConfig)),
     peeringForkMismatchLeewayTime: Duration = 5.minutes,
     clock: Clock = Clock.systemUTC(),
-  ): ForkIdHashManager =
-    ForkIdV2HashManager.create(
+  ): ForkPeeringManager =
+    LenientForkPeeringManager.create(
       chainId = chainId,
       beaconChain = beaconChain,
       forks = forks,

@@ -6,9 +6,10 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus
+package maru.p2p.fork
 
 import java.nio.ByteBuffer
+import maru.consensus.ForkSpec
 import maru.core.Hasher
 import maru.crypto.Hashing
 import maru.crypto.Keccak256Hasher
@@ -66,13 +67,13 @@ class RollingForwardForkIdDigestCalculator(
       genesisForkIdDigest: ByteArray,
       forks: List<ForkSpec>,
       forkSpecDigester: (ForkSpec) -> ByteArray,
-      forkIdDigester: (ForkIdV2) -> ByteArray,
+      forkIdDigester: (ForkId) -> ByteArray,
     ): List<ForkInfo> {
       var prevForkDigest = genesisForkIdDigest
       return forks
         .sortedBy { it.timestampSeconds }
         .map { forkSpec ->
-          val forkIdDigest = forkIdDigester(ForkIdV2(prevForkDigest, forkSpecDigester(forkSpec)))
+          val forkIdDigest = forkIdDigester(ForkId(prevForkDigest, forkSpecDigester(forkSpec)))
           prevForkDigest = forkIdDigest
           ForkInfo(forkSpec, forkIdDigest)
         }

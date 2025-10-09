@@ -30,8 +30,6 @@ import maru.config.MaruConfig
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
 import maru.consensus.ElFork
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdV2HashManager
 import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
@@ -53,6 +51,8 @@ import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.P2PPeersHeadBlockProvider
+import maru.p2p.fork.ForkPeeringManager
+import maru.p2p.fork.LenientForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.serialization.rlp.RLPSerializers
@@ -95,7 +95,7 @@ class MaruAppFactory {
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
@@ -341,7 +341,7 @@ class MaruAppFactory {
         BesuMetricsSystem,
         StatusManager,
         BeaconChain,
-        ForkIdHashManager,
+        ForkPeeringManager,
         () -> Boolean,
         P2PState,
         () -> SyncStatusProvider,
@@ -352,7 +352,7 @@ class MaruAppFactory {
         return NoOpP2PNetwork
       }
       val forkIdHashManager =
-        ForkIdV2HashManager.create(
+        LenientForkPeeringManager.create(
           chainId = chainId,
           beaconChain = beaconChain,
           forks = forkSchedule.forks.toList(),

@@ -6,10 +6,13 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus
+package maru.p2p.fork
 
 import java.nio.ByteBuffer
 import linea.kotlin.encodeHex
+import maru.consensus.DifficultyAwareQbftConfig
+import maru.consensus.ForkSpec
+import maru.consensus.QbftConsensusConfig
 import maru.serialization.Serializer
 
 object QbftConsensusConfigDigester : Serializer<QbftConsensusConfig> {

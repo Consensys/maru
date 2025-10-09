@@ -6,21 +6,40 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus
+package maru.p2p.fork
 
 import java.time.Clock
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
+import maru.consensus.ForkSpec
 import maru.database.BeaconChain
 
 data class ForkInfo(
   val forkSpec: ForkSpec,
   val forkIdDigest: ByteArray,
-)
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
 
-interface ForkIdHashManager {
+    other as ForkInfo
+
+    if (forkSpec != other.forkSpec) return false
+    if (!forkIdDigest.contentEquals(other.forkIdDigest)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = forkSpec.hashCode()
+    result = 31 * result + forkIdDigest.contentHashCode()
+    return result
+  }
+}
+
+interface ForkPeeringManager {
   /**
    *  Returns the highest fork hash known to this node,
    *  based on its local genesis file configuration.
@@ -28,18 +47,18 @@ interface ForkIdHashManager {
   fun highestForkHash(): ByteArray
 
   /**
-   *  Returns the current fork hash, based on the latest beacon block timestamp.
+   *  Returns the current fork hash, based on current time.
    */
   fun currentForkHash(): ByteArray
 
   fun isValidForPeering(otherForkIdHash: ByteArray): Boolean
 }
 
-class ForkIdV2HashManager internal constructor(
+class LenientForkPeeringManager internal constructor(
   private val clock: Clock,
   private val forks: List<ForkInfo>,
   private val peeringForkMismatchLeewayTime: Duration,
-) : ForkIdHashManager {
+) : ForkPeeringManager {
   init {
     require(forks.isNotEmpty()) { "empty forks list" }
   }
@@ -51,9 +70,9 @@ class ForkIdV2HashManager internal constructor(
       forks: List<ForkSpec>,
       peeringForkMismatchLeewayTime: Duration,
       clock: Clock,
-    ): ForkIdV2HashManager {
+    ): LenientForkPeeringManager {
       val digestsCalculator = RollingForwardForkIdDigestCalculator(chainId, beaconChain)
-      return ForkIdV2HashManager(
+      return LenientForkPeeringManager(
         clock = clock,
         peeringForkMismatchLeewayTime = peeringForkMismatchLeewayTime,
         forks = digestsCalculator.calculateForkDigests(forks),

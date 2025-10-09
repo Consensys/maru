@@ -10,12 +10,12 @@ package testutils
 
 import kotlin.time.Duration
 import maru.config.P2PConfig
-import maru.consensus.ForkIdHashManager
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.database.P2PState
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.RpcMethods
+import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.StatusManager
@@ -33,7 +33,7 @@ class MisbehavingP2PNetwork(
   metricsSystem: BesuMetricsSystem,
   statusManager: StatusManager,
   chain: BeaconChain,
-  forkIdHashManager: ForkIdHashManager,
+  forkIdHashManager: ForkPeeringManager,
   isBlockImportEnabledProvider: () -> Boolean,
   p2pState: P2PState,
   syncStatusProviderProvider: () -> SyncStatusProvider,
