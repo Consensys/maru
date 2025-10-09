@@ -14,14 +14,14 @@ import maru.crypto.Hashing
 import maru.crypto.Keccak256Hasher
 import maru.database.BeaconChain
 
-internal fun interface ForkDiggestCalculator {
+internal fun interface ForkDigestCalculator {
   fun calculateForkDigests(forks: List<ForkSpec>): List<ForkInfo>
 }
 
-class RollingForwardForkIdDiggestCalculator(
+class RollingForwardForkIdDigestCalculator(
   val chainId: UInt,
   val beaconChain: BeaconChain,
-) : ForkDiggestCalculator {
+) : ForkDigestCalculator {
   override fun calculateForkDigests(forks: List<ForkSpec>): List<ForkInfo> {
     val forkIdDigester = ForkIdV2Digester(hasher = Hashing::keccak)
     val genesisBeaconBlockHash =

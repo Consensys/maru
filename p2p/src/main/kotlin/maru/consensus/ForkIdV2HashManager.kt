@@ -52,7 +52,7 @@ class ForkIdV2HashManager internal constructor(
       peeringForkMismatchLeewayTime: Duration,
       clock: Clock,
     ): ForkIdV2HashManager {
-      val digestsCalculator = RollingForwardForkIdDiggestCalculator(chainId, beaconChain)
+      val digestsCalculator = RollingForwardForkIdDigestCalculator(chainId, beaconChain)
       return ForkIdV2HashManager(
         clock = clock,
         peeringForkMismatchLeewayTime = peeringForkMismatchLeewayTime,
