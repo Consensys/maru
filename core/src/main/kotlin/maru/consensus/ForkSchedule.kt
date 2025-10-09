@@ -17,7 +17,7 @@ enum class ClFork(
   val version: Byte,
 ) {
   QBFT_PHASE0(0x0), // current QBFT
-  // QBFT_PHASE1(0x1),
+  QBFT_PHASE1(0x1), // ony used for testing forkId Digester for now
 }
 
 enum class ElFork(
