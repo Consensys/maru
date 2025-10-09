@@ -225,10 +225,9 @@ class P2PNetworkImpl(
 
   override fun stop(): SafeFuture<Unit> {
     log.info("Stopping={}", this::class.simpleName)
-    val pmStop = maruPeerManager.stop()
+    maruPeerManager.stop()
     discoveryService?.stop()
-    val p2pStop = p2pNetwork.stop()
-    return SafeFuture.allOf(p2pStop, pmStop).thenApply {}
+    return p2pNetwork.stop().thenApply {}
   }
 
   override fun close() {
