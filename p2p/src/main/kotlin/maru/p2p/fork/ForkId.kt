@@ -9,32 +9,51 @@
 package maru.p2p.fork
 
 import java.nio.ByteBuffer
-import kotlin.time.ExperimentalTime
 import maru.core.Hasher
 import maru.core.ObjHasher
+import maru.crypto.Keccak256Hasher
+import maru.serialization.Serializer
 
-data class ForkId
-  @OptIn(ExperimentalTime::class)
-  constructor(
-    val prevForkIdDigest: ByteArray,
-    val forkSpecDigest: ByteArray,
-  )
+data class ForkId(
+  val prevForkIdDigest: ByteArray,
+  val forkSpecDigest: ByteArray,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
 
-class ForkIdV2Digester(
-  private val hasher: Hasher,
-  private val serializer: (ForkId) -> ByteArray = ::forkIdToBytes,
+    other as ForkId
+
+    if (!prevForkIdDigest.contentEquals(other.prevForkIdDigest)) return false
+    if (!forkSpecDigest.contentEquals(other.forkSpecDigest)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = prevForkIdDigest.contentHashCode()
+    result = 31 * result + forkSpecDigest.contentHashCode()
+    return result
+  }
+}
+
+object ForkIdSerializer : Serializer<ForkId> {
+  override fun serialize(value: ForkId): ByteArray {
+    val buffer =
+      ByteBuffer
+        .allocate(value.prevForkIdDigest.size + value.forkSpecDigest.size)
+        .put(value.prevForkIdDigest)
+        .put(value.forkSpecDigest)
+    return buffer.array()
+  }
+}
+
+class ForkIdDigester(
+  private val hasher: Hasher = Keccak256Hasher,
+  private val serializer: (ForkId) -> ByteArray = ForkIdSerializer::serialize,
 ) : ObjHasher<ForkId> {
   override fun hash(obj: ForkId): ByteArray {
     val hash = hasher.hash(serializer(obj))
     return hash.sliceArray(hash.size - 4 until hash.size)
   }
-}
-
-fun forkIdToBytes(forkIdV2: ForkId): ByteArray {
-  val buffer =
-    ByteBuffer
-      .allocate(forkIdV2.prevForkIdDigest.size + forkIdV2.forkSpecDigest.size)
-      .put(forkIdV2.prevForkIdDigest)
-      .put(forkIdV2.forkSpecDigest)
-  return buffer.array()
 }

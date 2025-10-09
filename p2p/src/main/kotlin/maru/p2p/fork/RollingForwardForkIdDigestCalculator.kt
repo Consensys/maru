@@ -11,7 +11,7 @@ package maru.p2p.fork
 import java.nio.ByteBuffer
 import maru.consensus.ForkSpec
 import maru.core.Hasher
-import maru.crypto.Hashing
+import maru.core.ObjHasher
 import maru.crypto.Keccak256Hasher
 import maru.database.BeaconChain
 
@@ -22,9 +22,9 @@ internal fun interface ForkDigestCalculator {
 class RollingForwardForkIdDigestCalculator(
   val chainId: UInt,
   val beaconChain: BeaconChain,
+  val digester: ObjHasher<ForkId> = ForkIdDigester(),
 ) : ForkDigestCalculator {
   override fun calculateForkDigests(forks: List<ForkSpec>): List<ForkInfo> {
-    val forkIdDigester = ForkIdV2Digester(hasher = Hashing::keccak)
     val genesisBeaconBlockHash =
       beaconChain
         .getBeaconState(0UL)!!
@@ -40,7 +40,7 @@ class RollingForwardForkIdDigestCalculator(
     return rollingForwardForkSpecsDigests(
       genesisForkIdDigest = genesisForkIdDigest,
       forks = forks,
-      forkIdDigester = forkIdDigester::hash,
+      forkIdDigester = digester::hash,
       forkSpecDigester = ForkSpecDigester::serialize,
     )
   }
