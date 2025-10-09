@@ -74,6 +74,9 @@ class ForkSpecDigesterTest {
 
   @Test
   fun `should take ttd aware qbft config into account`() {
+    // only changing terminalTotalDifficulty will gurantee correctenss
+    // if we change postTtdConfig, then the digest will be different but
+    // if implementation is refactored and delegates to QbftConsensusConfigDigester will have a bug
     val forkSpecQbftA = forkSpec.copy(configuration = qbftTtdAwareConfig)
     val forkSpecQbftB =
       forkSpec.copy(
