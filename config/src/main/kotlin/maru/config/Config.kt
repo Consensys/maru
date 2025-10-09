@@ -89,8 +89,8 @@ data class P2PConfig(
    * https://github.com/ethereum/consensus-specs/blob/v0.11.1/specs/phase0/p2p-interface.md#the-gossip-domain-gossipsub
    */
   data class Gossiping(
-    val d: Int = 6,
-    val dLow: Int = 5,
+    val d: Int = 8,
+    val dLow: Int = 6,
     val dHigh: Int = d * 2,
     val dLazy: Int = 6,
     val fanoutTTL: Duration = 60.seconds,

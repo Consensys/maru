@@ -602,7 +602,7 @@ class HopliteFriendlinessTest {
             gossiping =
               P2PConfig.Gossiping(
                 d = 12,
-                dLow = 5, // default
+                dLow = 6, // default
                 dHigh = 24, // default (d * 2)
                 dLazy = 6, // default
                 fanoutTTL = 60.seconds, // default
