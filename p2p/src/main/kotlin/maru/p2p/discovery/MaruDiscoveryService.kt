@@ -156,12 +156,7 @@ class MaruDiscoveryService(
   private fun pingBootnodesTask(): TimerTask {
     var task: TimerTask? = null
     try {
-      task =
-        timerTask {
-          // forkId is updated based on clockTime and genesisForks
-          // we shall update periodically
-          pingBootnodes()
-        }
+      task = timerTask { pingBootnodes() }
     } catch (e: Exception) {
       log.warn("Failed to ping bootnodes", e)
     }
