@@ -73,7 +73,7 @@ class MaruDiscoveryService(
           log.trace("Failed to cast value for the forkId hash to Bytes")
           return false
         }
-      if (!forkIdHashManager.isValidForkIdForPeering(forkId.toArray())) {
+      if (!forkIdHashManager.isValidForPeering(forkId.toArray())) {
         log.trace(
           "peer={} is on a different forkId: localForkId={} peerForkId={}",
           node.nodeId,

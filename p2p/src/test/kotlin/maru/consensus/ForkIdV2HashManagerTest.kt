@@ -109,7 +109,7 @@ class ForkIdV2HashManagerTest {
   fun `isValidForkIdForPeering should return false when fork is not valid`() {
     val manager = forkIdManager()
     clock.setEpochSeconds(forks[ElFork.Paris]!!.forkSpec.timestampSeconds.toLong() + 1)
-    assertThat(manager.isValidForkIdForPeering(Random.nextBytes(4))).isFalse()
+    assertThat(manager.isValidForPeering(Random.nextBytes(4))).isFalse()
   }
 
   @Test
@@ -117,7 +117,7 @@ class ForkIdV2HashManagerTest {
     val manager = forkIdManager()
     clock.setEpochSeconds(forks[ElFork.Paris]!!.forkSpec.timestampSeconds.toLong() + 1)
     val currentFork = forks[ElFork.Paris]!!
-    assertThat(manager.isValidForkIdForPeering(currentFork.forkIdDigest)).isTrue()
+    assertThat(manager.isValidForPeering(currentFork.forkIdDigest)).isTrue()
   }
 
   @Test
@@ -129,7 +129,7 @@ class ForkIdV2HashManagerTest {
     clock.setEpochSeconds(forks[ElFork.Cancun]!!.forkSpec.timestampSeconds.toLong() + 9)
     assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
     val previousFork = forks[ElFork.Shanghai]!!
-    assertThat(manager.isValidForkIdForPeering(previousFork.forkIdDigest)).isTrue()
+    assertThat(manager.isValidForPeering(previousFork.forkIdDigest)).isTrue()
   }
 
   @Test
@@ -141,7 +141,7 @@ class ForkIdV2HashManagerTest {
     clock.setEpochSeconds(forks[ElFork.Cancun]!!.forkSpec.timestampSeconds.toLong() + 11)
     assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
     val previousFork = forks[ElFork.Shanghai]!!
-    assertThat(manager.isValidForkIdForPeering(previousFork.forkIdDigest)).isFalse()
+    assertThat(manager.isValidForPeering(previousFork.forkIdDigest)).isFalse()
   }
 
   @Test
@@ -154,7 +154,7 @@ class ForkIdV2HashManagerTest {
     assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
     val nextFork = forks[ElFork.Prague]!!
 
-    assertThat(manager.isValidForkIdForPeering(nextFork.forkIdDigest)).isTrue()
+    assertThat(manager.isValidForPeering(nextFork.forkIdDigest)).isTrue()
   }
 
   @Test
@@ -166,6 +166,6 @@ class ForkIdV2HashManagerTest {
     clock.setEpochSeconds(forks[ElFork.Prague]!!.forkSpec.timestampSeconds.toLong() - 11)
     assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
     val nextFork = forks[ElFork.Prague]!!
-    assertThat(manager.isValidForkIdForPeering(nextFork.forkIdDigest)).isFalse()
+    assertThat(manager.isValidForPeering(nextFork.forkIdDigest)).isFalse()
   }
 }

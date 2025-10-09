@@ -35,6 +35,6 @@ class StatusManager(
     return statusMessage
   }
 
-  fun check(otherStatus: Status): Boolean =
-    forkIdHashManager.isValidForkIdForPeering(otherForkIdHash = otherStatus.forkIdHash)
+  fun isValidForPeering(otherStatus: Status): Boolean =
+    forkIdHashManager.isValidForPeering(otherForkIdHash = otherStatus.forkIdHash)
 }

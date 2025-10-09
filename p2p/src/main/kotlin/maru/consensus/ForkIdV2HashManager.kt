@@ -32,7 +32,7 @@ interface ForkIdHashManager {
    */
   fun currentForkHash(): ByteArray
 
-  fun isValidForkIdForPeering(otherForkIdHash: ByteArray): Boolean
+  fun isValidForPeering(otherForkIdHash: ByteArray): Boolean
 }
 
 class ForkIdV2HashManager internal constructor(
@@ -90,7 +90,7 @@ class ForkIdV2HashManager internal constructor(
 
   override fun highestForkHash(): ByteArray = forksInfo.first().forkIdDigest
 
-  override fun isValidForkIdForPeering(otherForkIdHash: ByteArray): Boolean {
+  override fun isValidForPeering(otherForkIdHash: ByteArray): Boolean {
     val currentFork = currentFork()
     if (currentFork.forkIdDigest.contentEquals(otherForkIdHash)) {
       // most probable case
