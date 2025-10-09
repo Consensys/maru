@@ -26,8 +26,8 @@ import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import java.util.Optional
 import kotlin.random.Random
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toJavaDuration
+import maru.config.P2PConfig
 import maru.core.SealedBeaconBlock
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import org.apache.tuweni.bytes.Bytes
@@ -68,6 +68,7 @@ class Libp2pNetworkFactory(
     metricsSystem: BesuMetricsSystem,
     asyncRunner: AsyncRunner,
     reputationManager: ReputationManager,
+    gossipingConfig: P2PConfig.Gossiping,
   ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val gossipTopicHandlers = GossipTopicHandlers()
@@ -79,11 +80,17 @@ class Libp2pNetworkFactory(
 
     val gossipParams =
       GossipParamsBuilder()
-        .heartbeatInterval(700.milliseconds.toJavaDuration())
-        .gossipHistoryLength(6)
-        .DLow(5)
-        .floodPublishMaxMessageSizeThreshold(1 shl 14) // 16KiB
-        .gossipFactor(1.0)
+        .heartbeatInterval(gossipingConfig.heartbeatInterval.toJavaDuration())
+        .gossipHistoryLength(gossipingConfig.history)
+        .D(gossipingConfig.d)
+        .DLow(gossipingConfig.dLow)
+        .DLazy(gossipingConfig.dLazy)
+        .DHigh(gossipingConfig.dHigh)
+        .fanoutTTL(gossipingConfig.fanoutTTL.toJavaDuration())
+        .seenTTL(gossipingConfig.seenTTL.toJavaDuration())
+        .gossipSize(gossipingConfig.gossipSize)
+        .floodPublishMaxMessageSizeThreshold(gossipingConfig.floodPublishMaxMessageSizeThreshold)
+        .gossipFactor(gossipingConfig.gossipFactor)
         .build()
     val gossipRouterBuilder =
       GossipRouterBuilder().apply {
