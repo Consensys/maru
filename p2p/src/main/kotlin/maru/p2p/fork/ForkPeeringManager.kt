@@ -73,12 +73,6 @@ data class ForkInfo(
 
 interface ForkPeeringManager {
   /**
-   *  Returns the highest fork hash known to this node,
-   *  based on its local genesis file configuration.
-   */
-  fun highestForkHash(): ByteArray
-
-  /**
    *  Returns the current fork hash, based on current time.
    */
   fun currentForkHash(): ByteArray
@@ -124,8 +118,6 @@ class LenientForkPeeringManager internal constructor(
 
   override fun currentForkHash(): ByteArray = currentFork().forkIdDigest
 
-  override fun highestForkHash(): ByteArray = forksInfo.first().forkIdDigest
-
   override fun isValidForPeering(otherForkIdHash: ByteArray): Boolean {
     val currentFork = currentFork()
     log.debug(
@@ -140,7 +132,7 @@ class LenientForkPeeringManager internal constructor(
     }
     val otherPeerFork = forksInfo.firstOrNull { it.forkIdDigest.contentEquals(otherForkIdHash) }
     if (otherPeerFork == null) {
-      // it means peer for does not match any of our forks,
+      // it means peer fork does not match any of our forks,
       // possible cases:
       // A - peer has outdated genesis file, missing latest fork configs
       // B - peer has a different genesis file, a real network fork

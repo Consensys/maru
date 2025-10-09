@@ -25,7 +25,7 @@ import maru.consensus.QbftConsensusConfig
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -94,28 +94,31 @@ class LenientForkPeeringManagerTest {
   fun `currentFork should return correct fork`() {
     val manager = forkIdManager()
     clock.setEpochSeconds(100)
-    Assertions.assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Paris])
+    assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Paris])
 
     clock.setEpochSeconds(forks[ElFork.Cancun]!!.forkSpec.timestampSeconds.toLong())
-    Assertions.assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun])
-    Assertions.assertThat(manager.prevFork()).isEqualTo(forks[ElFork.Shanghai])
-    Assertions.assertThat(manager.nextFork()).isEqualTo(forks[ElFork.Prague])
+    assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun])
+    assertThat(manager.prevFork()).isEqualTo(forks[ElFork.Shanghai])
+    assertThat(manager.nextFork()).isEqualTo(forks[ElFork.Prague])
 
     clock.setEpochSeconds(forks[ElFork.Cancun]!!.forkSpec.timestampSeconds.toLong() + 1)
-    Assertions.assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun])
+    assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun])
 
     clock.setEpochSeconds(forks[ElFork.Prague]!!.forkSpec.timestampSeconds.toLong() - 1)
-    Assertions.assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun])
+    assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun])
 
     clock.setEpochSeconds(forks[ElFork.Prague]!!.forkSpec.timestampSeconds.toLong())
-    Assertions.assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Prague])
+    assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Prague])
+
+    clock.setEpochSeconds(forks[ElFork.Prague]!!.forkSpec.timestampSeconds.toLong() + 1)
+    assertThat(manager.nextFork()).isNull()
   }
 
   @Test
   fun `isValidForkIdForPeering should return false when fork is not valid`() {
     val manager = forkIdManager()
     clock.setEpochSeconds(forks[ElFork.Paris]!!.forkSpec.timestampSeconds.toLong() + 1)
-    Assertions.assertThat(manager.isValidForPeering(Random.Default.nextBytes(4))).isFalse()
+    assertThat(manager.isValidForPeering(Random.Default.nextBytes(4))).isFalse()
   }
 
   @Test
@@ -123,7 +126,7 @@ class LenientForkPeeringManagerTest {
     val manager = forkIdManager()
     clock.setEpochSeconds(forks[ElFork.Paris]!!.forkSpec.timestampSeconds.toLong() + 1)
     val currentFork = forks[ElFork.Paris]!!
-    Assertions.assertThat(manager.isValidForPeering(currentFork.forkIdDigest)).isTrue()
+    assertThat(manager.isValidForPeering(currentFork.forkIdDigest)).isTrue()
   }
 
   @Test
@@ -133,9 +136,9 @@ class LenientForkPeeringManagerTest {
         peeringForkMismatchLeewayTime = 10.seconds,
       )
     clock.setEpochSeconds(forks[ElFork.Cancun]!!.forkSpec.timestampSeconds.toLong() + 9)
-    Assertions.assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
+    assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
     val previousFork = forks[ElFork.Shanghai]!!
-    Assertions.assertThat(manager.isValidForPeering(previousFork.forkIdDigest)).isTrue()
+    assertThat(manager.isValidForPeering(previousFork.forkIdDigest)).isTrue()
   }
 
   @Test
@@ -145,9 +148,9 @@ class LenientForkPeeringManagerTest {
         peeringForkMismatchLeewayTime = 10.seconds,
       )
     clock.setEpochSeconds(forks[ElFork.Cancun]!!.forkSpec.timestampSeconds.toLong() + 11)
-    Assertions.assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
+    assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
     val previousFork = forks[ElFork.Shanghai]!!
-    Assertions.assertThat(manager.isValidForPeering(previousFork.forkIdDigest)).isFalse()
+    assertThat(manager.isValidForPeering(previousFork.forkIdDigest)).isFalse()
   }
 
   @Test
@@ -157,10 +160,10 @@ class LenientForkPeeringManagerTest {
         peeringForkMismatchLeewayTime = 10.seconds,
       )
     clock.setEpochSeconds(forks[ElFork.Prague]!!.forkSpec.timestampSeconds.toLong() - 9)
-    Assertions.assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
+    assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
     val nextFork = forks[ElFork.Prague]!!
 
-    Assertions.assertThat(manager.isValidForPeering(nextFork.forkIdDigest)).isTrue()
+    assertThat(manager.isValidForPeering(nextFork.forkIdDigest)).isTrue()
   }
 
   @Test
@@ -169,9 +172,12 @@ class LenientForkPeeringManagerTest {
       forkIdManager(
         peeringForkMismatchLeewayTime = 10.seconds,
       )
-    clock.setEpochSeconds(forks[ElFork.Prague]!!.forkSpec.timestampSeconds.toLong() - 11)
-    Assertions.assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Cancun]) // sanity check
-    val nextFork = forks[ElFork.Prague]!!
-    Assertions.assertThat(manager.isValidForPeering(nextFork.forkIdDigest)).isFalse()
+    clock.setEpochSeconds(forks[ElFork.Shanghai]!!.forkSpec.timestampSeconds.toLong() - 11)
+    assertThat(manager.currentFork()).isEqualTo(forks[ElFork.Paris]) // sanity check
+    val nextFork = forks[ElFork.Cancun]!!
+    assertThat(manager.isValidForPeering(nextFork.forkIdDigest)).isFalse()
+
+    val nextNextFork = forks[ElFork.Prague]!!
+    assertThat(manager.isValidForPeering(nextNextFork.forkIdDigest)).isFalse()
   }
 }

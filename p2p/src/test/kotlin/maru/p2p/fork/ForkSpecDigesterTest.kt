@@ -43,7 +43,7 @@ class ForkSpecDigesterTest {
       configuration = qbftTtdAwareConfig,
     )
 
-  private fun digest(spek: ForkSpec): ByteArray = ForkSpecDigester.serialize(spek)
+  private fun digest(spec: ForkSpec): ByteArray = ForkSpecDigester.serialize(spec)
 
   @Test
   fun `should ignore blockTime`() {
