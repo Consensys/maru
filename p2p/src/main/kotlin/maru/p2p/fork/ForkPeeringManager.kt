@@ -42,6 +42,8 @@ data class ForkInfo(
     return result
   }
 
+  override fun toString(): String = "ForkInfo(forkSpec=$forkSpec, forkIdDigest=${forkIdDigest.encodeHex()})"
+
   /**
    * {ts=1653855232 time=2025-10-09T11:53:52Z ttd=3200000000 fork=QBFT_Phase0/Paris forkId=0xasdsd},
    * {ts=1653855232 time=2025-10-09T11:53:52Z fork=QBFT_Phase0/Shanghai forkDigest=0xasdsd}

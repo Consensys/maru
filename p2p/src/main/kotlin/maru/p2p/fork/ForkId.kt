@@ -9,6 +9,7 @@
 package maru.p2p.fork
 
 import java.nio.ByteBuffer
+import linea.kotlin.encodeHex
 import maru.core.Hasher
 import maru.core.ObjHasher
 import maru.crypto.Keccak256Hasher
@@ -35,6 +36,9 @@ data class ForkId(
     result = 31 * result + forkSpecDigest.contentHashCode()
     return result
   }
+
+  override fun toString(): String =
+    "ForkId(prevForkIdDigest=${prevForkIdDigest.encodeHex()}, forkSpecDigest=${forkSpecDigest.encodeHex()})"
 }
 
 object ForkIdSerializer : Serializer<ForkId> {

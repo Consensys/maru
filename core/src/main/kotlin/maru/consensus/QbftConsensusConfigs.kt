@@ -16,7 +16,8 @@ data class QbftConsensusConfig(
 ) : ConsensusConfig {
   val elFork: ElFork = fork.elFork
 
-  override fun toString(): String = "QbftConsensusConfig(validatorSet=$validatorSet, elFork=$elFork)"
+  override fun toString(): String =
+    "QbftConsensusConfig(fork=${fork.clFork}/${fork.elFork}, validatorSet=$validatorSet)"
 }
 
 data class DifficultyAwareQbftConfig(
@@ -26,5 +27,5 @@ data class DifficultyAwareQbftConfig(
   override val fork: ChainFork = postTtdConfig.fork
 
   override fun toString(): String =
-    "DifficultyAwareQbftConfig(postTtdConfig=$postTtdConfig, terminalTotalDifficulty=$terminalTotalDifficulty)"
+    "DifficultyAwareQbftConfig(terminalTotalDifficulty=$terminalTotalDifficulty, postTtdConfig=$postTtdConfig)"
 }

@@ -20,9 +20,9 @@ internal fun interface ForkDigestCalculator {
 }
 
 class RollingForwardForkIdDigestCalculator(
-  val chainId: UInt,
-  val beaconChain: BeaconChain,
-  val digester: ObjHasher<ForkId> = ForkIdDigester(),
+  private val chainId: UInt,
+  private val beaconChain: BeaconChain,
+  private val digester: ObjHasher<ForkId> = ForkIdDigester(),
 ) : ForkDigestCalculator {
   override fun calculateForkDigests(forks: List<ForkSpec>): List<ForkInfo> {
     val genesisBeaconBlockHash =
