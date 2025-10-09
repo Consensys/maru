@@ -126,7 +126,7 @@ class BeaconBlocksByRangeHandlerTest {
   }
 
   @Test
-  fun `handles large size request`() {
+  fun `handles and returns subset of requested blocks for request with blocks that would exceed the size limit`() {
     handler =
       BeaconBlocksByRangeHandler(
         beaconChain = beaconChain,
