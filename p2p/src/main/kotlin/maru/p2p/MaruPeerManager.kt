@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import maru.config.P2PConfig
 import maru.p2p.discovery.MaruDiscoveryService
-import maru.syncing.SyncStatusProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -30,7 +29,6 @@ class MaruPeerManager(
   p2pConfig: P2PConfig,
   private val reputationManager: MaruReputationManager,
   private val isStaticPeer: (NodeId) -> Boolean,
-  private val syncStatusProviderProvider: () -> SyncStatusProvider,
 ) : PeerHandler,
   PeerLookup {
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -44,7 +42,6 @@ class MaruPeerManager(
 
   private var scheduler: ScheduledExecutorService? = null
   private lateinit var p2pNetwork: P2PNetwork<Peer>
-  private lateinit var syncStatusProvider: SyncStatusProvider
 
   val peerCount: Int
     get() = connectedPeers().size
@@ -62,7 +59,6 @@ class MaruPeerManager(
     }
     this.discoveryService = discoveryService
     this.p2pNetwork = p2pNetwork
-    this.syncStatusProvider = syncStatusProviderProvider()
     scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().factory())
     scheduler!!.scheduleAtFixedRate({
       logConnectedPeers()
@@ -80,16 +76,17 @@ class MaruPeerManager(
     }
   }
 
-  fun stop(): SafeFuture<Unit> {
+  fun stop() {
     if (!started.compareAndSet(true, false)) {
       log.warn("Trying to stop stopped MaruPeerManager")
-      return SafeFuture.completedFuture(Unit)
+      return
     }
     discoveryTask?.stop()
     discoveryTask = null
     scheduler!!.shutdown()
     scheduler = null
-    return SafeFuture.completedFuture(Unit)
+    peers.values.forEach { it.disconnectCleanly(DisconnectReason.SHUTTING_DOWN) }
+    return
   }
 
   private fun logConnectedPeers() {

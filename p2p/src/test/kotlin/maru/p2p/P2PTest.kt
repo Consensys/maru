@@ -165,9 +165,7 @@ class P2PTest {
           maruPeerFactory = maruPeerFactory,
           p2pConfig = P2PConfig(ipAddress = IPV4, port = PORT1),
           reputationManager = reputationManager,
-          isStaticPeer = { false },
-          syncStatusProviderProvider = syncStatusProviderProvider,
-        )
+        ) { false }
       return rpcMethods
     }
 

@@ -148,7 +148,7 @@ class MaruDiscoveryService(
           /* delay = */ 0,
           /* period = */ p2pConfig.discovery!!.refreshInterval.inWholeMilliseconds,
         )
-      }
+      }.get()
     return
   }
 
