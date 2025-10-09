@@ -325,7 +325,7 @@ class MaruPeerScoringTest {
             followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
           ).isGreaterThanOrEqualTo(0UL)
         }
-    } catch (e: Exception) {
+    } finally {
       job.cancel()
     }
     return MaruNodeSetup(validatorMaruApp = validatorMaruApp, followerMaruApp = followerMaruApp, job = job)

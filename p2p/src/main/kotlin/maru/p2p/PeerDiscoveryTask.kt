@@ -8,11 +8,12 @@
  */
 package maru.p2p
 
-import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.toJavaDuration
+import maru.config.P2PConfig
 import maru.p2p.discovery.MaruDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.logging.log4j.LogManager
@@ -29,6 +30,7 @@ class PeerDiscoveryTask(
   private val reputationManager: ReputationManager,
   private val maxPeers: Int,
   private val getPeerCount: () -> Int,
+  private val discoveryConfig: P2PConfig.Discovery,
 ) {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
@@ -37,6 +39,7 @@ class PeerDiscoveryTask(
   private val started = AtomicBoolean(false)
   private val connectionInProgress = mutableListOf<Bytes>()
   private val scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().factory())
+  private val searchTimeout = discoveryConfig.searchTimeout.toJavaDuration()
 
   fun start() {
     if (!started.compareAndSet(false, true)) {
@@ -47,7 +50,7 @@ class PeerDiscoveryTask(
       scheduler.scheduleWithFixedDelay(
         { runSearchTask(discoveryService) },
         0,
-        1000,
+        discoveryConfig.searchInterval.inWholeMilliseconds,
         TimeUnit.MILLISECONDS,
       )
   }
@@ -69,7 +72,7 @@ class PeerDiscoveryTask(
     try {
       discoveryService
         .searchForPeers()
-        .orTimeout(Duration.ofSeconds(30L))
+        .orTimeout(searchTimeout)
         .whenComplete { availablePeers, throwable ->
           if (throwable != null) {
             log.trace("Finished searching for peers with error.")

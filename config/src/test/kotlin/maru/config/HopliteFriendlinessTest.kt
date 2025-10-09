@@ -48,6 +48,8 @@ class HopliteFriendlinessTest {
     port = 3324
     bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
     refresh-interval = "30 seconds"
+    search-timeout = "10 seconds"
+    search-interval = "2 seconds"
 
     [p2p.reputation]
     small-change = 1
@@ -116,6 +118,8 @@ class HopliteFriendlinessTest {
               "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
             ),
           refreshInterval = 30.seconds,
+          searchTimeout = 10.seconds,
+          searchInterval = 2.seconds,
         ),
       reputation =
         P2PConfig.Reputation(

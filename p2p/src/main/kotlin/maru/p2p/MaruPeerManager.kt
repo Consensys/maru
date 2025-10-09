@@ -25,7 +25,7 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class MaruPeerManager(
   private val maruPeerFactory: MaruPeerFactory,
-  p2pConfig: P2PConfig,
+  private val p2pConfig: P2PConfig,
   private val reputationManager: MaruReputationManager,
   private val isStaticPeer: (NodeId) -> Boolean,
 ) : PeerHandler,
@@ -70,6 +70,7 @@ class MaruPeerManager(
           reputationManager = reputationManager,
           maxPeers = maxPeers,
           getPeerCount = { peerCount },
+          discoveryConfig = p2pConfig.discovery!!,
         )
       discoveryTask!!.start()
     }
