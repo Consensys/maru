@@ -46,7 +46,7 @@ class ForkSpecDigesterTest {
   private fun digest(spek: ForkSpec): ByteArray = ForkSpecDigester.serialize(spek)
 
   @Test
-  fun `should ignore blockTime into account`() {
+  fun `should ignore blockTime`() {
     assertThat(digest(forkSpec.copy(blockTimeSeconds = forkSpec.blockTimeSeconds + 1U)))
       .isEqualTo(digest(forkSpec))
   }
