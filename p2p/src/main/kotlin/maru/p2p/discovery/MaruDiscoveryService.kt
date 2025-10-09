@@ -156,7 +156,13 @@ class MaruDiscoveryService(
   private fun pingBootnodesTask(): TimerTask {
     var task: TimerTask? = null
     try {
-      task = timerTask { pingBootnodes() }
+      task =
+        timerTask {
+          // forkId is updated based on clockTime and genesisForks
+          // we shall update periodically
+          updateForkIdHash()
+          pingBootnodes()
+        }
     } catch (e: Exception) {
       log.warn("Failed to ping bootnodes", e)
     }
@@ -171,6 +177,8 @@ class MaruDiscoveryService(
     poller?.cancel()
     discoverySystem.stop()
   }
+
+  fun updateForkIdHash() = updateForkIdHash(forkIdHashManager.currentForkHash())
 
   fun updateForkIdHash(forkIdHash: ByteArray) {
     discoverySystem.updateCustomFieldValue(
