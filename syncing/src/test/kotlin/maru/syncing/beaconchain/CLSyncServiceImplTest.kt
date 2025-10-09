@@ -18,14 +18,13 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.config.consensus.ElFork
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
+import maru.consensus.ForkIdManagerFactory
 import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
+import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.DelayedQbftBlockCreator
 import maru.core.BeaconState
@@ -121,13 +120,12 @@ class CLSyncServiceImplTest {
             ),
           elFork = ElFork.Prague,
         )
-      val forksSchedule = ForksSchedule(CHAIN_ID, listOf(ForkSpec(0UL, 1U, consensusConfig)))
 
-      return ForkIdHashManagerImpl(
+      return ForkIdManagerFactory.createForkIdHashManager(
         chainId = CHAIN_ID,
         beaconChain = beaconChain,
-        forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+        elFork = ElFork.Prague,
+        forks = listOf(ForkSpec(0UL, 1U, consensusConfig)),
       )
     }
   }

@@ -13,7 +13,7 @@ import java.util.Timer
 import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration.Companion.seconds
-import maru.config.consensus.qbft.DifficultyAwareQbftConfig
+import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ProtocolFactory
 import maru.core.Protocol
@@ -135,7 +135,7 @@ class DifficultyAwareQbft(
     }
   }
 
-  override fun stop() {
+  override fun pause() {
     synchronized(this) {
       if (poller != null) {
         stopPoller()
@@ -144,11 +144,18 @@ class DifficultyAwareQbft(
       if (postTtdProtocol != null) {
         log.debug("Stopping post-TTD protocol")
         try {
-          postTtdProtocol?.stop()
+          postTtdProtocol?.pause()
         } catch (e: Exception) {
           log.warn("Error stopping post-TTD protocol", e)
         }
       }
+    }
+  }
+
+  override fun close() {
+    synchronized(this) {
+      pause()
+      postTtdProtocol?.close()
     }
   }
 

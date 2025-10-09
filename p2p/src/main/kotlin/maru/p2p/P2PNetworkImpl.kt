@@ -313,10 +313,11 @@ class P2PNetworkImpl(
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
             log.trace(
-              "Failed to connect to static peer={}, retrying after {} ms. Error={}",
+              "Failed to connect to static peer={}, retrying after {} ms. Error={}, StackTrace={}",
               peerAddress,
               p2pConfig.reconnectDelay,
               t.message,
+              t.stackTraceToString(),
             )
             if (t.cause?.message != "Transport is closed") {
               SafeFuture

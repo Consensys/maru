@@ -29,13 +29,14 @@ import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.config.consensus.ElFork
-import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
+import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
+import maru.consensus.blockimport.ElForkAwareBlockImporter
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.core.SealedBeaconBlock
@@ -73,6 +74,7 @@ import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
+import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
@@ -196,7 +198,13 @@ class MaruAppFactory {
         statusManager = statusManager,
         besuMetricsSystem = besuMetricsSystemAdapter,
         forkIdHashManager = forkIdHashProvider,
-        isBlockImportEnabledProvider = { syncControllerImpl!!.isNodeFullInSync() },
+        isBlockImportEnabledProvider = {
+          if (config.validatorElNode.payloadValidationEnabled) {
+            syncControllerImpl!!.isNodeFullInSync()
+          } else {
+            syncControllerImpl!!.isBeaconChainSynced()
+          }
+        },
         forkIdHasher = forkIdHasher,
         p2PState = kvDatabase,
         syncStatusProviderProvider = { syncControllerImpl!! },
@@ -209,10 +217,31 @@ class MaruAppFactory {
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
     syncControllerImpl =
       if (config.p2p != null) {
+        val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
+          config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
+            Helpers.createWeb3jClient(
+              apiEndpointConfig = apiEndpointConfig,
+              log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
+            )
+          }
+        val elSyncBlockImportHandlers =
+          Helpers.createForkAwareBlockImportHandlers(
+            forksSchedule = beaconGenesisConfig,
+            metricsFacade = metricsFacade,
+            followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+            finalizationProvider = finalizationProvider,
+          )
+        val blockValidatorHandler =
+          ElForkAwareBlockImporter(
+            forksSchedule = beaconGenesisConfig,
+            elManagerMap = elManagerMap,
+            importerName = "El sync payload validator",
+            finalizationProvider = finalizationProvider,
+          )
         BeaconSyncControllerImpl.create(
           beaconChain = kvDatabase,
-          forksSchedule = beaconGenesisConfig,
-          elManagerMap = elManagerMap,
+          blockValidatorHandler = blockValidatorHandler,
+          blockImportHandler = elSyncBlockImportHandlers,
           peersHeadsProvider = peersHeadBlockProvider,
           targetChainHeadCalculator = createSyncTargetSelector(config.syncing.syncTargetSelection),
           validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
@@ -224,7 +253,6 @@ class MaruAppFactory {
               config.syncing.peerChainHeightPollingInterval,
             ),
           elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
-          finalizationProvider = finalizationProvider,
           desyncTolerance = config.syncing.desyncTolerance,
           pipelineConfig =
             BeaconChainDownloadPipelineFactory.Config(
@@ -255,26 +283,23 @@ class MaruAppFactory {
           isElOnlineProvider = { elManagerMap[ElFork.Prague]!!.isOnline().get() },
         )
 
-    val maru =
-      MaruApp(
-        config = config,
-        beaconGenesisConfig = beaconGenesisConfig,
-        clock = clock,
-        p2pNetwork = p2pNetwork,
-        privateKeyProvider = { privateKey },
-        finalizationProvider = finalizationProvider,
-        metricsFacade = metricsFacade,
-        vertx = vertx,
-        beaconChain = kvDatabase,
-        metricsSystem = besuMetricsSystemAdapter,
-        validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
-        validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
-        apiServer = apiServer,
-        syncControllerManager = syncControllerImpl,
-        syncStatusProvider = syncControllerImpl,
-      )
-
-    return maru
+    return MaruApp(
+      config = config,
+      beaconGenesisConfig = beaconGenesisConfig,
+      clock = clock,
+      p2pNetwork = p2pNetwork,
+      privateKeyProvider = { privateKey },
+      finalizationProvider = finalizationProvider,
+      metricsFacade = metricsFacade,
+      vertx = vertx,
+      beaconChain = kvDatabase,
+      metricsSystem = besuMetricsSystemAdapter,
+      validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
+      validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
+      apiServer = apiServer,
+      syncControllerManager = syncControllerImpl,
+      syncStatusProvider = syncControllerImpl,
+    )
   }
 
   companion object {
