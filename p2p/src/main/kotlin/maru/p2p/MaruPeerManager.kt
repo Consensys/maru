@@ -17,7 +17,6 @@ import maru.config.P2PConfig
 import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
