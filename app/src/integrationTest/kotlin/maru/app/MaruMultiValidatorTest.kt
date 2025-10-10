@@ -80,11 +80,9 @@ class MaruMultiValidatorTest {
 
   @Test
   fun `maru with multiple validators is able to produce blocks`() {
-    val initialValidators =
-      setOf(key1, key2)
-        .map {
-          Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(it))
-        }.toSet()
+    val validator1Address = Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(key1))
+    val validator2Address = Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(key2))
+    val initialValidators = setOf(validator1Address, validator2Address)
 
     // Create and start validator 1 Maru app first
     val validator1MaruApp =
@@ -141,7 +139,7 @@ class MaruMultiValidatorTest {
     }
 
     // verify that all EL blocks are the same
-    checkValidatorBlocks(
+    checkAllValidatorBlocksAreTheSame(
       blocksToProduce = blocksToProduce,
       getValidator1Blocks = { validator1Stack.besuNode.getMinedBlocks(blocksToProduce) },
       getValidator2Blocks = { validator2Stack.besuNode.getMinedBlocks(blocksToProduce) },
@@ -150,15 +148,21 @@ class MaruMultiValidatorTest {
 
     // verify that all CL blocks are the same
     val beaconChain = validator1Stack.maruApp.beaconChain()
-    checkValidatorBlocks(
+    checkAllValidatorBlocksAreTheSame(
       blocksToProduce = blocksToProduce,
       getValidator1Blocks = { beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()) },
       getValidator2Blocks = { beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()) },
       blocksToMetadata = ::clBlocksToMetadata,
     )
+
+    checkBeaconBlockProposerAlternates(
+      beaconChain = beaconChain,
+      blocksToProduce = blocksToProduce,
+      sortedValidators = initialValidators.sorted(),
+    )
   }
 
-  private fun <T, M> checkValidatorBlocks(
+  private fun <T, M> checkAllValidatorBlocksAreTheSame(
     blocksToProduce: Int,
     getValidator1Blocks: () -> List<T>,
     getValidator2Blocks: () -> List<T>,
@@ -176,6 +180,38 @@ class MaruMultiValidatorTest {
           .hasSize(blocksToProduce)
         assertThat(blocksProducedByQbftValidator2)
           .isEqualTo(blocksProducedByQbftValidator1)
+      }
+  }
+
+  private fun checkBeaconBlockProposerAlternates(
+    beaconChain: maru.database.BeaconChain,
+    blocksToProduce: Int,
+    sortedValidators: List<maru.core.Validator>,
+  ) {
+    await
+      .pollDelay(1.seconds.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
+      .untilAsserted {
+        val blocks = beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong())
+        assertThat(blocks).hasSize(blocksToProduce)
+
+        // Check that each block's proposer follows the round-robin pattern
+        blocks.forEachIndexed { index, block ->
+          val blockNumber = block.beaconBlock.beaconBlockHeader.number
+          val actualProposer = block.beaconBlock.beaconBlockHeader.proposer
+          val expectedProposerIndex = ((blockNumber - 1uL) % sortedValidators.size.toULong()).toInt()
+          val expectedProposer = sortedValidators[expectedProposerIndex]
+
+          assertThat(actualProposer)
+            .withFailMessage {
+              "Block $blockNumber should be proposed by ${expectedProposer.address.encodeHex()} " +
+                "but was proposed by ${actualProposer.address.encodeHex()}"
+            }.isEqualTo(expectedProposer)
+
+          log.info(
+            "Block $blockNumber was correctly proposed by validator ${actualProposer.address.encodeHex()}",
+          )
+        }
       }
   }
 
