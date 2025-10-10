@@ -43,6 +43,7 @@ class HopliteFriendlinessTest {
     static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
     reconnect-delay = "500 ms"
     peering-fork-mismatch-leeway-time = "10 seconds"
+    allow-any-fork-connection = true
 
     [p2p.discovery]
     port = 3324
@@ -108,6 +109,7 @@ class HopliteFriendlinessTest {
         ),
       reconnectDelay = 500.milliseconds,
       peeringForkMismatchLeewayTime = 10.seconds,
+      allowAnyForkConnection = true,
       discovery =
         P2PConfig.Discovery(
           port = 3324u,

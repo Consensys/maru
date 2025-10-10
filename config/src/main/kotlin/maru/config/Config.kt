@@ -49,6 +49,7 @@ data class P2PConfig(
   val statusUpdate: StatusUpdate = StatusUpdate(),
   val reputation: Reputation = Reputation(),
   val peeringForkMismatchLeewayTime: Duration = 20.seconds,
+  val allowAnyForkConnection: Boolean = false,
   val gossiping: Gossiping = Gossiping(),
 ) {
   init {

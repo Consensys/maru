@@ -358,6 +358,7 @@ class MaruAppFactory {
           forks = forkSchedule.forks.toList(),
           peeringForkMismatchLeewayTime = p2pConfig.peeringForkMismatchLeewayTime,
           clock = clock,
+          allowAnyForkConnection = p2pConfig.allowAnyForkConnection,
         )
       val statusManager = StatusManager(beaconChain, forkIdHashManager)
 

@@ -84,6 +84,7 @@ class LenientForkPeeringManager internal constructor(
   private val clock: Clock,
   private val forks: List<ForkInfo>,
   private val peeringForkMismatchLeewayTime: Duration,
+  private val allowAnyForkConnection: Boolean = false,
   private val log: Logger = LogManager.getLogger(LenientForkPeeringManager::class.java),
 ) : ForkPeeringManager {
   init {
@@ -136,12 +137,21 @@ class LenientForkPeeringManager internal constructor(
       // possible cases:
       // A - peer has outdated genesis file, missing latest fork configs
       // B - peer has a different genesis file, a real network fork
-      log.info(
-        "invalid peer fork: reason=FORK_UNKNOWN currentFork={} peerForkId={}",
-        currentFork.toLogString(),
-        otherForkIdHash.encodeHex(),
-      )
-      return false
+      if (allowAnyForkConnection) {
+        log.warn(
+          "invalid peer fork: reason=FORK_UNKNOWN currentFork={} peerForkId={} but will allow connection due to allowAnyForkConnection=true",
+          currentFork.toLogString(),
+          otherForkIdHash.encodeHex(),
+        )
+        return true
+      } else {
+        log.info(
+          "invalid peer fork: reason=FORK_UNKNOWN currentFork={} peerForkId={}",
+          currentFork.toLogString(),
+          otherForkIdHash.encodeHex(),
+        )
+        return false
+      }
     }
     // to handle cases around network switching to the next fork
     // also fork may mismatch due to network latency, clock out of sync
@@ -172,11 +182,13 @@ class LenientForkPeeringManager internal constructor(
       forks: List<ForkSpec>,
       peeringForkMismatchLeewayTime: Duration,
       clock: Clock,
+      allowAnyForkConnection: Boolean = false,
     ): LenientForkPeeringManager {
       val digestsCalculator = RollingForwardForkIdDigestCalculator(chainId, beaconChain)
       return LenientForkPeeringManager(
         clock = clock,
         peeringForkMismatchLeewayTime = peeringForkMismatchLeewayTime,
+        allowAnyForkConnection = allowAnyForkConnection,
         forks = digestsCalculator.calculateForkDigests(forks),
       )
     }
