@@ -32,7 +32,7 @@ dependencies {
 
 tasks.register('runDifficultyCalculator', JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
-  mainClass = 'DifficultyCalculator'
+  mainClass = 'linea.maru.DifficultyCalculator'
   standardOutput = System.out
 }
 
