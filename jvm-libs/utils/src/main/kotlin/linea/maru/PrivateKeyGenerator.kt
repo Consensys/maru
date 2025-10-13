@@ -90,26 +90,4 @@ object PrivateKeyGenerator {
     val privKeyRaw = privKey.raw().takeLast(32).toByteArray()
     return getKeyData(privKeyRaw)
   }
-
-  // @CommandLine.Command(
-  //   description = ["Generates secp256k1 private keys and node info"],
-  //   mixinStandardHelpOptions = true, version = ["1.0.0"]
-  // )
-  // fun commandGenerateKeys(
-  //   @CommandLine.Option(names = ["-n", "--numberOfKeys"], description = ["Number of keys to generate"])
-  //   numberOfKeys: Int = 1
-  // ): Int {
-  //   repeat(numberOfKeys) {
-  //     generatePrivateKey()
-  //       .also { logKeyData(it) }
-  //   }
-  //   return CommandLine.ExitCode.OK
-  // }
-
-  // @JvmStatic
-  // fun main(args: Array<String>) {
-  //   val generateKey: Method = CommandLine.getCommandMethods(PrivateKeyGenerator::class.java, "commandGenerateKeys")[0]
-  //   val cmd = CommandLine(generateKey)
-  //   val exitCode = cmd.execute(*args)
-  // }
 }
