@@ -86,7 +86,6 @@ class MaruPeerManager(
     scheduler!!.shutdown()
     scheduler = null
     peers.values.forEach { it.disconnectCleanly(DisconnectReason.SHUTTING_DOWN) }
-    return
   }
 
   private fun logConnectedPeers() {
