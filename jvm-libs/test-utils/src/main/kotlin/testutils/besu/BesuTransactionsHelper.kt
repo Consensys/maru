@@ -21,7 +21,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTra
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions
 
 class BesuTransactionsHelper {
-  private val ethTransactions = EthTransactions()
+  val ethTransactions = EthTransactions()
   private val accounts = Accounts(ethTransactions)
   private val accountTransactions = AccountTransactions(accounts)
   val ethConditions = EthConditions(ethTransactions)
