@@ -66,7 +66,7 @@ class KeyTool {
   }
 
   @CommandLine.Command(
-    description = ["Logs secp256k1 private key info and node info"],
+    description = ["Logs protobuf serialized prefixed secp256k1 private key info and node info"],
     mixinStandardHelpOptions = true,
     version = ["1.0.0"],
   )
