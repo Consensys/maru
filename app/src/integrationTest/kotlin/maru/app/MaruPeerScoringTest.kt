@@ -9,7 +9,6 @@
 package maru.app
 
 import java.lang.Thread.sleep
-import java.net.ServerSocket
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -23,12 +22,10 @@ import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.config.P2PConfig
-import maru.config.SyncingConfig
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.database.P2PState
+import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.DefaultBlockRetrievalStrategy
 import maru.p2p.messages.StatusManager
@@ -50,6 +47,7 @@ import org.junit.jupiter.api.Test
 import testutils.FourEmptyResponsesStrategy
 import testutils.MisbehavingP2PNetwork
 import testutils.PeeringNodeNetworkStack
+import testutils.TestUtils.findFreePort
 import testutils.TimeOutResponsesStrategy
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
@@ -205,12 +203,10 @@ class MaruPeerScoringTest {
           metricsSystem: MetricsSystem,
           statusManager: StatusManager,
           chain: BeaconChain,
-          forkIdHashManager: ForkIdHashManager,
-          forkIdHasher: ForkIdHasher,
+          forkIdHashManager: ForkPeeringManager,
           isBlockImportEnabledProvider: () -> Boolean,
           p2pState: P2PState,
           syncStatusProviderProvider: () -> SyncStatusProvider,
-          syncConfig: SyncingConfig,
           ->
           MisbehavingP2PNetwork(
             privateKeyBytes = privateKeyBytes,
@@ -222,11 +218,9 @@ class MaruPeerScoringTest {
             statusManager = statusManager,
             chain = chain,
             forkIdHashManager = forkIdHashManager,
-            forkIdHasher = forkIdHasher,
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,
             syncStatusProviderProvider = syncStatusProviderProvider,
-            syncConfig = syncConfig,
             blockRetrievalStrategy = blockRetrievalStrategy,
           ).p2pNetwork
         },
@@ -330,14 +324,4 @@ class MaruPeerScoringTest {
     }
     return MaruNodeSetup(validatorMaruApp = validatorMaruApp, followerMaruApp = followerMaruApp, job = job)
   }
-
-  private fun findFreePort(): UInt =
-    runCatching {
-      ServerSocket(0).use { socket ->
-        socket.reuseAddress = true
-        socket.localPort.toUInt()
-      }
-    }.getOrElse {
-      throw IllegalStateException("Could not find a free port", it)
-    }
 }

@@ -12,8 +12,6 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
-import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ElFork
 import org.assertj.core.api.Assertions.assertThat
 
 class NextBlockTimestampProviderTest {
@@ -22,8 +20,12 @@ class NextBlockTimestampProviderTest {
     ForksSchedule(
       chainId,
       listOf(
-        ForkSpec(0UL, 1u, QbftConsensusConfig(validatorSet = emptySet(), ElFork.Prague)),
-        ForkSpec(10UL, 2u, QbftConsensusConfig(validatorSet = emptySet(), ElFork.Prague)),
+        ForkSpec(0UL, 1u, QbftConsensusConfig(validatorSet = emptySet(), ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague))),
+        ForkSpec(
+          10UL,
+          2u,
+          QbftConsensusConfig(validatorSet = emptySet(), ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague)),
+        ),
       ),
     )
   private val baseLastBlockTimestamp = 9UL

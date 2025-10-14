@@ -11,16 +11,13 @@ package maru.p2p
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2PConfig
-import maru.config.SyncingConfig
-import maru.consensus.ForkId
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
@@ -29,6 +26,7 @@ import maru.database.P2PState
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
+import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.p2p.topics.QbftMessageSerDe
 import maru.p2p.topics.SimpleTopicHandler
@@ -65,12 +63,10 @@ class P2PNetworkImpl(
   metricsSystem: BesuMetricsSystem,
   private val statusManager: StatusManager,
   private val beaconChain: BeaconChain,
-  private val forkIdHashManager: ForkIdHashManager,
-  private val forkIdHasher: ForkIdHasher,
+  private val forkIdHashManager: ForkPeeringManager,
   isBlockImportEnabledProvider: () -> Boolean,
   private val p2PState: P2PState,
   private val syncStatusProviderProvider: () -> SyncStatusProvider,
-  private val syncConfig: SyncingConfig,
   // for testing:
   private val rpcMethodsFactory: (
     StatusManager,
@@ -161,23 +157,18 @@ class P2PNetworkImpl(
       metricsSystem = besuMetricsSystem,
       asyncRunner = asyncRunner,
       reputationManager = reputationManager,
+      gossipingConfig = p2pConfig.gossiping,
     )
   }
 
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig, metricsSystem)
   internal val p2pNetwork = builtNetwork.p2PNetwork
-  private val discoveryService: MaruDiscoveryService? =
-    p2pConfig.discovery?.let {
-      MaruDiscoveryService(
-        privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
-        p2pConfig = p2pConfig,
-        forkIdHashManager = forkIdHashManager,
-        p2PState = p2PState,
-      )
-    }
+  private var discoveryService: MaruDiscoveryService? = null
 
   override val localNodeRecord: NodeRecord?
     get() = discoveryService?.getLocalNodeRecord()
+  override val enr: String?
+    get() = localNodeRecord?.asEnr()
 
   // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
   private val peerLookup = builtNetwork.peerLookup
@@ -187,12 +178,11 @@ class P2PNetworkImpl(
     )
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS, executor)
-  private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()
+  private val staticPeerMap = ConcurrentHashMap<NodeId, MultiaddrPeerAddress>()
 
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String>
     get() = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
-  override val enr: String? = discoveryService?.getLocalNodeRecord()?.asEnr()
   override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 
   private fun logEnr(nodeRecord: NodeRecord) {
@@ -217,6 +207,15 @@ class P2PNetworkImpl(
             .createPeerAddress(peer)
             ?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
+        discoveryService =
+          p2pConfig.discovery?.let {
+            MaruDiscoveryService(
+              privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
+              p2pConfig = if (p2pConfig.port == 0u) p2pConfig.copy(port = port) else p2pConfig,
+              forkIdHashManager = forkIdHashManager,
+              p2PState = p2PState,
+            )
+          }
         discoveryService?.start()
         maruPeerManager.start(discoveryService, p2pNetwork)
         metricsFacade.createGauge(
@@ -237,11 +236,11 @@ class P2PNetworkImpl(
             privateKeyBytes = privateKeyBytes,
             seq = 0,
             ipv4 = it,
-            ipv4UdpPort = p2pConfig.discovery?.port?.toInt() ?: p2pConfig.port.toInt(),
-            ipv4TcpPort = p2pConfig.port.toInt(),
+            ipv4UdpPort = p2pConfig.discovery?.port?.toInt() ?: port.toInt(),
+            ipv4TcpPort = port.toInt(),
           )
         }
-    return enrs + listOfNotNull(discoveryService?.getLocalNodeRecord())
+    return enrs + listOfNotNull(localNodeRecord)
   }
 
   override fun stop(): SafeFuture<Unit> {
@@ -360,13 +359,14 @@ class P2PNetworkImpl(
       .whenComplete { peer: Peer?, t: Throwable? ->
         if (t != null) {
           if (t.cause is PeerAlreadyConnectedException) {
-            log.trace("Already connected to peer={}. Error={}", peerAddress, t.message)
+            log.trace("Already connected to peer={}. errorMessage={}", peerAddress, t.message)
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
-            log.trace(
-              "Failed to connect to static peer={}, retrying after {} ms. Error={}",
+            log.debug(
+              "failed to connect to static peer={} retrying after {}. errorMessage={}",
               peerAddress,
               p2pConfig.reconnectDelay,
+              t.message,
               t,
             )
             if (t.cause?.message != "Transport is closed") {
@@ -445,16 +445,6 @@ class P2PNetworkImpl(
   }
 
   override fun handleForkTransition(forkSpec: ForkSpec) {
-    val forkId =
-      ForkId(
-        chainId = chainId,
-        forkSpec = forkSpec,
-        genesisRootHash =
-          beaconChain.getBeaconState(0u)?.beaconBlockHeader?.hash
-            ?: throw IllegalStateException("Genesis state not found"),
-      )
-    val newForkIdHash = forkIdHasher.hash(forkId)
-    forkIdHashManager.update(forkSpec)
-    discoveryService?.updateForkIdHash(Bytes.wrap(newForkIdHash))
+    discoveryService?.updateForkIdHash(forkIdHashManager.currentForkHash())
   }
 }
