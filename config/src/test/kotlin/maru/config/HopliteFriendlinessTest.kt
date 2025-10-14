@@ -28,6 +28,9 @@ class HopliteFriendlinessTest {
   private val protocolTransitionPollingInterval = 2.seconds
   private val emptyFollowersConfigToml =
     """
+    network-address-cache-ttl-seconds = -1
+    network-address-cache-negative-ttl-seconds = 10
+
     protocol-transition-polling-interval = "2s"
 
     [persistence]
@@ -222,6 +225,8 @@ class HopliteFriendlinessTest {
     )
   private val expectedEmptyFollowersBase =
     MaruConfigDtoToml(
+      networkAddressCacheTTLSeconds = -1,
+      networkAddressCacheNegativeTTLSeconds = 10,
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = false,
       persistence = persistence,
@@ -255,6 +260,8 @@ class HopliteFriendlinessTest {
     val exception =
       assertThrows<IllegalArgumentException> {
         MaruConfig(
+          networkAddressCacheTTLSeconds = -1,
+          networkAddressCacheNegativeTTLSeconds = 10,
           protocolTransitionPollingInterval = protocolTransitionPollingInterval,
           allowEmptyBlocks = false,
           persistence = persistence,
@@ -276,6 +283,8 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        networkAddressCacheTTLSeconds = -1,
+        networkAddressCacheNegativeTTLSeconds = 10,
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
@@ -300,6 +309,8 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        networkAddressCacheTTLSeconds = -1,
+        networkAddressCacheNegativeTTLSeconds = 10,
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = false,
         persistence = persistence,
@@ -460,6 +471,8 @@ class HopliteFriendlinessTest {
 
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        networkAddressCacheTTLSeconds = -1,
+        networkAddressCacheNegativeTTLSeconds = 10,
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         allowEmptyBlocks = true,
         persistence = persistence,
@@ -522,6 +535,8 @@ class HopliteFriendlinessTest {
 
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        networkAddressCacheTTLSeconds = -1,
+        networkAddressCacheNegativeTTLSeconds = 10,
         linea = expectedLineaConfig,
         protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         persistence = persistence,

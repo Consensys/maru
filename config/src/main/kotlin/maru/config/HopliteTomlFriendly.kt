@@ -9,6 +9,7 @@
 package maru.config
 
 import java.net.URL
+import kotlin.Int
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -145,6 +146,8 @@ data class LineaConfigDtoToml(
 }
 
 data class MaruConfigDtoToml(
+  private val networkAddressCacheTTLSeconds: Int = 0,
+  private val networkAddressCacheNegativeTTLSeconds: Int = 0,
   private val linea: LineaConfigDtoToml? = null,
   private val protocolTransitionPollingInterval: Duration = 1.seconds,
   private val allowEmptyBlocks: Boolean = false,
@@ -159,6 +162,8 @@ data class MaruConfigDtoToml(
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
+      networkAddressCacheTTLSeconds = networkAddressCacheTTLSeconds,
+      networkAddressCacheNegativeTTLSeconds = networkAddressCacheNegativeTTLSeconds,
       linea = linea?.domainFriendly(),
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = allowEmptyBlocks,

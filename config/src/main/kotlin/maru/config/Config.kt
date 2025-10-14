@@ -237,6 +237,8 @@ data class SyncingConfig(
 }
 
 data class MaruConfig(
+  val networkAddressCacheTTLSeconds: Int = 0,
+  val networkAddressCacheNegativeTTLSeconds: Int = 0,
   val protocolTransitionPollingInterval: Duration = 1.seconds,
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,

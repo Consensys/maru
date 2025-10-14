@@ -101,6 +101,16 @@ class MaruAppFactory {
       () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
+    java.security.Security.setProperty(
+      "networkaddress.cache.ttl",
+      config.networkAddressCacheTTLSeconds.toString(),
+    )
+
+    java.security.Security.setProperty(
+      "networkaddress.cache.negative.ttl",
+      config.networkAddressCacheNegativeTTLSeconds.toString(),
+    )
+
     log.info("configs={}", config)
     log.info("beaconGenesisConfig={}", beaconGenesisConfig)
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
