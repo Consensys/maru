@@ -12,12 +12,15 @@ import io.libp2p.etc.types.fromHex
 import java.math.BigInteger
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
+import maru.consensus.qbft.ProposerSelectorImpl
 import maru.core.SealedBeaconBlock
 import maru.crypto.Crypto
+import maru.database.BeaconChain
 import maru.extensions.encodeHex
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
+import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
@@ -82,6 +85,8 @@ class MaruMultiValidatorTest {
   fun `maru with multiple validators is able to produce blocks`() {
     val validator1Address = Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(key1))
     val validator2Address = Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(key2))
+    log.info("Validator 1 (key1) address: ${validator1Address.address.encodeHex()}")
+    log.info("Validator 2 (key2) address: ${validator2Address.address.encodeHex()}")
     val initialValidators = setOf(validator1Address, validator2Address)
 
     // Create and start validator 1 Maru app first
@@ -138,81 +143,74 @@ class MaruMultiValidatorTest {
       }
     }
 
+    val beaconChain = validator1Stack.maruApp.beaconChain()
+    waitForBlocksToBeProduced(blocksToProduce, beaconChain)
+
     // verify that all EL blocks are the same
     checkAllValidatorBlocksAreTheSame(
-      blocksToProduce = blocksToProduce,
       getValidator1Blocks = { validator1Stack.besuNode.getMinedBlocks(blocksToProduce) },
       getValidator2Blocks = { validator2Stack.besuNode.getMinedBlocks(blocksToProduce) },
       blocksToMetadata = ::elBlocksToMetadata,
     )
 
     // verify that all CL blocks are the same
-    val beaconChain = validator1Stack.maruApp.beaconChain()
     checkAllValidatorBlocksAreTheSame(
-      blocksToProduce = blocksToProduce,
       getValidator1Blocks = { beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()) },
       getValidator2Blocks = { beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()) },
       blocksToMetadata = ::clBlocksToMetadata,
     )
 
-    checkBeaconBlockProposerAlternates(
+    checkBlockProposersMatchExpectedProposers(
       beaconChain = beaconChain,
       blocksToProduce = blocksToProduce,
-      sortedValidators = initialValidators.sorted(),
     )
   }
 
-  private fun <T, M> checkAllValidatorBlocksAreTheSame(
+  private fun waitForBlocksToBeProduced(
     blocksToProduce: Int,
+    beaconChain: BeaconChain,
+  ) {
+    await
+      .pollDelay(1.seconds.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(validator1Stack.besuNode.getMinedBlocks(blocksToProduce))
+          .hasSize(blocksToProduce)
+        assertThat(beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()))
+          .hasSize(blocksToProduce)
+      }
+  }
+
+  private fun <T, M> checkAllValidatorBlocksAreTheSame(
     getValidator1Blocks: () -> List<T>,
     getValidator2Blocks: () -> List<T>,
     blocksToMetadata: (List<T>) -> List<M>,
   ) {
-    await
-      .pollDelay(1.seconds.toJavaDuration())
-      .timeout(30.seconds.toJavaDuration())
-      .untilAsserted {
-        val blocksProducedByQbftValidator1 = blocksToMetadata(getValidator1Blocks())
-        val blocksProducedByQbftValidator2 = blocksToMetadata(getValidator2Blocks())
-        assertThat(blocksProducedByQbftValidator1)
-          .hasSize(blocksToProduce)
-        assertThat(blocksProducedByQbftValidator2)
-          .hasSize(blocksToProduce)
-        assertThat(blocksProducedByQbftValidator2)
-          .isEqualTo(blocksProducedByQbftValidator1)
-      }
+    val blocksProducedByQbftValidator1 = blocksToMetadata(getValidator1Blocks())
+    val blocksProducedByQbftValidator2 = blocksToMetadata(getValidator2Blocks())
+    assertThat(blocksProducedByQbftValidator2)
+      .isEqualTo(blocksProducedByQbftValidator1)
   }
 
-  private fun checkBeaconBlockProposerAlternates(
-    beaconChain: maru.database.BeaconChain,
+  private fun checkBlockProposersMatchExpectedProposers(
+    beaconChain: BeaconChain,
     blocksToProduce: Int,
-    sortedValidators: List<maru.core.Validator>,
   ) {
-    await
-      .pollDelay(1.seconds.toJavaDuration())
-      .timeout(30.seconds.toJavaDuration())
-      .untilAsserted {
-        val blocks = beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong())
-        assertThat(blocks).hasSize(blocksToProduce)
+    val blocks = beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong())
+    val proposerSelector = ProposerSelectorImpl
 
-        // Check that each block's proposer follows the round-robin pattern
-        blocks.forEachIndexed { index, block ->
-          val blockNumber = block.beaconBlock.beaconBlockHeader.number
-          val actualProposer = block.beaconBlock.beaconBlockHeader.proposer
-          val expectedProposerIndex = ((blockNumber - 1uL) % sortedValidators.size.toULong()).toInt()
-          val expectedProposer = sortedValidators[expectedProposerIndex]
+    blocks.forEachIndexed { index, block ->
+      val beaconBlockHeader = block.beaconBlock.beaconBlockHeader
+      val roundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong(), beaconBlockHeader.round.toInt())
+      val parentBeaconState = beaconChain.getBeaconState(beaconBlockHeader.number - 1uL)
+      val expectedProposer = proposerSelector.getProposerForBlock(parentBeaconState!!, roundIdentifier).get()
 
-          assertThat(actualProposer)
-            .withFailMessage {
-              "Block $blockNumber should be proposed by ${expectedProposer.address.encodeHex()} " +
-                "but was proposed by ${actualProposer.address.encodeHex()}"
-            }.isEqualTo(expectedProposer)
-
-          log.info(
-            "Block $blockNumber was correctly proposed by validator ${actualProposer.address.encodeHex()}",
-          )
-        }
-      }
+      assertThat(beaconBlockHeader.proposer)
+        .withFailMessage {
+          "Block ${beaconBlockHeader.number} should be proposed by ${expectedProposer.address.encodeHex()} " +
+            "but was proposed by ${beaconBlockHeader.proposer.address.encodeHex()}"
+        }.isEqualTo(expectedProposer)
+    }
   }
 
   private fun elBlocksToMetadata(blocks: List<EthBlock.Block>): List<Pair<BigInteger, String>> =
