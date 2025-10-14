@@ -28,8 +28,8 @@ import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
+import maru.p2p.topics.ImmediateTopicHandler
 import maru.p2p.topics.QbftMessageSerDe
-import maru.p2p.topics.SimpleTopicHandler
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import maru.serialization.rlp.MaruCompressorRLPSerDe
@@ -103,7 +103,7 @@ class P2PNetworkImpl(
     )
   private val qbftMessagesSubscriptionManager = SubscriptionManager<QbftMessage>()
   private val qbftMessagesTopicHandler =
-    SimpleTopicHandler(
+    ImmediateTopicHandler(
       subscriptionManager = qbftMessagesSubscriptionManager,
       deserializer = qbftMessageSerDe,
       topicId = qbftTopicId,
@@ -307,8 +307,6 @@ class P2PNetworkImpl(
    */
   override fun unsubscribeFromBlocks(subscriptionId: Int) = sealedBlocksSubscriptionManager.unsubscribe(subscriptionId)
 
-  override fun isStaticPeer(nodeId: NodeId): Boolean = staticPeerMap.containsKey(nodeId)
-
   override fun subscribeToQbftMessages(subscriber: QbftMessageHandler<ValidationResult>): Int {
     log.trace("Subscribing to QBFT messages")
     val subscriptionManagerHadSubscriptions = qbftMessagesSubscriptionManager.hasSubscriptions()
@@ -324,11 +322,6 @@ class P2PNetworkImpl(
     }
   }
 
-  /**
-   * Unsubscribes the handler with a given subscriptionId from QBFT message handling.
-   * Note that it's impossible to unsubscribe from a topic on LibP2P level, so the messages will still be received and
-   * handled by LibP2P, but not processed by Maru
-   */
   override fun unsubscribeFromQbftMessages(subscriptionId: Int) =
     qbftMessagesSubscriptionManager.unsubscribe(subscriptionId)
 
@@ -345,6 +338,8 @@ class P2PNetworkImpl(
     }
     maintainPersistentConnection(peerAddress)
   }
+
+  override fun isStaticPeer(nodeId: NodeId): Boolean = staticPeerMap.containsKey(nodeId)
 
   fun removeStaticPeer(peerAddress: PeerAddress) {
     synchronized(this) {

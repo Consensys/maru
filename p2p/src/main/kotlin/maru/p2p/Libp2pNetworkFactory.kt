@@ -29,7 +29,7 @@ import kotlin.random.Random
 import kotlin.time.toJavaDuration
 import maru.config.P2PConfig
 import maru.core.SealedBeaconBlock
-import maru.p2p.topics.SimpleTopicHandler
+import maru.p2p.topics.ImmediateTopicHandler
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
@@ -65,7 +65,7 @@ class Libp2pNetworkFactory(
     ipAddress: String,
     sealedBlocksTopicHandler: TopicHandlerWithInOrderDelivering<SealedBeaconBlock>,
     sealedBlocksTopicId: String,
-    qbftTopicHandler: SimpleTopicHandler<QbftMessage>,
+    qbftTopicHandler: ImmediateTopicHandler<QbftMessage>,
     qbftTopicId: String,
     rpcMethods: List<RpcMethod<*, *, *>>,
     maruPeerManager: MaruPeerManager,

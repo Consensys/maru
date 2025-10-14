@@ -29,16 +29,16 @@ import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import tech.pegasys.teku.networking.p2p.gossip.PreparedGossipMessage
 import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 
-class SimpleTopicHandlerTest {
+class ImmediateTopicHandlerTest {
   private val mockSubscriptionManager = mock<SubscriptionManager<String>>()
   private val mockDeserializer = mock<Deserializer<String>>()
   private val topicId = "test-topic"
-  private lateinit var handler: SimpleTopicHandler<String>
+  private lateinit var handler: ImmediateTopicHandler<String>
 
   @BeforeEach
   fun setUp() {
     handler =
-      SimpleTopicHandler(
+      ImmediateTopicHandler(
         subscriptionManager = mockSubscriptionManager,
         deserializer = mockDeserializer,
         topicId = topicId,

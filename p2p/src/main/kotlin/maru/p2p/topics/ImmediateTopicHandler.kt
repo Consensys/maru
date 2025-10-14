@@ -25,10 +25,10 @@ import tech.pegasys.teku.networking.p2p.gossip.TopicHandler
 import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 
 /**
- * Simplified topic handler that immediately triggers event handling without any queuing.
+ * Topic handler that immediately triggers event handling without any queuing.
  * This handler always processes messages immediately and does not maintain any ordering guarantees.
  */
-class SimpleTopicHandler<T>(
+class ImmediateTopicHandler<T>(
   private val subscriptionManager: SubscriptionManager<T>,
   private val deserializer: Deserializer<T>,
   private val topicId: String,

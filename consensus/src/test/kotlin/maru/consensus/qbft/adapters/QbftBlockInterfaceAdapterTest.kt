@@ -10,7 +10,6 @@ package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Ok
 import java.util.SequencedSet
-import kotlin.test.assertEquals
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.consensus.state.StateTransitionImpl
@@ -35,7 +34,7 @@ class QbftBlockInterfaceAdapterTest {
   }
 
   @Test
-  fun `can replace round number in header`() {
+  fun `can replace round number in header for commit block`() {
     val beaconBlock =
       BeaconBlock(
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(1UL).copy(round = 10u),
@@ -53,7 +52,7 @@ class QbftBlockInterfaceAdapterTest {
   }
 
   @Test
-  fun `can replace round and proposer in header`() {
+  fun `can replace round and proposer in header for proposal block`() {
     val originalProposer = DataGenerators.randomValidator()
     val newProposer = DataGenerators.randomValidator()
     val beaconBlock =
@@ -76,7 +75,7 @@ class QbftBlockInterfaceAdapterTest {
   }
 
   @Test
-  fun `updates state root when replacing round number`() {
+  fun `updates state root when replacing round number in commit block`() {
     val validators = DataGenerators.randomValidators().toSortedSet()
     val beaconBlock =
       BeaconBlock(
@@ -90,8 +89,34 @@ class QbftBlockInterfaceAdapterTest {
 
     val updatedBeaconBlock = updatedBlock.toBeaconBlock()
     val validationResult = StateRootValidator(stateTransition).validateBlock(updatedBeaconBlock).get()
-    assertEquals(Ok(Unit), validationResult)
-    assertEquals(20u, updatedBeaconBlock.beaconBlockHeader.round)
+    assertThat(validationResult).isEqualTo(Ok(Unit))
+    assertThat(updatedBeaconBlock.beaconBlockHeader.round).isEqualTo(20u)
+  }
+
+  @Test
+  fun `updates state root when replacing round number and proposal in proposal block`() {
+    val originalProposer = DataGenerators.randomValidator()
+    val newProposer = DataGenerators.randomValidator()
+    val validators = DataGenerators.randomValidators().toSortedSet()
+    val beaconBlock =
+      BeaconBlock(
+        beaconBlockHeader =
+          DataGenerators.randomBeaconBlockHeader(1UL).copy(
+            round = 10u,
+            proposer = originalProposer,
+          ),
+        beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
+      )
+    val qbftBlock = QbftBlockAdapter(beaconBlock)
+    val stateTransition = createMockStateTransition(validators)
+    val adapter = QbftBlockInterfaceAdapter(stateTransition)
+    val updatedBlock = adapter.replaceRoundAndProposerForProposalBlock(qbftBlock, 25, newProposer.toAddress())
+
+    val updatedBeaconBlock = updatedBlock.toBeaconBlock()
+    val validationResult = StateRootValidator(stateTransition).validateBlock(updatedBeaconBlock).get()
+    assertThat(validationResult).isEqualTo(Ok(Unit))
+    assertThat(updatedBeaconBlock.beaconBlockHeader.round).isEqualTo(25u)
+    assertThat(updatedBeaconBlock.beaconBlockHeader.proposer).isEqualTo(newProposer)
   }
 
   private fun createMockStateTransition(
