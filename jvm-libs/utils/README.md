@@ -13,7 +13,7 @@ Generates cryptographic keys for Maru validators and P2P networking, displaying 
 
 #### Usage
 
-**Generate 5 keys:**
+**Generate keys:**
 ```bash
 ./gradlew :jvm-libs:utils:keytool --args='generateKeys --numberOfKeys=5'
 ```
