@@ -90,10 +90,8 @@ class MaruPeerManager(
 
   private fun logConnectedPeers() {
     log.info("Currently connected peers={}", connectedPeers().keys.toList())
-    if (log.isDebugEnabled) {
-      discoveryService?.getKnownPeers()?.forEach { peer ->
-        log.debug("discovered peer={}", peer)
-      }
+    if (log.isTraceEnabled) {
+      log.trace("discovered peers={}", discoveryService?.getKnownPeers())
     }
   }
 
@@ -110,7 +108,7 @@ class MaruPeerManager(
       log.debug("Connected to peer={}, static=$isAStaticPeer", peer.id)
     } else { // not static and not allowed to connect -> disconnect
       peer.disconnectCleanly(DisconnectReason.RATE_LIMITING)
-      log.debug("Peer={} is not allowed to connect yet", peer.id)
+      log.trace("Peer={} is not allowed to connect yet", peer.id)
     }
   }
 
