@@ -20,15 +20,7 @@ class QbftMessageSerDeTest {
   @Test
   fun `should serialize and deserialize QbftMessage`() {
     val originalData = Bytes.random(32)
-    val originalMessageData =
-      object : MessageData {
-        override fun getData(): Bytes = originalData
-
-        override fun getSize(): Int = originalData.size()
-
-        override fun getCode(): Int = 42
-      }
-
+    val originalMessageData = MessageDataSerDe.MaruMessageData(42, originalData)
     val originalQbftMessage =
       object : QbftMessage {
         override fun getData(): MessageData = originalMessageData
@@ -48,15 +40,7 @@ class QbftMessageSerDeTest {
   @Test
   fun `should handle QbftMessage with empty data`() {
     val emptyData = Bytes.EMPTY
-    val emptyMessageData =
-      object : MessageData {
-        override fun getData(): Bytes = emptyData
-
-        override fun getSize(): Int = emptyData.size()
-
-        override fun getCode(): Int = 0
-      }
-
+    val emptyMessageData = MessageDataSerDe.MaruMessageData(0, emptyData)
     val qbftMessage =
       object : QbftMessage {
         override fun getData(): MessageData = emptyMessageData

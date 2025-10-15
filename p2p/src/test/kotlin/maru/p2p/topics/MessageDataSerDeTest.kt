@@ -8,9 +8,10 @@
  */
 package maru.p2p.topics
 
+import maru.p2p.ValidationResult.Companion.Valid.code
+import maru.p2p.topics.MessageDataSerDe.MaruMessageData
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 import org.junit.jupiter.api.Test
 
 class MessageDataSerDeTest {
@@ -19,15 +20,7 @@ class MessageDataSerDeTest {
   @Test
   fun `should serialize and deserialize MessageData correctly`() {
     val originalData = Bytes.random(32)
-    val originalMessage =
-      object : MessageData {
-        override fun getData(): Bytes = originalData
-
-        override fun getSize(): Int = originalData.size()
-
-        override fun getCode(): Int = 42
-      }
-
+    val originalMessage = MaruMessageData(code = 42, data = originalData)
     val serialized = serDe.serialize(originalMessage)
     val deserialized = serDe.deserialize(serialized)
 
@@ -39,15 +32,7 @@ class MessageDataSerDeTest {
   @Test
   fun `should handle empty message data`() {
     val originalData = Bytes.EMPTY
-    val originalMessage =
-      object : MessageData {
-        override fun getData(): Bytes = originalData
-
-        override fun getSize(): Int = originalData.size()
-
-        override fun getCode(): Int = 0
-      }
-
+    val originalMessage = MaruMessageData(code = 0, data = originalData)
     val serialized = serDe.serialize(originalMessage)
     val deserialized = serDe.deserialize(serialized)
 

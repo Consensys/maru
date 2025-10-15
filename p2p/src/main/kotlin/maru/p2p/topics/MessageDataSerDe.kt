@@ -30,15 +30,19 @@ class MessageDataSerDe : RLPSerDe<MessageData> {
     val code = rlpInput.readInt()
     val data = rlpInput.readBytes()
     rlpInput.leaveList()
+    return MaruMessageData(code, data)
+  }
 
-    return object : MessageData {
-      override fun getData(): Bytes = data
+  internal class MaruMessageData(
+    private val code: Int,
+    private val data: Bytes,
+  ) : MessageData {
+    override fun getData(): Bytes = data
 
-      override fun getSize(): Int = data.size()
+    override fun getSize(): Int = data.size()
 
-      override fun getCode(): Int = code
+    override fun getCode(): Int = code
 
-      override fun toString(): String = "MessageData(code=$code, size=$size, data=$data)"
-    }
+    override fun toString(): String = "MessageData(code=$code, size=$size, data=$data)"
   }
 }

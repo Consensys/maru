@@ -31,6 +31,7 @@ import maru.database.InMemoryP2PState
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusManager
+import maru.p2p.topics.MessageDataSerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
@@ -43,7 +44,6 @@ import org.assertj.core.api.Assertions.assertThatNoException
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility.await
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
@@ -364,8 +364,8 @@ class P2PTest {
       awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
       // Create test QBFT messages
-      val testMessage1 = createTestQbftMessage(code = 42, data = "test data 1")
-      val testMessage2 = createTestQbftMessage(code = 43, data = "test data 2")
+      val testMessage1 = createTestQbftMessage(code = 42, data = "test data 1".toByteArray())
+      val testMessage2 = createTestQbftMessage(code = 43, data = "test data 2".toByteArray())
 
       val qbftMessage1 = Message(GossipMessageType.QBFT, Version.V1, testMessage1)
       val qbftMessage2 = Message(GossipMessageType.QBFT, Version.V1, testMessage2)
@@ -946,16 +946,9 @@ class P2PTest {
 
   private fun createTestQbftMessage(
     code: Int,
-    data: String,
+    data: ByteArray,
   ): QbftMessage {
-    val messageData =
-      object : MessageData {
-        override fun getData(): Bytes = Bytes.wrap(data.toByteArray())
-
-        override fun getSize(): Int = data.toByteArray().size
-
-        override fun getCode(): Int = code
-      }
+    val messageData = MessageDataSerDe.MaruMessageData(code, Bytes.wrap(data))
     return QbftMessage { messageData }
   }
 }
