@@ -17,9 +17,6 @@ docker-run-stack
 To build Maru from source code:
 
 ```sh
-# Build the project and all dependencies
-./gradlew build
-
 # Create a distribution ready to run
 ./gradlew :app:installDist
 ```
