@@ -26,10 +26,14 @@ class QbftMessageSerDe : RLPSerDe<QbftMessage> {
 
   override fun readFrom(rlpInput: RLPInput): QbftMessage {
     val messageData = messageDataSerDe.readFrom(rlpInput)
-    return object : QbftMessage {
-      override fun toString(): String = "QbftMessage(data=$messageData)"
+    return MaruQbftMessage(messageData)
+  }
 
-      override fun getData(): MessageData? = messageData
-    }
+  internal class MaruQbftMessage(
+    private val messageData: MessageData,
+  ) : QbftMessage {
+    override fun getData(): MessageData = messageData
+
+    override fun toString(): String = "QbftMessage(data=$messageData)"
   }
 }

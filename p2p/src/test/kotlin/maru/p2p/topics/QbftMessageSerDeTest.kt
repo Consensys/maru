@@ -10,8 +10,6 @@ package maru.p2p.topics
 
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
-import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 import org.junit.jupiter.api.Test
 
 class QbftMessageSerDeTest {
@@ -21,13 +19,7 @@ class QbftMessageSerDeTest {
   fun `should serialize and deserialize QbftMessage`() {
     val originalData = Bytes.random(32)
     val originalMessageData = MessageDataSerDe.MaruMessageData(42, originalData)
-    val originalQbftMessage =
-      object : QbftMessage {
-        override fun getData(): MessageData = originalMessageData
-
-        override fun toString(): String = "TestQbftMessage"
-      }
-
+    val originalQbftMessage = QbftMessageSerDe.MaruQbftMessage(originalMessageData)
     val serialized = serDe.serialize(originalQbftMessage)
     val deserialized = serDe.deserialize(serialized)
 
@@ -41,13 +33,7 @@ class QbftMessageSerDeTest {
   fun `should handle QbftMessage with empty data`() {
     val emptyData = Bytes.EMPTY
     val emptyMessageData = MessageDataSerDe.MaruMessageData(0, emptyData)
-    val qbftMessage =
-      object : QbftMessage {
-        override fun getData(): MessageData = emptyMessageData
-
-        override fun toString(): String = "EmptyQbftMessage"
-      }
-
+    val qbftMessage = QbftMessageSerDe.MaruQbftMessage(emptyMessageData)
     val serialized = serDe.serialize(qbftMessage)
     val deserialized = serDe.deserialize(serialized)
 
