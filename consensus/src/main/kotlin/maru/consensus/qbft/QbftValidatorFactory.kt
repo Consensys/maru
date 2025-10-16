@@ -34,6 +34,7 @@ import maru.consensus.qbft.adapters.QbftFinalStateAdapter
 import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
 import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
+import maru.consensus.qbft.adapters.toQbftReceivedMessageEvent
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.StateTransition
@@ -56,7 +57,6 @@ import org.hyperledger.besu.consensus.common.bft.BlockTimer
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
 import org.hyperledger.besu.consensus.common.bft.RoundTimer
-import org.hyperledger.besu.consensus.common.bft.events.BftEvents
 import org.hyperledger.besu.consensus.common.bft.statemachine.FutureMessageBuffer
 import org.hyperledger.besu.consensus.qbft.core.payload.MessageFactory
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftBlockHeightManagerFactory
@@ -65,7 +65,6 @@ import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftRoundFactory
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMinedBlockObserver
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
-import org.hyperledger.besu.consensus.qbft.core.types.QbftReceivedMessageEvent
 import org.hyperledger.besu.consensus.qbft.core.validation.MessageValidatorFactory
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.cryptoservices.KeyPairSecurityModule
@@ -256,15 +255,7 @@ class QbftValidatorFactory(
 
     // Subscribe to QBFT messages from P2P network and add them to the event queue
     p2PNetwork.subscribeToQbftMessages { qbftMessage ->
-      val messageEvent =
-        object : QbftReceivedMessageEvent {
-          override fun getMessage(): QbftMessage = qbftMessage
-
-          override fun getType(): BftEvents.Type = BftEvents.Type.MESSAGE
-
-          override fun toString(): String = qbftMessage.toString()
-        }
-      bftEventQueue.add(messageEvent)
+      bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())
       SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
 
