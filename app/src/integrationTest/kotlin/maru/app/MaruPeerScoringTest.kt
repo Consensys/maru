@@ -55,7 +55,6 @@ import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
 import testutils.maru.MaruFactory
-import testutils.maru.awaitTillMaruHasPeers
 
 class MaruPeerScoringTest {
   private lateinit var cluster: Cluster
@@ -293,9 +292,6 @@ class MaruPeerScoringTest {
 
       followerStack.maruApp.start()
 
-      validatorStack.maruApp.awaitTillMaruHasPeers(1u)
-      followerStack.maruApp.awaitTillMaruHasPeers(1u)
-
       followerEthApiClient =
         createEthApiClient(
           rpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
@@ -303,6 +299,7 @@ class MaruPeerScoringTest {
           requestRetryConfig = null,
           vertx = null,
         )
+
       // wait for Besu to be fully started and synced,
       // to avoid CI flakiness due to low resources sometimes
       await

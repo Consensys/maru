@@ -40,7 +40,6 @@ class MaruPeerManager(
   private val peers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
 
   private var scheduler: ScheduledExecutorService? = null
-  private lateinit var p2pNetwork: P2PNetwork<Peer>
 
   val peerCount: Int
     get() = connectedPeers().size
@@ -57,7 +56,6 @@ class MaruPeerManager(
       return
     }
     this.discoveryService = discoveryService
-    this.p2pNetwork = p2pNetwork
     scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().factory())
     scheduler!!.scheduleAtFixedRate({
       logConnectedPeers()
