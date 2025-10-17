@@ -30,7 +30,7 @@ object NoOpP2PNetwork : P2PNetwork {
         log.debug("NoopP2PNetwork stopped")
       }.thenApply { }
 
-  override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<Unit> {
+  override fun broadcastMessage(message: BroadcastMessage<*, GossipMessageType>): SafeFuture<Unit> {
     log.debug("Doing nothing for message={}", message)
     return SafeFuture.completedFuture(Unit)
   }

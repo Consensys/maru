@@ -9,7 +9,8 @@
 package maru.p2p.messages
 
 import maru.p2p.MaruPeer
-import maru.p2p.Message
+import maru.p2p.RequestMessage
+import maru.p2p.ResponseMessage
 import maru.p2p.RpcMessageHandler
 import maru.p2p.RpcMessageType
 import org.apache.logging.log4j.LogManager
@@ -20,13 +21,13 @@ import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 
 class StatusHandler(
   private val statusManager: StatusManager,
-) : RpcMessageHandler<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>> {
+) : RpcMessageHandler<RequestMessage<Status, RpcMessageType>, ResponseMessage<Status, RpcMessageType>> {
   private val log = LogManager.getLogger(this.javaClass)
 
   override fun handleIncomingMessage(
     peer: MaruPeer,
-    message: Message<Status, RpcMessageType>,
-    callback: ResponseCallback<Message<Status, RpcMessageType>>,
+    message: RequestMessage<Status, RpcMessageType>,
+    callback: ResponseCallback<ResponseMessage<Status, RpcMessageType>>,
   ) {
     try {
       if (!statusManager.isValidForPeering(message.payload)) {
@@ -37,7 +38,7 @@ class StatusHandler(
         return
       }
       peer.updateStatus(message.payload)
-      callback.respondAndCompleteSuccessfully(statusManager.createStatusMessage())
+      callback.respondAndCompleteSuccessfully(statusManager.createStatusResponseMessage())
     } catch (e: RpcException) {
       log.error("handling request failed with RpcException", e)
       callback.completeWithErrorResponse(e)

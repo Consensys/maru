@@ -8,7 +8,7 @@
  */
 package maru.p2p.messages
 
-import maru.p2p.Message
+import maru.p2p.ResponseMessage
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.serialization.rlp.RLPSerDe
@@ -17,26 +17,26 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class BeaconBlocksByRangeResponseMessageSerDe(
   private val beaconBlocksByRangeResponseSerDe: RLPSerDe<BeaconBlocksByRangeResponse>,
-) : RLPSerDe<Message<BeaconBlocksByRangeResponse, RpcMessageType>> {
+) : RLPSerDe<ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType>> {
   override fun writeTo(
-    value: Message<BeaconBlocksByRangeResponse, RpcMessageType>,
+    value: ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType>,
     rlpOutput: RLPOutput,
   ) {
     beaconBlocksByRangeResponseSerDe.writeTo(value.payload, rlpOutput)
   }
 
-  override fun readFrom(rlpInput: RLPInput): Message<BeaconBlocksByRangeResponse, RpcMessageType> =
-    Message(
+  override fun readFrom(rlpInput: RLPInput): ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType> =
+    ResponseMessage(
       RpcMessageType.BEACON_BLOCKS_BY_RANGE,
       Version.V1,
       beaconBlocksByRangeResponseSerDe.readFrom(rlpInput),
     )
 
-  override fun serialize(value: Message<BeaconBlocksByRangeResponse, RpcMessageType>): ByteArray =
+  override fun serialize(value: ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType>): ByteArray =
     beaconBlocksByRangeResponseSerDe.serialize(value.payload)
 
-  override fun deserialize(bytes: ByteArray): Message<BeaconBlocksByRangeResponse, RpcMessageType> =
-    Message(
+  override fun deserialize(bytes: ByteArray): ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType> =
+    ResponseMessage(
       RpcMessageType.BEACON_BLOCKS_BY_RANGE,
       Version.V1,
       beaconBlocksByRangeResponseSerDe.deserialize(bytes),

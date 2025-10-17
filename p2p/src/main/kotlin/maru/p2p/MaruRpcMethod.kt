@@ -13,7 +13,7 @@ import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 
-class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>>(
+class MaruRpcMethod<TRequest : RequestMessage<*, RpcMessageType>, TResponse : ResponseMessage<*, RpcMessageType>>(
   private val messageType: RpcMessageType,
   private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
   private val requestMessageSerDe: SerDe<TRequest>,

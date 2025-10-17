@@ -8,27 +8,47 @@
  */
 package maru.p2p.messages
 
-import maru.p2p.Message
+import maru.p2p.RequestMessage
+import maru.p2p.ResponseMessage
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.serialization.rlp.RLPSerDe
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class StatusMessageSerDe(
-  private val statusSerDe: RLPSerDe<Status>,
-) : RLPSerDe<Message<Status, RpcMessageType>> {
+class StatusResponseMessageSerDe(
+  val statusSerDe: RLPSerDe<Status>,
+) : RLPSerDe<ResponseMessage<Status, RpcMessageType>> {
   override fun writeTo(
-    value: Message<Status, RpcMessageType>,
+    value: ResponseMessage<Status, RpcMessageType>,
     rlpOutput: RLPOutput,
   ) {
     statusSerDe.writeTo(value.payload, rlpOutput)
   }
 
-  override fun readFrom(rlpInput: RLPInput): Message<Status, RpcMessageType> {
+  override fun readFrom(rlpInput: RLPInput): ResponseMessage<Status, RpcMessageType> {
     val status = statusSerDe.readFrom(rlpInput)
+    return ResponseMessage(
+      RpcMessageType.STATUS,
+      Version.V1,
+      status,
+    )
+  }
+}
 
-    return Message(
+class StatusRequestMessageSerDe(
+  val statusSerDe: RLPSerDe<Status>,
+) : RLPSerDe<RequestMessage<Status, RpcMessageType>> {
+  override fun writeTo(
+    value: RequestMessage<Status, RpcMessageType>,
+    rlpOutput: RLPOutput,
+  ) {
+    statusSerDe.writeTo(value.payload, rlpOutput)
+  }
+
+  override fun readFrom(rlpInput: RLPInput): RequestMessage<Status, RpcMessageType> {
+    val status = statusSerDe.readFrom(rlpInput)
+    return RequestMessage(
       RpcMessageType.STATUS,
       Version.V1,
       status,

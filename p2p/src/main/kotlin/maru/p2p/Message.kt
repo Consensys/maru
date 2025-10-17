@@ -8,6 +8,12 @@
  */
 package maru.p2p
 
+import tech.pegasys.teku.infrastructure.ssz.SszData
+import tech.pegasys.teku.infrastructure.ssz.SszMutableData
+import tech.pegasys.teku.infrastructure.ssz.schema.SszSchema
+import tech.pegasys.teku.infrastructure.ssz.tree.TreeNode
+import tech.pegasys.teku.spec.datastructures.networking.libp2p.rpc.RpcRequest
+
 enum class Version : Comparable<Version> {
   V1,
 }
@@ -29,11 +35,39 @@ enum class Encoding {
 
 sealed interface MessageType
 
-data class Message<TPayload, TMessageType : MessageType>(
+data class BroadcastMessage<TPayload, TMessageType : MessageType>(
   val type: TMessageType,
   val version: Version = Version.V1,
   val payload: TPayload,
 )
+
+data class ResponseMessage<TPayload, TMessageType : MessageType>(
+  val type: TMessageType,
+  val version: Version = Version.V1,
+  val payload: TPayload,
+)
+
+data class RequestMessage<TPayload, TMessageType : MessageType>(
+  val type: TMessageType,
+  val version: Version = Version.V1,
+  val payload: TPayload,
+) : RpcRequest {
+  override fun getMaximumResponseChunks(): Int {
+    TODO("Not yet implemented")
+  }
+
+  override fun createWritableCopy(): SszMutableData? {
+    TODO("Not yet implemented")
+  }
+
+  override fun getSchema(): SszSchema<out SszData?>? {
+    TODO("Not yet implemented")
+  }
+
+  override fun getBackingNode(): TreeNode? {
+    TODO("Not yet implemented")
+  }
+}
 
 interface MessageIdGenerator {
   fun id(

@@ -11,8 +11,8 @@ package testutils
 import java.util.concurrent.CopyOnWriteArrayList
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.core.SealedBeaconBlock
+import maru.p2p.BroadcastMessage
 import maru.p2p.GossipMessageType
-import maru.p2p.Message
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
@@ -29,7 +29,7 @@ class SpyingP2PNetwork(
   val p2pNetwork: P2PNetwork,
 ) : P2PNetwork by p2pNetwork {
   companion object {
-    private fun Message<*, *>.toBesuMessageData(): BesuMessageData {
+    private fun BroadcastMessage<*, *>.toBesuMessageData(): BesuMessageData {
       require(this.type == GossipMessageType.QBFT) {
         "Unsupported message type: ${this.type}"
       }
@@ -58,7 +58,7 @@ class SpyingP2PNetwork(
 
   override fun stop(): SafeFuture<Unit> = SafeFuture.completedFuture(Unit)
 
-  override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<Unit> {
+  override fun broadcastMessage(message: BroadcastMessage<*, GossipMessageType>): SafeFuture<Unit> {
     when (message.type) {
       GossipMessageType.QBFT -> {
         val decodedMessage = decodedMessage(message.toBesuMessageData())

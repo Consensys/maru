@@ -11,7 +11,8 @@ package maru.p2p.messages
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.p2p.MaruPeer
-import maru.p2p.Message
+import maru.p2p.RequestMessage
+import maru.p2p.ResponseMessage
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.p2p.messages.BeaconBlocksByRangeHandler.Companion.MAX_BLOCKS_PER_REQUEST
@@ -32,7 +33,7 @@ class BeaconBlocksByRangeHandlerTest {
   private lateinit var beaconChain: BeaconChain
   private lateinit var handler: BeaconBlocksByRangeHandler
   private lateinit var peer: MaruPeer
-  private lateinit var callback: ResponseCallback<Message<BeaconBlocksByRangeResponse, RpcMessageType>>
+  private lateinit var callback: ResponseCallback<ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType>>
 
   @BeforeEach
   fun setup() {
@@ -46,7 +47,7 @@ class BeaconBlocksByRangeHandlerTest {
   fun `handles request with no blocks available`() {
     val request = BeaconBlocksByRangeRequest(startBlockNumber = 100UL, count = 10UL)
     val message =
-      Message(
+      RequestMessage(
         type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
         version = Version.V1,
         payload = request,
@@ -56,7 +57,7 @@ class BeaconBlocksByRangeHandlerTest {
 
     handler.handleIncomingMessage(peer, message, callback)
 
-    val responseCaptor = argumentCaptor<Message<BeaconBlocksByRangeResponse, RpcMessageType>>()
+    val responseCaptor = argumentCaptor<ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType>>()
     verify(callback).respondAndCompleteSuccessfully(responseCaptor.capture())
 
     val response = responseCaptor.firstValue
@@ -68,7 +69,7 @@ class BeaconBlocksByRangeHandlerTest {
   fun `handles request with blocks available`() {
     val request = BeaconBlocksByRangeRequest(startBlockNumber = 100UL, count = 3UL)
     val message =
-      Message(
+      RequestMessage(
         type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
         version = Version.V1,
         payload = request,
@@ -85,7 +86,7 @@ class BeaconBlocksByRangeHandlerTest {
 
     handler.handleIncomingMessage(peer, message, callback)
 
-    val responseCaptor = argumentCaptor<Message<BeaconBlocksByRangeResponse, RpcMessageType>>()
+    val responseCaptor = argumentCaptor<ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType>>()
     verify(callback).respondAndCompleteSuccessfully(responseCaptor.capture())
 
     val response = responseCaptor.firstValue
@@ -98,7 +99,7 @@ class BeaconBlocksByRangeHandlerTest {
   fun `handles large count request`() {
     val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 1000UL)
     val message =
-      Message(
+      RequestMessage(
         type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
         version = Version.V1,
         payload = request,
@@ -115,7 +116,7 @@ class BeaconBlocksByRangeHandlerTest {
 
     handler.handleIncomingMessage(peer, message, callback)
 
-    val responseCaptor = argumentCaptor<Message<BeaconBlocksByRangeResponse, RpcMessageType>>()
+    val responseCaptor = argumentCaptor<ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType>>()
     verify(callback).respondAndCompleteSuccessfully(responseCaptor.capture())
 
     val response = responseCaptor.firstValue
@@ -135,7 +136,7 @@ class BeaconBlocksByRangeHandlerTest {
 
     val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 10UL)
     val message =
-      Message(
+      RequestMessage(
         type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
         version = Version.V1,
         payload = request,
@@ -154,7 +155,7 @@ class BeaconBlocksByRangeHandlerTest {
 
     handler.handleIncomingMessage(peer, message, callback)
 
-    val responseCaptor = argumentCaptor<Message<BeaconBlocksByRangeResponse, RpcMessageType>>()
+    val responseCaptor = argumentCaptor<ResponseMessage<BeaconBlocksByRangeResponse, RpcMessageType>>()
     verify(callback).respondAndCompleteSuccessfully(responseCaptor.capture())
 
     // The response should return 4 blocks out of 10, given that the compressed serialized size of
@@ -178,7 +179,7 @@ class BeaconBlocksByRangeHandlerTest {
   fun `handles request with Rpc exception`() {
     val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 1000UL)
     val message =
-      Message(
+      RequestMessage(
         type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
         version = Version.V1,
         payload = request,
@@ -203,7 +204,7 @@ class BeaconBlocksByRangeHandlerTest {
   fun `handles request with, Missing sealed beacon block, exception`() {
     val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 1000UL)
     val message =
-      Message(
+      RequestMessage(
         type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
         version = Version.V1,
         payload = request,
@@ -228,7 +229,7 @@ class BeaconBlocksByRangeHandlerTest {
   fun `handles request with exception`() {
     val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 1000UL)
     val message =
-      Message(
+      RequestMessage(
         type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
         version = Version.V1,
         payload = request,

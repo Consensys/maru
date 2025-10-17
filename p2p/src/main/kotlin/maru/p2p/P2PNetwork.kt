@@ -85,7 +85,7 @@ interface P2PNetwork : Closeable {
    */
   fun stop(): SafeFuture<Unit>
 
-  fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*>
+  fun broadcastMessage(message: BroadcastMessage<*, GossipMessageType>): SafeFuture<*>
 
   /**
    * @return subscription id
