@@ -16,7 +16,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import maru.app.MaruApp
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -46,7 +45,6 @@ class MaruDiscoveryTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
-  private lateinit var fakeLineaContract: FakeLineaRollupSmartContractClient
   private var job: Job? = null
 
   @AfterEach
@@ -94,7 +92,6 @@ class MaruDiscoveryTest {
     log.info("Starting peer discovery test with $numberOfNodes nodes")
 
     // Initialize test infrastructure
-    fakeLineaContract = FakeLineaRollupSmartContractClient()
     transactionsHelper = BesuTransactionsHelper()
     cluster =
       Cluster(
@@ -143,7 +140,6 @@ class MaruDiscoveryTest {
         ethereumJsonRpcUrl = bootnodeStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = bootnodeStack.besuNode.engineRpcUrl().get(),
         dataDir = bootnodeStack.tmpDir,
-        overridingLineaContractClient = fakeLineaContract,
         p2pPort = bootnodeTcpPort,
         discoveryPort = bootnodeUdpPort,
         allowEmptyBlocks = true,
@@ -203,7 +199,6 @@ class MaruDiscoveryTest {
             ethereumJsonRpcUrl = stack.besuNode.jsonRpcBaseUrl().get(),
             engineApiRpc = stack.besuNode.engineRpcUrl().get(),
             dataDir = stack.tmpDir,
-            overridingLineaContractClient = fakeLineaContract,
             bootnode = bootnodeEnr,
             p2pPort = tcpPort,
             discoveryPort = udpPort,
