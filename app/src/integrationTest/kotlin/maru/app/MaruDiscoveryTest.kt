@@ -131,16 +131,14 @@ class MaruDiscoveryTest {
 
     // Create and start the bootnode (validator)
     val bootnodeStack = networkStacks[0]
-    val bootnodeTcpPort = findFreePort()
     val bootnodeUdpPort = findFreePort()
 
-    log.info("Creating bootnode Maru on TCP port $bootnodeTcpPort, UDP port $bootnodeUdpPort")
+    log.info("Creating bootnode Maru on UDP port $bootnodeUdpPort")
     val bootnodeMaruApp =
       maruFactory.buildTestMaruValidatorWithDiscovery(
         ethereumJsonRpcUrl = bootnodeStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = bootnodeStack.besuNode.engineRpcUrl().get(),
         dataDir = bootnodeStack.tmpDir,
-        p2pPort = bootnodeTcpPort,
         discoveryPort = bootnodeUdpPort,
         allowEmptyBlocks = true,
       )
@@ -190,17 +188,15 @@ class MaruDiscoveryTest {
       // Create and start follower nodes
       for (i in 1 until numberOfNodes) {
         val stack = networkStacks[i]
-        val tcpPort = findFreePort()
         val udpPort = findFreePort()
 
-        log.info("Creating follower node $i on TCP port $tcpPort, UDP port $udpPort")
+        log.info("Creating follower node $i on UDP port $udpPort")
         val followerMaruApp =
           maruFactory.buildTestMaruFollowerWithDiscovery(
             ethereumJsonRpcUrl = stack.besuNode.jsonRpcBaseUrl().get(),
             engineApiRpc = stack.besuNode.engineRpcUrl().get(),
             dataDir = stack.tmpDir,
             bootnode = bootnodeEnr,
-            p2pPort = tcpPort,
             discoveryPort = udpPort,
             allowEmptyBlocks = true,
           )
