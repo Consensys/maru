@@ -15,6 +15,7 @@ import io.libp2p.core.crypto.marshalPrivateKey
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.libp2p.crypto.keys.unmarshalSecp256k1PrivateKey
 import linea.kotlin.encodeHex
+import maru.crypto.Crypto
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.core.Util
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
@@ -66,15 +67,19 @@ object PrivateKeyGenerator {
   }
 
   fun getKeyData(privateKey: ByteArray): KeyData {
+    // Sometimes keyPair has 1 byte more so we just take the last 32 bytes ¯\_(ツ)_/¯
+    val trimmedPrivateKey = privateKey.takeLast(32).toByteArray()
+    // The curve parameters for the block signing are different from what LibP2P is using
+    val signingAddress = Crypto.privateKeyToAddress(trimmedPrivateKey)
     val privateKeyTyped = unmarshalSecp256k1PrivateKey(privateKey)
     val publicKey = privateKeyTyped.publicKey()
     val address = Util.publicKeyToAddress(Bytes.wrap(publicKey.bytes()))
-    val peerId = PeerId.Companion.fromPubKey(privateKeyTyped.publicKey())
+    val peerId = PeerId.fromPubKey(privateKeyTyped.publicKey())
     val libP2PNodeId = LibP2PNodeId(peerId)
     return KeyData(
       privateKey = privateKeyTyped.raw(),
       prefixedPrivateKey = marshalPrivateKey(privateKeyTyped),
-      address = address.toArray(),
+      address = signingAddress,
       peerId = libP2PNodeId,
     )
   }
@@ -86,8 +91,6 @@ object PrivateKeyGenerator {
 
   fun generatePrivateKey(): KeyData {
     val (privKey, pubKey) = generateKeyPair(KeyType.SECP256K1)
-    // Sometimes keyPair has 1 byte more so we just take the last 32 bytes ¯\_(ツ)_/¯
-    val privKeyRaw = privKey.raw().takeLast(32).toByteArray()
-    return getKeyData(privKeyRaw)
+    return getKeyData(privKey.raw())
   }
 }
