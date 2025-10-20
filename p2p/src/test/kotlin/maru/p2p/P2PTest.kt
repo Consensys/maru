@@ -90,6 +90,7 @@ class P2PTest {
     @JvmStatic
     fun p2pPorts(): Stream<Arguments> =
       Stream.of(
+        Arguments.of(findFreePort().toInt(), findFreePort().toInt(), findFreePort().toInt()),
         Arguments.of(0, 0, 0),
       )
 
