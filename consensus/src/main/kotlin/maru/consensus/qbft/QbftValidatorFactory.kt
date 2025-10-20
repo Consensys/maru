@@ -256,6 +256,7 @@ class QbftValidatorFactory(
     // Subscribe to QBFT messages from P2P network and add them to the event queue
     p2PNetwork.subscribeToQbftMessages { qbftMessage ->
       bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())
+      // TODO: Validate QBFT messages and return the appropriate ValidationResult
       SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
 
