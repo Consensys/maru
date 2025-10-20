@@ -137,8 +137,9 @@ class DefaultMaruPeerTest {
 
   @Test
   fun `sendRequest delegates to underlying peer`() {
-    val rpcMethod = mock<RpcMethod<RpcRequestHandler, RequestMessage<String, RpcMessageType>, RpcResponseHandler<*>>>()
-    val request = RequestMessage(RpcMessageType.STATUS, Version.V1, "test-request")
+    val rpcMethod =
+      mock<RpcMethod<RpcRequestHandler, RequestMessageAdapter<String, RpcMessageType>, RpcResponseHandler<*>>>()
+    val request = RequestMessageAdapter(MessageData(RpcMessageType.STATUS, Version.V1, "test-request"))
     val responseHandler = mock<RpcResponseHandler<*>>()
     val expectedController = mock<RpcStreamController<RpcRequestHandler>>()
 
@@ -180,7 +181,7 @@ class DefaultMaruPeerTest {
 
   @Test
   fun `sendStatus returns failed future when exception is thrown`() {
-    whenever(statusManager.createStatusRequestMessage()).thenThrow(RuntimeException("fail"))
+    whenever(statusManager.createStatusMessage()).thenThrow(RuntimeException("fail"))
     whenever(delegatePeer.address).thenReturn(mock())
     val future = maruPeer.sendStatus()
     assertThat(future).isNotNull()

@@ -9,24 +9,26 @@
 package maru.p2p.messages
 
 import maru.core.ext.DataGenerators.randomStatus
-import maru.p2p.RequestMessage
-import maru.p2p.ResponseMessage
+import maru.p2p.MessageData
+import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class StatusMessageSerDeTest {
-  private val requestMessageSerDe = StatusRequestMessageSerDe(StatusSerDe())
-  private val responseMessageSerDe = StatusResponseMessageSerDe(StatusSerDe())
+  private val responseMessageSerDe = StatusMessageSerDe(StatusSerDe())
+  private val requestMessageSerDe = StatusRequestMessageSerDe(responseMessageSerDe)
 
   @Test
   fun `can serialize and deserialize same request value`() {
     val testValue =
-      RequestMessage(
-        RpcMessageType.STATUS,
-        Version.V1,
-        randomStatus(100U),
+      RequestMessageAdapter(
+        MessageData(
+          RpcMessageType.STATUS,
+          Version.V1,
+          randomStatus(100U),
+        ),
       )
 
     val serializedData = requestMessageSerDe.serialize(testValue)
@@ -38,7 +40,7 @@ class StatusMessageSerDeTest {
   @Test
   fun `can serialize and deserialize same response value`() {
     val testValue =
-      ResponseMessage(
+      MessageData(
         RpcMessageType.STATUS,
         Version.V1,
         randomStatus(100U),

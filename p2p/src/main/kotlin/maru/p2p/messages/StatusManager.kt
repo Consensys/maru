@@ -9,8 +9,8 @@
 package maru.p2p.messages
 
 import maru.database.BeaconChain
-import maru.p2p.RequestMessage
-import maru.p2p.ResponseMessage
+import maru.p2p.Message
+import maru.p2p.MessageData
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.p2p.fork.ForkPeeringManager
@@ -19,30 +19,16 @@ class StatusManager(
   private val beaconChain: BeaconChain,
   private val forkIdHashManager: ForkPeeringManager,
 ) {
-  fun createStatusPayload(): Status {
+  fun createStatusMessage(): Message<Status, RpcMessageType> {
     val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
-    return Status(
-      forkIdHash = forkIdHashManager.currentForkHash(),
-      latestStateRoot = latestBeaconBlockHeader.hash,
-      latestBlockNumber = latestBeaconBlockHeader.number,
-    )
-  }
-
-  fun createStatusResponseMessage(): ResponseMessage<Status, RpcMessageType> {
-    val statusPayload = createStatusPayload()
-    val statusMessage =
-      ResponseMessage(
-        type = RpcMessageType.STATUS,
-        version = Version.V1,
-        payload = statusPayload,
+    val statusPayload =
+      Status(
+        forkIdHash = forkIdHashManager.currentForkHash(),
+        latestStateRoot = latestBeaconBlockHeader.hash,
+        latestBlockNumber = latestBeaconBlockHeader.number,
       )
-    return statusMessage
-  }
-
-  fun createStatusRequestMessage(): RequestMessage<Status, RpcMessageType> {
-    val statusPayload = createStatusPayload()
     val statusMessage =
-      RequestMessage(
+      MessageData(
         type = RpcMessageType.STATUS,
         version = Version.V1,
         payload = statusPayload,
