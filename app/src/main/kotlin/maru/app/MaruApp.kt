@@ -59,13 +59,13 @@ class MaruApp(
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
-  private fun privateKeyWithoutPrefix() = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
+  private fun getPrivateKeyWithoutPrefix() = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
 
   init {
     if (config.qbft == null) {
       log.info("Qbft options are not defined. nodeRole=follower")
     } else {
-      val localValidator = Crypto.privateKeyToValidator(privateKeyWithoutPrefix())
+      val localValidator = Crypto.privateKeyToValidator(getPrivateKeyWithoutPrefix())
       log.info("Qbft options are defined. nodeRole=validator with address={}", localValidator.address)
       // TODO: This may be not needed when we use dynamic validator set from a smart contract
       warnIfValidatorIsNotInTheGenesis(localValidator)
@@ -105,7 +105,7 @@ class MaruApp(
       beaconGenesisConfig = beaconGenesisConfig,
       clock = clock,
       beaconChain = beaconChain,
-      privateKeyWithoutPrefix = privateKeyWithoutPrefix(),
+      privateKeyWithoutPrefix = getPrivateKeyWithoutPrefix(),
     )
 
   fun start() {
