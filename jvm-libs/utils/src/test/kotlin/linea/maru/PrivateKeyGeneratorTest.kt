@@ -14,7 +14,6 @@ import linea.maru.PrivateKeyGenerator.getKeyData
 import linea.maru.PrivateKeyGenerator.getKeyDataByPrefixedKey
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.RepeatedTest
-import org.junit.jupiter.api.Test
 
 class PrivateKeyGeneratorTest {
   @RepeatedTest(100)

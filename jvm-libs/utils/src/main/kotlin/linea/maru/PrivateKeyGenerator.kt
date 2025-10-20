@@ -16,8 +16,6 @@ import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.libp2p.crypto.keys.unmarshalSecp256k1PrivateKey
 import linea.kotlin.encodeHex
 import maru.crypto.Crypto
-import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.ethereum.core.Util
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 
 /**
@@ -82,13 +80,12 @@ object PrivateKeyGenerator {
     )
   }
 
-  private fun ensureKeyIsExactly32BytesLong(privateKey: ByteArray): ByteArray {
-    return when {
+  private fun ensureKeyIsExactly32BytesLong(privateKey: ByteArray): ByteArray =
+    when {
       privateKey.size == 32 -> privateKey
       privateKey.size < 32 -> ByteArray(32 - privateKey.size) + privateKey
       else -> privateKey.takeLast(32).toByteArray()
     }
-  }
 
   internal fun getKeyDataByPrefixedKey(prefixedPrivateKey: ByteArray): KeyData {
     val privateKeyTyped = unmarshalPrivateKey(prefixedPrivateKey)
