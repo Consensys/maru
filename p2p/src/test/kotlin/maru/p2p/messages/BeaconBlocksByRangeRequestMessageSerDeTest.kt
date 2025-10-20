@@ -8,7 +8,8 @@
  */
 package maru.p2p.messages
 
-import maru.p2p.RequestMessage
+import maru.p2p.MessageData
+import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import org.assertj.core.api.Assertions.assertThat
@@ -28,10 +29,12 @@ class BeaconBlocksByRangeRequestMessageSerDeTest {
         count = 10UL,
       )
     val message =
-      RequestMessage(
-        type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
-        version = Version.V1,
-        payload = request,
+      RequestMessageAdapter(
+        MessageData(
+          type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
+          version = Version.V1,
+          payload = request,
+        ),
       )
 
     val serialized = messageSerDe.serialize(message)

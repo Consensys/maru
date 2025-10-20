@@ -22,7 +22,7 @@ import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedException
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 import tech.pegasys.teku.networking.p2p.rpc.StreamClosedException
 
-class MaruRpcResponseCallback<TResponse : ResponseMessage<*, *>>(
+class MaruRpcResponseCallback<TResponse : Message<*, *>>(
   private val rpcStream: RpcStream,
   private val messageSerializer: Serializer<TResponse>,
   private val rpcExceptionSerializer: Serializer<RpcException> = RpcExceptionSerDe(),

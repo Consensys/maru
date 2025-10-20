@@ -8,27 +8,28 @@
  */
 package maru.p2p.messages
 
-import maru.p2p.RequestMessage
-import maru.p2p.ResponseMessage
+import maru.p2p.Message
+import maru.p2p.MessageData
+import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.serialization.rlp.RLPSerDe
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class StatusResponseMessageSerDe(
+class StatusMessageSerDe(
   val statusSerDe: RLPSerDe<Status>,
-) : RLPSerDe<ResponseMessage<Status, RpcMessageType>> {
+) : RLPSerDe<Message<Status, RpcMessageType>> {
   override fun writeTo(
-    value: ResponseMessage<Status, RpcMessageType>,
+    value: Message<Status, RpcMessageType>,
     rlpOutput: RLPOutput,
   ) {
     statusSerDe.writeTo(value.payload, rlpOutput)
   }
 
-  override fun readFrom(rlpInput: RLPInput): ResponseMessage<Status, RpcMessageType> {
+  override fun readFrom(rlpInput: RLPInput): Message<Status, RpcMessageType> {
     val status = statusSerDe.readFrom(rlpInput)
-    return ResponseMessage(
+    return MessageData(
       RpcMessageType.STATUS,
       Version.V1,
       status,
@@ -37,21 +38,15 @@ class StatusResponseMessageSerDe(
 }
 
 class StatusRequestMessageSerDe(
-  val statusSerDe: RLPSerDe<Status>,
-) : RLPSerDe<RequestMessage<Status, RpcMessageType>> {
+  val statusMessageSerDe: RLPSerDe<Message<Status, RpcMessageType>>,
+) : RLPSerDe<RequestMessageAdapter<Status, RpcMessageType>> {
   override fun writeTo(
-    value: RequestMessage<Status, RpcMessageType>,
+    value: RequestMessageAdapter<Status, RpcMessageType>,
     rlpOutput: RLPOutput,
   ) {
-    statusSerDe.writeTo(value.payload, rlpOutput)
+    statusMessageSerDe.writeTo(value.message, rlpOutput)
   }
 
-  override fun readFrom(rlpInput: RLPInput): RequestMessage<Status, RpcMessageType> {
-    val status = statusSerDe.readFrom(rlpInput)
-    return RequestMessage(
-      RpcMessageType.STATUS,
-      Version.V1,
-      status,
-    )
-  }
+  override fun readFrom(rlpInput: RLPInput): RequestMessageAdapter<Status, RpcMessageType> =
+    RequestMessageAdapter(statusMessageSerDe.readFrom(rlpInput))
 }

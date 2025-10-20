@@ -101,9 +101,9 @@ class DefaultMaruPeer(
 
   override fun sendStatus(): SafeFuture<Unit> {
     try {
-      val statusMessage = statusManager.createStatusRequestMessage()
-      val sendRpcMessage: SafeFuture<ResponseMessage<Status, RpcMessageType>> =
-        sendRpcMessage(statusMessage, rpcMethods.status())
+      val statusMessage = statusManager.createStatusMessage()
+      val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
+        sendRpcMessage(RequestMessageAdapter(statusMessage), rpcMethods.status())
       scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
       return sendRpcMessage
         .thenApply { message -> message.payload }
@@ -183,12 +183,12 @@ class DefaultMaruPeer(
     count: ULong,
   ): SafeFuture<BeaconBlocksByRangeResponse> {
     val request = BeaconBlocksByRangeRequest(startBlockNumber, count)
-    val message = RequestMessage(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, request)
+    val message = RequestMessageAdapter(MessageData(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, request))
     return sendRpcMessage(message, rpcMethods.beaconBlocksByRange())
       .thenApply { responseMessage -> responseMessage.payload }
   }
 
-  fun <TRequest : RequestMessage<*, RpcMessageType>, TResponse : ResponseMessage<*, RpcMessageType>> sendRpcMessage(
+  fun <TRequest : RequestMessageAdapter<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
     message: TRequest,
     rpcMethod: MaruRpcMethod<TRequest, TResponse>,
   ): SafeFuture<TResponse> {

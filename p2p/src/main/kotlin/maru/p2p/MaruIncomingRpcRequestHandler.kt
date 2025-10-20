@@ -17,8 +17,8 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 
 class MaruIncomingRpcRequestHandler<
-  TRequest : RequestMessage<*, RpcMessageType>,
-  TResponse : ResponseMessage<*, RpcMessageType>,
+  TRequest : RequestMessageAdapter<*, RpcMessageType>,
+  TResponse : Message<*, RpcMessageType>,
 >(
   private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
   private val requestMessageSerDe: SerDe<TRequest>,

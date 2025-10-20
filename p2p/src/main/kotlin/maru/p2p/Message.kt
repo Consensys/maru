@@ -35,36 +35,35 @@ enum class Encoding {
 
 sealed interface MessageType
 
-data class BroadcastMessage<TPayload, TMessageType : MessageType>(
-  val type: TMessageType,
-  val version: Version = Version.V1,
-  val payload: TPayload,
-)
+interface Message<TPayload, TMessageType : MessageType> {
+  val type: TMessageType
+  val version: Version
+  val payload: TPayload
+}
 
-data class ResponseMessage<TPayload, TMessageType : MessageType>(
-  val type: TMessageType,
-  val version: Version = Version.V1,
-  val payload: TPayload,
-)
+data class MessageData<TPayload, TMessageType : MessageType>(
+  override val type: TMessageType,
+  override val version: Version = Version.V1,
+  override val payload: TPayload,
+) : Message<TPayload, TMessageType>
 
-data class RequestMessage<TPayload, TMessageType : MessageType>(
-  val type: TMessageType,
-  val version: Version = Version.V1,
-  val payload: TPayload,
-) : RpcRequest {
+data class RequestMessageAdapter<TPayload, TMessageType : MessageType>(
+  val message: Message<TPayload, TMessageType>,
+) : RpcRequest,
+  Message<TPayload, TMessageType> by message {
   override fun getMaximumResponseChunks(): Int {
     TODO("Not yet implemented")
   }
 
-  override fun createWritableCopy(): SszMutableData? {
+  override fun createWritableCopy(): SszMutableData {
     TODO("Not yet implemented")
   }
 
-  override fun getSchema(): SszSchema<out SszData?>? {
+  override fun getSchema(): SszSchema<out SszData?> {
     TODO("Not yet implemented")
   }
 
-  override fun getBackingNode(): TreeNode? {
+  override fun getBackingNode(): TreeNode {
     TODO("Not yet implemented")
   }
 }

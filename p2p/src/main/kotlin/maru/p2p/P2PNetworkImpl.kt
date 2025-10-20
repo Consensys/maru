@@ -236,7 +236,7 @@ class P2PNetworkImpl(
     executor.shutdown()
   }
 
-  override fun broadcastMessage(message: BroadcastMessage<*, GossipMessageType>): SafeFuture<*> {
+  override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<*> {
     log.trace("Broadcasting message={}", message)
     broadcastMessageCounterFactory
       .create(
