@@ -12,14 +12,17 @@ import io.vertx.core.Vertx
 import java.time.Clock
 import maru.api.ApiServer
 import maru.config.MaruConfig
+import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
+import maru.consensus.QbftConsensusConfig
 import maru.consensus.qbft.DifficultyAwareQbftFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
+import maru.core.Validator
 import maru.crypto.Crypto
 import maru.database.BeaconChain
 import maru.finalization.LineaFinalizationProvider
@@ -162,9 +165,12 @@ class MaruApp(
   ): Protocol {
     val qbftFactory =
       if (config.qbft != null) {
+        // TODO: This may be not needed when we use dynamic validator set from a smart contract
+        val privateKeyWithoutPrefix = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
+        warnIfValidatorIsNotInTheGenesis(privateKeyWithoutPrefix)
         QbftProtocolValidatorFactory(
           qbftOptions = config.qbft!!,
-          privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider()),
+          privateKeyBytes = privateKeyWithoutPrefix,
           validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient,
           followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
           metricsSystem = metricsSystem,
@@ -216,5 +222,22 @@ class MaruApp(
     return protocolStarter
   }
 
-  fun p2pNetwork(): P2PNetwork = p2pNetwork
+  private fun warnIfValidatorIsNotInTheGenesis(privateKey: ByteArray) {
+    val validatorsFromAllForks: Set<Validator> =
+      beaconGenesisConfig.forks
+        .flatMap<ForkSpec, Validator> {
+          when (val configuration = it.configuration) {
+            is DifficultyAwareQbftConfig -> configuration.postTtdConfig.validatorSet
+            is QbftConsensusConfig -> configuration.validatorSet
+            else -> throw IllegalArgumentException("")
+          }
+        }.toSet()
+    val localValidator = Crypto.privateKeyToValidator(privateKey)
+    if (!validatorsFromAllForks.contains(localValidator)) {
+      log.warn(
+        "Local Validator {} isn't found in any of validatorSet-s in any of the Forks in the Genesis file!",
+        localValidator,
+      )
+    }
+  }
 }
