@@ -68,12 +68,10 @@ object PrivateKeyGenerator {
 
   fun getKeyData(privateKey: ByteArray): KeyData {
     // Sometimes keyPair has 1 byte more so we just take the last 32 bytes ¯\_(ツ)_/¯
-    val trimmedPrivateKey = privateKey.takeLast(32).toByteArray()
+    val normalizedPrivateKey = ensureKeyIsExactly32BytesLong(privateKey)
     // The curve parameters for the block signing are different from what LibP2P is using
-    val signingAddress = Crypto.privateKeyToAddress(trimmedPrivateKey)
+    val signingAddress = Crypto.privateKeyToAddress(normalizedPrivateKey)
     val privateKeyTyped = unmarshalSecp256k1PrivateKey(privateKey)
-    val publicKey = privateKeyTyped.publicKey()
-    val address = Util.publicKeyToAddress(Bytes.wrap(publicKey.bytes()))
     val peerId = PeerId.fromPubKey(privateKeyTyped.publicKey())
     val libP2PNodeId = LibP2PNodeId(peerId)
     return KeyData(
@@ -84,12 +82,20 @@ object PrivateKeyGenerator {
     )
   }
 
-  fun getKeyDataByPrefixedKey(prefixedPrivateKey: ByteArray): KeyData {
+  private fun ensureKeyIsExactly32BytesLong(privateKey: ByteArray): ByteArray {
+    return when {
+      privateKey.size == 32 -> privateKey
+      privateKey.size < 32 -> ByteArray(32 - privateKey.size) + privateKey
+      else -> privateKey.takeLast(32).toByteArray()
+    }
+  }
+
+  internal fun getKeyDataByPrefixedKey(prefixedPrivateKey: ByteArray): KeyData {
     val privateKeyTyped = unmarshalPrivateKey(prefixedPrivateKey)
     return getKeyData(privateKeyTyped.raw())
   }
 
-  fun generatePrivateKey(): KeyData {
+  internal fun generatePrivateKey(): KeyData {
     val (privKey, pubKey) = generateKeyPair(KeyType.SECP256K1)
     return getKeyData(privKey.raw())
   }
