@@ -235,7 +235,7 @@ class MaruApp(
     val localValidator = Crypto.privateKeyToValidator(privateKey)
     if (!validatorsFromAllForks.contains(localValidator)) {
       log.warn(
-        "Local Validator {} isn't found in any of validatorSet-s in any of the Forks in the Genesis file!",
+        "localValidator={} isn't found in any of validatorSet-s in any of the Forks in the Genesis file!",
         localValidator,
       )
     }
