@@ -59,9 +59,16 @@ class MaruApp(
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
+  private fun privateKeyWithoutPrefix() = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
+
   init {
     if (config.qbft == null) {
-      log.info("Qbft options are not defined. Maru is running in follower-only node")
+      log.info("Qbft options are not defined. nodeRole=follower")
+    } else {
+      val localValidator = Crypto.privateKeyToValidator(privateKeyWithoutPrefix())
+      log.info("Qbft options are defined. nodeRole=validator with address={}", localValidator.address)
+      // TODO: This may be not needed when we use dynamic validator set from a smart contract
+      warnIfValidatorIsNotInTheGenesis(localValidator)
     }
 
     metricsFacade.createGauge(
@@ -92,7 +99,14 @@ class MaruApp(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
     )
-  private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock, beaconChain)
+  private val protocolStarter =
+    createProtocolStarter(
+      config = config,
+      beaconGenesisConfig = beaconGenesisConfig,
+      clock = clock,
+      beaconChain = beaconChain,
+      privateKeyWithoutPrefix = privateKeyWithoutPrefix(),
+    )
 
   fun start() {
     if (finalizationProvider is LineaFinalizationProvider) {
@@ -162,12 +176,10 @@ class MaruApp(
     beaconGenesisConfig: ForksSchedule,
     clock: Clock,
     beaconChain: BeaconChain,
+    privateKeyWithoutPrefix: ByteArray,
   ): Protocol {
     val qbftFactory =
       if (config.qbft != null) {
-        // TODO: This may be not needed when we use dynamic validator set from a smart contract
-        val privateKeyWithoutPrefix = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
-        warnIfValidatorIsNotInTheGenesis(privateKeyWithoutPrefix)
         QbftProtocolValidatorFactory(
           qbftOptions = config.qbft!!,
           privateKeyBytes = privateKeyWithoutPrefix,
@@ -222,7 +234,7 @@ class MaruApp(
     return protocolStarter
   }
 
-  private fun warnIfValidatorIsNotInTheGenesis(privateKey: ByteArray) {
+  private fun warnIfValidatorIsNotInTheGenesis(localValidator: Validator) {
     val validatorsFromAllForks: Set<Validator> =
       beaconGenesisConfig.forks
         .flatMap<ForkSpec, Validator> {
@@ -232,7 +244,6 @@ class MaruApp(
             else -> throw IllegalArgumentException("")
           }
         }.toSet()
-    val localValidator = Crypto.privateKeyToValidator(privateKey)
     if (!validatorsFromAllForks.contains(localValidator)) {
       log.warn(
         "localValidator={} isn't found in any of validatorSet-s in any of the Forks in the Genesis file!",
