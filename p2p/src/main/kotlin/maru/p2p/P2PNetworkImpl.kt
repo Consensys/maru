@@ -123,7 +123,6 @@ class P2PNetworkImpl(
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
         isStaticPeer = this::isStaticPeer,
-        syncStatusProviderProvider = syncStatusProviderProvider,
       )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
@@ -225,10 +224,9 @@ class P2PNetworkImpl(
 
   override fun stop(): SafeFuture<Unit> {
     log.info("Stopping={}", this::class.simpleName)
-    val pmStop = maruPeerManager.stop()
+    maruPeerManager.stop()
     discoveryService?.stop()
-    val p2pStop = p2pNetwork.stop()
-    return SafeFuture.allOf(p2pStop, pmStop).thenApply {}
+    return p2pNetwork.stop().thenApply {}
   }
 
   override fun close() {
