@@ -19,10 +19,7 @@
     "depositContractAddress": "0x0000000000000000000000000000000000009999",
     "withdrawalRequestContractAddress": "0x0000000000000000000000000000000000009999",
     "consolidationRequestContractAddress": "0x0000000000000000000000000000000000009999",
-    "clique": {
-      "createemptyblocks": false,
-      "blockperiodseconds": 1,
-      "epochlength": 1
+    "ethash": {
     }
   },
   "coinbase": "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0",
