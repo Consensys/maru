@@ -61,12 +61,9 @@ class MaruMultiValidatorTest {
         ThreadBesuNodeRunner(),
       )
 
-    validator1Stack = PeeringNodeNetworkStack()
-
-    validator2Stack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
+    val besuBuilder = { BesuFactory.buildTestBesu(validator = false) }
+    validator1Stack = PeeringNodeNetworkStack(besuBuilder)
+    validator2Stack = PeeringNodeNetworkStack(besuBuilder)
 
     // Start all Besu nodes together for proper peering
     PeeringNodeNetworkStack.startBesuNodes(cluster, validator1Stack, validator2Stack)
