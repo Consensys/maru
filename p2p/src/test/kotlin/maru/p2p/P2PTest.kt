@@ -393,8 +393,8 @@ class P2PTest {
       val testMessage1 = createTestQbftMessage(code = 42, data = "test data 1".toByteArray())
       val testMessage2 = createTestQbftMessage(code = 43, data = "test data 2".toByteArray())
 
-      val qbftMessage1 = Message(GossipMessageType.QBFT, Version.V1, testMessage1)
-      val qbftMessage2 = Message(GossipMessageType.QBFT, Version.V1, testMessage2)
+      val qbftMessage1 = MessageData(GossipMessageType.QBFT, Version.V1, testMessage1)
+      val qbftMessage2 = MessageData(GossipMessageType.QBFT, Version.V1, testMessage2)
 
       p2pNetworkImpl1.broadcastMessage(qbftMessage1).get()
       p2pNetworkImpl1.broadcastMessage(qbftMessage2).get()

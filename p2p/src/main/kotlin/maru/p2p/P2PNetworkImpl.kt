@@ -268,7 +268,7 @@ class P2PNetworkImpl(
     return when (message.type) {
       GossipMessageType.QBFT -> {
         require(message.payload is QbftMessage) { "QBFT message payload must be QbftMessage" }
-        val serializedQbftMessage = Bytes.wrap(qbftMessageSerDe.serialize(message.payload))
+        val serializedQbftMessage = Bytes.wrap(qbftMessageSerDe.serialize(message.payload as QbftMessage))
         p2pNetwork.gossip(
           qbftTopicId,
           serializedQbftMessage,
