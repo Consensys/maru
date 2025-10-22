@@ -66,6 +66,7 @@ data class P2PConfig(
     val port: UInt = 9000u,
     val bootnodes: List<String> = emptyList(),
     val refreshInterval: Duration,
+    val advertisedIp: String? = null,
   )
 
   data class StatusUpdate(
