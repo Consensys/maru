@@ -52,8 +52,7 @@ data class P2PConfig(
   val gossiping: Gossiping = Gossiping(),
 ) {
   init {
-    // just a sanity check to ensure the IP address is valid
-    InetAddress.getByName(ipAddress)
+    validateIpAddress(ipAddress)
     require(reputation.smallChange > 0) {
       "smallChange must be a positive number"
     }
@@ -67,7 +66,26 @@ data class P2PConfig(
     val bootnodes: List<String> = emptyList(),
     val refreshInterval: Duration,
     val advertisedIp: String? = null,
-  )
+  ) {
+    init {
+      advertisedIp?.let { validateIpAddress(it) }
+    }
+  }
+
+  companion object {
+    private fun validateIpAddress(ip: String) {
+      require(ip.isNotBlank()) {
+        "IP address must not be blank"
+      }
+      // InetAddress.getByName accepts both IP addresses and hostnames.
+      // We need to ensure it's actually an IP address by checking that
+      // the parsed address matches the input (no DNS resolution occurred)
+      val address = InetAddress.getByName(ip)
+      require(address.hostAddress == ip) {
+        "Invalid IP address format: $ip"
+      }
+    }
+  }
 
   data class StatusUpdate(
     val refreshInterval: Duration = 30.seconds,
