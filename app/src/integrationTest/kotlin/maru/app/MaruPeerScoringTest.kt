@@ -14,10 +14,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
@@ -36,7 +33,6 @@ import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.plugin.services.MetricsSystem
-import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
@@ -47,6 +43,7 @@ import org.junit.jupiter.api.Test
 import testutils.FourEmptyResponsesStrategy
 import testutils.MisbehavingP2PNetwork
 import testutils.PeeringNodeNetworkStack
+import testutils.TestUtils
 import testutils.TestUtils.findFreePort
 import testutils.TimeOutResponsesStrategy
 import testutils.besu.BesuFactory
@@ -272,18 +269,7 @@ class MaruPeerScoringTest {
       )
     followerStack.setMaruApp(followerMaruApp)
 
-    val job =
-      CoroutineScope(Dispatchers.Default).launch {
-        while (true) {
-          transactionsHelper.run {
-            validatorStack.besuNode.sendTransactionAndAssertExecution(
-              logger = log,
-              recipient = createAccount("another account"),
-              amount = Amount.ether(1),
-            )
-          }
-        }
-      }
+    job = TestUtils.startTransactionSendingJob(validatorStack.besuNode)
 
     try {
       await

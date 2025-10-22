@@ -11,15 +11,10 @@ package maru.app
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
@@ -27,8 +22,8 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.fail
 import testutils.PeeringNodeNetworkStack
+import testutils.TestUtils
 import testutils.TestUtils.findFreePort
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
@@ -155,23 +150,7 @@ class MaruDiscoveryTest {
     // Start block production on validator
     log.info("Starting block production on validator")
 
-    val handler =
-      CoroutineExceptionHandler { _, exception ->
-        fail("Coroutine failed with exception: $exception")
-      }
-
-    job =
-      CoroutineScope(Dispatchers.Default).launch(handler) {
-        while (true) {
-          transactionsHelper.run {
-            bootnodeStack.besuNode.sendTransactionAndAssertExecution(
-              logger = log,
-              recipient = createAccount("another account"),
-              amount = Amount.ether(1),
-            )
-          }
-        }
-      }
+    job = TestUtils.startTransactionSendingJob(bootnodeStack.besuNode)
 
     try {
       // Wait for some blocks to be produced
@@ -225,7 +204,7 @@ class MaruDiscoveryTest {
 
       // Verify each node can see the others
       maruApps.forEachIndexed { index, app ->
-        val peers = app.p2pNetwork().getPeers()
+        val peers = app.p2pNetwork.getPeers()
         log.info("Node $index peers: ${peers.map { it.nodeId }}")
         assertThat(peers.size).isGreaterThanOrEqualTo(expectedPeers.toInt())
       }
