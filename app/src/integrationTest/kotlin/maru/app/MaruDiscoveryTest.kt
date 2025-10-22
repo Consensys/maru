@@ -45,6 +45,7 @@ class MaruDiscoveryTest {
   @AfterEach
   fun tearDown() {
     job?.cancel()
+    job = null
     maruApps.forEach { app ->
       try {
         app.stop()
@@ -150,7 +151,8 @@ class MaruDiscoveryTest {
     // Start block production on validator
     log.info("Starting block production on validator")
 
-    job = TestUtils.startTransactionSendingJob(bootnodeStack.besuNode)
+    job =
+      TestUtils.startTransactionSendingJob(besuNode = bootnodeStack.besuNode, transactionsHelper = transactionsHelper)
 
     try {
       // Wait for some blocks to be produced

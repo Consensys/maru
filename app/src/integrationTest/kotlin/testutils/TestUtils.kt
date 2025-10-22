@@ -33,7 +33,10 @@ object TestUtils {
       throw IllegalStateException("Could not find a free port", it)
     }
 
-  fun startTransactionSendingJob(besuNode: BesuNode): Job {
+  fun startTransactionSendingJob(
+    besuNode: BesuNode,
+    transactionsHelper: BesuTransactionsHelper = BesuTransactionsHelper(),
+  ): Job {
     val handler =
       CoroutineExceptionHandler { _, exception ->
         fail("Transaction sending job failed with exception: $exception")
@@ -42,7 +45,7 @@ object TestUtils {
     val job =
       CoroutineScope(Dispatchers.Default).launch(handler) {
         while (true) {
-          BesuTransactionsHelper().run {
+          transactionsHelper.run {
             besuNode.sendTransactionAndAssertExecution(
               logger = log,
               recipient = createAccount("another account"),
