@@ -106,18 +106,17 @@ class MaruAppFactory {
     log.info("beaconGenesisConfig={}", beaconGenesisConfig)
     config.persistence.dataPath.createDirectories()
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
-    val vertx =
-      VertxFactory.createVertx(
-        jvmMetricsEnabled = config.observability.jvmMetricsEnabled,
-        prometheusMetricsEnabled = config.observability.prometheusMetricsEnabled,
-      )
-
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
     val metricsFacade =
       MicrometerMetricsFacade(
         registry = getMetricsRegistry(),
         metricsPrefix = "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
+      )
+    val vertx =
+      VertxFactory.createVertx(
+        jvmMetricsEnabled = config.observability.jvmMetricsEnabled,
+        prometheusMetricsEnabled = config.observability.prometheusMetricsEnabled,
       )
     val besuMetricsSystemAdapter =
       BesuMetricsSystemAdapter(
