@@ -14,6 +14,7 @@ import maru.core.SealedBeaconBlock
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.ethereum.beacon.discovery.schema.NodeRecord
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 
@@ -62,6 +63,10 @@ fun interface SealedBeaconBlockHandler<T> {
   fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<T>
 }
 
+fun interface QbftMessageHandler<T> {
+  fun handleQbftMessage(qbftMessage: QbftMessage): SafeFuture<T>
+}
+
 /**
  * Interface for the P2P Network functionality.
  *
@@ -93,6 +98,13 @@ interface P2PNetwork : Closeable {
   fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int
 
   fun unsubscribeFromBlocks(subscriptionId: Int)
+
+  /**
+   * @return subscription id
+   */
+  fun subscribeToQbftMessages(subscriber: QbftMessageHandler<ValidationResult>): Int
+
+  fun unsubscribeFromQbftMessages(subscriptionId: Int)
 
   val port: UInt
 
