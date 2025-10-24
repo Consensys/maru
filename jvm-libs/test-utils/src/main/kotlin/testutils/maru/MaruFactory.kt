@@ -27,6 +27,7 @@ import maru.app.MaruApp
 import maru.app.MaruAppFactory
 import maru.config.ApiConfig
 import maru.config.ApiEndpointConfig
+import maru.config.DefaultsConfig
 import maru.config.FollowersConfig
 import maru.config.LineaConfig
 import maru.config.MaruConfig
@@ -202,10 +203,12 @@ class MaruFactory(
   ): MaruConfig {
     val lineaConfig =
       overridingLineaContractClient?.let {
+        val l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL())
         LineaConfig(
           contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
-          l1EthApi = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
+          l1EthApi = l2EthApiEndpoint, // Just a stab. Isn't actually used with the override
           l1PollingInterval = 100.milliseconds,
+          l2EthApi = l2EthApiEndpoint,
         )
       }
 
@@ -215,7 +218,6 @@ class MaruFactory(
       qbft = qbftOptions,
       validatorElNode =
         ValidatorElNode(
-          ethApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
           engineApiEndpoint = ApiEndpointConfig(URI.create(engineApiRpc).toURL()),
           payloadValidationEnabled = enablePayloadValidation,
         ),
@@ -225,6 +227,7 @@ class MaruFactory(
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
+      defaults = DefaultsConfig(l2EthEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL())),
     )
   }
 
@@ -281,8 +284,9 @@ class MaruFactory(
       overridingLineaContractClient?.let {
         LineaConfig(
           contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
-          l1EthApi = ethereumApiEndpointConfig,
+          l1EthApi = ethereumApiEndpointConfig, // Just a stab. Isn't actually used with the override
           l1PollingInterval = 100.milliseconds,
+          l2EthApi = ethereumApiEndpointConfig,
         )
       }
 
@@ -292,7 +296,6 @@ class MaruFactory(
       qbft = qbftOptions,
       validatorElNode =
         ValidatorElNode(
-          ethApiEndpoint = ethereumApiEndpointConfig,
           engineApiEndpoint = engineApiEndpointConfig,
           payloadValidationEnabled = enablePayloadValidation,
         ),
@@ -302,6 +305,7 @@ class MaruFactory(
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
+      defaults = DefaultsConfig(l2EthEndpoint = ethereumApiEndpointConfig),
     )
   }
 

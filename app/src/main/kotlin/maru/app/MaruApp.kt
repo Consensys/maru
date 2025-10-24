@@ -38,6 +38,7 @@ import net.consensys.linea.vertx.ObservabilityServer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
+import org.web3j.protocol.Web3j
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 
 class MaruApp(
@@ -52,8 +53,8 @@ class MaruApp(
   private val metricsFacade: MetricsFacade,
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
-  private val validatorELNodeEthJsonRpcClient: Web3JClient,
-  private val validatorELNodeEngineApiWeb3JClient: Web3JClient,
+  private val l2EthWeb3j: Web3j,
+  private val validatorELNodeEngineApiWeb3JClient: Web3JClient?,
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
@@ -142,8 +143,8 @@ class MaruApp(
   }
 
   override fun close() {
-    validatorELNodeEngineApiWeb3JClient.eth1Web3j.shutdown()
-    validatorELNodeEthJsonRpcClient.eth1Web3j.shutdown()
+    validatorELNodeEngineApiWeb3JClient?.eth1Web3j?.shutdown()
+    l2EthWeb3j.shutdown()
     followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
     p2pNetwork.close()
     vertx.close()
@@ -185,7 +186,7 @@ class MaruApp(
         QbftProtocolValidatorFactory(
           qbftOptions = config.qbft!!,
           privateKeyBytes = privateKeyWithoutPrefix,
-          validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient,
+          validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient!!,
           followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
           metricsSystem = metricsSystem,
           finalizationStateProvider = finalizationProvider,
@@ -197,7 +198,7 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
           forksSchedule = beaconGenesisConfig,
-          payloadValidationEnabled = config.validatorElNode.payloadValidationEnabled,
+          payloadValidationEnabled = config.validatorElNode?.payloadValidationEnabled ?: false,
         )
       } else {
         QbftFollowerFactory(
@@ -208,14 +209,14 @@ class MaruApp(
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
           finalizationStateProvider = finalizationProvider,
-          payloadValidationEnabled = config.validatorElNode.payloadValidationEnabled,
+          payloadValidationEnabled = config.validatorElNode?.payloadValidationEnabled ?: false,
         )
       }
     val forkTransitionSubscriptionManager = InOrderFanoutSubscriptionManager<ForkSpec>()
     forkTransitionSubscriptionManager.addSyncSubscriber(p2pNetwork::handleForkTransition)
     val difficultyAwareQbftFactory =
       DifficultyAwareQbftFactory(
-        ethereumJsonRpcClient = validatorELNodeEthJsonRpcClient.eth1Web3j,
+        ethereumJsonRpcClient = l2EthWeb3j,
         postTtdProtocolFactory = qbftFactory,
       )
     val protocolStarter =

@@ -38,6 +38,10 @@ data class FollowersConfig(
   val followers: Map<String, ApiEndpointConfig>,
 )
 
+data class DefaultsConfig(
+  val l2EthEndpoint: ApiEndpointConfig,
+)
+
 data class P2PConfig(
   val ipAddress: String = "127.0.0.1", // default to localhost for security
   val port: UInt = 9000u,
@@ -123,7 +127,6 @@ data class P2PConfig(
 }
 
 data class ValidatorElNode(
-  val ethApiEndpoint: ApiEndpointConfig,
   val engineApiEndpoint: ApiEndpointConfig,
   val payloadValidationEnabled: Boolean,
 )
@@ -192,6 +195,7 @@ data class LineaConfig(
   val l1EthApi: ApiEndpointConfig,
   val l1PollingInterval: Duration = 6.seconds,
   val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
+  val l2EthApi: ApiEndpointConfig,
 ) {
   init {
     contractAddress.assertIs20Bytes("contractAddress")
@@ -207,6 +211,7 @@ data class LineaConfig(
     if (l1EthApi != other.l1EthApi) return false
     if (l1PollingInterval != other.l1PollingInterval) return false
     if (l1HighestBlockTag != other.l1HighestBlockTag) return false
+    if (l2EthApi != other.l2EthApi) return false
 
     return true
   }
@@ -216,6 +221,7 @@ data class LineaConfig(
     result = 31 * result + l1EthApi.hashCode()
     result = 31 * result + l1PollingInterval.hashCode()
     result = 31 * result + l1HighestBlockTag.hashCode()
+    result = 31 * result + l2EthApi.hashCode()
     return result
   }
 }
@@ -261,20 +267,28 @@ data class MaruConfig(
   val persistence: Persistence,
   val qbft: QbftConfig?,
   val p2p: P2PConfig?,
-  val validatorElNode: ValidatorElNode,
+  val validatorElNode: ValidatorElNode?,
   val followers: FollowersConfig,
   val observability: ObservabilityConfig,
   val linea: LineaConfig? = null,
   val api: ApiConfig,
   val syncing: SyncingConfig,
+  val defaults: DefaultsConfig,
 ) {
   init {
-    require(
-      !followers.followers.values
-        .map { it.endpoint }
-        .contains(validatorElNode.engineApiEndpoint.endpoint),
-    ) {
-      "Validator EL node cannot be defined as a follower"
+    if (qbft != null) {
+      require(validatorElNode != null) {
+        "Validator EL node is required when a node is a QBFT Validator"
+      }
+    }
+    if (validatorElNode != null) {
+      require(
+        !followers.followers.values
+          .map { it.endpoint }
+          .contains(validatorElNode.engineApiEndpoint.endpoint),
+      ) {
+        "Validator EL node cannot be defined as a follower"
+      }
     }
   }
 }

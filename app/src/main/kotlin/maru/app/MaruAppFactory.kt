@@ -17,6 +17,7 @@ import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
+import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
@@ -56,9 +57,11 @@ import maru.p2p.fork.LenientForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.serialization.rlp.RLPSerializers
+import maru.services.LongRunningService
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.ELSyncService
+import maru.syncing.ELSyncStatus
 import maru.syncing.HighestHeadTargetSelector
 import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
@@ -71,6 +74,7 @@ import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
+import org.web3j.protocol.Web3j
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
@@ -137,27 +141,35 @@ class MaruAppFactory {
     val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
     val qbftConfig = qbftFork.configuration as QbftConsensusConfig
 
-    val ethereumJsonRpcClient =
-      Helpers.createWeb3jClient(
-        apiEndpointConfig = config.validatorElNode.ethApiEndpoint,
-        log = LogManager.getLogger("maru.clients.el.ethapi"),
+    val l2EthWeb3j: Web3j =
+      createWeb3jHttpClient(
+        rpcUrl =
+          config.defaults.l2EthEndpoint.endpoint
+            .toString(),
+        log = LogManager.getLogger("maru.clients.l2.ethapi"),
       )
 
-    val engineApiWeb3jClient =
-      Helpers.createWeb3jClient(
-        apiEndpointConfig = config.validatorElNode.engineApiEndpoint,
-        log = LogManager.getLogger("maru.clients.el.engineapi"),
-      )
+    val engineApiWeb3jClient: Web3JClient? =
+      config.validatorElNode?.let {
+        Helpers.createWeb3jClient(
+          apiEndpointConfig = it.engineApiEndpoint,
+          log = LogManager.getLogger("maru.clients.el.engineapi"),
+        )
+      }
 
     val elManagerMap =
-      ElFork.entries.associateWith {
-        val engineApiClient =
-          Helpers.buildExecutionEngineClient(
-            web3JEngineApiClient = engineApiWeb3jClient,
-            elFork = it,
-            metricsFacade = metricsFacade,
-          )
-        JsonRpcExecutionLayerManager(engineApiClient)
+      if (engineApiWeb3jClient != null) {
+        ElFork.entries.associateWith {
+          val engineApiClient =
+            Helpers.buildExecutionEngineClient(
+              web3JEngineApiClient = engineApiWeb3jClient,
+              elFork = it,
+              metricsFacade = metricsFacade,
+            )
+          JsonRpcExecutionLayerManager(engineApiClient)
+        }
+      } else {
+        emptyMap()
       }
 
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
@@ -172,7 +184,7 @@ class MaruAppFactory {
         metricsFacade = metricsFacade,
         besuMetricsSystem = besuMetricsSystemAdapter,
         isBlockImportEnabledProvider = {
-          if (config.validatorElNode.payloadValidationEnabled) {
+          if (config.validatorElNode?.payloadValidationEnabled == true) {
             syncControllerImpl!!.isNodeFullInSync()
           } else {
             syncControllerImpl!!.isBeaconChainSynced()
@@ -203,28 +215,42 @@ class MaruAppFactory {
             followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
             finalizationProvider = finalizationProvider,
           )
-        val blockValidatorHandler =
-          ElForkAwareBlockImporter(
-            forksSchedule = beaconGenesisConfig,
-            elManagerMap = elManagerMap,
-            importerName = "El sync payload validator",
-            finalizationProvider = finalizationProvider,
-          )
+        val elSyncServiceFactory: ((ELSyncStatus) -> Unit) -> LongRunningService = { onStatusChange ->
+          if (engineApiWeb3jClient != null) {
+            val validatorImportHandler =
+              ElForkAwareBlockImporter(
+                forksSchedule = beaconGenesisConfig,
+                elManagerMap = elManagerMap,
+                importerName = "El sync payload validator",
+                finalizationProvider = finalizationProvider,
+              )
+            ELSyncService(
+              config = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
+              beaconChain = kvDatabase,
+              eLValidatorBlockImportHandler = validatorImportHandler,
+              followerELBLockImportHandler = elSyncBlockImportHandlers,
+              onStatusChange = onStatusChange,
+            )
+          } else {
+            object : LongRunningService {
+              override fun start() {
+                onStatusChange(ELSyncStatus.SYNCED)
+              }
+
+              override fun stop() {}
+            }
+          }
+        }
         BeaconSyncControllerImpl.create(
           beaconChain = kvDatabase,
-          blockValidatorHandler = blockValidatorHandler,
-          blockImportHandler = elSyncBlockImportHandlers,
           peersHeadsProvider = peersHeadBlockProvider,
           targetChainHeadCalculator = createSyncTargetSelector(config.syncing.syncTargetSelection),
           validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
           peerLookup = p2pNetwork.getPeerLookup(),
           besuMetrics = besuMetricsSystemAdapter,
           metricsFacade = metricsFacade,
-          peerChainTrackerConfig =
-            PeerChainTracker.Config(
-              config.syncing.peerChainHeightPollingInterval,
-            ),
-          elSyncServiceConfig = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
+          peerChainTrackerConfig = PeerChainTracker.Config(config.syncing.peerChainHeightPollingInterval),
+          elSyncServiceFactory = elSyncServiceFactory,
           desyncTolerance = config.syncing.desyncTolerance,
           pipelineConfig =
             BeaconChainDownloadPipelineFactory.Config(
@@ -252,7 +278,13 @@ class MaruAppFactory {
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(kvDatabase),
           syncStatusProvider = syncControllerImpl,
-          isElOnlineProvider = { elManagerMap[ElFork.Prague]!!.isOnline().get() },
+          isElOnlineProvider = {
+            if (engineApiWeb3jClient != null) {
+              (elManagerMap[ElFork.Prague] ?: elManagerMap.values.firstOrNull())?.isOnline()?.get() ?: true
+            } else {
+              true
+            }
+          },
         )
 
     return MaruApp(
@@ -266,7 +298,7 @@ class MaruAppFactory {
       vertx = vertx,
       beaconChain = kvDatabase,
       metricsSystem = besuMetricsSystemAdapter,
-      validatorELNodeEthJsonRpcClient = ethereumJsonRpcClient,
+      l2EthWeb3j = l2EthWeb3j,
       validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
       apiServer = apiServer,
       syncControllerManager = syncControllerImpl,
@@ -303,15 +335,16 @@ class MaruAppFactory {
                 contractAddress = lineaConfig.contractAddress.encodeHex(),
                 log = LogManager.getLogger("clients.l1.linea"),
               )
+          val l2Endpoint = lineaConfig.l2EthApi
           LineaFinalizationProvider(
             lineaContract = contractClient,
             l2EthApi =
               createEthApiClient(
                 rpcUrl =
-                  config.validatorElNode.ethApiEndpoint.endpoint
+                  l2Endpoint.endpoint
                     .toString(),
                 log = LogManager.getLogger("clients.l2.eth.el"),
-                requestRetryConfig = config.validatorElNode.ethApiEndpoint.requestRetries,
+                requestRetryConfig = l2Endpoint.requestRetries,
                 vertx = vertx,
                 stopRetriesOnErrorPredicate = { true },
               ),

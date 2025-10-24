@@ -30,6 +30,9 @@ class HopliteFriendlinessTest {
     """
     protocol-transition-polling-interval = "2s"
 
+    [defaults]
+    l2-eth-endpoint = { endpoint = "http://localhost:8545" }
+
     [persistence]
     data-path="/some/path"
     private-key-path = "/private-key/path"
@@ -65,7 +68,6 @@ class HopliteFriendlinessTest {
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
-    eth-api-endpoint = { endpoint = "http://localhost:8545" }
     payload-validation-enabled = false
 
     [observability]
@@ -156,10 +158,6 @@ class HopliteFriendlinessTest {
     )
   private val payloadValidator =
     PayloadValidatorDto(
-      ethApiEndpoint =
-        ApiEndpointDto(
-          endpoint = URI.create("http://localhost:8545").toURL(),
-        ),
       engineApiEndpoint =
         ApiEndpointDto(
           endpoint = URI.create("http://localhost:8555").toURL(),
@@ -222,6 +220,8 @@ class HopliteFriendlinessTest {
           useUnconditionalRandomDownloadPeer = true,
         ),
     )
+  private val defaultsDto = DefaultsDtoToml(l2EthEndpoint = ApiEndpointDto(URI.create("http://localhost:8545").toURL()))
+  private val defaults = DefaultsConfig(l2EthEndpoint = ethApiEndpoint)
   private val expectedEmptyFollowersBase =
     MaruConfigDtoToml(
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
@@ -234,6 +234,7 @@ class HopliteFriendlinessTest {
       observability = ObservabilityConfig(port = 9090u),
       api = ApiConfig(port = 8080u),
       syncing = syncingConfig,
+      defaults = defaultsDto,
     )
 
   @Test
@@ -268,6 +269,7 @@ class HopliteFriendlinessTest {
           linea = null,
           api = ApiConfig(port = 8080u),
           syncing = syncingConfig,
+          defaults = defaults,
         )
       }
     assertThat(exception.message).isEqualTo("Validator EL node cannot be defined as a follower")
@@ -285,7 +287,6 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            ethApiEndpoint = ethApiEndpoint,
             payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
@@ -293,6 +294,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
+        defaults = defaults,
       ),
     )
   }
@@ -310,13 +312,13 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            ethApiEndpoint = ethApiEndpoint,
             payloadValidationEnabled = false,
           ),
         followers = emptyFollowersConfig,
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
+        defaults = defaults,
       ),
     )
   }
@@ -353,7 +355,6 @@ class HopliteFriendlinessTest {
     val payloadValidatorToml =
       """
       engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
-      eth-api-endpoint = { endpoint = "http://localhost:8545" }
       payload-validation-enabled = true
       """.trimIndent()
     val config = parseConfig<PayloadValidatorDto>(payloadValidatorToml)
@@ -367,7 +368,6 @@ class HopliteFriendlinessTest {
     val payloadValidatorToml =
       """
       engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
-      eth-api-endpoint = { endpoint = "http://localhost:8545" }
       """.trimIndent()
     val config = parseConfig<PayloadValidatorDto>(payloadValidatorToml)
     assertThat(config).isEqualTo(
@@ -469,7 +469,6 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            ethApiEndpoint = ethApiEndpoint,
             payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
@@ -477,6 +476,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
+        defaults = defaults,
       ),
     )
   }
@@ -515,6 +515,7 @@ class HopliteFriendlinessTest {
         l1EthApi = l1EthApiEndpoint.domainFriendly(),
         l1PollingInterval = l1PollingInterval,
         l1HighestBlockTag = BlockParameter.Tag.LATEST,
+        l2EthApi = ApiEndpointConfig(URI.create("http://localhost:8545").toURL()),
       )
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
@@ -531,7 +532,6 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            ethApiEndpoint = ethApiEndpoint,
             payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
@@ -539,6 +539,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
+        defaults = defaults,
       ),
     )
   }
