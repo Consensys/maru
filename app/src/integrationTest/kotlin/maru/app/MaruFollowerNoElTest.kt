@@ -154,7 +154,7 @@ class MaruFollowerNoElTest {
 
   @Test
   fun `Maru follower is able to import blocks without EL`() {
-    val blocksToProduce = 5
+    val blocksToProduce = 4 // Less than desync tolerance
 
     val initialFollowerHead = readHead(followerApiPort)
     val initialValidatorHead = readHead(validatorApiPort)

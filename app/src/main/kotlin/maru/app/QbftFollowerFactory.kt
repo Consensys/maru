@@ -76,7 +76,7 @@ class QbftFollowerFactory(
     val transactionalSealedBeaconBlockImporter =
       TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition) { _, beaconBlock ->
         (elPayloadImportHandler?.handleNewBlock(beaconBlock) ?: SafeFuture.completedFuture(Unit)).thenCompose {
-          blockImportHandlers.handleNewBlock(beaconBlock) // Don't wait for the result
+          blockImportHandlers.handleNewBlock(beaconBlock)
         }
       }
 
