@@ -26,19 +26,14 @@ import org.junit.jupiter.api.assertThrows
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
   private val protocolTransitionPollingInterval = 2.seconds
-  private val emptyFollowersConfigToml =
+
+  private val baseConfigWithoutQbftAndPayloadToml =
     """
     protocol-transition-polling-interval = "2s"
-
-    [defaults]
-    l2-eth-endpoint = { endpoint = "http://localhost:8545" }
 
     [persistence]
     data-path="/some/path"
     private-key-path = "/private-key/path"
-
-    [qbft]
-    fee-recipient = "0xdead000000000000000000000000000000000000"
 
     [p2p]
     port = 3322
@@ -66,10 +61,6 @@ class HopliteFriendlinessTest {
     refresh-interval-leeway = "10 seconds"
     timeout = "3 seconds"
 
-    [payload-validator]
-    engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
-    payload-validation-enabled = false
-
     [observability]
     port = 9090
 
@@ -89,6 +80,36 @@ class HopliteFriendlinessTest {
     max-retries = 5
     backoff-delay = "10 seconds"
     use-unconditional-random-download-peer = true
+    """.trimIndent()
+
+  private val defaultsSectionToml =
+    """
+    [defaults]
+    l2-eth-endpoint = { endpoint = "http://localhost:8545" }
+    """.trimIndent()
+
+  private val qbftSectionToml =
+    """
+    [qbft]
+    fee-recipient = "0xdead000000000000000000000000000000000000"
+    """.trimIndent()
+
+  private val payloadValidatorSectionToml =
+    """
+    [payload-validator]
+    engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
+    payload-validation-enabled = false
+    """.trimIndent()
+
+  private val emptyFollowersConfigToml =
+    """
+    $baseConfigWithoutQbftAndPayloadToml
+
+    $defaultsSectionToml
+
+    $qbftSectionToml
+
+    $payloadValidatorSectionToml
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -699,5 +720,86 @@ class HopliteFriendlinessTest {
       .hasMessageContaining("IllegalArgumentException")
       .hasMessageContaining("Invalid IP address format")
       .hasMessageContaining("test.com")
+  }
+
+  @Test
+  fun `fails when payload-validator section is missing while qbft one is there`() {
+    val tomlNoPayload =
+      """
+      $baseConfigWithoutQbftAndPayloadToml
+
+      $defaultsSectionToml
+
+      $qbftSectionToml
+      """.trimIndent()
+
+    val parsed = parseConfig<MaruConfigDtoToml>(tomlNoPayload)
+    assertThat(parsed).isEqualTo(
+      expectedEmptyFollowersBase.copy(payloadValidator = null),
+    )
+
+    assertThatThrownBy { parsed.domainFriendly() }
+      .isInstanceOf(IllegalArgumentException::class.java)
+      .hasMessage("Validator EL node is required when a node is a QBFT Validator")
+  }
+
+  @Test
+  fun `follower config when both qbft and payload-validator are absent`() {
+    val tomlNoPayloadNoQbft =
+      """
+      $baseConfigWithoutQbftAndPayloadToml
+
+      $defaultsSectionToml
+      """.trimIndent()
+
+    val parsed = parseConfig<MaruConfigDtoToml>(tomlNoPayloadNoQbft)
+    assertThat(parsed).isEqualTo(
+      expectedEmptyFollowersBase.copy(payloadValidator = null, qbft = null),
+    )
+
+    assertThat(parsed.domainFriendly()).isEqualTo(
+      MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+        allowEmptyBlocks = false,
+        persistence = persistence,
+        qbft = null,
+        p2p = p2pConfig,
+        validatorElNode = null,
+        followers = emptyFollowersConfig,
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
+        defaults = defaults,
+      ),
+    )
+  }
+
+  @Test
+  fun `follower config without defaults section`() {
+    val tomlNoDefaults =
+      """
+      $baseConfigWithoutQbftAndPayloadToml
+      """.trimIndent()
+
+    val parsed = parseConfig<MaruConfigDtoToml>(tomlNoDefaults)
+    assertThat(parsed).isEqualTo(
+      expectedEmptyFollowersBase.copy(payloadValidator = null, qbft = null, defaults = null),
+    )
+
+    assertThat(parsed.domainFriendly()).isEqualTo(
+      MaruConfig(
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+        allowEmptyBlocks = false,
+        persistence = persistence,
+        qbft = null,
+        p2p = p2pConfig,
+        validatorElNode = null,
+        followers = emptyFollowersConfig,
+        observability = ObservabilityConfig(port = 9090u),
+        api = ApiConfig(port = 8080u),
+        syncing = syncingConfig,
+        defaults = null,
+      ),
+    )
   }
 }
