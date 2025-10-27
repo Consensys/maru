@@ -200,7 +200,7 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
           forksSchedule = beaconGenesisConfig,
-          payloadValidationEnabled = config.validatorElNode?.payloadValidationEnabled ?: false,
+          payloadValidationEnabled = config.validatorElNode!!.payloadValidationEnabled,
         )
       } else {
         QbftFollowerFactory(
