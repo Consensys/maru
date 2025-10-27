@@ -273,7 +273,7 @@ data class MaruConfig(
   val linea: LineaConfig? = null,
   val api: ApiConfig,
   val syncing: SyncingConfig,
-  val defaults: DefaultsConfig,
+  val defaults: DefaultsConfig? = null,
 ) {
   init {
     if (qbft != null) {

@@ -141,13 +141,16 @@ class MaruAppFactory {
     val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
     val qbftConfig = qbftFork.configuration as QbftConsensusConfig
 
-    val l2EthWeb3j: Web3j =
-      createWeb3jHttpClient(
-        rpcUrl =
-          config.defaults.l2EthEndpoint.endpoint
-            .toString(),
-        log = LogManager.getLogger("maru.clients.l2.ethapi"),
-      )
+    val l2EthWeb3j: Web3j? =
+      config.defaults?.let {
+        createWeb3jHttpClient(
+          rpcUrl =
+            config.defaults!!
+              .l2EthEndpoint.endpoint
+              .toString(),
+          log = LogManager.getLogger("maru.clients.l2.ethapi"),
+        )
+      }
 
     val engineApiWeb3jClient: Web3JClient? =
       config.validatorElNode?.let {

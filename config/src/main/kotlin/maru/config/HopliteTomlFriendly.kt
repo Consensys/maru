@@ -143,18 +143,22 @@ data class LineaConfigDtoToml(
     return result
   }
 
-  fun domainFriendly(defaultL2EthApi: ApiEndpointDto): LineaConfig =
-    LineaConfig(
+  fun domainFriendly(defaultL2EthApi: ApiEndpointDto?): LineaConfig {
+    require(l2EthApi != null || defaultL2EthApi != null) {
+      "Either default.l2-eth-endpoint or linea.l2-eth-api have to be defined when [linea] section is defined!"
+    }
+    return LineaConfig(
       contractAddress = contractAddress,
       l1EthApi = l1EthApi.domainFriendly(),
       l1PollingInterval = l1PollingInterval,
       l1HighestBlockTag = BlockParameter.parse(l1HighestBlockTag),
-      l2EthApi = (l2EthApi ?: defaultL2EthApi).domainFriendly(),
+      l2EthApi = (l2EthApi ?: defaultL2EthApi!!).domainFriendly(),
     )
+  }
 }
 
 data class MaruConfigDtoToml(
-  private val defaults: DefaultsDtoToml,
+  private val defaults: DefaultsDtoToml?,
   private val linea: LineaConfigDtoToml? = null,
   private val protocolTransitionPollingInterval: Duration = 1.seconds,
   private val allowEmptyBlocks: Boolean = false,
@@ -169,8 +173,8 @@ data class MaruConfigDtoToml(
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
-      defaults = defaults.domainFriendly(),
-      linea = linea?.domainFriendly(defaults.l2EthEndpoint),
+      defaults = defaults?.domainFriendly(),
+      linea = linea?.domainFriendly(defaults?.l2EthEndpoint),
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,

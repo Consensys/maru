@@ -53,7 +53,7 @@ class MaruApp(
   private val metricsFacade: MetricsFacade,
   private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
-  private val l2EthWeb3j: Web3j,
+  private val l2EthWeb3j: Web3j?,
   private val validatorELNodeEngineApiWeb3JClient: Web3JClient?,
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
@@ -95,6 +95,8 @@ class MaruApp(
     }
 
   fun p2pPort(): UInt = p2pNetwork.port
+
+  fun apiPort(): UInt = apiServer.port().toUInt()
 
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
@@ -144,7 +146,7 @@ class MaruApp(
 
   override fun close() {
     validatorELNodeEngineApiWeb3JClient?.eth1Web3j?.shutdown()
-    l2EthWeb3j.shutdown()
+    l2EthWeb3j?.shutdown()
     followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
     p2pNetwork.close()
     vertx.close()
