@@ -11,16 +11,16 @@ package maru.consensus.qbft
 import kotlin.test.Test
 import maru.consensus.qbft.adapters.P2PValidatorMulticaster
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
 class QbftGossiperTest {
   private val mockP2PValidatorMulticaster = mock<P2PValidatorMulticaster>()
-  private val mockMessageData = mock<MessageData>()
+  private val mockMessageData = mock<BesuMessageData>()
   private val mockQbftMessage = mock<QbftMessage>()
 
   private val gossiper = QbftGossiper(mockP2PValidatorMulticaster)
@@ -38,7 +38,7 @@ class QbftGossiperTest {
   fun `should not send message when replayed is false`() {
     gossiper.send(mockQbftMessage, replayed = false)
 
-    verify(mockP2PValidatorMulticaster, never()).send(any<MessageData>())
+    verify(mockP2PValidatorMulticaster, never()).send(any<BesuMessageData>())
   }
 
   @Test
@@ -47,6 +47,6 @@ class QbftGossiperTest {
 
     gossiper.send(mockQbftMessage, replayed = false)
 
-    verify(mockP2PValidatorMulticaster, never()).send(any<MessageData>())
+    verify(mockP2PValidatorMulticaster, never()).send(any<BesuMessageData>())
   }
 }

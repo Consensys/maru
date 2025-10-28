@@ -18,7 +18,7 @@ class QbftMessageSerDeTest {
   @Test
   fun `should serialize and deserialize QbftMessage`() {
     val originalData = Bytes.random(32)
-    val originalMessageData = MessageDataSerDe.MaruMessageData(42, originalData)
+    val originalMessageData = BesuMessageDataSerDe.MaruMessageData(42, originalData)
     val originalQbftMessage = QbftMessageSerDe.MaruQbftMessage(originalMessageData)
     val serialized = serDe.serialize(originalQbftMessage)
     val deserialized = serDe.deserialize(serialized)
@@ -32,7 +32,7 @@ class QbftMessageSerDeTest {
   @Test
   fun `should handle QbftMessage with empty data`() {
     val emptyData = Bytes.EMPTY
-    val emptyMessageData = MessageDataSerDe.MaruMessageData(0, emptyData)
+    val emptyMessageData = BesuMessageDataSerDe.MaruMessageData(0, emptyData)
     val qbftMessage = QbftMessageSerDe.MaruQbftMessage(emptyMessageData)
     val serialized = serDe.serialize(qbftMessage)
     val deserialized = serDe.deserialize(serialized)

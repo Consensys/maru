@@ -10,13 +10,13 @@ package maru.p2p.topics
 
 import maru.serialization.rlp.RLPSerDe
 import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
-class MessageDataSerDe : RLPSerDe<MessageData> {
+class BesuMessageDataSerDe : RLPSerDe<BesuMessageData> {
   override fun writeTo(
-    value: MessageData,
+    value: BesuMessageData,
     rlpOutput: RLPOutput,
   ) {
     rlpOutput.startList()
@@ -25,7 +25,7 @@ class MessageDataSerDe : RLPSerDe<MessageData> {
     rlpOutput.endList()
   }
 
-  override fun readFrom(rlpInput: RLPInput): MessageData {
+  override fun readFrom(rlpInput: RLPInput): BesuMessageData {
     rlpInput.enterList()
     val code = rlpInput.readInt()
     val data = rlpInput.readBytes()
@@ -36,7 +36,7 @@ class MessageDataSerDe : RLPSerDe<MessageData> {
   internal class MaruMessageData(
     private val code: Int,
     private val data: Bytes,
-  ) : MessageData {
+  ) : BesuMessageData {
     override fun getData(): Bytes = data
 
     override fun getSize(): Int = data.size()

@@ -9,13 +9,13 @@
 package maru.p2p.topics
 
 import maru.p2p.ValidationResult.Companion.Valid.code
-import maru.p2p.topics.MessageDataSerDe.MaruMessageData
+import maru.p2p.topics.BesuMessageDataSerDe.MaruMessageData
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class MessageDataSerDeTest {
-  private val serDe = MessageDataSerDe()
+class BesuMessageDataSerDeTest {
+  private val serDe = BesuMessageDataSerDe()
 
   @Test
   fun `should serialize and deserialize MessageData correctly`() {

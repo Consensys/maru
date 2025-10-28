@@ -32,7 +32,7 @@ import maru.database.InMemoryP2PState
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusManager
-import maru.p2p.topics.MessageDataSerDe
+import maru.p2p.topics.BesuMessageDataSerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
@@ -977,7 +977,7 @@ class P2PTest {
     code: Int,
     data: ByteArray,
   ): QbftMessage {
-    val messageData = MessageDataSerDe.MaruMessageData(code, Bytes.wrap(data))
+    val messageData = BesuMessageDataSerDe.MaruMessageData(code, Bytes.wrap(data))
     return QbftMessage { messageData }
   }
 }

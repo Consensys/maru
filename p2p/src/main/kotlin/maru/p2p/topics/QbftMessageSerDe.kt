@@ -10,29 +10,29 @@ package maru.p2p.topics
 
 import maru.serialization.rlp.RLPSerDe
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
 class QbftMessageSerDe : RLPSerDe<QbftMessage> {
-  private val messageDataSerDe = MessageDataSerDe()
+  private val besuMessageDataSerDe = BesuMessageDataSerDe()
 
   override fun writeTo(
     value: QbftMessage,
     rlpOutput: RLPOutput,
   ) {
-    messageDataSerDe.writeTo(value.data, rlpOutput)
+    besuMessageDataSerDe.writeTo(value.data, rlpOutput)
   }
 
   override fun readFrom(rlpInput: RLPInput): QbftMessage {
-    val messageData = messageDataSerDe.readFrom(rlpInput)
+    val messageData = besuMessageDataSerDe.readFrom(rlpInput)
     return MaruQbftMessage(messageData)
   }
 
   internal class MaruQbftMessage(
-    private val messageData: MessageData,
+    private val messageData: BesuMessageData,
   ) : QbftMessage {
-    override fun getData(): MessageData = messageData
+    override fun getData(): BesuMessageData = messageData
 
     override fun toString(): String = "QbftMessage(data=$messageData)"
   }
