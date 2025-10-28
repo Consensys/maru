@@ -11,7 +11,6 @@ package maru.p2p
 import io.libp2p.core.PeerId
 import io.libp2p.etc.types.fromHex
 import java.lang.Thread.sleep
-import java.net.ServerSocket
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.stream.Stream
@@ -32,6 +31,7 @@ import maru.database.InMemoryP2PState
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusManager
+import maru.p2p.testutils.TestUtils.findFreePort
 import maru.p2p.topics.BesuMessageDataSerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
@@ -81,16 +81,6 @@ class P2PTest {
         Arguments.of(findFreePort().toInt(), findFreePort().toInt(), findFreePort().toInt()),
         Arguments.of(0, 0, 0),
       )
-
-    private fun findFreePort(): UInt =
-      runCatching {
-        ServerSocket(0).use { socket ->
-          socket.reuseAddress = true
-          socket.localPort.toUInt()
-        }
-      }.getOrElse {
-        throw IllegalStateException("Could not find a free port", it)
-      }
 
     private fun createPeerAddress(
       port: UInt,
