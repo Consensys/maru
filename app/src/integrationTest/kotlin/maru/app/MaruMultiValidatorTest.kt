@@ -100,7 +100,7 @@ class MaruMultiValidatorTest {
     validator1Stack.maruApp.start()
     // Get validator 1 p2p port and node ID after it's started
     val validator1P2pPort = validator1Stack.p2pPort
-    val validator1NodeId = validator1Stack.maruApp.p2pNetwork().nodeId
+    val validator1NodeId = validator1Stack.maruApp.p2pNetwork.nodeId
 
     // Create validator 2 Maru app with the validator 1 p2p port and node ID for static peering
     val validator2MaruApp =
@@ -125,8 +125,8 @@ class MaruMultiValidatorTest {
     val validator2besuGenesis = validator2Stack.besuNode.ethGetBlockByNumber("earliest", false)
     assertThat(validator1besuGenesis).isEqualTo(validator2besuGenesis)
 
-    val validator1MaruGenesis = validator1Stack.maruApp.beaconChain().getBeaconState(0u)
-    val validator2MaruGenesis = validator2Stack.maruApp.beaconChain().getBeaconState(0u)
+    val validator1MaruGenesis = validator1Stack.maruApp.beaconChain.getBeaconState(0u)
+    val validator2MaruGenesis = validator2Stack.maruApp.beaconChain.getBeaconState(0u)
     assertThat(validator1MaruGenesis).isEqualTo(validator2MaruGenesis)
 
     val blocksToProduce = 5
@@ -140,7 +140,7 @@ class MaruMultiValidatorTest {
       }
     }
 
-    val beaconChain = validator1Stack.maruApp.beaconChain()
+    val beaconChain = validator1Stack.maruApp.beaconChain
     waitForBlocksToBeProduced(blocksToProduce, beaconChain)
 
     // verify that all EL blocks are the same
