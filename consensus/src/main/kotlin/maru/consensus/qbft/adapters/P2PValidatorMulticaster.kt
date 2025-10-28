@@ -8,6 +8,8 @@
  */
 package maru.consensus.qbft.adapters
 
+import io.libp2p.pubsub.NoPeersForOutboundMessageException
+import java.util.concurrent.ExecutionException
 import maru.p2p.P2PNetwork
 import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.datatypes.Address
@@ -27,7 +29,15 @@ class P2PValidatorMulticaster(
    * @param message The message to send.
    */
   override fun send(message: BesuMessageData) {
-    p2pNetwork.broadcastMessage(message.toDomain())
+    try {
+      p2pNetwork.broadcastMessage(message.toDomain()).get()
+    } catch (ee: ExecutionException) {
+      if (ee.cause?.javaClass == NoPeersForOutboundMessageException::class.java) {
+        // No peers to send to, just ignore
+      } else {
+        throw ee
+      }
+    }
   }
 
   /**
