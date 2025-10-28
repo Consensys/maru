@@ -24,9 +24,7 @@ class BesuMessageDataSerDeTest {
     val serialized = serDe.serialize(originalMessage)
     val deserialized = serDe.deserialize(serialized)
 
-    assertThat(deserialized.data).isEqualTo(originalData)
-    assertThat(deserialized.size).isEqualTo(originalData.size())
-    assertThat(deserialized.code).isEqualTo(42)
+    assertThat(deserialized).isEqualTo(originalMessage)
   }
 
   @Test
@@ -36,7 +34,6 @@ class BesuMessageDataSerDeTest {
     val serialized = serDe.serialize(originalMessage)
     val deserialized = serDe.deserialize(serialized)
 
-    assertThat(deserialized.data).isEqualTo(originalData)
-    assertThat(deserialized.size).isEqualTo(0)
+    assertThat(deserialized).isEqualTo(originalMessage)
   }
 }

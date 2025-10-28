@@ -33,7 +33,7 @@ class BesuMessageDataSerDe : RLPSerDe<BesuMessageData> {
     return MaruMessageData(code, data)
   }
 
-  internal class MaruMessageData(
+  internal data class MaruMessageData(
     private val code: Int,
     private val data: Bytes,
   ) : BesuMessageData {
