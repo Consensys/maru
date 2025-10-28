@@ -8,6 +8,9 @@
  */
 package maru.p2p
 
+import io.libp2p.core.pubsub.ValidationResult.Ignore
+import io.libp2p.core.pubsub.ValidationResult.Invalid
+import io.libp2p.core.pubsub.ValidationResult.Valid
 import java.io.Closeable
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
@@ -26,6 +29,13 @@ enum class ValidationResultCode {
   REJECT,
   IGNORE,
 }
+
+fun ValidationResultCode.toLibP2P() =
+  when (this) {
+    ValidationResultCode.ACCEPT -> Valid
+    ValidationResultCode.REJECT -> Invalid
+    ValidationResultCode.IGNORE -> Ignore
+  }
 
 sealed interface ValidationResult {
   val code: ValidationResultCode

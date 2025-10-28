@@ -12,7 +12,7 @@ import java.util.Optional
 import maru.p2p.LINEA_DOMAIN
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
-import maru.p2p.ValidationResultCode
+import maru.p2p.toLibP2P
 import maru.serialization.Deserializer
 import maru.serialization.MAX_MESSAGE_SIZE
 import org.apache.logging.log4j.LogManager
@@ -34,15 +34,6 @@ class ImmediateTopicHandler<T>(
   private val topicId: String,
 ) : TopicHandler {
   private val log: Logger = LogManager.getLogger(this.javaClass)
-
-  companion object {
-    fun ValidationResultCode.toLibP2P(): Libp2pValidationResult =
-      when (this) {
-        ValidationResultCode.ACCEPT -> Libp2pValidationResult.Valid
-        ValidationResultCode.REJECT -> Libp2pValidationResult.Invalid
-        ValidationResultCode.IGNORE -> Libp2pValidationResult.Ignore
-      }
-  }
 
   override fun prepareMessage(
     payload: Bytes,
