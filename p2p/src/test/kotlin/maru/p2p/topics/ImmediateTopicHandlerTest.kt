@@ -31,18 +31,41 @@ import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 
 class ImmediateTopicHandlerTest {
   private val mockSubscriptionManager = mock<SubscriptionManager<String>>()
-  private val mockDeserializer = mock<Deserializer<String>>()
   private val topicId = "test-topic"
+  private lateinit var deserializer: TestDeserializer
   private lateinit var handler: ImmediateTopicHandler<String>
 
   @BeforeEach
   fun setUp() {
+    deserializer = TestDeserializer()
     handler =
       ImmediateTopicHandler(
         subscriptionManager = mockSubscriptionManager,
-        deserializer = mockDeserializer,
+        deserializer = deserializer,
         topicId = topicId,
       )
+  }
+
+  private class TestDeserializer : Deserializer<String> {
+    private val values = mutableMapOf<ByteArray, String>()
+    private var exceptionToThrow: RuntimeException? = null
+
+    fun configureResult(
+      input: ByteArray,
+      output: String,
+    ) {
+      values[input] = output
+    }
+
+    fun configureToThrow(exception: RuntimeException) {
+      exceptionToThrow = exception
+    }
+
+    override fun deserialize(bytes: ByteArray): String {
+      exceptionToThrow?.let { throw it }
+      return values.entries.firstOrNull { it.key.contentEquals(bytes) }?.value
+        ?: throw IllegalStateException("No configured result for input")
+    }
   }
 
   @Test
@@ -67,14 +90,13 @@ class ImmediateTopicHandlerTest {
     val deserializedMessage = "test-message"
     val message = createPreparedMessage(payload)
 
-    whenever(mockDeserializer.deserialize(payload.toArray())).thenReturn(deserializedMessage)
+    deserializer.configureResult(payload.toArray(), deserializedMessage)
     whenever(mockSubscriptionManager.handleEvent(deserializedMessage))
       .thenReturn(SafeFuture.completedFuture(ValidationResult.Companion.Valid))
 
     val result = handler.handleMessage(message).join()
 
     assertThat(result).isEqualTo(Libp2pValidationResult.Valid)
-    verify(mockDeserializer).deserialize(payload.toArray())
     verify(mockSubscriptionManager).handleEvent(deserializedMessage)
   }
 
@@ -84,7 +106,7 @@ class ImmediateTopicHandlerTest {
     val deserializedMessage = "test-message"
     val message = createPreparedMessage(payload)
 
-    whenever(mockDeserializer.deserialize(payload.toArray())).thenReturn(deserializedMessage)
+    deserializer.configureResult(payload.toArray(), deserializedMessage)
     whenever(mockSubscriptionManager.handleEvent(deserializedMessage))
       .thenReturn(SafeFuture.completedFuture(ValidationResult.Companion.Invalid("test error")))
 
@@ -99,7 +121,7 @@ class ImmediateTopicHandlerTest {
     val deserializedMessage = "test-message"
     val message = createPreparedMessage(payload)
 
-    whenever(mockDeserializer.deserialize(payload.toArray())).thenReturn(deserializedMessage)
+    deserializer.configureResult(payload.toArray(), deserializedMessage)
     whenever(mockSubscriptionManager.handleEvent(deserializedMessage))
       .thenReturn(SafeFuture.completedFuture(ValidationResult.Companion.Ignore("test ignore")))
 
@@ -113,13 +135,11 @@ class ImmediateTopicHandlerTest {
     val payload = Bytes.fromHexString("0x1234")
     val message = createPreparedMessage(payload)
 
-    whenever(mockDeserializer.deserialize(payload.toArray()))
-      .thenThrow(RuntimeException("Deserialization failed"))
+    deserializer.configureToThrow(RuntimeException("Deserialization failed"))
 
     val result = handler.handleMessage(message).join()
 
     assertThat(result).isEqualTo(Libp2pValidationResult.Invalid)
-    verify(mockDeserializer).deserialize(payload.toArray())
     verify(mockSubscriptionManager, never()).handleEvent(any())
   }
 
@@ -129,7 +149,7 @@ class ImmediateTopicHandlerTest {
     val deserializedMessage = "test-message"
     val message = createPreparedMessage(payload)
 
-    whenever(mockDeserializer.deserialize(payload.toArray())).thenReturn(deserializedMessage)
+    deserializer.configureResult(payload.toArray(), deserializedMessage)
     whenever(mockSubscriptionManager.handleEvent(deserializedMessage))
       .thenReturn(SafeFuture.failedFuture(RuntimeException("Subscription manager error")))
 
@@ -144,7 +164,7 @@ class ImmediateTopicHandlerTest {
     val deserializedMessage = "test-message"
     val message = createPreparedMessage(payload)
 
-    whenever(mockDeserializer.deserialize(payload.toArray())).thenReturn(deserializedMessage)
+    deserializer.configureResult(payload.toArray(), deserializedMessage)
     whenever(mockSubscriptionManager.handleEvent(deserializedMessage))
       .thenThrow(RuntimeException("Direct exception from handleEvent"))
 
@@ -167,8 +187,8 @@ class ImmediateTopicHandlerTest {
     val message1 = createPreparedMessage(payload1)
     val message2 = createPreparedMessage(payload2)
 
-    whenever(mockDeserializer.deserialize(payload1.toArray())).thenReturn(deserializedMessage1)
-    whenever(mockDeserializer.deserialize(payload2.toArray())).thenReturn(deserializedMessage2)
+    deserializer.configureResult(payload1.toArray(), deserializedMessage1)
+    deserializer.configureResult(payload2.toArray(), deserializedMessage2)
     whenever(mockSubscriptionManager.handleEvent(deserializedMessage1))
       .thenReturn(SafeFuture.completedFuture(ValidationResult.Companion.Valid))
     whenever(mockSubscriptionManager.handleEvent(deserializedMessage2))
