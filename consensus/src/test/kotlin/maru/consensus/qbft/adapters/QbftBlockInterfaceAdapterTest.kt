@@ -10,28 +10,29 @@ package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Ok
 import java.util.SequencedSet
-import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.toAddress
-import maru.consensus.state.StateTransitionImpl
+import maru.consensus.state.StateTransition
 import maru.consensus.validation.StateRootValidator
 import maru.core.BeaconBlock
+import maru.core.BeaconState
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftBlockInterfaceAdapterTest {
-  private fun createMockStateTransition(): StateTransitionImpl {
-    val validatorProvider = mock<ValidatorProvider>()
-    val validators = DataGenerators.randomValidators()
-    whenever(validatorProvider.getValidatorsForBlock(any()))
-      .thenReturn(SafeFuture.completedFuture(validators))
-    return StateTransitionImpl(validatorProvider = validatorProvider)
-  }
+  private fun createStateTransition(
+    validators: SequencedSet<Validator> = DataGenerators.randomValidators().toSortedSet(),
+  ): StateTransition =
+    StateTransition { block ->
+      SafeFuture.completedFuture(
+        BeaconState(
+          beaconBlockHeader = block.beaconBlockHeader,
+          validators = validators,
+        ),
+      )
+    }
 
   @Test
   fun `can replace round number in header for commit block`() {
@@ -41,7 +42,7 @@ class QbftBlockInterfaceAdapterTest {
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
-    val stateTransition = createMockStateTransition()
+    val stateTransition = createStateTransition()
     val adapter = QbftBlockInterfaceAdapter(stateTransition)
     val updatedBlock =
       adapter.replaceRoundForCommitBlock(qbftBlock, 20)
@@ -65,7 +66,7 @@ class QbftBlockInterfaceAdapterTest {
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
-    val stateTransition = createMockStateTransition()
+    val stateTransition = createStateTransition()
     val adapter = QbftBlockInterfaceAdapter(stateTransition)
     val updatedBlock = adapter.replaceRoundAndProposerForProposalBlock(qbftBlock, 25, newProposer.toAddress())
     val updatedBeaconBlockHeader = updatedBlock.header.toBeaconBlockHeader()
@@ -83,7 +84,7 @@ class QbftBlockInterfaceAdapterTest {
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
-    val stateTransition = createMockStateTransition(validators)
+    val stateTransition = createStateTransition(validators)
     val adapter = QbftBlockInterfaceAdapter(stateTransition)
     val updatedBlock = adapter.replaceRoundForCommitBlock(qbftBlock, 20)
 
@@ -108,7 +109,7 @@ class QbftBlockInterfaceAdapterTest {
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
-    val stateTransition = createMockStateTransition(validators)
+    val stateTransition = createStateTransition(validators)
     val adapter = QbftBlockInterfaceAdapter(stateTransition)
     val updatedBlock = adapter.replaceRoundAndProposerForProposalBlock(qbftBlock, 25, newProposer.toAddress())
 
@@ -117,14 +118,5 @@ class QbftBlockInterfaceAdapterTest {
     assertThat(validationResult).isEqualTo(Ok(Unit))
     assertThat(updatedBeaconBlock.beaconBlockHeader.round).isEqualTo(25u)
     assertThat(updatedBeaconBlock.beaconBlockHeader.proposer).isEqualTo(newProposer)
-  }
-
-  private fun createMockStateTransition(
-    validators: SequencedSet<Validator> = DataGenerators.randomValidators().toSortedSet(),
-  ): StateTransitionImpl {
-    val validatorProvider = mock<ValidatorProvider>()
-    whenever(validatorProvider.getValidatorsForBlock(any()))
-      .thenReturn(SafeFuture.completedFuture(validators))
-    return StateTransitionImpl(validatorProvider = validatorProvider)
   }
 }
