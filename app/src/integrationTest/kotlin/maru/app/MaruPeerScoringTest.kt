@@ -68,11 +68,21 @@ class MaruPeerScoringTest {
   fun tearDown() {
     job?.cancel()
     job = null
-    followerStack.maruApp.stop()
-    validatorStack.maruApp.stop()
-    followerStack.maruApp.close()
-    validatorStack.maruApp.close()
-    cluster.close()
+    if (::followerStack.isInitialized) {
+      followerStack.maruApp.stop()
+    }
+    if (::validatorStack.isInitialized) {
+      validatorStack.maruApp.stop()
+    }
+    if (::followerStack.isInitialized) {
+      followerStack.maruApp.close()
+    }
+    if (::validatorStack.isInitialized) {
+      validatorStack.maruApp.close()
+    }
+    if (::cluster.isInitialized) {
+      cluster.close()
+    }
   }
 
   @Test
