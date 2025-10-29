@@ -641,6 +641,7 @@ class HopliteFriendlinessTest {
       seen-ttl = "1200 seconds"
       flood-publish-max-message-size-threshold = 65536
       gossip-factor = 0.5
+      consider-peers-as-direct = true
       """.trimIndent()
     val config = parseConfig<P2PConfig.Gossiping>(customGossipingConfig)
 
@@ -657,6 +658,7 @@ class HopliteFriendlinessTest {
         seenTTL = 1200.seconds,
         floodPublishMaxMessageSizeThreshold = 65536,
         gossipFactor = 0.5,
+        considerPeersAsDirect = true,
       ),
     )
   }
@@ -683,6 +685,7 @@ class HopliteFriendlinessTest {
         seenTTL = 700.milliseconds * 1115, // default
         floodPublishMaxMessageSizeThreshold = 16384, // default
         gossipFactor = 0.25, // default
+        considerPeersAsDirect = false, // default
       ),
     )
   }
@@ -702,6 +705,7 @@ class HopliteFriendlinessTest {
       seen-ttl = "1000 seconds"
       flood-publish-max-message-size-threshold = 32768
       gossip-factor = 0.3
+      consider-peers-as-direct = true
       """.trimIndent()
     val config = parseConfig<P2PConfig.Gossiping>(gossipingToml)
 
@@ -718,6 +722,7 @@ class HopliteFriendlinessTest {
         seenTTL = 1000.seconds,
         floodPublishMaxMessageSizeThreshold = 32768,
         gossipFactor = 0.3,
+        considerPeersAsDirect = true,
       ),
     )
   }
