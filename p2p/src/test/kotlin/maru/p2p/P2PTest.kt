@@ -36,6 +36,7 @@ import maru.p2p.topics.BesuMessageDataSerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
+import maru.syncing.FakeSyncStatusProvider
 import maru.syncing.SyncStatusProvider
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
@@ -96,27 +97,12 @@ class P2PTest {
     private val p2PState = InMemoryP2PState()
 
     private fun getSyncStatusProvider(): SyncStatusProvider =
-      object : SyncStatusProvider {
-        override fun getCLSyncStatus(): CLSyncStatus = CLSyncStatus.SYNCED
-
-        override fun getElSyncStatus(): ELSyncStatus = ELSyncStatus.SYNCED
-
-        override fun onClSyncStatusUpdate(handler: (newStatus: CLSyncStatus) -> Unit) {}
-
-        override fun onElSyncStatusUpdate(handler: (newStatus: ELSyncStatus) -> Unit) {}
-
-        override fun isBeaconChainSynced(): Boolean = true
-
-        override fun isELSynced(): Boolean = true
-
-        override fun onBeaconSyncComplete(handler: () -> Unit) {}
-
-        override fun onFullSyncComplete(handler: () -> Unit) {}
-
-        override fun getBeaconSyncDistance(): ULong = 10UL
-
-        override fun getCLSyncTarget(): ULong = 100UL
-      }
+      FakeSyncStatusProvider(
+        clStatus = CLSyncStatus.SYNCED,
+        elStatus = ELSyncStatus.SYNCED,
+        beaconSyncDistanceValue = 10UL,
+        clSyncTarget = 100UL,
+      )
 
     private val beaconChain: InMemoryBeaconChain = InMemoryBeaconChain.fromGenesis()
     private val forkIdHashManager: ForkPeeringManager =
