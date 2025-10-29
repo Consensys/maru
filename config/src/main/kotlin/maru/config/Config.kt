@@ -38,10 +38,6 @@ data class FollowersConfig(
   val followers: Map<String, ApiEndpointConfig>,
 )
 
-data class DefaultsConfig(
-  val l2EthEndpoint: ApiEndpointConfig,
-)
-
 data class P2PConfig(
   val ipAddress: String = "127.0.0.1", // default to localhost for security
   val port: UInt = 9000u,
@@ -273,7 +269,7 @@ data class MaruConfig(
   val linea: LineaConfig? = null,
   val api: ApiConfig,
   val syncing: SyncingConfig,
-  val defaults: DefaultsConfig? = null,
+  val ethApiEndpoint: ApiEndpointConfig? = null,
 ) {
   init {
     if (qbft != null) {

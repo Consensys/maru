@@ -17,7 +17,6 @@ import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
-import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
@@ -58,6 +57,7 @@ import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.services.LongRunningService
+import maru.services.NoOpLongRunningService
 import maru.syncing.AlwaysSyncedController
 import maru.syncing.BeaconSyncControllerImpl
 import maru.syncing.ELSyncService
@@ -75,6 +75,7 @@ import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.VertxFactory
 import org.apache.logging.log4j.LogManager
 import org.web3j.protocol.Web3j
+import org.web3j.protocol.http.HttpService
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
@@ -142,14 +143,8 @@ class MaruAppFactory {
     val qbftConfig = qbftFork.configuration as QbftConsensusConfig
 
     val l2EthWeb3j: Web3j? =
-      config.defaults?.let {
-        createWeb3jHttpClient(
-          rpcUrl =
-            config.defaults!!
-              .l2EthEndpoint.endpoint
-              .toString(),
-          log = LogManager.getLogger("maru.clients.l2.ethapi"),
-        )
+      config.ethApiEndpoint?.let {
+        Web3j.build(HttpService(it.endpoint.toString()))
       }
 
     val engineApiWeb3jClient: Web3JClient? =
@@ -235,12 +230,7 @@ class MaruAppFactory {
               onStatusChange = onStatusChange,
             )
           } else {
-            object : LongRunningService {
-              override fun start() {
-              }
-
-              override fun stop() {}
-            }
+            NoOpLongRunningService
           }
         }
         BeaconSyncControllerImpl.create(
@@ -272,10 +262,7 @@ class MaruAppFactory {
     val apiServer =
       overridingApiServer
         ?: ApiServerImpl(
-          config =
-            ApiServerImpl.Config(
-              port = config.api.port,
-            ),
+          config = ApiServerImpl.Config(port = config.api.port),
           networkDataProvider = P2PNetworkDataProvider(p2pNetwork),
           versionProvider = MaruVersionProvider(),
           chainDataProvider = ChainDataProviderImpl(kvDatabase),

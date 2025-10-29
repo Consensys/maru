@@ -103,10 +103,7 @@ data class QbftOptionsDtoToml(
 
 data class DefaultsDtoToml(
   val l2EthEndpoint: ApiEndpointDto,
-) {
-  fun domainFriendly(): DefaultsConfig =
-    DefaultsConfig(l2EthEndpoint = l2EthEndpoint.domainFriendly(endlessRetries = true))
-}
+)
 
 data class LineaConfigDtoToml(
   val contractAddress: ByteArray,
@@ -170,10 +167,14 @@ data class MaruConfigDtoToml(
   private val observability: ObservabilityConfig,
   private val api: ApiConfig,
   private val syncing: SyncingConfig,
+  private val ethApiEndpoint: ApiEndpointDto? = null,
 ) {
-  fun domainFriendly(): MaruConfig =
-    MaruConfig(
-      defaults = defaults?.domainFriendly(),
+  fun domainFriendly(): MaruConfig {
+    val ethApiEndpoint: ApiEndpointConfig? =
+      ethApiEndpoint?.domainFriendly()
+        ?: defaults?.l2EthEndpoint?.domainFriendly()
+
+    return MaruConfig(
       linea = linea?.domainFriendly(defaults?.l2EthEndpoint),
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = allowEmptyBlocks,
@@ -188,5 +189,7 @@ data class MaruConfigDtoToml(
       observability = observability,
       api = api,
       syncing = syncing,
+      ethApiEndpoint = ethApiEndpoint,
     )
+  }
 }

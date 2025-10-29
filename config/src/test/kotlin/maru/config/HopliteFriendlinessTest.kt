@@ -94,6 +94,11 @@ class HopliteFriendlinessTest {
     fee-recipient = "0xdead000000000000000000000000000000000000"
     """.trimIndent()
 
+  private val ethApiEndpointToml =
+    """
+    eth-api-endpoint = { endpoint = "http://localhost:8595" }
+    """.trimIndent()
+
   private val payloadValidatorSectionToml =
     """
     [payload-validator]
@@ -158,14 +163,11 @@ class HopliteFriendlinessTest {
           timeout = 3.seconds,
         ),
     )
-  private val ethApiEndpoint =
+  private val defaultEthApiEndpoint =
     ApiEndpointConfig(
       endpoint = URI.create("http://localhost:8545").toURL(),
       requestRetries =
-        RetryConfig.endlessRetry(
-          backoffDelay = 1.seconds,
-          failuresWarningThreshold = 3u,
-        ),
+        RetryConfig.noRetries,
     )
   private val engineApiEndpoint =
     ApiEndpointConfig(
@@ -242,7 +244,6 @@ class HopliteFriendlinessTest {
         ),
     )
   private val defaultsDto = DefaultsDtoToml(l2EthEndpoint = ApiEndpointDto(URI.create("http://localhost:8545").toURL()))
-  private val defaults = DefaultsConfig(l2EthEndpoint = ethApiEndpoint)
   private val expectedEmptyFollowersBase =
     MaruConfigDtoToml(
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
@@ -290,7 +291,6 @@ class HopliteFriendlinessTest {
           linea = null,
           api = ApiConfig(port = 8080u),
           syncing = syncingConfig,
-          defaults = defaults,
         )
       }
     assertThat(exception.message).isEqualTo("Validator EL node cannot be defined as a follower")
@@ -315,7 +315,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        defaults = defaults,
+        ethApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -339,7 +339,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        defaults = defaults,
+        ethApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -497,7 +497,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        defaults = defaults,
+        ethApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -560,7 +560,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        defaults = defaults,
+        ethApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -569,7 +569,6 @@ class HopliteFriendlinessTest {
   fun `gossiping config can be overridden`() {
     val customGossipingConfig =
       """
-      [p2p.gossiping]
       d = 12
       d-low = 10
       d-high = 16
@@ -582,28 +581,21 @@ class HopliteFriendlinessTest {
       flood-publish-max-message-size-threshold = 65536
       gossip-factor = 0.5
       """.trimIndent()
-    val configToml = "$emptyFollowersConfigToml\n$customGossipingConfig"
-    val config = parseConfig<MaruConfigDtoToml>(configToml)
+    val config = parseConfig<P2PConfig.Gossiping>(customGossipingConfig)
 
     assertThat(config).isEqualTo(
-      expectedEmptyFollowersBase.copy(
-        p2p =
-          p2pConfig.copy(
-            gossiping =
-              P2PConfig.Gossiping(
-                d = 12,
-                dLow = 10,
-                dHigh = 16,
-                dLazy = 10,
-                fanoutTTL = 120.seconds,
-                gossipSize = 6,
-                history = 10,
-                heartbeatInterval = 600.milliseconds,
-                seenTTL = 1200.seconds,
-                floodPublishMaxMessageSizeThreshold = 65536,
-                gossipFactor = 0.5,
-              ),
-          ),
+      P2PConfig.Gossiping(
+        d = 12,
+        dLow = 10,
+        dHigh = 16,
+        dLazy = 10,
+        fanoutTTL = 120.seconds,
+        gossipSize = 6,
+        history = 10,
+        heartbeatInterval = 600.milliseconds,
+        seenTTL = 1200.seconds,
+        floodPublishMaxMessageSizeThreshold = 65536,
+        gossipFactor = 0.5,
       ),
     )
   }
@@ -612,32 +604,24 @@ class HopliteFriendlinessTest {
   fun `gossiping config can be partially overridden with defaults for unspecified fields`() {
     val partialGossipingConfig =
       """
-      [p2p.gossiping]
       d = 12
       heartbeat-interval = "600 milliseconds"
       """.trimIndent()
-    val configToml = "$emptyFollowersConfigToml\n$partialGossipingConfig"
-    val config = parseConfig<MaruConfigDtoToml>(configToml)
+    val config = parseConfig<P2PConfig.Gossiping>(partialGossipingConfig)
 
     assertThat(config).isEqualTo(
-      expectedEmptyFollowersBase.copy(
-        p2p =
-          p2pConfig.copy(
-            gossiping =
-              P2PConfig.Gossiping(
-                d = 12,
-                dLow = 6, // default
-                dHigh = 24, // default (d * 2)
-                dLazy = 6, // default
-                fanoutTTL = 60.seconds, // default
-                gossipSize = 3, // default
-                history = 6, // default
-                heartbeatInterval = 600.milliseconds,
-                seenTTL = 700.milliseconds * 1115, // default
-                floodPublishMaxMessageSizeThreshold = 16384, // default
-                gossipFactor = 0.25, // default
-              ),
-          ),
+      P2PConfig.Gossiping(
+        d = 12,
+        dLow = 6, // default
+        dHigh = 24, // default (d * 2)
+        dLazy = 6, // default
+        fanoutTTL = 60.seconds, // default
+        gossipSize = 3, // default
+        history = 6, // default
+        heartbeatInterval = 600.milliseconds,
+        seenTTL = 700.milliseconds * 1115, // default
+        floodPublishMaxMessageSizeThreshold = 16384, // default
+        gossipFactor = 0.25, // default
       ),
     )
   }
@@ -769,7 +753,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        defaults = defaults,
+        ethApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -798,8 +782,35 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        defaults = null,
+        ethApiEndpoint = null,
       ),
     )
+  }
+
+  @Test
+  fun `root eth-api-endpoint override takes precedence over defaults`() {
+    val configToml =
+      """
+      $ethApiEndpointToml
+
+      $baseConfigWithoutQbftAndPayloadToml
+
+      $defaultsSectionToml
+
+      $qbftSectionToml
+
+      $payloadValidatorSectionToml
+      """.trimIndent()
+
+    val parsed = parseConfig<MaruConfigDtoToml>(configToml)
+    val domain = parsed.domainFriendly()
+
+    val expectedEthApi =
+      ApiEndpointConfig(
+        endpoint = URI.create("http://localhost:8595").toURL(),
+        requestRetries = RetryConfig.noRetries,
+      )
+
+    assertThat(domain.ethApiEndpoint).isEqualTo(expectedEthApi)
   }
 }

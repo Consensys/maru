@@ -73,6 +73,21 @@ class MaruApp(
       warnIfValidatorIsNotInTheGenesis(localValidator)
     }
 
+    // Fail fast: if any future fork is DifficultyAwareQbft, L2 EL client must be configured
+    run {
+      val nowTs = clock.instant().epochSecond.toULong()
+      val hasFutureDifficultyAware =
+        beaconGenesisConfig.forks.any { fork ->
+          fork.timestampSeconds > nowTs && fork.configuration is DifficultyAwareQbftConfig
+        }
+      if (hasFutureDifficultyAware && l2EthWeb3j == null) {
+        throw IllegalStateException(
+          "Configuration error: a future fork enables DifficultyAwareQbft (by timestamp) but l2EthWeb3j is not configured. " +
+            "Provide L2 Ethereum JSON-RPC endpoint in configuration so the app can start.",
+        )
+      }
+    }
+
     metricsFacade.createGauge(
       category = MaruMetricsCategory.METADATA,
       name = "cl.block.height",

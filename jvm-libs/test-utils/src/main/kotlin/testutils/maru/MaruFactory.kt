@@ -27,7 +27,6 @@ import maru.app.MaruApp
 import maru.app.MaruAppFactory
 import maru.config.ApiConfig
 import maru.config.ApiEndpointConfig
-import maru.config.DefaultsConfig
 import maru.config.FollowersConfig
 import maru.config.LineaConfig
 import maru.config.MaruConfig
@@ -229,10 +228,7 @@ class MaruFactory(
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
-      defaults =
-        ethereumJsonRpcUrl?.let {
-          DefaultsConfig(l2EthEndpoint = ApiEndpointConfig(URI.create(it).toURL()))
-        },
+      ethApiEndpoint = ethereumJsonRpcUrl?.let { ApiEndpointConfig(URI.create(it).toURL()) },
     )
   }
 
@@ -310,7 +306,7 @@ class MaruFactory(
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
-      defaults = DefaultsConfig(l2EthEndpoint = ethereumApiEndpointConfig),
+      ethApiEndpoint = ethereumApiEndpointConfig,
     )
   }
 
