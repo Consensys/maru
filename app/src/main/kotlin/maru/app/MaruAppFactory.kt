@@ -29,6 +29,7 @@ import maru.api.ChainDataProviderImpl
 import maru.config.MaruConfig
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
+import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
@@ -108,6 +109,14 @@ class MaruAppFactory {
   ): MaruApp {
     log.info("configs={}", config)
     log.info("beaconGenesisConfig={}", beaconGenesisConfig)
+
+    val l2EthWeb3j: Web3j? =
+      config.ethApiEndpoint?.let {
+        Web3j.build(HttpService(it.endpoint.toString()))
+      }
+
+    checkL2EthApiEndpointAndForks(clock, beaconGenesisConfig, l2EthWeb3j)
+
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val vertx =
       VertxFactory.createVertx(
@@ -141,11 +150,6 @@ class MaruAppFactory {
 
     val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
     val qbftConfig = qbftFork.configuration as QbftConsensusConfig
-
-    val l2EthWeb3j: Web3j? =
-      config.ethApiEndpoint?.let {
-        Web3j.build(HttpService(it.endpoint.toString()))
-      }
 
     val engineApiWeb3jClient: Web3JClient? =
       config.validatorElNode?.let {
@@ -318,13 +322,13 @@ class MaruAppFactory {
               ?: Web3JLineaRollupSmartContractClientReadOnly(
                 web3j =
                   createWeb3jHttpClient(
-                    rpcUrl = lineaConfig.l1EthApi.endpoint.toString(),
+                    rpcUrl = lineaConfig.l1EthApiEndpoint.endpoint.toString(),
                     log = LogManager.getLogger("clients.l1.linea"),
                   ),
                 contractAddress = lineaConfig.contractAddress.encodeHex(),
                 log = LogManager.getLogger("clients.l1.linea"),
               )
-          val l2Endpoint = lineaConfig.l2EthApi
+          val l2Endpoint = lineaConfig.l2EthApiEndpoint
           LineaFinalizationProvider(
             lineaContract = contractClient,
             l2EthApi =
@@ -445,5 +449,26 @@ class MaruAppFactory {
       )
     val qbftConsensusConfig = qbftForkConfig.configuration as QbftConsensusConfig
     beaconChainInitialization.ensureDbIsInitialized(qbftConsensusConfig.validatorSet)
+  }
+
+  internal fun checkL2EthApiEndpointAndForks(
+    clock: Clock,
+    forksSchedule: ForksSchedule,
+    l2EthWeb3j: Any?,
+  ) {
+    run {
+      val nowTs = clock.instant().epochSecond.toULong()
+      val hasFutureDifficultyAware =
+        forksSchedule.forks.any { fork ->
+          fork.timestampSeconds > nowTs && fork.configuration is DifficultyAwareQbftConfig
+        }
+      if (hasFutureDifficultyAware) {
+        require(l2EthWeb3j != null) {
+          "Configuration error: a future fork enables DifficultyAwareQbft (by timestamp) but l2EthWeb3j " +
+            "is not configured, so there is no way to check the current difficulty. Provide L2 Ethereum JSON-RPC " +
+            "endpoint in configuration so the app can start."
+        }
+      }
+    }
   }
 }

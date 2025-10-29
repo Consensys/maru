@@ -107,13 +107,31 @@ data class DefaultsDtoToml(
 
 data class LineaConfigDtoToml(
   val contractAddress: ByteArray,
-  val l1EthApi: ApiEndpointDto,
+  val l1EthApi: ApiEndpointDto? = null, // TODO: This is a fallback for backwards compatibility.
+  // Remove in the next major release
+  val l1EthApiEndpoint: ApiEndpointDto? = l1EthApi,
   val l1PollingInterval: Duration = 6.seconds,
   val l1HighestBlockTag: String = "finalized",
-  val l2EthApi: ApiEndpointDto? = null,
+  val l2EthApiEndpoint: ApiEndpointDto? = null,
 ) {
   init {
     contractAddress.assertIs20Bytes("contractAddress")
+    require(l1EthApiEndpoint != null) {
+      "l1-eth-api-endpoint has to be defined!"
+    }
+  }
+
+  fun domainFriendly(defaultL2EthApi: ApiEndpointDto?): LineaConfig {
+    require(l2EthApiEndpoint != null || defaultL2EthApi != null) {
+      "Either default.l2-eth-endpoint or linea.l2-eth-api have to be defined when [linea] section is defined!"
+    }
+    return LineaConfig(
+      contractAddress = contractAddress,
+      l1EthApiEndpoint = l1EthApiEndpoint!!.domainFriendly(),
+      l1PollingInterval = l1PollingInterval,
+      l1HighestBlockTag = BlockParameter.parse(l1HighestBlockTag),
+      l2EthApiEndpoint = (l2EthApiEndpoint ?: defaultL2EthApi!!).domainFriendly(),
+    )
   }
 
   override fun equals(other: Any?): Boolean {
@@ -124,33 +142,22 @@ data class LineaConfigDtoToml(
 
     if (!contractAddress.contentEquals(other.contractAddress)) return false
     if (l1EthApi != other.l1EthApi) return false
+    if (l1EthApiEndpoint != other.l1EthApiEndpoint) return false
     if (l1PollingInterval != other.l1PollingInterval) return false
     if (l1HighestBlockTag != other.l1HighestBlockTag) return false
-    if (l2EthApi != other.l2EthApi) return false
+    if (l2EthApiEndpoint != other.l2EthApiEndpoint) return false
 
     return true
   }
 
   override fun hashCode(): Int {
     var result = contractAddress.contentHashCode()
-    result = 31 * result + l1EthApi.hashCode()
+    result = 31 * result + (l1EthApi?.hashCode() ?: 0)
+    result = 31 * result + (l1EthApiEndpoint?.hashCode() ?: 0)
     result = 31 * result + l1PollingInterval.hashCode()
     result = 31 * result + l1HighestBlockTag.hashCode()
-    result = 31 * result + (l2EthApi?.hashCode() ?: 0)
+    result = 31 * result + (l2EthApiEndpoint?.hashCode() ?: 0)
     return result
-  }
-
-  fun domainFriendly(defaultL2EthApi: ApiEndpointDto?): LineaConfig {
-    require(l2EthApi != null || defaultL2EthApi != null) {
-      "Either default.l2-eth-endpoint or linea.l2-eth-api have to be defined when [linea] section is defined!"
-    }
-    return LineaConfig(
-      contractAddress = contractAddress,
-      l1EthApi = l1EthApi.domainFriendly(),
-      l1PollingInterval = l1PollingInterval,
-      l1HighestBlockTag = BlockParameter.parse(l1HighestBlockTag),
-      l2EthApi = (l2EthApi ?: defaultL2EthApi!!).domainFriendly(),
-    )
   }
 }
 

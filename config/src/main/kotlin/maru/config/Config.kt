@@ -188,10 +188,10 @@ data class ObservabilityConfig(
 
 data class LineaConfig(
   val contractAddress: ByteArray,
-  val l1EthApi: ApiEndpointConfig,
+  val l1EthApiEndpoint: ApiEndpointConfig,
   val l1PollingInterval: Duration = 6.seconds,
   val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
-  val l2EthApi: ApiEndpointConfig,
+  val l2EthApiEndpoint: ApiEndpointConfig,
 ) {
   init {
     contractAddress.assertIs20Bytes("contractAddress")
@@ -204,20 +204,20 @@ data class LineaConfig(
     other as LineaConfig
 
     if (!contractAddress.contentEquals(other.contractAddress)) return false
-    if (l1EthApi != other.l1EthApi) return false
+    if (l1EthApiEndpoint != other.l1EthApiEndpoint) return false
     if (l1PollingInterval != other.l1PollingInterval) return false
     if (l1HighestBlockTag != other.l1HighestBlockTag) return false
-    if (l2EthApi != other.l2EthApi) return false
+    if (l2EthApiEndpoint != other.l2EthApiEndpoint) return false
 
     return true
   }
 
   override fun hashCode(): Int {
     var result = contractAddress.contentHashCode()
-    result = 31 * result + l1EthApi.hashCode()
+    result = 31 * result + l1EthApiEndpoint.hashCode()
     result = 31 * result + l1PollingInterval.hashCode()
     result = 31 * result + l1HighestBlockTag.hashCode()
-    result = 31 * result + l2EthApi.hashCode()
+    result = 31 * result + l2EthApiEndpoint.hashCode()
     return result
   }
 }

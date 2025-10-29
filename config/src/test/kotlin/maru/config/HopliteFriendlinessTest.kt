@@ -505,7 +505,7 @@ class HopliteFriendlinessTest {
   @Test
   fun `should parse config with linea settings`() {
     val contractAddress = "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5"
-    val l1EthApi = "http://ethereum-mainnet"
+    val l1EthApiUrl = "http://ethereum-mainnet"
     val l1PollingInterval = 6.seconds
     val l1HighestBlockTag = "latest"
     val configToml =
@@ -514,7 +514,7 @@ class HopliteFriendlinessTest {
 
       [linea]
       contract-address = "$contractAddress"
-      l1-eth-api = { endpoint = "$l1EthApi" }
+      l1-eth-api = { endpoint = "$l1EthApiUrl" }
       l1-polling-interval = "6 seconds"
       l1-highest-block-tag = "$l1HighestBlockTag"
       """.trimIndent()
@@ -527,16 +527,16 @@ class HopliteFriendlinessTest {
       LineaConfigDtoToml(
         contractAddress = contractAddressBytes,
         l1EthApi = l1EthApiEndpoint,
-        l1PollingInterval,
+        l1PollingInterval = l1PollingInterval,
         l1HighestBlockTag = l1HighestBlockTag,
       )
     val expectedLineaConfig =
       LineaConfig(
         contractAddress = contractAddressBytes,
-        l1EthApi = l1EthApiEndpoint.domainFriendly(),
+        l1EthApiEndpoint = l1EthApiEndpoint.domainFriendly(),
         l1PollingInterval = l1PollingInterval,
         l1HighestBlockTag = BlockParameter.Tag.LATEST,
-        l2EthApi = ApiEndpointConfig(URI.create("http://localhost:8545").toURL()),
+        l2EthApiEndpoint = ApiEndpointConfig(URI.create("http://localhost:8545").toURL()),
       )
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
@@ -563,6 +563,67 @@ class HopliteFriendlinessTest {
         ethApiEndpoint = defaultEthApiEndpoint,
       ),
     )
+  }
+
+  @Test
+  fun `linea config parses with legacy l1-eth-api only`() {
+    val contractAddress = "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5"
+    val legacyUrl = "http://ethereum-legacy"
+
+    val toml =
+      """
+      contract-address = "$contractAddress"
+      l1-eth-api = { endpoint = "$legacyUrl" }
+      """.trimIndent()
+
+    val expected =
+      LineaConfigDtoToml(
+        contractAddress = contractAddress.decodeHex(),
+        l1EthApi = ApiEndpointDto(URI.create(legacyUrl).toURL()),
+      )
+
+    val parsed = parseConfig<LineaConfigDtoToml>(toml)
+
+    assertThat(parsed).isEqualTo(expected)
+    // Fallback applied: l1EthApiEndpoint defaults to l1EthApi
+    assertThat(parsed.l1EthApiEndpoint).isEqualTo(expected.l1EthApi)
+  }
+
+  @Test
+  fun `linea config parses with l1-eth-api-endpoint only`() {
+    val contractAddress = "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5"
+    val endpointUrl = "http://ethereum-endpoint"
+
+    val toml =
+      """
+      contract-address = "$contractAddress"
+      l1-eth-api-endpoint = { endpoint = "$endpointUrl" }
+      """.trimIndent()
+
+    val expected =
+      LineaConfigDtoToml(
+        contractAddress = contractAddress.decodeHex(),
+        l1EthApiEndpoint = ApiEndpointDto(URI.create(endpointUrl).toURL()),
+      )
+
+    val parsed = parseConfig<LineaConfigDtoToml>(toml)
+
+    assertThat(parsed).isEqualTo(expected)
+  }
+
+  @Test
+  fun `linea config fails when neither l1-eth-api nor l1-eth-api-endpoint provided`() {
+    val contractAddress = "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5"
+
+    val toml =
+      """
+      contract-address = "$contractAddress"
+      """.trimIndent()
+
+    assertThatThrownBy {
+      parseConfig<LineaConfigDtoToml>(toml)
+    }.isInstanceOf(ConfigException::class.java)
+      .hasMessageContaining("l1-eth-api-endpoint has to be defined!")
   }
 
   @Test
