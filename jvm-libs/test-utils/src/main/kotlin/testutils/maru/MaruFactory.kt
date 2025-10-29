@@ -205,7 +205,7 @@ class MaruFactory(
         val l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl!!).toURL())
         LineaConfig(
           contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
-          l1EthApiEndpoint = l2EthApiEndpoint, // Just a stab. Isn't actually used with the override
+          l1EthApiEndpoint = l2EthApiEndpoint, // Just a stub. Isn't actually used with the override
           l1PollingInterval = 100.milliseconds,
           l2EthApiEndpoint = l2EthApiEndpoint,
         )
@@ -285,7 +285,7 @@ class MaruFactory(
       overridingLineaContractClient?.let {
         LineaConfig(
           contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
-          l1EthApiEndpoint = ethereumApiEndpointConfig, // Just a stab. Isn't actually used with the override
+          l1EthApiEndpoint = ethereumApiEndpointConfig, // Just a stub. Isn't actually used with the override
           l1PollingInterval = 100.milliseconds,
           l2EthApiEndpoint = ethereumApiEndpointConfig,
         )
