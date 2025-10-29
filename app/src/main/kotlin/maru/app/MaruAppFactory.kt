@@ -111,7 +111,7 @@ class MaruAppFactory {
     log.info("beaconGenesisConfig={}", beaconGenesisConfig)
 
     val l2EthWeb3j: Web3j? =
-      config.ethApiEndpoint?.let {
+      config.l2EthApiEndpoint?.let {
         Web3j.build(HttpService(it.endpoint.toString()))
       }
 

@@ -96,7 +96,7 @@ class HopliteFriendlinessTest {
 
   private val ethApiEndpointToml =
     """
-    eth-api-endpoint = { endpoint = "http://localhost:8595" }
+    l2-eth-api-endpoint = { endpoint = "http://localhost:8595" }
     """.trimIndent()
 
   private val payloadValidatorSectionToml =
@@ -315,7 +315,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        ethApiEndpoint = defaultEthApiEndpoint,
+        l2EthApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -339,7 +339,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        ethApiEndpoint = defaultEthApiEndpoint,
+        l2EthApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -497,7 +497,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        ethApiEndpoint = defaultEthApiEndpoint,
+        l2EthApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -560,7 +560,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        ethApiEndpoint = defaultEthApiEndpoint,
+        l2EthApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -814,7 +814,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        ethApiEndpoint = defaultEthApiEndpoint,
+        l2EthApiEndpoint = defaultEthApiEndpoint,
       ),
     )
   }
@@ -843,7 +843,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        ethApiEndpoint = null,
+        l2EthApiEndpoint = null,
       ),
     )
   }
@@ -872,6 +872,6 @@ class HopliteFriendlinessTest {
         requestRetries = RetryConfig.noRetries,
       )
 
-    assertThat(domain.ethApiEndpoint).isEqualTo(expectedEthApi)
+    assertThat(domain.l2EthApiEndpoint).isEqualTo(expectedEthApi)
   }
 }

@@ -228,7 +228,7 @@ class MaruFactory(
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
-      ethApiEndpoint = ethereumJsonRpcUrl?.let { ApiEndpointConfig(URI.create(it).toURL()) },
+      l2EthApiEndpoint = ethereumJsonRpcUrl?.let { ApiEndpointConfig(URI.create(it).toURL()) },
     )
   }
 
@@ -306,7 +306,7 @@ class MaruFactory(
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
-      ethApiEndpoint = ethereumApiEndpointConfig,
+      l2EthApiEndpoint = ethereumApiEndpointConfig,
     )
   }
 

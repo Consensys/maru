@@ -174,11 +174,11 @@ data class MaruConfigDtoToml(
   private val observability: ObservabilityConfig,
   private val api: ApiConfig,
   private val syncing: SyncingConfig,
-  private val ethApiEndpoint: ApiEndpointDto? = null,
+  private val l2EthApiEndpoint: ApiEndpointDto? = null,
 ) {
   fun domainFriendly(): MaruConfig {
-    val ethApiEndpoint: ApiEndpointConfig? =
-      ethApiEndpoint?.domainFriendly()
+    val l2EthApiEndpoint: ApiEndpointConfig? =
+      this@MaruConfigDtoToml.l2EthApiEndpoint?.domainFriendly()
         ?: defaults?.l2EthEndpoint?.domainFriendly()
 
     return MaruConfig(
@@ -196,7 +196,7 @@ data class MaruConfigDtoToml(
       observability = observability,
       api = api,
       syncing = syncing,
-      ethApiEndpoint = ethApiEndpoint,
+      l2EthApiEndpoint = l2EthApiEndpoint,
     )
   }
 }
