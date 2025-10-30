@@ -18,7 +18,10 @@ object CliEntrypoint {
   @JvmStatic
   fun main(args: Array<String>) {
     val cmd = CommandLine(MaruAppCli())
-    cmd.isCaseInsensitiveEnumValuesAllowed = true
+    cmd.registerConverter(
+      MaruAppCli.Network::class.java,
+      KebabToEnumConverter(MaruAppCli.Network::class.java),
+    )
     cmd.setExecutionExceptionHandler { ex, _, _ ->
       log.error("Execution failure: ", ex)
       1

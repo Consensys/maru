@@ -17,6 +17,23 @@ import org.apache.logging.log4j.core.config.Configurator
 import picocli.CommandLine
 import picocli.CommandLine.Command
 
+internal class KebabToEnumConverter<T : Enum<T>>(
+  private val enumClass: Class<T>,
+) : CommandLine.ITypeConverter<T> {
+  override fun convert(value: String): T {
+    // Convert kebab-case to upper snake-case
+    val enumName = value.replace('-', '_').uppercase()
+    return try {
+      java.lang.Enum.valueOf(enumClass, enumName)
+    } catch (_: IllegalArgumentException) {
+      val validOptions = enumClass.enumConstants.joinToString(", ") { it.name.lowercase().replace('_', '-') }
+      throw IllegalArgumentException(
+        "Invalid enum value \"$value\". Expected one of: $validOptions",
+      )
+    }
+  }
+}
+
 @Command(
   name = "maru",
   showDefaultValues = true,
@@ -36,22 +53,22 @@ class MaruAppCli : Callable<Int> {
     arity = "1..*",
     required = true,
   )
-  private val configFiles: List<File>? = null
+  lateinit var configFiles: List<File>
 
-  @CommandLine.ArgGroup(multiplicity = "1", exclusive = false, validate = true)
-  lateinit var genesisOptions: AtLeastOneOptions
+  @CommandLine.ArgGroup(multiplicity = "1", exclusive = true, validate = true)
+  lateinit var genesisOptions: GenesisOptions
 
-  data class AtLeastOneOptions(
+  class GenesisOptions(
     @CommandLine.Option(
       names = ["--maru-genesis-file"],
       paramLabel = "BEACON_GENESIS.json",
-      description = ["Beacon chain genesis file (will override the genesis file specified by \"--network\" if any)"],
+      description = ["Beacon chain genesis file"],
       required = false,
     )
     var genesisFile: File? = null,
     @CommandLine.Option(
       names = ["--network"],
-      paramLabel = "mainnet|sepolia (case-insensitive)",
+      paramLabel = "linea-mainnet|linea-sepolia (case-insensitive)",
       description = ["Connects to Linea mainnet or sepolia"],
       required = false,
     )
@@ -59,12 +76,12 @@ class MaruAppCli : Callable<Int> {
   )
 
   enum class Network {
-    MAINNET,
-    SEPOLIA,
+    LINEA_MAINNET,
+    LINEA_SEPOLIA,
   }
 
   override fun call(): Int {
-    for (configFile in configFiles!!) {
+    for (configFile in configFiles) {
       if (!validateConfigFile(configFile)) {
         System.err.println("Failed to read config file: \"${configFile.path}\"")
         return 1
@@ -79,11 +96,11 @@ class MaruAppCli : Callable<Int> {
       }
       println("Using the given genesis file from \"${genesisOptions.genesisFile!!.path}\"")
     } else {
-      println("Using the default genesis file from Linea ${genesisOptions.network}")
+      println("Using the genesis file of the named network ${genesisOptions.network}")
       genesisOptions.genesisFile =
         when (genesisOptions.network!!) {
-          Network.MAINNET -> File("/beacon-genesis-files/mainnet-genesis.json")
-          Network.SEPOLIA -> File("/beacon-genesis-files/sepolia-genesis.json")
+          Network.LINEA_MAINNET -> File("/beacon-genesis-files/linea-mainnet-genesis.json")
+          Network.LINEA_SEPOLIA -> File("/beacon-genesis-files/linea-sepolia-genesis.json")
         }
     }
     val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisOptions.genesisFile!!)
