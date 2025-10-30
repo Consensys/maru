@@ -34,7 +34,6 @@ import maru.consensus.qbft.adapters.QbftFinalStateAdapter
 import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
 import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
-import maru.consensus.qbft.adapters.toQbftReceivedMessageEvent
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.StateTransition
@@ -72,7 +71,6 @@ import org.hyperledger.besu.cryptoservices.NodeKey
 import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.util.Subscribers
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
@@ -253,12 +251,16 @@ class QbftValidatorFactory(
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())
 
-    // Subscribe to QBFT messages from P2P network and add them to the event queue
-    p2PNetwork.subscribeToQbftMessages { qbftMessage ->
-      bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())
-      // TODO: Validate QBFT messages and return the appropriate ValidationResult
-      SafeFuture.completedFuture(ValidationResult.Companion.Valid)
-    }
+    val qbftMessageValidator =
+      QbftMessageValidator(
+        blockChain = blockChain,
+        validatorProvider = besuValidatorProvider,
+        localAddress = localAddress,
+        bftEventQueue = bftEventQueue,
+      )
+
+    // Subscribe to QBFT messages from P2P network and validate before adding to event queue
+    p2PNetwork.subscribeToQbftMessages(qbftMessageValidator::validate)
 
     return QbftConsensusValidator(
       qbftController = qbftController,

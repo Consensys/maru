@@ -8,9 +8,9 @@
  */
 package maru.consensus.validation
 
-import maru.serialization.Deserializer
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.qbft.core.messagedata.QbftV1
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.crypto.SECPSignature
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.datatypes.Address
@@ -43,7 +43,7 @@ internal fun hashForSignature(
  * minimal validation. This prevents more expensive decoding of the full message with the Block or other fields
  * which can be large.
  */
-object MinimalQbftMessageDecoder : Deserializer<MinimalQbftMessageDecoder.QbftMessageMetadata> {
+object MinimalQbftMessageDecoder {
   /** Decoded QBFT message metadata */
   data class QbftMessageMetadata(
     val messageCode: Int,
@@ -54,18 +54,14 @@ object MinimalQbftMessageDecoder : Deserializer<MinimalQbftMessageDecoder.QbftMe
   )
 
   /**
-   * Deserializer interface implementation.
+   * Deserializes a QBFT message to extract metadata.
    *
-   * @param bytes The RLP-encoded QBFT message bytes
+   * @param qbftMessage The QBFT message to decode
    * @return The decoded metadata
    */
-  override fun deserialize(bytes: ByteArray): QbftMessageMetadata {
-    val messageRlp = input(Bytes.wrap(bytes))
-    // BesuMessageData list [code, data]
-    messageRlp.enterList()
-    val messageCode = messageRlp.readInt()
-    val signedDataBytes = messageRlp.readBytes()
-    messageRlp.leaveList()
+  fun deserialize(qbftMessage: QbftMessage): QbftMessageMetadata {
+    val messageCode = qbftMessage.data.code
+    val signedDataBytes = qbftMessage.data.data
 
     // SignedData list [payload, signature] or [[payload], signature] for PROPOSAL/ROUND_CHANGE
     val signedDataRlp = input(signedDataBytes)
