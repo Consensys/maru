@@ -41,10 +41,23 @@ class MaruAppCli : Callable<Int> {
   @CommandLine.Option(
     names = ["--maru-genesis-file"],
     paramLabel = "BEACON_GENESIS.json",
-    description = ["Beacon chain genesis file"],
-    required = true,
+    description = ["Beacon chain genesis file (will override the genesis file specified by \"--network\" if any)"],
+    required = false,
   )
-  private val genesisFile: File? = null
+  private var genesisFile: File? = null
+
+  @CommandLine.Option(
+    names = ["--network"],
+    paramLabel = "mainnet|sepolia (case-insensitive)",
+    description = ["Connects to Linea mainnet or sepolia"],
+    required = false,
+  )
+  private val network: Network? = null
+
+  enum class Network {
+    MAINNET,
+    SEPOLIA,
+  }
 
   override fun call(): Int {
     for (configFile in configFiles!!) {
@@ -53,12 +66,26 @@ class MaruAppCli : Callable<Int> {
         return 1
       }
     }
-    if (!validateConfigFile(genesisFile!!)) {
-      System.err.println("Failed to read genesis file file: \"${genesisFile.path}\"")
+    val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
+
+    if (genesisFile == null && network == null) {
+      System.err.println("Either \"--maru-genesis-file\" or \"--network\" must be given")
       return 1
     }
-    val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
-    val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisFile)
+    if (genesisFile != null) {
+      if (!validateConfigFile(genesisFile!!)) {
+        System.err.println("Failed to read genesis file file: \"${genesisFile!!.path}\"")
+        return 1
+      }
+    } else {
+      println("Connect to $network")
+      genesisFile =
+        when (network!!) {
+          Network.MAINNET -> File("/beacon-genesis-files/mainnet-genesis.json")
+          Network.SEPOLIA -> File("/beacon-genesis-files/sepolia-genesis.json")
+        }
+    }
+    val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisFile!!)
 
     val app =
       MaruAppFactory()
