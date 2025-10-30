@@ -274,7 +274,10 @@ class MaruAppFactory {
           syncStatusProvider = syncControllerImpl,
           isElOnlineProvider = {
             if (engineApiWeb3jClient != null) {
-              (elManagerMap[ElFork.Prague] ?: elManagerMap.values.firstOrNull())?.isOnline()?.get() ?: true
+              elManagerMap.values
+                .firstOrNull()
+                ?.isOnline()
+                ?.get() ?: true
             } else {
               true
             }
