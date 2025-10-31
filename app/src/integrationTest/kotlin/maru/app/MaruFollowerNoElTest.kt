@@ -11,6 +11,7 @@ package maru.app
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.File
+import java.lang.Thread.sleep
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -20,7 +21,6 @@ import kotlin.time.toJavaDuration
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
@@ -69,6 +69,7 @@ class MaruFollowerNoElTest {
           dataDir = tmpDir,
           apiPort = 0u,
           startApiServer = true,
+          allowEmptyBlocks = true,
         )
       }
 
@@ -91,6 +92,7 @@ class MaruFollowerNoElTest {
         enablePayloadValidation = false,
         apiPort = 0u,
         startApiServer = true,
+        allowEmptyBlocks = true,
       )
 
     maruFollower.start()
@@ -120,10 +122,13 @@ class MaruFollowerNoElTest {
     val blockHash: String?,
   )
 
-  private fun readHead(apiPort: UInt): ClBlockMetadata {
+  private fun readBlock(
+    apiPort: UInt,
+    blockNumber: ULong,
+  ): ClBlockMetadata {
     val req =
       HttpRequest
-        .newBuilder(URI.create("http://127.0.0.1:${apiPort.toInt()}/eth/v2/beacon/blocks/head"))
+        .newBuilder(URI.create("http://127.0.0.1:${apiPort.toInt()}/eth/v2/beacon/blocks/$blockNumber"))
         .GET()
         .build()
     val resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString())
@@ -154,32 +159,22 @@ class MaruFollowerNoElTest {
 
   @Test
   fun `Maru follower is able to import blocks without EL`() {
-    val blocksToProduce = 4 // Less than desync tolerance
+    val blocksToProduce = 4UL // Less than desync tolerance
 
-    val initialFollowerHead = readHead(followerApiPort)
-    val initialValidatorHead = readHead(validatorApiPort)
-
-    repeat(blocksToProduce) {
-      transactionsHelper.run {
-        validatorStack.besuNode.sendTransactionAndAssertExecution(
-          logger = log,
-          recipient = createAccount("another account"),
-          amount = Amount.ether(100),
-        )
-      }
-    }
+    val initialFollowerHead = readBlock(followerApiPort, 0UL)
+    val initialValidatorHead = readBlock(validatorApiPort, 0UL)
 
     // Await until both validator and follower advanced and heads match
     await
       .pollInterval(1.seconds.toJavaDuration())
-      .timeout(20.seconds.toJavaDuration())
+      .timeout(10.seconds.toJavaDuration())
       .untilAsserted {
-        val validatorHead = readHead(validatorApiPort)
-        val followerHead = readHead(followerApiPort)
+        val validatorHead = readBlock(validatorApiPort, blockNumber = blocksToProduce)
+        val followerHead = readBlock(followerApiPort, blockNumber = blocksToProduce)
 
         assertThat(validatorHead.blockHash).isNotNull
-        assertThat(validatorHead.slot).isGreaterThanOrEqualTo(initialValidatorHead.slot + blocksToProduce.toULong())
-        assertThat(followerHead.slot).isGreaterThanOrEqualTo(initialFollowerHead.slot + blocksToProduce.toULong())
+        assertThat(validatorHead.slot).isGreaterThanOrEqualTo(initialValidatorHead.slot + blocksToProduce)
+        assertThat(followerHead.slot).isGreaterThanOrEqualTo(initialFollowerHead.slot + blocksToProduce)
         assertThat(followerHead).isEqualTo(validatorHead)
       }
   }

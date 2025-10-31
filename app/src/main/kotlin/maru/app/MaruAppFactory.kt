@@ -460,18 +460,18 @@ class MaruAppFactory {
     forksSchedule: ForksSchedule,
     l2EthWeb3j: Any?,
   ) {
-    run {
-      val nowTs = clock.instant().epochSecond.toULong()
-      val hasFutureDifficultyAware =
-        forksSchedule.forks.any { fork ->
-          fork.timestampSeconds > nowTs && fork.configuration is DifficultyAwareQbftConfig
-        }
-      if (hasFutureDifficultyAware) {
-        require(l2EthWeb3j != null) {
-          "Configuration error: a future fork enables DifficultyAwareQbft (by timestamp) but l2EthWeb3j " +
-            "is not configured, so there is no way to check the current difficulty. Provide L2 Ethereum JSON-RPC " +
-            "endpoint in configuration so the app can start."
-        }
+    val nowTs = clock.instant().epochSecond.toULong()
+
+    val currentForkConfig = forksSchedule.getForkByTimestamp(nowTs).configuration
+    val hasFutureDifficultyAwareQbft =
+      forksSchedule.forks.any { fork ->
+        fork.timestampSeconds > nowTs && fork.configuration is DifficultyAwareQbftConfig
+      }
+    if (hasFutureDifficultyAwareQbft || currentForkConfig is DifficultyAwareQbftConfig) {
+      require(l2EthWeb3j != null) {
+        "Configuration error: a future fork enables DifficultyAwareQbft (by timestamp) but l2EthWeb3j " +
+          "is not configured, so there is no way to check the current difficulty. Provide L2 Ethereum JSON-RPC " +
+          "endpoint in configuration so the app can start."
       }
     }
   }
