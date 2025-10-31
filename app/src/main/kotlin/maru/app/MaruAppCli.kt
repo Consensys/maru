@@ -53,16 +53,18 @@ class MaruAppCli : Callable<Int> {
     arity = "1..*",
     required = true,
   )
-  lateinit var configFiles: List<File>
+  var configFiles: List<File>? = null
 
-  @CommandLine.ArgGroup(multiplicity = "1", exclusive = true, validate = true)
-  lateinit var genesisOptions: GenesisOptions
+  @CommandLine.ArgGroup(multiplicity = "0..1", exclusive = true, validate = true)
+  var genesisOptions: GenesisOptions? = null
 
   class GenesisOptions(
     @CommandLine.Option(
-      names = ["--maru-genesis-file"],
+      names = ["--maru-genesis-file", "--genesis-file"],
       paramLabel = "BEACON_GENESIS.json",
-      description = ["Beacon chain genesis file"],
+      description = [
+        "Beacon chain genesis file (\"--maru-genesis-file\" will be deprecated soon and replaced by \"--genesis-file\")",
+      ],
       required = false,
     )
     var genesisFile: File? = null,
@@ -75,35 +77,38 @@ class MaruAppCli : Callable<Int> {
     val network: Network? = null,
   )
 
-  enum class Network {
-    LINEA_MAINNET,
-    LINEA_SEPOLIA,
+  enum class Network(
+    val networkNameInKebab: String,
+  ) {
+    LINEA_MAINNET("linea-mainnet"),
+    LINEA_SEPOLIA("linea-sepolia"),
   }
 
   override fun call(): Int {
-    for (configFile in configFiles) {
+    for (configFile in configFiles!!) {
       if (!validateConfigFile(configFile)) {
         System.err.println("Failed to read config file: \"${configFile.path}\"")
         return 1
       }
     }
-    val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
+    val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles!!)
 
-    if (genesisOptions.genesisFile != null) {
-      if (!validateConfigFile(genesisOptions.genesisFile!!)) {
-        System.err.println("Failed to read genesis file file: \"${genesisOptions.genesisFile!!.path}\"")
+    // If "--genesis-file" and "--network" are not specified, default to set "--network=linea-mainnet"
+    if (genesisOptions == null) {
+      genesisOptions = GenesisOptions(network = Network.LINEA_MAINNET)
+    }
+    if (genesisOptions!!.genesisFile != null) {
+      if (!validateConfigFile(genesisOptions!!.genesisFile!!)) {
+        System.err.println("Failed to read genesis file file: \"${genesisOptions!!.genesisFile!!.path}\"")
         return 1
       }
-      println("Using the given genesis file from \"${genesisOptions.genesisFile!!.path}\"")
+      println("Using the given genesis file from \"${genesisOptions!!.genesisFile!!.path}\"")
     } else {
-      println("Using the genesis file of the named network ${genesisOptions.network}")
-      genesisOptions.genesisFile =
-        when (genesisOptions.network!!) {
-          Network.LINEA_MAINNET -> File("/beacon-genesis-files/linea-mainnet-genesis.json")
-          Network.LINEA_SEPOLIA -> File("/beacon-genesis-files/linea-sepolia-genesis.json")
-        }
+      genesisOptions!!.genesisFile =
+        File("/beacon-genesis-files/${genesisOptions!!.network!!.networkNameInKebab}-genesis.json")
+      println("Using the genesis file of the named network \"${genesisOptions!!.network!!.networkNameInKebab}\"")
     }
-    val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisOptions.genesisFile!!)
+    val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisOptions!!.genesisFile!!)
 
     val app =
       MaruAppFactory()
