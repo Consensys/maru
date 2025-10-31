@@ -17,6 +17,23 @@ import org.apache.logging.log4j.core.config.Configurator
 import picocli.CommandLine
 import picocli.CommandLine.Command
 
+internal class KebabToEnumConverter<T : Enum<T>>(
+  private val enumClass: Class<T>,
+) : CommandLine.ITypeConverter<T> {
+  override fun convert(value: String): T {
+    // Convert kebab-case to upper snake-case
+    val enumName = value.replace('-', '_').uppercase()
+    return try {
+      java.lang.Enum.valueOf(enumClass, enumName)
+    } catch (_: IllegalArgumentException) {
+      val validOptions = enumClass.enumConstants.joinToString(", ") { it.name.lowercase().replace('_', '-') }
+      throw IllegalArgumentException(
+        "Invalid enum value \"$value\". Expected one of: $validOptions",
+      )
+    }
+  }
+}
+
 @Command(
   name = "maru",
   showDefaultValues = true,
@@ -38,13 +55,34 @@ class MaruAppCli : Callable<Int> {
   )
   private val configFiles: List<File>? = null
 
-  @CommandLine.Option(
-    names = ["--maru-genesis-file"],
-    paramLabel = "BEACON_GENESIS.json",
-    description = ["Beacon chain genesis file"],
-    required = true,
+  @CommandLine.ArgGroup(multiplicity = "0..1", exclusive = true, validate = true)
+  private var genesisOptions: GenesisOptions? = null
+
+  class GenesisOptions(
+    @CommandLine.Option(
+      names = ["--maru-genesis-file", "--genesis-file"],
+      paramLabel = "BEACON_GENESIS.json",
+      description = [
+        "Beacon chain genesis file (\"--maru-genesis-file\" will be deprecated soon and replaced by \"--genesis-file\")",
+      ],
+      required = false,
+    )
+    var genesisFile: File? = null,
+    @CommandLine.Option(
+      names = ["--network"],
+      paramLabel = "linea-mainnet|linea-sepolia (case-insensitive)",
+      description = ["Connects to Linea mainnet or sepolia"],
+      required = false,
+    )
+    val network: Network? = null,
   )
-  private val genesisFile: File? = null
+
+  enum class Network(
+    val networkNameInKebab: String,
+  ) {
+    LINEA_MAINNET("linea-mainnet"),
+    LINEA_SEPOLIA("linea-sepolia"),
+  }
 
   override fun call(): Int {
     for (configFile in configFiles!!) {
@@ -53,12 +91,24 @@ class MaruAppCli : Callable<Int> {
         return 1
       }
     }
-    if (!validateConfigFile(genesisFile!!)) {
-      System.err.println("Failed to read genesis file file: \"${genesisFile.path}\"")
-      return 1
-    }
     val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
-    val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisFile)
+
+    // If "--genesis-file" and "--network" are not specified, default to set "--network=linea-mainnet"
+    if (genesisOptions == null) {
+      genesisOptions = GenesisOptions(network = Network.LINEA_MAINNET)
+    }
+    if (genesisOptions!!.genesisFile != null) {
+      if (!validateConfigFile(genesisOptions!!.genesisFile!!)) {
+        System.err.println("Failed to read genesis file file: \"${genesisOptions!!.genesisFile!!.path}\"")
+        return 1
+      }
+      println("Using the given genesis file from \"${genesisOptions!!.genesisFile!!.path}\"")
+    } else {
+      genesisOptions!!.genesisFile =
+        File("/beacon-genesis-files/${genesisOptions!!.network!!.networkNameInKebab}-genesis.json")
+      println("Using the genesis file of the named network \"${genesisOptions!!.network!!.networkNameInKebab}\"")
+    }
+    val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisOptions!!.genesisFile!!)
 
     val app =
       MaruAppFactory()
