@@ -135,7 +135,7 @@ class MaruFactory(
         1337u,
         setOf(
           ForkSpec(
-            timestampSeconds = 0UL,
+            timestampSeconds = 1UL,
             blockTimeSeconds = 1u,
             configuration =
               DifficultyAwareQbftConfig(
@@ -193,8 +193,8 @@ class MaruFactory(
     }
 
   private fun buildMaruConfig(
-    ethereumJsonRpcUrl: String,
-    engineApiRpc: String,
+    ethereumJsonRpcUrl: String?,
+    engineApiRpc: String?,
     dataDir: Path,
     p2pConfig: P2PConfig? = null,
     followers: FollowersConfig = FollowersConfig(emptyMap()),
@@ -209,10 +209,12 @@ class MaruFactory(
   ): MaruConfig {
     val lineaConfig =
       overridingLineaContractClient?.let {
+        val l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl!!).toURL())
         LineaConfig(
           contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
-          l1EthApi = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
+          l1EthApiEndpoint = l2EthApiEndpoint, // Just a stub. Isn't actually used with the override
           l1PollingInterval = 100.milliseconds,
+          l2EthApiEndpoint = l2EthApiEndpoint,
         )
       }
 
@@ -221,17 +223,19 @@ class MaruFactory(
       persistence = Persistence(dataPath = dataDir),
       qbft = qbftOptions,
       validatorElNode =
-        ValidatorElNode(
-          ethApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
-          engineApiEndpoint = ApiEndpointConfig(URI.create(engineApiRpc).toURL()),
-          payloadValidationEnabled = enablePayloadValidation,
-        ),
+        engineApiRpc?.let {
+          ValidatorElNode(
+            engineApiEndpoint = ApiEndpointConfig(URI.create(it).toURL()),
+            payloadValidationEnabled = enablePayloadValidation,
+          )
+        },
       p2p = p2pConfig,
       followers = followers,
       observability = observabilityOptions,
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
+      l2EthApiEndpoint = ethereumJsonRpcUrl?.let { ApiEndpointConfig(URI.create(it).toURL()) },
     )
   }
 
@@ -285,8 +289,9 @@ class MaruFactory(
       overridingLineaContractClient?.let {
         LineaConfig(
           contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
-          l1EthApi = ethereumApiEndpointConfig,
+          l1EthApiEndpoint = ethereumApiEndpointConfig, // Just a stub. Isn't actually used with the override
           l1PollingInterval = 100.milliseconds,
+          l2EthApiEndpoint = ethereumApiEndpointConfig,
         )
       }
 
@@ -296,7 +301,6 @@ class MaruFactory(
       qbft = qbftOptions,
       validatorElNode =
         ValidatorElNode(
-          ethApiEndpoint = ethereumApiEndpointConfig,
           engineApiEndpoint = engineApiEndpointConfig,
           payloadValidationEnabled = enablePayloadValidation,
         ),
@@ -306,6 +310,7 @@ class MaruFactory(
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
+      l2EthApiEndpoint = ethereumApiEndpointConfig,
     )
   }
 
@@ -333,6 +338,7 @@ class MaruFactory(
       P2PState,
       () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
+    startApiServer: Boolean = false,
   ): MaruApp =
     MaruAppFactory().create(
       config = config,
@@ -348,12 +354,16 @@ class MaruFactory(
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
       overridingApiServer =
-        object : ApiServer {
-          override fun start() {}
+        if (startApiServer) {
+          null
+        } else {
+          object : ApiServer {
+            override fun start() {}
 
-          override fun stop() {}
+            override fun stop() {}
 
-          override fun port(): Int = 0
+            override fun port(): Int = 0
+          }
         },
       p2pNetworkFactory = p2pNetworkFactory,
     )
@@ -439,6 +449,8 @@ class MaruFactory(
       P2PState,
       () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
+    apiPort: UInt = 0u,
+    startApiServer: Boolean = false,
     initialValidators: Set<Validator> = this.initialValidators,
   ): MaruApp {
     val p2pConfig =
@@ -458,6 +470,7 @@ class MaruFactory(
         overridingLineaContractClient = overridingLineaContractClient,
         allowEmptyBlocks = allowEmptyBlocks,
         syncingConfig = syncingConfig,
+        apiConfig = ApiConfig(port = apiPort),
       )
     writeValidatorPrivateKey(config)
 
@@ -467,6 +480,7 @@ class MaruFactory(
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
       p2pNetworkFactory = p2pNetworkFactory,
+      startApiServer = startApiServer,
       initialValidators = initialValidators,
     )
   }
@@ -605,8 +619,8 @@ class MaruFactory(
   }
 
   fun buildTestMaruFollowerWithP2pPeering(
-    ethereumJsonRpcUrl: String,
-    engineApiRpc: String,
+    ethereumJsonRpcUrl: String?,
+    engineApiRpc: String?,
     dataDir: Path,
     validatorPortForStaticPeering: UInt?,
     followers: FollowersConfig = FollowersConfig(emptyMap()),
@@ -615,6 +629,8 @@ class MaruFactory(
     allowEmptyBlocks: Boolean = false,
     syncingConfig: SyncingConfig = defaultSyncingConfig,
     enablePayloadValidation: Boolean = true,
+    apiPort: UInt = 0u,
+    startApiServer: Boolean = false,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val config =
@@ -628,11 +644,13 @@ class MaruFactory(
         overridingLineaContractClient = overridingLineaContractClient,
         syncingConfig = syncingConfig,
         enablePayloadValidation = enablePayloadValidation,
+        apiConfig = ApiConfig(port = apiPort),
       )
     return buildApp(
       config,
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
+      startApiServer = startApiServer,
     )
   }
 

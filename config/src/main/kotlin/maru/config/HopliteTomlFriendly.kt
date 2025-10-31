@@ -19,12 +19,10 @@ import linea.kotlin.assertIs20Bytes
 
 data class PayloadValidatorDto(
   val engineApiEndpoint: ApiEndpointDto,
-  val ethApiEndpoint: ApiEndpointDto,
   val payloadValidationEnabled: Boolean = true,
 ) {
   fun domainFriendly(): ValidatorElNode =
     ValidatorElNode(
-      ethApiEndpoint = ethApiEndpoint.domainFriendly(endlessRetries = true),
       engineApiEndpoint = engineApiEndpoint.domainFriendly(endlessRetries = true),
       payloadValidationEnabled = payloadValidationEnabled,
     )
@@ -103,14 +101,37 @@ data class QbftOptionsDtoToml(
   }
 }
 
+data class DefaultsDtoToml(
+  val l2EthEndpoint: ApiEndpointDto,
+)
+
 data class LineaConfigDtoToml(
   val contractAddress: ByteArray,
-  val l1EthApi: ApiEndpointDto,
+  val l1EthApi: ApiEndpointDto? = null, // TODO: This is a fallback for backwards compatibility.
+  // Remove in the next major release
+  val l1EthApiEndpoint: ApiEndpointDto? = l1EthApi,
   val l1PollingInterval: Duration = 6.seconds,
   val l1HighestBlockTag: String = "finalized",
+  val l2EthApiEndpoint: ApiEndpointDto? = null,
 ) {
   init {
     contractAddress.assertIs20Bytes("contractAddress")
+    require(l1EthApiEndpoint != null) {
+      "l1-eth-api-endpoint has to be defined!"
+    }
+  }
+
+  fun domainFriendly(defaultL2EthApi: ApiEndpointDto?): LineaConfig {
+    require(l2EthApiEndpoint != null || defaultL2EthApi != null) {
+      "Either default.l2-eth-endpoint or linea.l2-eth-api have to be defined when [linea] section is defined!"
+    }
+    return LineaConfig(
+      contractAddress = contractAddress,
+      l1EthApiEndpoint = l1EthApiEndpoint!!.domainFriendly(),
+      l1PollingInterval = l1PollingInterval,
+      l1HighestBlockTag = BlockParameter.parse(l1HighestBlockTag),
+      l2EthApiEndpoint = (l2EthApiEndpoint ?: defaultL2EthApi!!).domainFriendly(),
+    )
   }
 
   override fun equals(other: Any?): Boolean {
@@ -121,51 +142,53 @@ data class LineaConfigDtoToml(
 
     if (!contractAddress.contentEquals(other.contractAddress)) return false
     if (l1EthApi != other.l1EthApi) return false
+    if (l1EthApiEndpoint != other.l1EthApiEndpoint) return false
     if (l1PollingInterval != other.l1PollingInterval) return false
     if (l1HighestBlockTag != other.l1HighestBlockTag) return false
+    if (l2EthApiEndpoint != other.l2EthApiEndpoint) return false
 
     return true
   }
 
   override fun hashCode(): Int {
     var result = contractAddress.contentHashCode()
-    result = 31 * result + l1EthApi.hashCode()
+    result = 31 * result + (l1EthApi?.hashCode() ?: 0)
+    result = 31 * result + (l1EthApiEndpoint?.hashCode() ?: 0)
     result = 31 * result + l1PollingInterval.hashCode()
     result = 31 * result + l1HighestBlockTag.hashCode()
+    result = 31 * result + (l2EthApiEndpoint?.hashCode() ?: 0)
     return result
   }
-
-  fun domainFriendly(): LineaConfig =
-    LineaConfig(
-      contractAddress = contractAddress,
-      l1EthApi = l1EthApi.domainFriendly(),
-      l1PollingInterval = l1PollingInterval,
-      l1HighestBlockTag = BlockParameter.parse(l1HighestBlockTag),
-    )
 }
 
 data class MaruConfigDtoToml(
+  private val defaults: DefaultsDtoToml?,
   private val linea: LineaConfigDtoToml? = null,
   private val protocolTransitionPollingInterval: Duration = 1.seconds,
   private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
   private val qbft: QbftOptionsDtoToml?,
   private val p2p: P2PConfig?,
-  private val payloadValidator: PayloadValidatorDto,
+  private val payloadValidator: PayloadValidatorDto?,
   private val followerEngineApis: Map<String, ApiEndpointDto>?,
   private val observability: ObservabilityConfig,
   private val api: ApiConfig,
   private val syncing: SyncingConfig,
+  private val l2EthApiEndpoint: ApiEndpointDto? = null,
 ) {
-  fun domainFriendly(): MaruConfig =
-    MaruConfig(
-      linea = linea?.domainFriendly(),
+  fun domainFriendly(): MaruConfig {
+    val l2EthApiEndpoint: ApiEndpointConfig? =
+      this@MaruConfigDtoToml.l2EthApiEndpoint?.domainFriendly()
+        ?: defaults?.l2EthEndpoint?.domainFriendly()
+
+    return MaruConfig(
+      linea = linea?.domainFriendly(defaults?.l2EthEndpoint),
       protocolTransitionPollingInterval = protocolTransitionPollingInterval,
       allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
       qbft = qbft?.toDomain(),
       p2p = p2p,
-      validatorElNode = payloadValidator.domainFriendly(),
+      validatorElNode = payloadValidator?.domainFriendly(),
       followers =
         FollowersConfig(
           followers = followerEngineApis?.mapValues { it.value.domainFriendly() } ?: emptyMap(),
@@ -173,5 +196,7 @@ data class MaruConfigDtoToml(
       observability = observability,
       api = api,
       syncing = syncing,
+      l2EthApiEndpoint = l2EthApiEndpoint,
     )
+  }
 }
