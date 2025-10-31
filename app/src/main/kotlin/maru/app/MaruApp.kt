@@ -50,7 +50,7 @@ class MaruApp(
   private val finalizationProvider: FinalizationProvider,
   private val vertx: Vertx,
   private val metricsFacade: MetricsFacade,
-  private val beaconChain: BeaconChain,
+  val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
   private val validatorELNodeEthJsonRpcClient: Web3JClient,
   private val validatorELNodeEngineApiWeb3JClient: Web3JClient,
@@ -147,9 +147,9 @@ class MaruApp(
     followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
     p2pNetwork.close()
     vertx.close()
+    protocolStarter.close()
     // close db last, otherwise other components may fail trying to save data
     beaconChain.close()
-    protocolStarter.close()
   }
 
   private fun start(
