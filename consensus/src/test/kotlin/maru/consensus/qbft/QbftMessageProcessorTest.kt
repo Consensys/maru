@@ -15,6 +15,7 @@ import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.core.ext.DataGenerators
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResultCode
+import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -27,6 +28,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.consensus.qbft.core.types.QbftReceivedMessageEvent
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.datatypes.Address
+import org.hyperledger.besu.ethereum.core.Util
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -34,23 +36,19 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
-class QbftMessageValidatorTest {
+class QbftMessageProcessorTest {
   private val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
   private val keyPair = signatureAlgorithm.generateKeyPair()
-
-  private val messageAuthor =
-    org.hyperledger.besu.ethereum.core.Util
-      .publicKeyToAddress(keyPair.publicKey)
+  private val messageAuthor = Util.publicKeyToAddress(keyPair.publicKey)
   private val localAddress = Address.fromHexString("0x1234567890123456789012345678901234567890")
 
   private val blockChain = mock<QbftBlockchainAdapter>()
   private val validatorProvider = mock<QbftValidatorProviderAdapter>()
   private val bftEventQueue = mock<BftEventQueue>()
 
-  private val validator =
-    QbftMessageValidator(
+  private val messageProcessor =
+    QbftMessageProcessor(
       blockChain = blockChain,
       validatorProvider = validatorProvider,
       localAddress = localAddress,
@@ -62,7 +60,7 @@ class QbftMessageValidatorTest {
     whenever(blockChain.chainHeadBlockNumber).thenReturn(100L)
 
     val qbftMessage = createQbftMessage(50L)
-    val result = validator.validate(qbftMessage).get()
+    val result = messageProcessor.handleMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.IGNORE)
     assertThat(result).isInstanceOf(Ignore::class.java)
@@ -74,7 +72,7 @@ class QbftMessageValidatorTest {
     whenever(blockChain.chainHeadBlockNumber).thenReturn(100L)
 
     val qbftMessage = createQbftMessage(150L)
-    val result = validator.validate(qbftMessage).get()
+    val result = messageProcessor.handleMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.IGNORE)
     val bftEventCaptor = argumentCaptor<BftEvent>()
@@ -91,7 +89,7 @@ class QbftMessageValidatorTest {
     )
 
     val qbftMessage = createQbftMessage(100L)
-    val result = validator.validate(qbftMessage).get()
+    val result = messageProcessor.handleMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.ACCEPT)
     val bftEventCaptor = argumentCaptor<BftEvent>()
@@ -110,7 +108,7 @@ class QbftMessageValidatorTest {
     )
 
     val qbftMessage = createQbftMessage(100L)
-    val result = validator.validate(qbftMessage).get()
+    val result = messageProcessor.handleMessage(qbftMessage).get()
     assertThat(result.code).isEqualTo(ValidationResultCode.IGNORE)
     verify(bftEventQueue, never()).add(any())
   }
@@ -124,7 +122,7 @@ class QbftMessageValidatorTest {
     )
 
     val qbftMessage = createQbftMessage(100L)
-    val result = validator.validate(qbftMessage).get()
+    val result = messageProcessor.handleMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.IGNORE)
     verify(bftEventQueue, never()).add(any())
@@ -133,15 +131,14 @@ class QbftMessageValidatorTest {
   @Test
   fun `should return invalid for malformed messages`() {
     val invalidQbftMessage = createInvalidQbftMessage()
-    val result = validator.validate(invalidQbftMessage).get()
+    val result = messageProcessor.handleMessage(invalidQbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.REJECT)
     verify(bftEventQueue, never()).add(any())
   }
 
   private fun createQbftMessage(sequenceNumber: Long): QbftMessage {
-    val roundNumber = 1
-    val roundIdentifier = ConsensusRoundIdentifier(sequenceNumber, roundNumber)
+    val roundIdentifier = ConsensusRoundIdentifier(sequenceNumber, 1)
     val beaconBlock = DataGenerators.randomBeaconBlock(sequenceNumber.toULong())
     val qbftBlock = QbftBlockAdapter(beaconBlock)
 
@@ -157,34 +154,8 @@ class QbftMessageValidatorTest {
     val invalidMessageData =
       TestBesuMessageData(
         1,
-        org.apache.tuweni.bytes.Bytes
-          .fromHexString("0xDEADBEEF"),
+        Bytes.EMPTY,
       )
     return TestQbftMessage(invalidMessageData)
-  }
-
-  private class TestQbftMessage(
-    private val messageData: BesuMessageData,
-  ) : QbftMessage {
-    override fun getData(): BesuMessageData = messageData
-
-    override fun equals(other: Any?): Boolean {
-      if (this === other) return true
-      if (other !is TestQbftMessage) return false
-      return messageData == other.messageData
-    }
-
-    override fun hashCode(): Int = messageData.hashCode()
-  }
-
-  private class TestBesuMessageData(
-    private val code: Int,
-    private val data: org.apache.tuweni.bytes.Bytes,
-  ) : BesuMessageData {
-    override fun getData(): org.apache.tuweni.bytes.Bytes = data
-
-    override fun getSize(): Int = data.size()
-
-    override fun getCode(): Int = code
   }
 }

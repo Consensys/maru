@@ -251,8 +251,8 @@ class QbftValidatorFactory(
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())
 
-    val qbftMessageValidator =
-      QbftMessageValidator(
+    val qbftMessageProcessor =
+      QbftMessageProcessor(
         blockChain = blockChain,
         validatorProvider = besuValidatorProvider,
         localAddress = localAddress,
@@ -260,7 +260,7 @@ class QbftValidatorFactory(
       )
 
     // Subscribe to QBFT messages from P2P network and validate before adding to event queue
-    p2PNetwork.subscribeToQbftMessages(qbftMessageValidator::validate)
+    p2PNetwork.subscribeToQbftMessages(qbftMessageProcessor::handleMessage)
 
     return QbftConsensusValidator(
       qbftController = qbftController,

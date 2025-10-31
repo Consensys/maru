@@ -6,9 +6,10 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus.validation
+package maru.consensus.qbft
 
 import java.util.Optional
+import kotlin.random.Random
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.core.ext.DataGenerators
@@ -38,15 +39,14 @@ import org.junit.jupiter.api.Test
 class MinimalQbftMessageDecoderTest {
   private val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
   private val keyPair = signatureAlgorithm.generateKeyPair()
+  private val sequenceNumber = 100
+  private val roundNumber = 15
+  private val roundIdentifier = ConsensusRoundIdentifier(sequenceNumber.toLong(), roundNumber)
+  private val blockHash = Hash.hash(Bytes.wrap(Random.nextBytes(32)))
 
   @Test
   fun `should decode Prepare message`() {
-    val sequenceNumber = 100L
-    val roundNumber = 5
-    val roundIdentifier = ConsensusRoundIdentifier(sequenceNumber, roundNumber)
-    val digest = Hash.hash(Bytes.of(1, 2, 3, 4))
-
-    val preparePayload = PreparePayload(roundIdentifier, digest)
+    val preparePayload = PreparePayload(roundIdentifier, blockHash)
     val signature = signatureAlgorithm.sign(preparePayload.hashForSignature(), keyPair)
     val signedPayload = SignedData.create(preparePayload, signature)
     val prepare = Prepare(signedPayload)
@@ -55,21 +55,15 @@ class MinimalQbftMessageDecoderTest {
 
     val metadata = MinimalQbftMessageDecoder.deserialize(qbftMessage)
     assertThat(metadata.messageCode).isEqualTo(QbftV1.PREPARE)
-    assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber)
-    assertThat(metadata.roundNumber).isEqualTo(roundNumber)
-    assertThat(metadata.signature).isEqualTo(signature)
+    assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber.toLong())
+    assertThat(metadata.roundNumber).isEqualTo(roundNumber.toLong())
     assertThat(metadata.author).isEqualTo(signedPayload.author)
   }
 
   @Test
   fun `should decode Commit message`() {
-    val sequenceNumber = 200L
-    val roundNumber = 10
-    val roundIdentifier = ConsensusRoundIdentifier(sequenceNumber, roundNumber)
-    val digest = Hash.hash(Bytes.of(5, 6, 7, 8))
-
-    val commitSeal = signatureAlgorithm.sign(digest, keyPair)
-    val commitPayload = CommitPayload(roundIdentifier, digest, commitSeal)
+    val commitSeal = signatureAlgorithm.sign(blockHash, keyPair)
+    val commitPayload = CommitPayload(roundIdentifier, blockHash, commitSeal)
     val signature = signatureAlgorithm.sign(commitPayload.hashForSignature(), keyPair)
     val signedPayload = SignedData.create(commitPayload, signature)
     val commit = Commit(signedPayload)
@@ -78,20 +72,15 @@ class MinimalQbftMessageDecoderTest {
 
     val metadata = MinimalQbftMessageDecoder.deserialize(qbftMessage)
     assertThat(metadata.messageCode).isEqualTo(QbftV1.COMMIT)
-    assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber)
-    assertThat(metadata.roundNumber).isEqualTo(roundNumber)
-    assertThat(metadata.signature).isEqualTo(signature)
+    assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber.toLong())
+    assertThat(metadata.roundNumber).isEqualTo(roundNumber.toLong())
     assertThat(metadata.author).isEqualTo(signedPayload.author)
   }
 
   @Test
   fun `should decode Proposal message`() {
-    val sequenceNumber = 300L
-    val roundNumber = 15
-    val roundIdentifier = ConsensusRoundIdentifier(sequenceNumber, roundNumber)
     val beaconBlock = DataGenerators.randomBeaconBlock(sequenceNumber.toULong())
     val qbftBlock = QbftBlockAdapter(beaconBlock)
-
     val proposalPayload = ProposalPayload(roundIdentifier, qbftBlock, QbftBlockCodecAdapter)
     val signature = signatureAlgorithm.sign(proposalPayload.hashForSignature(), keyPair)
     val signedPayload = SignedData.create(proposalPayload, signature)
@@ -101,19 +90,14 @@ class MinimalQbftMessageDecoderTest {
 
     val metadata = MinimalQbftMessageDecoder.deserialize(qbftMessage)
     assertThat(metadata.messageCode).isEqualTo(QbftV1.PROPOSAL)
-    assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber)
-    assertThat(metadata.roundNumber).isEqualTo(roundNumber)
-    assertThat(metadata.signature).isEqualTo(signature)
+    assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber.toLong())
+    assertThat(metadata.roundNumber).isEqualTo(roundNumber.toLong())
     assertThat(metadata.author).isEqualTo(signedPayload.author)
   }
 
   @Test
   fun `should decode RoundChange message`() {
-    val sequenceNumber = 400L
-    val roundNumber = 20
-    val roundIdentifier = ConsensusRoundIdentifier(sequenceNumber, roundNumber)
     val roundChangePayload = RoundChangePayload(roundIdentifier, Optional.empty())
-
     val signature = signatureAlgorithm.sign(roundChangePayload.hashForSignature(), keyPair)
     val signedPayload = SignedData.create(roundChangePayload, signature)
     val roundChange = RoundChange(signedPayload, Optional.empty(), QbftBlockCodecAdapter, emptyList())
@@ -122,9 +106,8 @@ class MinimalQbftMessageDecoderTest {
 
     val metadata = MinimalQbftMessageDecoder.deserialize(qbftMessage)
     assertThat(metadata.messageCode).isEqualTo(QbftV1.ROUND_CHANGE)
-    assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber)
-    assertThat(metadata.roundNumber).isEqualTo(roundNumber)
-    assertThat(metadata.signature).isEqualTo(signature)
+    assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber.toLong())
+    assertThat(metadata.roundNumber).isEqualTo(roundNumber.toLong())
     assertThat(metadata.author).isEqualTo(signedPayload.author)
   }
 

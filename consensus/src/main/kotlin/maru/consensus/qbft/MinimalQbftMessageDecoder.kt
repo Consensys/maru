@@ -6,12 +6,11 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.consensus.validation
+package maru.consensus.qbft
 
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.qbft.core.messagedata.QbftV1
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
-import org.hyperledger.besu.crypto.SECPSignature
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.Hash
@@ -44,12 +43,10 @@ internal fun hashForSignature(
  * which can be large.
  */
 object MinimalQbftMessageDecoder {
-  /** Decoded QBFT message metadata */
   data class QbftMessageMetadata(
     val messageCode: Int,
     val sequenceNumber: Long,
     val roundNumber: Int,
-    val signature: SECPSignature,
     val author: Address,
   )
 
@@ -85,7 +82,6 @@ object MinimalQbftMessageDecoder {
       messageCode = messageCode,
       sequenceNumber = sequenceNumber,
       roundNumber = roundNumber,
-      signature = signature,
       author = author,
     )
   }
