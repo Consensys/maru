@@ -53,10 +53,10 @@ class MaruAppCli : Callable<Int> {
     arity = "1..*",
     required = true,
   )
-  var configFiles: List<File>? = null
+  private val configFiles: List<File>? = null
 
   @CommandLine.ArgGroup(multiplicity = "0..1", exclusive = true, validate = true)
-  var genesisOptions: GenesisOptions? = null
+  private var genesisOptions: GenesisOptions? = null
 
   class GenesisOptions(
     @CommandLine.Option(
@@ -91,7 +91,7 @@ class MaruAppCli : Callable<Int> {
         return 1
       }
     }
-    val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles!!)
+    val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
 
     // If "--genesis-file" and "--network" are not specified, default to set "--network=linea-mainnet"
     if (genesisOptions == null) {
