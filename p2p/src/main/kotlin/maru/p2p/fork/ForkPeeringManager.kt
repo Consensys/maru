@@ -107,7 +107,12 @@ class LenientForkPeeringManager internal constructor(
 
   private fun currentForkIndex(): Int {
     val currentTimestamp = clock.instant().epochSecond.toULong()
-    return forksInfo.indexOfFirst { currentTimestamp >= it.forkSpec.timestampSeconds }
+    return forksInfo
+      .indexOfFirst { currentTimestamp >= it.forkSpec.timestampSeconds }
+      .let {
+        // if no matching fork found, it means we are before the first fork, so return the last index
+        if (it < 0) forksInfo.size - 1 else it
+      }
   }
 
   internal fun currentFork(): ForkInfo = forksInfo[currentForkIndex()]
