@@ -8,6 +8,7 @@
  */
 package maru.consensus.qbft
 
+import maru.consensus.qbft.MinimalQbftMessageDecoder.QbftMessageMetadata
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.consensus.qbft.adapters.toQbftReceivedMessageEvent
@@ -54,7 +55,7 @@ class QbftMessageProcessor(
 
   private fun processMessage(
     qbftMessage: QbftMessage,
-    metadata: MinimalQbftMessageDecoder.QbftMessageMetadata,
+    metadata: QbftMessageMetadata,
   ): ValidationResult {
     if (isMsgForCurrentHeight(metadata.sequenceNumber)) {
       return if (isMsgFromKnownValidator(metadata.author) && isLocalNodeValidator()) {
@@ -65,7 +66,7 @@ class QbftMessageProcessor(
       }
     } else if (isMsgForFutureChainHeight(metadata.sequenceNumber)) {
       bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())
-      return Ignore("Future message")
+      return Ignore("Future message, will be processed when chain reaches height ${metadata.sequenceNumber}")
     } else {
       return Ignore("Old message: sequence ${metadata.sequenceNumber} < height ${blockChain.chainHeadBlockNumber}")
     }
