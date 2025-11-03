@@ -30,7 +30,7 @@ internal class KebabToEnumConverter<T : Enum<T>>(
     } catch (_: IllegalArgumentException) {
       val validOptions = enumClass.enumConstants.joinToString(", ") { it.name.lowercase().replace('_', '-') }
       throw IllegalArgumentException(
-        "Invalid enum value \"$value\". Expected one of: $validOptions",
+        "Invalid value \"$value\". Expected one of: $validOptions",
       )
     }
   }
