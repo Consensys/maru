@@ -19,11 +19,13 @@ import linea.kotlin.assertIs20Bytes
 
 data class PayloadValidatorDto(
   val engineApiEndpoint: ApiEndpointDto,
+  val allowEmptyBlocks: Boolean = false,
   val payloadValidationEnabled: Boolean = true,
 ) {
   fun domainFriendly(): ValidatorElNode =
     ValidatorElNode(
       engineApiEndpoint = engineApiEndpoint.domainFriendly(endlessRetries = true),
+      allowEmptyBlocks = allowEmptyBlocks,
       payloadValidationEnabled = payloadValidationEnabled,
     )
 }
@@ -164,8 +166,6 @@ data class LineaConfigDtoToml(
 data class MaruConfigDtoToml(
   private val defaults: DefaultsDtoToml?,
   private val linea: LineaConfigDtoToml? = null,
-  private val protocolTransitionPollingInterval: Duration = 1.seconds,
-  private val allowEmptyBlocks: Boolean = false,
   private val persistence: Persistence,
   private val qbft: QbftOptionsDtoToml?,
   private val p2p: P2PConfig?,
@@ -174,17 +174,11 @@ data class MaruConfigDtoToml(
   private val observability: ObservabilityConfig,
   private val api: ApiConfig,
   private val syncing: SyncingConfig,
-  private val l2EthApiEndpoint: ApiEndpointDto? = null,
+  private val forkTransition: ForkTransition = ForkTransition(l2EthApiEndpoint = defaults?.l2EthEndpoint?.domainFriendly()),
 ) {
-  fun domainFriendly(): MaruConfig {
-    val l2EthApiEndpoint: ApiEndpointConfig? =
-      this@MaruConfigDtoToml.l2EthApiEndpoint?.domainFriendly()
-        ?: defaults?.l2EthEndpoint?.domainFriendly()
-
-    return MaruConfig(
+  fun domainFriendly(): MaruConfig =
+    MaruConfig(
       linea = linea?.domainFriendly(defaults?.l2EthEndpoint),
-      protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-      allowEmptyBlocks = allowEmptyBlocks,
       persistence = persistence,
       qbft = qbft?.toDomain(),
       p2p = p2p,
@@ -196,7 +190,6 @@ data class MaruConfigDtoToml(
       observability = observability,
       api = api,
       syncing = syncing,
-      l2EthApiEndpoint = l2EthApiEndpoint,
+      forkTransition = forkTransition,
     )
-  }
 }

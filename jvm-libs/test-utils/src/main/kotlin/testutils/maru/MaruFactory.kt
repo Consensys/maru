@@ -28,6 +28,7 @@ import maru.app.MaruAppFactory
 import maru.config.ApiConfig
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
+import maru.config.ForkTransition
 import maru.config.LineaConfig
 import maru.config.MaruConfig
 import maru.config.ObservabilityConfig
@@ -218,24 +219,31 @@ class MaruFactory(
         )
       }
 
+    val forkTransition =
+      ForkTransition(
+        l2EthApiEndpoint = ethereumJsonRpcUrl?.let { ApiEndpointConfig(URI.create(it).toURL()) },
+      )
+
+    val validatorElNode =
+      engineApiRpc?.let {
+        ValidatorElNode(
+          engineApiEndpoint = ApiEndpointConfig(URI.create(it).toURL()),
+          allowEmptyBlocks = allowEmptyBlocks,
+          payloadValidationEnabled = enablePayloadValidation,
+        )
+      }
+
     return MaruConfig(
-      allowEmptyBlocks = allowEmptyBlocks,
       persistence = Persistence(dataPath = dataDir),
       qbft = qbftOptions,
-      validatorElNode =
-        engineApiRpc?.let {
-          ValidatorElNode(
-            engineApiEndpoint = ApiEndpointConfig(URI.create(it).toURL()),
-            payloadValidationEnabled = enablePayloadValidation,
-          )
-        },
       p2p = p2pConfig,
+      validatorElNode = validatorElNode,
       followers = followers,
       observability = observabilityOptions,
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
-      l2EthApiEndpoint = ethereumJsonRpcUrl?.let { ApiEndpointConfig(URI.create(it).toURL()) },
+      forkTransition = forkTransition,
     )
   }
 
@@ -296,21 +304,21 @@ class MaruFactory(
       }
 
     return MaruConfig(
-      allowEmptyBlocks = allowEmptyBlocks,
       persistence = Persistence(dataPath = dataDir),
       qbft = qbftOptions,
+      p2p = p2pConfig,
       validatorElNode =
         ValidatorElNode(
           engineApiEndpoint = engineApiEndpointConfig,
+          allowEmptyBlocks = allowEmptyBlocks,
           payloadValidationEnabled = enablePayloadValidation,
         ),
-      p2p = p2pConfig,
       followers = followers,
       observability = observabilityOptions,
       linea = lineaConfig,
       api = apiConfig,
       syncing = syncingConfig,
-      l2EthApiEndpoint = ethereumApiEndpointConfig,
+      forkTransition = ForkTransition(l2EthApiEndpoint = ethereumApiEndpointConfig),
     )
   }
 

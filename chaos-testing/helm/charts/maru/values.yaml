@@ -59,8 +59,6 @@ probes:
 configFiles:
   privateKey: |
   configsDefaultsToml: |
-    allow-empty-blocks = true
-
     [persistence]
     data-path="/opt/consensys/maru/data/db"
     private-key-path="/opt/consensys/maru/configs/private-key.txt"

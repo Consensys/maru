@@ -197,7 +197,7 @@ class MaruApp(
           clock = clock,
           p2pNetwork = p2pNetwork,
           metricsFacade = metricsFacade,
-          allowEmptyBlocks = config.allowEmptyBlocks,
+          allowEmptyBlocks = config.validatorElNode!!.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
           forksSchedule = beaconGenesisConfig,
           payloadValidationEnabled = config.validatorElNode!!.payloadValidationEnabled,
@@ -209,7 +209,7 @@ class MaruApp(
           validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient,
           followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
           metricsFacade = metricsFacade,
-          allowEmptyBlocks = config.allowEmptyBlocks,
+          allowEmptyBlocks = config.validatorElNode!!.allowEmptyBlocks,
           finalizationStateProvider = finalizationProvider,
           payloadValidationEnabled = config.validatorElNode?.payloadValidationEnabled ?: false,
         )
@@ -231,7 +231,7 @@ class MaruApp(
           ),
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         syncStatusProvider = syncStatusProvider,
-        forkTransitionCheckInterval = config.protocolTransitionPollingInterval,
+        forkTransitionCheckInterval = config.forkTransition.protocolTransitionPollingInterval,
         forkTransitionNotifier = forkTransitionSubscriptionManager,
         clock = clock,
       )

@@ -29,6 +29,9 @@ class HopliteFriendlinessTest {
 
   private val baseConfigWithoutQbftAndPayloadToml =
     """
+    [pos-transition]
+    l2-eth-api-endpoint=
+    [fork-transition]
     protocol-transition-polling-interval = "2s"
 
     [persistence]
@@ -96,6 +99,7 @@ class HopliteFriendlinessTest {
 
   private val ethApiEndpointToml =
     """
+    [fork-transition]
     l2-eth-api-endpoint = { endpoint = "http://localhost:8595" }
     """.trimIndent()
 
@@ -103,6 +107,7 @@ class HopliteFriendlinessTest {
     """
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
+    l2-eth-api-endpoint =
     payload-validation-enabled = false
     """.trimIndent()
 
@@ -186,6 +191,7 @@ class HopliteFriendlinessTest {
           endpoint = URI.create("http://localhost:8555").toURL(),
           jwtSecretPath = "/secret/path",
         ),
+      allowEmptyBlocks = false,
       payloadValidationEnabled = false,
     )
   private val follower1 =
@@ -246,8 +252,7 @@ class HopliteFriendlinessTest {
   private val defaultsDto = DefaultsDtoToml(l2EthEndpoint = ApiEndpointDto(URI.create("http://localhost:8545").toURL()))
   private val expectedEmptyFollowersBase =
     MaruConfigDtoToml(
-      protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-      allowEmptyBlocks = false,
+      defaults = defaultsDto,
       persistence = persistence,
       qbft = qbftOptions,
       p2p = p2pConfig,
@@ -256,7 +261,13 @@ class HopliteFriendlinessTest {
       observability = ObservabilityConfig(port = 9090u),
       api = ApiConfig(port = 8080u),
       syncing = syncingConfig,
-      defaults = defaultsDto,
+      forkTransition = ForkTransition(protocolTransitionPollingInterval = protocolTransitionPollingInterval),
+    )
+
+  private val expectedForkTransition =
+    ForkTransition(
+      l2EthApiEndpoint = defaultEthApiEndpoint,
+      protocolTransitionPollingInterval = protocolTransitionPollingInterval,
     )
 
   @Test
@@ -280,8 +291,6 @@ class HopliteFriendlinessTest {
     val exception =
       assertThrows<IllegalArgumentException> {
         MaruConfig(
-          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-          allowEmptyBlocks = false,
           persistence = persistence,
           qbft = qbftOptions.toDomain(),
           p2p = p2pConfig,
@@ -291,6 +300,7 @@ class HopliteFriendlinessTest {
           linea = null,
           api = ApiConfig(port = 8080u),
           syncing = syncingConfig,
+          forkTransition = ForkTransition(protocolTransitionPollingInterval = protocolTransitionPollingInterval),
         )
       }
     assertThat(exception.message).isEqualTo("Validator EL node cannot be defined as a follower")
@@ -301,21 +311,20 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        allowEmptyBlocks = false,
         persistence = persistence,
+        qbft = qbftOptions.toDomain(),
         p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
+            allowEmptyBlocks = false,
             payloadValidationEnabled = false,
           ),
-        qbft = qbftOptions.toDomain(),
         followers = followersConfig,
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        l2EthApiEndpoint = defaultEthApiEndpoint,
+        forkTransition = expectedForkTransition,
       ),
     )
   }
@@ -325,21 +334,20 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        allowEmptyBlocks = false,
         persistence = persistence,
         qbft = qbftOptions.toDomain(),
         p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
+            allowEmptyBlocks = false,
             payloadValidationEnabled = false,
           ),
         followers = emptyFollowersConfig,
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        l2EthApiEndpoint = defaultEthApiEndpoint,
+        forkTransition = expectedForkTransition,
       ),
     )
   }
@@ -470,34 +478,29 @@ class HopliteFriendlinessTest {
 
   @Test
   fun `should parse allowEmptyBlocks = true`() {
-    val configToml =
-      """
-      allow-empty-blocks = true
-      $emptyFollowersConfigToml
-      """.trimIndent()
+    val configToml = emptyFollowersConfigToml.replace("allow-empty-blocks = false", "allow-empty-blocks = true")
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
     assertThat(config).isEqualTo(
-      expectedEmptyFollowersBase.copy(allowEmptyBlocks = true),
+      expectedEmptyFollowersBase.copy(payloadValidator = payloadValidator.copy(allowEmptyBlocks = true)),
     )
 
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        allowEmptyBlocks = true,
         persistence = persistence,
-        p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
+            allowEmptyBlocks = true,
             payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
+        p2p = p2pConfig,
         followers = emptyFollowersConfig,
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        l2EthApiEndpoint = defaultEthApiEndpoint,
+        forkTransition = expectedForkTransition,
       ),
     )
   }
@@ -547,12 +550,12 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
         linea = expectedLineaConfig,
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
         persistence = persistence,
         p2p = p2pConfig,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
+            allowEmptyBlocks = false,
             payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
@@ -560,7 +563,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        l2EthApiEndpoint = defaultEthApiEndpoint,
+        forkTransition = expectedForkTransition,
       ),
     )
   }
@@ -809,8 +812,6 @@ class HopliteFriendlinessTest {
 
     assertThat(parsed.domainFriendly()).isEqualTo(
       MaruConfig(
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        allowEmptyBlocks = false,
         persistence = persistence,
         qbft = null,
         p2p = p2pConfig,
@@ -819,7 +820,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        l2EthApiEndpoint = defaultEthApiEndpoint,
+        forkTransition = expectedForkTransition,
       ),
     )
   }
@@ -838,8 +839,6 @@ class HopliteFriendlinessTest {
 
     assertThat(parsed.domainFriendly()).isEqualTo(
       MaruConfig(
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        allowEmptyBlocks = false,
         persistence = persistence,
         qbft = null,
         p2p = p2pConfig,
@@ -848,7 +847,7 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        l2EthApiEndpoint = null,
+        forkTransition = ForkTransition(protocolTransitionPollingInterval = protocolTransitionPollingInterval),
       ),
     )
   }
@@ -877,6 +876,6 @@ class HopliteFriendlinessTest {
         requestRetries = RetryConfig.noRetries,
       )
 
-    assertThat(domain.l2EthApiEndpoint).isEqualTo(expectedEthApi)
+    assertThat(domain.forkTransition.l2EthApiEndpoint).isEqualTo(expectedEthApi)
   }
 }

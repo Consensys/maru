@@ -258,8 +258,12 @@ data class SyncingConfig(
   )
 }
 
-data class MaruConfig(
+data class ForkTransition(
+  val l2EthApiEndpoint: ApiEndpointConfig? = null,
   val protocolTransitionPollingInterval: Duration = 1.seconds,
+)
+
+data class MaruConfig(
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
   val qbft: QbftConfig?,
@@ -270,7 +274,7 @@ data class MaruConfig(
   val linea: LineaConfig? = null,
   val api: ApiConfig,
   val syncing: SyncingConfig,
-  val l2EthApiEndpoint: ApiEndpointConfig? = null,
+  val forkTransition: ForkTransition,
 ) {
   init {
     if (qbft != null) {
