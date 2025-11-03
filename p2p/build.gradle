@@ -37,6 +37,8 @@ dependencies {
   implementation "org.hyperledger.besu:besu-plugin-api"
   implementation "org.hyperledger.besu.internal:besu-metrics-core"
   implementation "org.hyperledger.besu.internal:besu-ethereum-rlp"
+  implementation "org.hyperledger.besu.internal:besu-ethereum-p2p"
+  implementation "org.hyperledger.besu.internal:besu-consensus-qbft-core"
 
   implementation "io.tmio:tuweni-crypto"
   implementation "io.tmio:tuweni-rlp"
@@ -49,6 +51,7 @@ dependencies {
   implementation(project(":core"))
 
   testImplementation(testFixtures(project(":core")))
+  testImplementation(project(":jvm-libs:test-utils"))
   testFixturesImplementation(project(":serialization"))
   testFixturesImplementation(project(":crypto"))
   testFixturesImplementation(testImplementation(testFixtures(project(":core"))))
