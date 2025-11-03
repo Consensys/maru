@@ -16,13 +16,11 @@ import picocli.CommandLine
 class MaruAppCliTest {
   private val cmd = CommandLine(MaruAppCli(true))
 
-  private fun genesisFilePath(networkNameInKebab: String) = "/beacon-genesis-files/$networkNameInKebab-genesis.json"
-
   @BeforeEach
   fun setUp() {
     cmd.registerConverter(
-      MaruAppCli.Network::class.java,
-      KebabToEnumConverter(MaruAppCli.Network::class.java),
+      Network::class.java,
+      KebabToEnumConverter(Network::class.java),
     )
   }
 
@@ -38,7 +36,7 @@ class MaruAppCliTest {
 
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network!!.networkNameInKebab).isEqualTo("linea-mainnet")
-    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo(genesisFilePath("linea-mainnet"))
+    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo(builtInGenesisFilePath("linea-mainnet"))
     assertThat(cli.configFiles!!.first().path).isEqualTo("./maru.config.toml")
   }
 
@@ -54,7 +52,7 @@ class MaruAppCliTest {
 
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network!!.networkNameInKebab).isEqualTo("linea-sepolia")
-    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo(genesisFilePath("linea-sepolia"))
+    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo(builtInGenesisFilePath("linea-sepolia"))
     assertThat(cli.configFiles!!.first().path).isEqualTo("./maru.config.toml")
   }
 
@@ -98,7 +96,7 @@ class MaruAppCliTest {
     assertThat(exitCode).isEqualTo(0)
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network!!.networkNameInKebab).isEqualTo("linea-mainnet")
-    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo(genesisFilePath("linea-mainnet"))
+    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo(builtInGenesisFilePath("linea-mainnet"))
     assertThat(cli.configFiles!!.first().path).isEqualTo("./maru.config.toml")
   }
 

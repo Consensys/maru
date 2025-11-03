@@ -36,6 +36,16 @@ internal class KebabToEnumConverter<T : Enum<T>>(
   }
 }
 
+internal fun builtInGenesisFilePath(networkNameInKebab: String) =
+  "/beacon-genesis-files/$networkNameInKebab-genesis.json"
+
+enum class Network(
+  val networkNameInKebab: String,
+) {
+  LINEA_MAINNET("linea-mainnet"),
+  LINEA_SEPOLIA("linea-sepolia"),
+}
+
 @Command(
   name = "maru",
   showDefaultValues = true,
@@ -81,13 +91,6 @@ class MaruAppCli(
     val network: Network? = null,
   )
 
-  enum class Network(
-    val networkNameInKebab: String,
-  ) {
-    LINEA_MAINNET("linea-mainnet"),
-    LINEA_SEPOLIA("linea-sepolia"),
-  }
-
   override fun call(): Int {
     for (configFile in configFiles!!) {
       if (!validateFileCanRead(configFile)) {
@@ -107,8 +110,7 @@ class MaruAppCli(
       }
       println("Using the given genesis file from \"${genesisOptions!!.genesisFile!!.path}\"")
     } else {
-      genesisOptions!!.genesisFile =
-        File("/beacon-genesis-files/${genesisOptions!!.network!!.networkNameInKebab}-genesis.json")
+      genesisOptions!!.genesisFile = File(builtInGenesisFilePath(genesisOptions!!.network!!.networkNameInKebab))
       println("Using the genesis file of the named network \"${genesisOptions!!.network!!.networkNameInKebab}\"")
     }
 
