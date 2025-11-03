@@ -98,7 +98,7 @@ internal fun setP2pConfig(
   staticpeers: List<String> = emptyList(),
 ): MaruConfig {
   var p2pConfig = config.p2p
-  if (bootnodes.isNotEmpty() && staticpeers.isNotEmpty()) {
+  if (bootnodes.isNotEmpty() || staticpeers.isNotEmpty()) {
     p2pConfig = config.p2p ?: P2PConfig(port = 0u)
   }
   if (bootnodes.isNotEmpty()) {

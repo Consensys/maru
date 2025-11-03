@@ -26,7 +26,7 @@ class MaruGenesisFactory {
     forks: Map<Instant, ChainFork> = emptyMap(),
     terminalTotalDifficulty: ULong? = null,
   ): ForksSchedule {
-    require(blockTimeSeconds in 0u..60u) { "blockTimeSeconds must be between 1 and 60 seconds" }
+    require(blockTimeSeconds in 1u..60u) { "blockTimeSeconds must be between 1 and 60 seconds" }
     require(validators.isNotEmpty()) { "Validators must not be empty" }
     require(terminalTotalDifficulty == null || terminalTotalDifficulty > 0uL) {
       "terminalTotalDifficulty must be greater than 0"

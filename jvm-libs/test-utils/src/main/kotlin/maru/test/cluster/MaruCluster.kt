@@ -93,7 +93,7 @@ fun createClusterDir(): Path =
   }
 
 class MaruCluster(
-  val chainId: UInt = Random.nextInt().toUInt(),
+  val chainId: UInt = Random.nextInt(1, Int.MAX_VALUE).toUInt(),
   val blockTimeSeconds: UInt = 1u,
   val terminalTotalDifficulty: ULong? = null,
   val chainForks: Map<Instant, ChainFork> =
