@@ -60,6 +60,8 @@ enum class Network(
 class MaruAppCli(
   private val dryRun: Boolean = false,
 ) : Callable<Int> {
+  private val log = LogManager.getLogger(this.javaClass)
+
   @Option(
     names = ["--config"],
     paramLabel = "CONFIG.toml,CONFIG.overrides.toml",
@@ -94,7 +96,7 @@ class MaruAppCli(
   override fun call(): Int {
     for (configFile in configFiles!!) {
       if (!validateFileCanRead(configFile)) {
-        System.err.println("Failed to read config file: \"${configFile.path}\"")
+        log.error("Failed to read config file: \"${configFile.path}\"")
         return 1
       }
     }
@@ -105,13 +107,13 @@ class MaruAppCli(
     }
     if (genesisOptions!!.genesisFile != null) {
       if (!validateFileCanRead(File(genesisOptions!!.genesisFile!!))) {
-        System.err.println("Failed to read genesis file: \"${genesisOptions!!.genesisFile}\"")
+        log.error("Failed to read genesis file: \"${genesisOptions!!.genesisFile}\"")
         return 1
       }
-      println("Using the given genesis file from \"${genesisOptions!!.genesisFile}\"")
+      log.info("Using the given genesis file from \"${genesisOptions!!.genesisFile}\"")
     } else {
       genesisOptions!!.genesisFile = buildInGenesisFileResourcePath(genesisOptions!!.network!!.networkNameInKebab)
-      println("Using the genesis file of the named network \"${genesisOptions!!.network!!.networkNameInKebab}\"")
+      log.info("Using the genesis file of the named network \"${genesisOptions!!.network!!.networkNameInKebab}\"")
     }
 
     if (!dryRun) {
