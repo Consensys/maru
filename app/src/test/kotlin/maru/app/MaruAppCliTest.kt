@@ -36,7 +36,7 @@ class MaruAppCliTest {
 
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network!!.networkNameInKebab).isEqualTo("linea-mainnet")
-    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo(builtInGenesisFilePath("linea-mainnet"))
+    assertThat(cli.genesisOptions!!.genesisFile!!).isEqualTo(buildInGenesisFileResourcePath("linea-mainnet"))
     assertThat(cli.configFiles!!.first().path).isEqualTo("./maru.config.toml")
   }
 
@@ -52,7 +52,7 @@ class MaruAppCliTest {
 
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network!!.networkNameInKebab).isEqualTo("linea-sepolia")
-    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo(builtInGenesisFilePath("linea-sepolia"))
+    assertThat(cli.genesisOptions!!.genesisFile!!).isEqualTo(buildInGenesisFileResourcePath("linea-sepolia"))
     assertThat(cli.configFiles!!.first().path).isEqualTo("./maru.config.toml")
   }
 
@@ -67,7 +67,7 @@ class MaruAppCliTest {
     assertThat(exitCode).isEqualTo(0)
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network).isNull()
-    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo("./maru.genesis.json")
+    assertThat(cli.genesisOptions!!.genesisFile!!).isEqualTo("./maru.genesis.json")
     assertThat(cli.configFiles!!.first().path).isEqualTo("./maru.config.toml")
   }
 
@@ -82,7 +82,7 @@ class MaruAppCliTest {
     assertThat(exitCode).isEqualTo(0)
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network).isNull()
-    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo("./maru.genesis.json")
+    assertThat(cli.genesisOptions!!.genesisFile!!).isEqualTo("./maru.genesis.json")
     assertThat(cli.configFiles!!.first().path).isEqualTo("./maru.config.toml")
   }
 
@@ -96,7 +96,7 @@ class MaruAppCliTest {
     assertThat(exitCode).isEqualTo(0)
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network!!.networkNameInKebab).isEqualTo("linea-mainnet")
-    assertThat(cli.genesisOptions!!.genesisFile!!.path).isEqualTo(builtInGenesisFilePath("linea-mainnet"))
+    assertThat(cli.genesisOptions!!.genesisFile!!).isEqualTo(buildInGenesisFileResourcePath("linea-mainnet"))
     assertThat(cli.configFiles!!.first().path).isEqualTo("./maru.config.toml")
   }
 

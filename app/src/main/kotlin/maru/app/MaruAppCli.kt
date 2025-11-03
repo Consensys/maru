@@ -36,7 +36,7 @@ internal class KebabToEnumConverter<T : Enum<T>>(
   }
 }
 
-internal fun builtInGenesisFilePath(networkNameInKebab: String) =
+internal fun buildInGenesisFileResourcePath(networkNameInKebab: String) =
   "/beacon-genesis-files/$networkNameInKebab-genesis.json"
 
 enum class Network(
@@ -81,7 +81,7 @@ class MaruAppCli(
       ],
       required = false,
     )
-    var genesisFile: File? = null,
+    var genesisFile: String? = null,
     @Option(
       names = ["--network"],
       paramLabel = "linea-mainnet|linea-sepolia (case-insensitive)",
@@ -104,13 +104,13 @@ class MaruAppCli(
       genesisOptions = GenesisOptions(network = Network.LINEA_MAINNET)
     }
     if (genesisOptions!!.genesisFile != null) {
-      if (!validateFileCanRead(genesisOptions!!.genesisFile!!)) {
-        System.err.println("Failed to read genesis file: \"${genesisOptions!!.genesisFile!!.path}\"")
+      if (!validateFileCanRead(File(genesisOptions!!.genesisFile!!))) {
+        System.err.println("Failed to read genesis file: \"${genesisOptions!!.genesisFile}\"")
         return 1
       }
-      println("Using the given genesis file from \"${genesisOptions!!.genesisFile!!.path}\"")
+      println("Using the given genesis file from \"${genesisOptions!!.genesisFile}\"")
     } else {
-      genesisOptions!!.genesisFile = File(builtInGenesisFilePath(genesisOptions!!.network!!.networkNameInKebab))
+      genesisOptions!!.genesisFile = buildInGenesisFileResourcePath(genesisOptions!!.network!!.networkNameInKebab)
       println("Using the genesis file of the named network \"${genesisOptions!!.network!!.networkNameInKebab}\"")
     }
 
