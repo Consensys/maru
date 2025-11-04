@@ -17,6 +17,7 @@ import maru.crypto.PrivateKeyGenerator
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResultCode
 import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.bytes.Bytes.EMPTY
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -28,6 +29,7 @@ import org.hyperledger.besu.consensus.qbft.core.payload.ProposalPayload
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.consensus.qbft.core.types.QbftReceivedMessageEvent
 import org.hyperledger.besu.datatypes.Address
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -129,8 +131,12 @@ class QbftMessageProcessorTest {
 
   @Test
   fun `should return invalid for malformed messages`() {
-    val invalidQbftMessage = createInvalidQbftMessage()
-    val result = messageProcessor.handleMessage(invalidQbftMessage).get()
+    val invalidMessageData = mock<MessageData>()
+    val qbftMessage = mock<QbftMessage>()
+    whenever(invalidMessageData.data).thenReturn(EMPTY)
+    whenever(qbftMessage.data).thenReturn(invalidMessageData)
+
+    val result = messageProcessor.handleMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.REJECT)
     verify(bftEventQueue, never()).add(any())
@@ -146,15 +152,8 @@ class QbftMessageProcessorTest {
     val signedPayload = SignedData.create(proposalPayload, signature)
     val proposal = Proposal(signedPayload, emptyList(), emptyList())
     val messageData = ProposalMessageData.create(proposal)
-    return TestQbftMessage(messageData)
-  }
-
-  private fun createInvalidQbftMessage(): QbftMessage {
-    val invalidMessageData =
-      TestBesuMessageData(
-        1,
-        Bytes.EMPTY,
-      )
-    return TestQbftMessage(invalidMessageData)
+    val qbftMessage = mock<QbftMessage>()
+    whenever(qbftMessage.data).thenReturn(messageData)
+    return qbftMessage
   }
 }
