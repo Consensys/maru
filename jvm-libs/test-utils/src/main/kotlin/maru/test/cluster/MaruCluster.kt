@@ -20,6 +20,8 @@ import maru.consensus.ElFork
 import maru.extensions.encodeHex
 import maru.test.extensions.latestBlockNumber
 import maru.test.genesis.GenesisFactory
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 
 enum class NodeRole {
@@ -93,8 +95,8 @@ fun createClusterDir(): Path =
   }
 
 class MaruCluster(
-  val chainId: UInt = Random.nextInt(1, Int.MAX_VALUE).toUInt(),
-  val blockTimeSeconds: UInt = 1u,
+  chainId: UInt = Random.nextInt(1, Int.MAX_VALUE).toUInt(),
+  blockTimeSeconds: UInt = 1u,
   val terminalTotalDifficulty: ULong? = null,
   val chainForks: Map<Instant, ChainFork> =
     mapOf(
@@ -104,11 +106,13 @@ class MaruCluster(
   val maruClusterDataDir: Path = createClusterDir(),
   val besuClusterWaitPeerDiscovery: Boolean = false,
   val besuCluster: BesuCluster = BesuCluster(),
+  val log: Logger = LogManager.getLogger(MaruCluster::class.java),
 ) {
-  val genesisFactory: GenesisFactory = GenesisFactory(chainId, blockTimeSeconds)
+  private val genesisFactory: GenesisFactory = GenesisFactory(chainId, blockTimeSeconds)
   private val nodesBuilders: MutableList<NodeBuilder> = mutableListOf()
-  val nodes = mutableListOf<ClusterNode>()
+  internal val nodes = mutableListOf<ClusterNode>()
   var runningState: RunningState = RunningState.STOPPED
+    @Synchronized get
     private set
 
   private fun createNodeBuilder(
@@ -126,6 +130,7 @@ class MaruCluster(
   /**
    *  Add new node to the cluster configuration, before starting the cluster.
    */
+  @Synchronized
   fun addNode(
     label: String,
     configurator: (NodeBuilder) -> Unit = {},
@@ -150,12 +155,13 @@ class MaruCluster(
     val node =
       buildClusterNode(
         nodeStartingConfig = nodeStatConfigs,
-        booNodesEnrs = getBootnodesEnrs(),
+        bootNodesEnrs = getBootnodesEnrs(),
       )
     nodes += node
     return this
   }
 
+  @Synchronized
   fun addNode(
     role: NodeRole,
     configurator: (NodeBuilder) -> Unit = {},
@@ -164,20 +170,27 @@ class MaruCluster(
       nodeBuilder.withRole(role).let(configurator)
     }
 
+  @Synchronized
   fun node(label: String): ClusterNode =
     nodes.firstOrNull { it.label == label }
       ?: throw IllegalArgumentException("No node with label=$label found in cluster")
 
+  @Synchronized
   fun maruNode(label: String): MaruApp = node(label).maru
 
+  @Synchronized
   fun maruNodes(labelPrefix: String): List<MaruApp> = nodes.filter { it.label.startsWith(labelPrefix) }.map { it.maru }
 
+  @Synchronized
   fun maruNodes(role: NodeRole): List<MaruApp> = nodes.filter { it.nodeRole == role }.map { it.maru }
 
+  @Synchronized
   fun elNode(label: String): ElNode? = node(label).elNode
 
+  @Synchronized
   fun nodes(role: NodeRole): List<ClusterNode> = nodes.filter { it.nodeRole == role }
 
+  @Synchronized
   fun besuNode(label: String): BesuNode = (node(label).elNode as BesuElNode).besu
 
   private fun startBesuNodes(nodesConfig: List<NodeBuilder.NodeBuildingConfig>) {
@@ -189,15 +202,10 @@ class MaruCluster(
         }
     }
     besuCluster.start(awaitPeerDiscovery = besuClusterWaitPeerDiscovery)
-    println("\n\n=== Besu cluster started ===\n\n")
+    log.info("Besu cluster started")
   }
 
-  private fun getBootnodesEnrs(): List<String> =
-    nodes
-      .filter {
-        it.nodeRole.isBootnode()
-      }.map { it.maru.p2pNetwork.enr!! }
-
+  @Synchronized
   fun start(): MaruCluster {
     if (runningState != RunningState.STOPPED) {
       throw IllegalStateException("Cannot START MaruCluster that is $runningState")
@@ -205,45 +213,42 @@ class MaruCluster(
     this.runningState = RunningState.STARTING
     val nodesStartConfigs = nodesBuilders.map { it.build(genesisFactory::besuGenesis, besuCluster) }
 
-    val sequencersAddress =
+    val sequencersAddresses =
       nodesStartConfigs
         .filter { it.nodeRole.isSequencer() }
         .map { it.nodeKey.address }
 
     // Initialize Maru with sequencers addresses, then init Besu Factory with ForkSchedule
     genesisFactory.initForkSchedule(
-      sequencersAddress,
+      sequencersAddresses,
       terminalTotalDifficulty,
       chainForks,
     )
 
-    // // Start Besu bootnodes first
+    // start Besu bootnodes first
     // startBesuNodes(nodesStartConfigs)
 
     // Build Maru nodes after Besu are started and we have their enode URLs
     // 1. we start bootnodes, to be able to get their enrs
     // 2. then we start the remaining nodes
-    nodesStartConfigs
-      .filter { it.nodeRole.isBootnode() }
-      .forEach { nodeStartingConfig ->
-        nodes += buildClusterNode(nodeStartingConfig, emptyList())
-      }
+    val (bootnodesStartConfigs, nonBootnodesStartConfigs) = nodesStartConfigs.partition { it.nodeRole.isBootnode() }
+    bootnodesStartConfigs.forEach { nodeStartingConfig ->
+      nodes += buildClusterNode(nodeStartingConfig, emptyList())
+    }
     val bootNodesEnrs = getBootnodesEnrs()
-    println("\n\n=== Maru bootnodes started: enrs=$bootNodesEnrs ===\n\n")
-    nodesStartConfigs
-      .filter { it.nodeRole != NodeRole.Bootnode }
-      .forEach { nodeStartingConfig ->
-        nodes += buildClusterNode(nodeStartingConfig, bootNodesEnrs)
-      }
+    log.info("Maru bootnodes started: enrs=$bootNodesEnrs")
+    nonBootnodesStartConfigs.forEach { nodeStartingConfig ->
+      nodes += buildClusterNode(nodeStartingConfig, bootNodesEnrs)
+    }
 
     this.runningState = RunningState.RUNNING
     nodesBuilders.clear()
     return this
   }
 
-  fun buildClusterNode(
+  private fun buildClusterNode(
     nodeStartingConfig: NodeBuilder.NodeBuildingConfig,
-    booNodesEnrs: List<String>,
+    bootNodesEnrs: List<String>,
   ): ClusterNode {
     startIfBesuNode(nodeStartingConfig.elNode)
     val maruApp =
@@ -253,7 +258,7 @@ class MaruCluster(
         bootnodes =
           nodeStartingConfig.overridingBootnodesNodesLables
             ?.let { nodesEnrs(it) }
-            ?: booNodesEnrs,
+            ?: bootNodesEnrs,
         staticpeers = nodesAddr(nodeStartingConfig.staticPeersNodesLables ?: emptyList()),
         nodeKeyData = nodeStartingConfig.nodeKey,
         nodeRole = nodeStartingConfig.nodeRole,
@@ -273,6 +278,7 @@ class MaruCluster(
     return clusterNode
   }
 
+  @Synchronized
   fun stop() {
     this.runningState = RunningState.STOPPING
     nodes.forEach {
@@ -284,6 +290,7 @@ class MaruCluster(
     this.runningState = RunningState.STOPPED
   }
 
+  @Synchronized
   fun nodeCount(): Int = nodes.size
 
   private fun nodesEnrs(nodesLabels: List<String>): List<String> =
@@ -298,16 +305,22 @@ class MaruCluster(
         .also { println("node=$nodeLabel addr=$it") }
     }
 
-  fun startIfBesuNode(elNode: ElNode?) {
+  private fun startIfBesuNode(elNode: ElNode?) {
     if (elNode is BesuElNode) {
       besuCluster.addNodeAndStart(elNode.besu, awaitPeerDiscovery = besuClusterWaitPeerDiscovery)
     }
   }
 
-  fun assertUniqueLabel(nodeLabel: String) {
+  private fun assertUniqueLabel(nodeLabel: String) {
     val allNodesLabels = nodesBuilders.map { it.nodeLabel } + nodes.map { it.label }
     require(allNodesLabels == allNodesLabels.distinct()) {
       "Node label '$nodeLabel' is already used in the cluster. Please use unique labels for each node."
     }
   }
+
+  private fun getBootnodesEnrs(): List<String> =
+    nodes
+      .filter {
+        it.nodeRole.isBootnode()
+      }.map { it.maru.p2pNetwork.enr!! }
 }

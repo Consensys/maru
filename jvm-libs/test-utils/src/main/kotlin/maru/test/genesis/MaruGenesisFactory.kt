@@ -8,6 +8,7 @@
  */
 package maru.test.genesis
 
+import kotlin.time.Clock
 import kotlin.time.Instant
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
@@ -18,7 +19,9 @@ import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.core.Validator
 
-class MaruGenesisFactory {
+class MaruGenesisFactory(
+  private val clock: Clock = Clock.System,
+) {
   fun create(
     chainId: UInt,
     validators: List<ByteArray>,
@@ -66,8 +69,8 @@ class MaruGenesisFactory {
       forks.entries
         .sortedBy { it.key }
         .also {
-          require(it.firstOrNull()?.key?.epochSeconds == 0L) {
-            "The first fork timestamp must be 0"
+          require(it.first().key < this.clock.now()) {
+            "The first fork timestamp must be in the past: found ${it.first().key}, now is ${this.clock.now()}"
           }
           val elForks =
             it.map { entry ->

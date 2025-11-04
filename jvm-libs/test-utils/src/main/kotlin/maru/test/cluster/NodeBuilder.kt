@@ -43,7 +43,7 @@ class NodeBuilder(
   private var staticPeers: List<String>? = null
   private var maruConfig: MaruConfig = updatePersistenceDataPath(nodeLabel, maruConfigTemplate)
 
-  fun updatePersistenceDataPath(
+  private fun updatePersistenceDataPath(
     label: String,
     prevConfig: MaruConfig,
   ): MaruConfig =
@@ -70,9 +70,9 @@ class NodeBuilder(
       return NodeRole.Follower
     }
     return when {
-      label.startsWith("sequencer", ignoreCase = true) -> NodeRole.Sequencer
-      label.startsWith("validator", ignoreCase = true) -> NodeRole.Sequencer
-      label.startsWith("bootnode", ignoreCase = true) -> NodeRole.Bootnode
+      label.contains("sequencer", ignoreCase = true) -> NodeRole.Sequencer
+      label.contains("validator", ignoreCase = true) -> NodeRole.Sequencer
+      label.contains("bootnode", ignoreCase = true) -> NodeRole.Bootnode
       else -> NodeRole.Follower
     }
   }

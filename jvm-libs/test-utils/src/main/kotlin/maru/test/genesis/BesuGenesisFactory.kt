@@ -65,6 +65,7 @@ class BesuGenesisFactory(
       cliqueBlockTimeSeconds: UInt,
       cliqueEmptyBlocks: Boolean = true,
     ): String {
+      require(cliqueBlockTimeSeconds in 1u..60u) { "cliqueBlockTimeSeconds must be between 1 and 60 seconds" }
       var updatedGenesis = genesisTemplate
       updatedGenesis = setGenesisConfigProperty(updatedGenesis, "chainId", chainId)
       updatedGenesis = setGenesisCliqueOptions(updatedGenesis, cliqueBlockTimeSeconds, cliqueEmptyBlocks)
@@ -77,7 +78,7 @@ class BesuGenesisFactory(
       cliqueEmptyBlocks: Boolean = true,
       forks: ForksSchedule,
     ): String {
-      var terminalTotalDifficulty: ULong? =
+      val terminalTotalDifficulty: ULong =
         forks.forks
           .firstOrNull { it.configuration is DifficultyAwareQbftConfig }
           ?.let {
@@ -142,11 +143,9 @@ class BesuGenesisFactory(
         updatedGenesis = setGenesisConfigProperty(updatedGenesis, "shanghaiTime", shanghaiTimestamp)
       }
       if (cancunTimestamp != null) {
-        require(shanghaiTimestamp != null) { "shanghaiTimestamp must be defined when cancunTimestamp is defined" }
         updatedGenesis = setGenesisConfigProperty(updatedGenesis, "cancunTime", cancunTimestamp)
       }
       if (pragueTimestamp != null) {
-        require(cancunTimestamp != null) { "cancunTimestamp must be defined when pragueTimestamp is defined" }
         updatedGenesis = setGenesisConfigProperty(updatedGenesis, "pragueTime", pragueTimestamp)
       }
       return updatedGenesis
@@ -171,7 +170,7 @@ class BesuGenesisFactory(
       return jsonObjectMapper.writeValueAsString(rootNode)
     }
 
-    internal fun setGenesisConfigProperty(
+    private fun setGenesisConfigProperty(
       genesis: String,
       key: String,
       value: ULong,

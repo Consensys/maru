@@ -21,6 +21,7 @@ import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.core.Validator
 import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
@@ -263,62 +264,15 @@ class BesuGenesisFactoryTest {
     }
 
     @Test
-    fun `should require shanghaiTimestamp when cancunTimestamp is provided`() {
-      Assertions
-        .assertThatThrownBy {
-          BesuGenesisFactory.Companion.createGenesisWithClique(
+    fun `should fail on zero block time`() {
+      val result =
+        assertThatThrownBy {
+          BesuGenesisFactory.createGenesisWithClique(
             chainId = 1337UL,
-            cliqueBlockTimeSeconds = 1U,
-            terminalTotalDifficulty = 100UL,
-            cancunTimestamp = 1000UL,
+            cliqueBlockTimeSeconds = 0U,
           )
         }.isInstanceOf(IllegalArgumentException::class.java)
-        .hasMessageContaining("shanghaiTimestamp must be defined when cancunTimestamp is defined")
-    }
-
-    @Test
-    fun `should require cancunTimestamp when pragueTimestamp is provided`() {
-      Assertions
-        .assertThatThrownBy {
-          BesuGenesisFactory.Companion.createGenesisWithClique(
-            chainId = 1337UL,
-            cliqueBlockTimeSeconds = 1U,
-            terminalTotalDifficulty = 100UL,
-            shanghaiTimestamp = 500UL,
-            pragueTimestamp = 2000UL,
-          )
-        }.isInstanceOf(IllegalArgumentException::class.java)
-        .hasMessageContaining("cancunTimestamp must be defined when pragueTimestamp is defined")
-    }
-
-    @Test
-    fun `should handle zero block time`() {
-      val result =
-        BesuGenesisFactory.Companion.createGenesisWithClique(
-          chainId = 1337UL,
-          cliqueBlockTimeSeconds = 0U,
-        )
-
-      val jsonNode = objectMapper.readTree(result)
-      val clique = jsonNode.get("config").get("clique")
-
-      Assertions.assertThat(clique.get("blockperiodseconds").asInt()).isEqualTo(0)
-      Assertions.assertThat(clique.get("epochlength").asInt()).isEqualTo(0)
-    }
-
-    @Test
-    fun `should handle maximum UInt block time`() {
-      val maxBlockTime = UInt.MAX_VALUE
-      val result =
-        BesuGenesisFactory.Companion.createGenesisWithClique(
-          chainId = 1337UL,
-          cliqueBlockTimeSeconds = maxBlockTime,
-        )
-
-      val jsonNode = objectMapper.readTree(result)
-      val clique = jsonNode.get("config").get("clique")
-
-      Assertions.assertThat(clique.get("blockperiodseconds").asLong()).isEqualTo(maxBlockTime.toLong())
+          .hasMessageContaining("cliqueBlockTimeSeconds")
     }
 
     @Test

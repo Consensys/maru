@@ -326,7 +326,7 @@ class BeaconGenesisFactoryTest {
         )
       }.isInstanceOf(java.lang.IllegalArgumentException::class.java)
         .hasMessageContaining(
-          "EL forks don't fFollow correct order: found [Shanghai, Paris, Cancun, Prague], expected [Paris, Shanghai, Cancun, Prague]",
+          "EL forks don't follow the correct order: found [Shanghai, Paris, Cancun, Prague], expected [Paris, Shanghai, Cancun, Prague]",
         )
     }
 
