@@ -58,7 +58,7 @@ enum class Network(
   footerHeading = "%n",
 )
 class MaruAppCli(
-  private val dryRun: Boolean = false,
+  private val maruAppFactory: MaruAppFactoryCreator = MaruAppFactory(),
 ) : Callable<Int> {
   private val log = LogManager.getLogger(this.javaClass)
 
@@ -116,15 +116,15 @@ class MaruAppCli(
       log.info("Using the genesis file of the named network \"${genesisOptions!!.network!!.networkNameInKebab}\"")
     }
 
-    if (!dryRun) {
-      val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
-      val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisOptions!!.genesisFile!!)
-      val app =
-        MaruAppFactory()
-          .create(
-            config = parsedAppConfig.domainFriendly(),
-            beaconGenesisConfig = parsedBeaconGenesisConfig.domainFriendly(),
-          )
+    val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
+    val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisOptions!!.genesisFile!!)
+
+    val app =
+      maruAppFactory.create(
+        config = parsedAppConfig.domainFriendly(),
+        beaconGenesisConfig = parsedBeaconGenesisConfig.domainFriendly(),
+      )
+    if (app != null) {
       app.start()
 
       Runtime
@@ -144,5 +144,5 @@ class MaruAppCli(
     return 0
   }
 
-  private fun validateFileCanRead(file: File): Boolean = dryRun || file.canRead()
+  private fun validateFileCanRead(file: File): Boolean = file.canRead()
 }
