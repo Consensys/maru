@@ -228,7 +228,6 @@ class MaruFactory(
       engineApiRpc?.let {
         ValidatorElNode(
           engineApiEndpoint = ApiEndpointConfig(URI.create(it).toURL()),
-          allowEmptyBlocks = allowEmptyBlocks,
           payloadValidationEnabled = enablePayloadValidation,
         )
       }
@@ -304,13 +303,13 @@ class MaruFactory(
       }
 
     return MaruConfig(
+      allowEmptyBlocks = allowEmptyBlocks,
       persistence = Persistence(dataPath = dataDir),
       qbft = qbftOptions,
       p2p = p2pConfig,
       validatorElNode =
         ValidatorElNode(
           engineApiEndpoint = engineApiEndpointConfig,
-          allowEmptyBlocks = allowEmptyBlocks,
           payloadValidationEnabled = enablePayloadValidation,
         ),
       followers = followers,

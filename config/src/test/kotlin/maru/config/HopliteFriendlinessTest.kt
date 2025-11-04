@@ -29,11 +29,6 @@ class HopliteFriendlinessTest {
 
   private val baseConfigWithoutQbftAndPayloadToml =
     """
-    [pos-transition]
-    l2-eth-api-endpoint=
-    [fork-transition]
-    protocol-transition-polling-interval = "2s"
-
     [persistence]
     data-path="/some/path"
     private-key-path = "/private-key/path"
@@ -97,17 +92,17 @@ class HopliteFriendlinessTest {
     fee-recipient = "0xdead000000000000000000000000000000000000"
     """.trimIndent()
 
-  private val ethApiEndpointToml =
+  private val forkTransitionToml =
     """
     [fork-transition]
     l2-eth-api-endpoint = { endpoint = "http://localhost:8595" }
+    protocol-transition-polling-interval = "2s"
     """.trimIndent()
 
   private val payloadValidatorSectionToml =
     """
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
-    l2-eth-api-endpoint =
     payload-validation-enabled = false
     """.trimIndent()
 
@@ -120,6 +115,8 @@ class HopliteFriendlinessTest {
     $qbftSectionToml
 
     $payloadValidatorSectionToml
+
+    $forkTransitionToml
     """.trimIndent()
   private val rawConfigToml =
     """
@@ -191,7 +188,6 @@ class HopliteFriendlinessTest {
           endpoint = URI.create("http://localhost:8555").toURL(),
           jwtSecretPath = "/secret/path",
         ),
-      allowEmptyBlocks = false,
       payloadValidationEnabled = false,
     )
   private val follower1 =
@@ -250,8 +246,20 @@ class HopliteFriendlinessTest {
         ),
     )
   private val defaultsDto = DefaultsDtoToml(l2EthEndpoint = ApiEndpointDto(URI.create("http://localhost:8545").toURL()))
+  private val forkTransitionOverrideEndpoint =
+    ApiEndpointConfig(
+      endpoint = URI.create("http://localhost:8595").toURL(),
+      requestRetries = RetryConfig.noRetries,
+    )
+  private val expectedForkTransition =
+    ForkTransition(
+      l2EthApiEndpoint = forkTransitionOverrideEndpoint,
+      protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+    )
+
   private val expectedEmptyFollowersBase =
     MaruConfigDtoToml(
+      allowEmptyBlocks = false,
       defaults = defaultsDto,
       persistence = persistence,
       qbft = qbftOptions,
@@ -261,13 +269,11 @@ class HopliteFriendlinessTest {
       observability = ObservabilityConfig(port = 9090u),
       api = ApiConfig(port = 8080u),
       syncing = syncingConfig,
-      forkTransition = ForkTransition(protocolTransitionPollingInterval = protocolTransitionPollingInterval),
-    )
-
-  private val expectedForkTransition =
-    ForkTransition(
-      l2EthApiEndpoint = defaultEthApiEndpoint,
-      protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+      forkTransition =
+        ForkTransitionDtoToml(
+          l2EthApiEndpoint = ApiEndpointDto(URI.create("http://localhost:8595").toURL()),
+          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+        ),
     )
 
   @Test
@@ -317,7 +323,6 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            allowEmptyBlocks = false,
             payloadValidationEnabled = false,
           ),
         followers = followersConfig,
@@ -340,7 +345,6 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            allowEmptyBlocks = false,
             payloadValidationEnabled = false,
           ),
         followers = emptyFollowersConfig,
@@ -478,20 +482,24 @@ class HopliteFriendlinessTest {
 
   @Test
   fun `should parse allowEmptyBlocks = true`() {
-    val configToml = emptyFollowersConfigToml.replace("allow-empty-blocks = false", "allow-empty-blocks = true")
+    val configToml =
+      """
+      allow-empty-blocks = true
+      $emptyFollowersConfigToml
+      """.trimIndent()
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
     assertThat(config).isEqualTo(
-      expectedEmptyFollowersBase.copy(payloadValidator = payloadValidator.copy(allowEmptyBlocks = true)),
+      expectedEmptyFollowersBase.copy(allowEmptyBlocks = true),
     )
 
     assertThat(config.domainFriendly()).isEqualTo(
       MaruConfig(
+        allowEmptyBlocks = true,
         persistence = persistence,
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            allowEmptyBlocks = true,
             payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
@@ -555,7 +563,6 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            allowEmptyBlocks = false,
             payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
@@ -788,7 +795,10 @@ class HopliteFriendlinessTest {
 
     val parsed = parseConfig<MaruConfigDtoToml>(tomlNoPayload)
     assertThat(parsed).isEqualTo(
-      expectedEmptyFollowersBase.copy(payloadValidator = null),
+      expectedEmptyFollowersBase.copy(
+        payloadValidator = null,
+        forkTransition = ForkTransitionDtoToml(),
+      ),
     )
 
     assertThatThrownBy { parsed.domainFriendly() }
@@ -807,7 +817,11 @@ class HopliteFriendlinessTest {
 
     val parsed = parseConfig<MaruConfigDtoToml>(tomlNoPayloadNoQbft)
     assertThat(parsed).isEqualTo(
-      expectedEmptyFollowersBase.copy(payloadValidator = null, qbft = null),
+      expectedEmptyFollowersBase.copy(
+        payloadValidator = null,
+        qbft = null,
+        forkTransition = ForkTransitionDtoToml(),
+      ),
     )
 
     assertThat(parsed.domainFriendly()).isEqualTo(
@@ -820,7 +834,11 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        forkTransition = expectedForkTransition,
+        forkTransition =
+          ForkTransition(
+            l2EthApiEndpoint = defaultEthApiEndpoint,
+            protocolTransitionPollingInterval = 1.seconds,
+          ),
       ),
     )
   }
@@ -834,7 +852,12 @@ class HopliteFriendlinessTest {
 
     val parsed = parseConfig<MaruConfigDtoToml>(tomlNoDefaults)
     assertThat(parsed).isEqualTo(
-      expectedEmptyFollowersBase.copy(payloadValidator = null, qbft = null, defaults = null),
+      expectedEmptyFollowersBase.copy(
+        payloadValidator = null,
+        qbft = null,
+        defaults = null,
+        forkTransition = ForkTransitionDtoToml(),
+      ),
     )
 
     assertThat(parsed.domainFriendly()).isEqualTo(
@@ -847,17 +870,15 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        forkTransition = ForkTransition(protocolTransitionPollingInterval = protocolTransitionPollingInterval),
+        forkTransition = ForkTransition(),
       ),
     )
   }
 
   @Test
-  fun `root eth-api-endpoint override takes precedence over defaults`() {
+  fun `fork-transition l2-eth-api-endpoint override takes precedence over defaults`() {
     val configToml =
       """
-      $ethApiEndpointToml
-
       $baseConfigWithoutQbftAndPayloadToml
 
       $defaultsSectionToml
@@ -865,6 +886,10 @@ class HopliteFriendlinessTest {
       $qbftSectionToml
 
       $payloadValidatorSectionToml
+
+      [fork-transition]
+      l2-eth-api-endpoint = { endpoint = "http://localhost:8595" }
+      protocol-transition-polling-interval = "2s"
       """.trimIndent()
 
     val parsed = parseConfig<MaruConfigDtoToml>(configToml)
@@ -877,5 +902,33 @@ class HopliteFriendlinessTest {
       )
 
     assertThat(domain.forkTransition.l2EthApiEndpoint).isEqualTo(expectedEthApi)
+  }
+
+  @Test
+  fun `fork-transition without l2-eth-api-endpoint uses defaults`() {
+    val configToml =
+      """
+      $baseConfigWithoutQbftAndPayloadToml
+
+      $defaultsSectionToml
+
+      $qbftSectionToml
+
+      $payloadValidatorSectionToml
+
+      [fork-transition]
+      protocol-transition-polling-interval = "3s"
+      """.trimIndent()
+
+    val domain = parseConfig<MaruConfigDtoToml>(configToml).domainFriendly()
+
+    val expectedEthApi =
+      ApiEndpointConfig(
+        endpoint = URI.create("http://localhost:8545").toURL(),
+        requestRetries = RetryConfig.noRetries,
+      )
+
+    assertThat(domain.forkTransition.l2EthApiEndpoint).isEqualTo(expectedEthApi)
+    assertThat(domain.forkTransition.protocolTransitionPollingInterval).isEqualTo(3.seconds)
   }
 }

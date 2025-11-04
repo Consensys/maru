@@ -258,8 +258,7 @@ class MaruAppFactory {
               maxRetries = config.syncing.download.maxRetries,
               useUnconditionalRandomDownloadPeer = config.syncing.download.useUnconditionalRandomDownloadPeer,
             ),
-          allowEmptyBlocks = config.validatorElNode?.allowEmptyBlocks ?: false,
-          allowEmptyBlocks = config.validatorElNode?.allowEmptyBlocks ?: false,
+          allowEmptyBlocks = config.allowEmptyBlocks,
         )
       } else {
         AlwaysSyncedController(kvDatabase)

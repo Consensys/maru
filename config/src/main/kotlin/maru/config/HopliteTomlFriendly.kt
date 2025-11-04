@@ -19,13 +19,11 @@ import linea.kotlin.assertIs20Bytes
 
 data class PayloadValidatorDto(
   val engineApiEndpoint: ApiEndpointDto,
-  val allowEmptyBlocks: Boolean = false,
   val payloadValidationEnabled: Boolean = true,
 ) {
   fun domainFriendly(): ValidatorElNode =
     ValidatorElNode(
       engineApiEndpoint = engineApiEndpoint.domainFriendly(endlessRetries = true),
-      allowEmptyBlocks = allowEmptyBlocks,
       payloadValidationEnabled = payloadValidationEnabled,
     )
 }
@@ -163,8 +161,22 @@ data class LineaConfigDtoToml(
   }
 }
 
+data class ForkTransitionDtoToml(
+  val l2EthApiEndpoint: ApiEndpointDto? = null,
+  val protocolTransitionPollingInterval: Duration = 1.seconds,
+) {
+  fun domainFriendly(defaultL2EthApi: ApiEndpointDto?): ForkTransition {
+    val defaultedL2EthApiEndpoint = (l2EthApiEndpoint ?: defaultL2EthApi)?.domainFriendly()
+    return ForkTransition(
+      l2EthApiEndpoint = defaultedL2EthApiEndpoint,
+      protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+    )
+  }
+}
+
 data class MaruConfigDtoToml(
-  private val defaults: DefaultsDtoToml?,
+  private val allowEmptyBlocks: Boolean = false,
+  private val defaults: DefaultsDtoToml? = null,
   private val linea: LineaConfigDtoToml? = null,
   private val persistence: Persistence,
   private val qbft: QbftOptionsDtoToml?,
@@ -174,10 +186,11 @@ data class MaruConfigDtoToml(
   private val observability: ObservabilityConfig,
   private val api: ApiConfig,
   private val syncing: SyncingConfig,
-  private val forkTransition: ForkTransition = ForkTransition(l2EthApiEndpoint = defaults?.l2EthEndpoint?.domainFriendly()),
+  private val forkTransition: ForkTransitionDtoToml = ForkTransitionDtoToml(),
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
+      allowEmptyBlocks = allowEmptyBlocks,
       linea = linea?.domainFriendly(defaults?.l2EthEndpoint),
       persistence = persistence,
       qbft = qbft?.toDomain(),
@@ -190,6 +203,6 @@ data class MaruConfigDtoToml(
       observability = observability,
       api = api,
       syncing = syncing,
-      forkTransition = forkTransition,
+      forkTransition = forkTransition.domainFriendly(defaultL2EthApi = defaults?.l2EthEndpoint),
     )
 }
