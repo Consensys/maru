@@ -53,5 +53,10 @@ dependencies {
   testImplementation(testFixtures(project(":core")))
   testFixturesImplementation(project(":serialization"))
   testFixturesImplementation(project(":crypto"))
-  testFixturesImplementation(testImplementation(testFixtures(project(":core"))))
+  testFixturesImplementation(project(":jvm-libs:test-utils"))
+  testFixturesImplementation(testFixtures(project(":core")))
+  testFixturesImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0"
+  testFixturesImplementation "org.apache.logging.log4j:log4j-api"
+  testFixturesImplementation "org.junit.jupiter:junit-jupiter"
+  testFixturesImplementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
 }

@@ -12,6 +12,8 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import kotlinx.coroutines.Job
+import maru.p2p.testutils.TestUtils
+import maru.p2p.testutils.TestUtils.findFreePort
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -22,9 +24,9 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import testutils.Checks.getBlockNumber
 import testutils.PeeringNodeNetworkStack
-import testutils.TestUtils
-import testutils.TestUtils.findFreePort
+
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
@@ -118,7 +120,7 @@ class MaruDiscoveryTest {
       .pollInterval(500.milliseconds.toJavaDuration())
       .untilAsserted {
         networkStacks.forEach { stack ->
-          val blockNumber = stack.besuNode.execute(transactionsHelper.ethTransactions.blockNumber())
+          val blockNumber = stack.besuNode.getBlockNumber()
           assertThat(blockNumber).isNotNull
         }
       }
@@ -160,7 +162,7 @@ class MaruDiscoveryTest {
         .atMost(20.seconds.toJavaDuration())
         .pollInterval(500.milliseconds.toJavaDuration())
         .untilAsserted {
-          val blockNumber = bootnodeStack.besuNode.execute(transactionsHelper.ethTransactions.blockNumber())
+          val blockNumber = bootnodeStack.besuNode.getBlockNumber()
           assertThat(blockNumber.toLong()).isGreaterThanOrEqualTo(5L)
         }
 
@@ -211,9 +213,9 @@ class MaruDiscoveryTest {
         assertThat(peers.size).isGreaterThanOrEqualTo(expectedPeers.toInt())
       }
 
-      log.info("Verifying followers sync EL locks")
+      log.info("Verifying followers sync EL blocks")
       val validatorBlockHeight =
-        networkStacks[0].besuNode.execute(transactionsHelper.ethTransactions.blockNumber()).toLong()
+        networkStacks[0].besuNode.getBlockNumber()
 
       await
         .atMost(30.seconds.toJavaDuration())
@@ -221,9 +223,9 @@ class MaruDiscoveryTest {
         .untilAsserted {
           networkStacks.forEachIndexed { i, stack ->
             val followerBlockHeight =
-              stack.besuNode.execute(transactionsHelper.ethTransactions.blockNumber()).toLong()
+              stack.besuNode.getBlockNumber()
             log.info("Follower $i EL block height: $followerBlockHeight (validator: $validatorBlockHeight)")
-            assertThat(followerBlockHeight).isGreaterThanOrEqualTo(validatorBlockHeight - 2)
+            assertThat(followerBlockHeight).isGreaterThanOrEqualTo(validatorBlockHeight)
           }
         }
 
