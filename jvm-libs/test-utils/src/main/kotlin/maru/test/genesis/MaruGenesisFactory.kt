@@ -76,7 +76,7 @@ class MaruGenesisFactory {
             }
           val sortedElForks = elForks.sorted()
           require(elForks == sortedElForks) {
-            "EL forks don't fFollow correct order: found ${it.map { entry -> entry.value.elFork }}, expected ${
+            "EL forks don't follow the correct order: found ${it.map { entry -> entry.value.elFork }}, expected ${
               sortedElForks.map { version ->
                 ElFork.values().first { it.version.toInt() == version }
               }
