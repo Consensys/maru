@@ -13,9 +13,11 @@ import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
+import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.crypto.PrivateKeyGenerator
 import maru.crypto.SecpCrypto
+import maru.database.InMemoryBeaconChain
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResultCode
 import org.apache.tuweni.bytes.Bytes
@@ -42,27 +44,49 @@ class QbftMessageProcessorTest {
   private val messageAuthor = Address.wrap(Bytes.wrap(keyData.address))
   private val localAddress = Address.fromHexString("0x1234567890123456789012345678901234567890")
 
-  private val blockChain = mock<QbftBlockchainAdapter>()
   private val validatorProvider = mock<QbftValidatorProviderAdapter>()
   private val bftEventQueue = BftEventQueue(10)
   private val messageDecoder = MinimalQbftMessageDecoder(SecpCrypto)
 
-  private val messageProcessor =
-    QbftMessageProcessor(
+  init {
+    bftEventQueue.start()
+  }
+
+  private fun createMessageProcessor(chainHeight: ULong): QbftMessageProcessor {
+    val beaconChain = createBeaconChainAtHeight(chainHeight)
+    val blockChain = QbftBlockchainAdapter(beaconChain)
+    return QbftMessageProcessor(
       blockChain = blockChain,
       validatorProvider = validatorProvider,
       localAddress = localAddress,
       bftEventQueue = bftEventQueue,
       messageDecoder = messageDecoder,
     )
+  }
 
-  init {
-    bftEventQueue.start()
+  private fun createBeaconChainAtHeight(targetHeight: ULong): InMemoryBeaconChain {
+    val beaconChain = InMemoryBeaconChain.fromGenesis()
+    var currentState = beaconChain.getLatestBeaconState()
+
+    // Advance chain to target height
+    for (blockNumber in 1UL..targetHeight) {
+      val beaconBlock = DataGenerators.randomBeaconBlock(blockNumber)
+      val sealedBlock = SealedBeaconBlock(beaconBlock, emptySet())
+      currentState = currentState.copy(beaconBlockHeader = beaconBlock.beaconBlockHeader)
+
+      beaconChain.newBeaconChainUpdater().run {
+        putBeaconState(currentState)
+        putSealedBeaconBlock(sealedBlock)
+        commit()
+      }
+    }
+
+    return beaconChain
   }
 
   @Test
   fun `should ignore old messages without adding to queue`() {
-    whenever(blockChain.chainHeadBlockNumber).thenReturn(100L)
+    val messageProcessor = createMessageProcessor(chainHeight = 100UL)
 
     val qbftMessage = createQbftMessage(50L)
     val result = messageProcessor.handleMessage(qbftMessage).get()
@@ -74,7 +98,7 @@ class QbftMessageProcessorTest {
 
   @Test
   fun `should ignore future messages and add to queue`() {
-    whenever(blockChain.chainHeadBlockNumber).thenReturn(100L)
+    val messageProcessor = createMessageProcessor(chainHeight = 100UL)
 
     val qbftMessage = createQbftMessage(150L)
     val result = messageProcessor.handleMessage(qbftMessage).get()
@@ -86,8 +110,7 @@ class QbftMessageProcessorTest {
 
   @Test
   fun `should accept current message from known validator when local is validator`() {
-    whenever(blockChain.chainHeadBlockNumber).thenReturn(100L)
-    whenever(blockChain.chainHeadHeader).thenReturn(mock())
+    val messageProcessor = createMessageProcessor(chainHeight = 100UL)
     whenever(validatorProvider.getValidatorsForBlock(any())).thenReturn(
       listOf(messageAuthor, localAddress),
     )
@@ -103,9 +126,7 @@ class QbftMessageProcessorTest {
   @Test
   fun `should reject current message from unknown validator`() {
     val knownValidator = Address.fromHexString("0xABCDEF1234567890123456789012345678901234")
-
-    whenever(blockChain.chainHeadBlockNumber).thenReturn(100L)
-    whenever(blockChain.chainHeadHeader).thenReturn(mock())
+    val messageProcessor = createMessageProcessor(chainHeight = 100UL)
     whenever(validatorProvider.getValidatorsForBlock(any())).thenReturn(
       listOf(knownValidator, localAddress), // messageAuthor is not in this list
     )
@@ -118,8 +139,7 @@ class QbftMessageProcessorTest {
 
   @Test
   fun `should ignore current message when local is not a validator`() {
-    whenever(blockChain.chainHeadBlockNumber).thenReturn(100L)
-    whenever(blockChain.chainHeadHeader).thenReturn(mock())
+    val messageProcessor = createMessageProcessor(chainHeight = 100UL)
     whenever(validatorProvider.getValidatorsForBlock(any())).thenReturn(
       listOf(messageAuthor), // localAddress is not in the validator set
     )
@@ -133,6 +153,7 @@ class QbftMessageProcessorTest {
 
   @Test
   fun `should return invalid for malformed messages`() {
+    val messageProcessor = createMessageProcessor(chainHeight = 100UL)
     val invalidMessageData = mock<MessageData>()
     val qbftMessage = mock<QbftMessage>()
     whenever(invalidMessageData.data).thenReturn(EMPTY)
