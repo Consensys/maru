@@ -136,7 +136,7 @@ class MaruFactory(
         1337u,
         setOf(
           ForkSpec(
-            timestampSeconds = 1UL,
+            timestampSeconds = 0UL,
             blockTimeSeconds = 1u,
             configuration =
               DifficultyAwareQbftConfig(
