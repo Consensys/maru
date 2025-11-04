@@ -302,7 +302,6 @@ class MaruCluster(
     nodesLabels.map { nodeLabel ->
       val p2pNetwork = maruNode(nodeLabel).p2pNetwork
       "/ip4/127.0.0.1/tcp/${p2pNetwork.port}/p2p/${p2pNetwork.nodeId}"
-        .also { println("node=$nodeLabel addr=$it") }
     }
 
   private fun startIfBesuNode(elNode: ElNode?) {

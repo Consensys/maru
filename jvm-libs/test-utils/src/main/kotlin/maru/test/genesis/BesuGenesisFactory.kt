@@ -49,7 +49,6 @@ class BesuGenesisFactory(
           cliqueEmptyBlocks,
           forkSchedule!!,
         )
-      println("new genesis created: $cachedGenesis")
       cachedGenesis!!
     }
   }
