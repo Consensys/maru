@@ -19,24 +19,6 @@ import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput
 import org.hyperledger.besu.ethereum.rlp.RLP.input
 
 /**
- * Compute the hash used for signature verification, implementing the same algorithm as
- * [org.hyperledger.besu.consensus.qbft.core.payload.QbftPayload.hashForSignature].
- *
- * This is the hash of the RLP encoding of: `LIST [messageType: INT_SCALAR, encodedPayload: RAW_BYTES]`
- */
-internal fun hashForSignature(
-  messageType: Int,
-  encodedPayload: Bytes,
-): ByteArray {
-  val out = BytesValueRLPOutput()
-  out.startList()
-  out.writeIntScalar(messageType)
-  out.writeRaw(encodedPayload)
-  out.endList()
-  return hash(out.encoded()).toArray()
-}
-
-/**
  * Minimal RLP decoder for QBFT messages, extracting only the roundIdentifier, signature, and author needed for
  * minimal validation. This prevents more expensive decoding of the full message with the Block or other fields
  * which can be large.
@@ -85,5 +67,23 @@ class MinimalQbftMessageDecoder(
       roundNumber = roundNumber,
       author = Address.wrap(Bytes.wrap(author)),
     )
+  }
+
+  /**
+   * Compute the hash used for signature verification, implementing the same algorithm as
+   * [org.hyperledger.besu.consensus.qbft.core.payload.QbftPayload.hashForSignature].
+   *
+   * This is the hash of the RLP encoding of: `LIST [messageType: INT_SCALAR, encodedPayload: RAW_BYTES]`
+   */
+  internal fun hashForSignature(
+    messageType: Int,
+    encodedPayload: Bytes,
+  ): ByteArray {
+    val out = BytesValueRLPOutput()
+    out.startList()
+    out.writeIntScalar(messageType)
+    out.writeRaw(encodedPayload)
+    out.endList()
+    return hash(out.encoded()).toArray()
   }
 }
