@@ -26,10 +26,13 @@ import maru.test.extensions.latestBlock
 import org.apache.logging.log4j.Level
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class MaruClusterTest {
+  private lateinit var cluster: MaruCluster
+
   @BeforeEach
   fun beforeEach() {
     configureLoggers(
@@ -42,9 +45,16 @@ class MaruClusterTest {
     )
   }
 
+  @AfterEach
+  fun afterEach() {
+    if (::cluster.isInitialized) {
+      cluster.stop()
+    }
+  }
+
   @Test
   fun `should allow to retrieve nodes by label`() {
-    val cluster =
+    cluster =
       MaruCluster()
         .addNode(NodeRole.Follower)
         .addNode(NodeRole.Follower) {
@@ -61,13 +71,11 @@ class MaruClusterTest {
     assertThat(cluster.node("follower-special").nodeRole).isEqualTo(NodeRole.Follower)
     assertThat(cluster.node("follower-special").nodeRole).isEqualTo(NodeRole.Follower)
     assertThat(cluster.node("sequencer").nodeRole).isEqualTo(NodeRole.Sequencer)
-
-    cluster.stop()
   }
 
   @Test
   fun `should create network starting at prague`() {
-    val cluster =
+    cluster =
       MaruCluster(
         chainForks =
           mapOf(
@@ -88,8 +96,6 @@ class MaruClusterTest {
       .untilAsserted {
         cluster.assertNodesAreSyncedUpTo(targetBlockNumber = 5UL)
       }
-
-    cluster.stop()
   }
 
   @Test
@@ -97,7 +103,7 @@ class MaruClusterTest {
     val now = Clock.System.now()
     val terminalTotalDifficulty = 20UL
     val forkTimeGap = 10.seconds
-    val cluster =
+    cluster =
       MaruCluster(
         terminalTotalDifficulty = 20UL,
         chainForks =
@@ -141,7 +147,7 @@ class MaruClusterTest {
 
   @Test
   fun `should instantiate multiple nodes in the cluster with static peering and sync`() {
-    val cluster =
+    cluster =
       MaruCluster()
         .addNode("sequencer")
         .addNode("follower-internal-0") { nodeBuilder ->
@@ -161,12 +167,11 @@ class MaruClusterTest {
       .untilAsserted {
         cluster.assertNodesAreSyncedUpTo(targetBlockNumber = 5UL)
       }
-    cluster.stop()
   }
 
   @Test
   fun `should instantiate multiple nodes in the cluster with discovery`() {
-    val cluster =
+    cluster =
       MaruCluster()
         .addNode("bootnode-0")
         .addNode("bootnode-1")
@@ -191,13 +196,11 @@ class MaruClusterTest {
       .untilAsserted {
         cluster.assertNodesAreSyncedUpTo(targetBlockNumber = 5UL)
       }
-
-    cluster.stop()
   }
 
   @Test
   fun `should allow to add nodes after cluster is has started`() {
-    val cluster =
+    cluster =
       MaruCluster()
         .addNode("bootnode-0")
         .addNode("sequencer")
@@ -223,7 +226,5 @@ class MaruClusterTest {
           assertThat(newNode.maru.headBeaconBlockNumber()).isGreaterThanOrEqualTo(5UL)
         }
       }
-
-    cluster.stop()
   }
 }
