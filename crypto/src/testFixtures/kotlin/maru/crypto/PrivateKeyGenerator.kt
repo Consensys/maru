@@ -74,7 +74,7 @@ object PrivateKeyGenerator {
     // Sometimes keyPair has 1 byte more so we just take the last 32 bytes ¯\_(ツ)_/¯
     val normalizedPrivateKey = ensureKeyIsExactly32BytesLong(privateKey)
     // The curve parameters for the block signing are different from what LibP2P is using
-    val signingAddress = Crypto.privateKeyToAddress(normalizedPrivateKey)
+    val signingAddress = SecpCrypto.privateKeyToAddress(normalizedPrivateKey)
     val privateKeyTyped = unmarshalSecp256k1PrivateKey(privateKey)
     val peerId = PeerId.fromPubKey(privateKeyTyped.publicKey())
     val libP2PNodeId = LibP2PNodeId(peerId)

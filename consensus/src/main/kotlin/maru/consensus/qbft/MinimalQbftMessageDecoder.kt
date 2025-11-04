@@ -8,14 +8,13 @@
  */
 package maru.consensus.qbft
 
+import maru.core.Seal
+import maru.crypto.Crypto
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.consensus.qbft.core.messagedata.QbftV1
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
-import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.datatypes.Address
-import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.datatypes.Hash.hash
-import org.hyperledger.besu.ethereum.core.Util.signatureToAddress
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput
 import org.hyperledger.besu.ethereum.rlp.RLP.input
 
@@ -28,13 +27,13 @@ import org.hyperledger.besu.ethereum.rlp.RLP.input
 internal fun hashForSignature(
   messageType: Int,
   encodedPayload: Bytes,
-): Hash {
+): ByteArray {
   val out = BytesValueRLPOutput()
   out.startList()
   out.writeIntScalar(messageType)
   out.writeRaw(encodedPayload)
   out.endList()
-  return hash(out.encoded())
+  return hash(out.encoded()).toArray()
 }
 
 /**
@@ -42,7 +41,9 @@ internal fun hashForSignature(
  * minimal validation. This prevents more expensive decoding of the full message with the Block or other fields
  * which can be large.
  */
-object MinimalQbftMessageDecoder {
+class MinimalQbftMessageDecoder(
+  private val crypto: Crypto,
+) {
   data class QbftMessageMetadata(
     val messageCode: Int,
     val sequenceNumber: Long,
@@ -74,15 +75,15 @@ object MinimalQbftMessageDecoder {
     val sequenceNumber = payloadRlp.readLongScalar()
     val roundNumber = payloadRlp.readIntScalar()
     val payloadHash = hashForSignature(messageCode, payloadRlp.raw())
-    val signature = signedDataRlp.readBytes(SignatureAlgorithmFactory.getInstance()::decodeSignature)
+    val signatureBytes = signedDataRlp.readBytes()
     signedDataRlp.leaveList()
 
-    val author = signatureToAddress(signature, payloadHash)
+    val author = crypto.signatureToAddress(Seal(signatureBytes.toArray()), payloadHash)
     return QbftMessageMetadata(
       messageCode = messageCode,
       sequenceNumber = sequenceNumber,
       roundNumber = roundNumber,
-      author = author,
+      author = Address.wrap(Bytes.wrap(author)),
     )
   }
 }

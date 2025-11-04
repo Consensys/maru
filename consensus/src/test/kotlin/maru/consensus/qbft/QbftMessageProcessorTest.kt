@@ -15,6 +15,7 @@ import maru.consensus.qbft.adapters.QbftBlockchainAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.core.ext.DataGenerators
 import maru.crypto.PrivateKeyGenerator
+import maru.crypto.SecpCrypto
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResultCode
 import org.apache.tuweni.bytes.Bytes
@@ -44,6 +45,7 @@ class QbftMessageProcessorTest {
   private val blockChain = mock<QbftBlockchainAdapter>()
   private val validatorProvider = mock<QbftValidatorProviderAdapter>()
   private val bftEventQueue = BftEventQueue(10)
+  private val messageDecoder = MinimalQbftMessageDecoder(SecpCrypto)
 
   private val messageProcessor =
     QbftMessageProcessor(
@@ -51,6 +53,7 @@ class QbftMessageProcessorTest {
       validatorProvider = validatorProvider,
       localAddress = localAddress,
       bftEventQueue = bftEventQueue,
+      messageDecoder = messageDecoder,
     )
 
   init {

@@ -14,6 +14,7 @@ import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.core.ext.DataGenerators
 import maru.crypto.PrivateKeyGenerator
+import maru.crypto.SecpCrypto
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -42,6 +43,7 @@ class MinimalQbftMessageDecoderTest {
   private val keyData = PrivateKeyGenerator.generatePrivateKey()
   private val nodeKey = keyData.nodeKey
   private val messageAuthor = Address.wrap(Bytes.wrap(keyData.address))
+  private val decoder = MinimalQbftMessageDecoder(SecpCrypto)
 
   private val sequenceNumber = 100
   private val roundNumber = 15
@@ -58,7 +60,7 @@ class MinimalQbftMessageDecoderTest {
     val qbftMessage = mock<QbftMessage>()
     whenever(qbftMessage.data).thenReturn(messageData)
 
-    val metadata = MinimalQbftMessageDecoder.deserialize(qbftMessage)
+    val metadata = decoder.deserialize(qbftMessage)
     assertThat(metadata.messageCode).isEqualTo(QbftV1.PREPARE)
     assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber.toLong())
     assertThat(metadata.roundNumber).isEqualTo(roundNumber.toLong())
@@ -76,7 +78,7 @@ class MinimalQbftMessageDecoderTest {
     val qbftMessage = mock<QbftMessage>()
     whenever(qbftMessage.data).thenReturn(messageData)
 
-    val metadata = MinimalQbftMessageDecoder.deserialize(qbftMessage)
+    val metadata = decoder.deserialize(qbftMessage)
     assertThat(metadata.messageCode).isEqualTo(QbftV1.COMMIT)
     assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber.toLong())
     assertThat(metadata.roundNumber).isEqualTo(roundNumber.toLong())
@@ -95,7 +97,7 @@ class MinimalQbftMessageDecoderTest {
     val qbftMessage = mock<QbftMessage>()
     whenever(qbftMessage.data).thenReturn(messageData)
 
-    val metadata = MinimalQbftMessageDecoder.deserialize(qbftMessage)
+    val metadata = decoder.deserialize(qbftMessage)
     assertThat(metadata.messageCode).isEqualTo(QbftV1.PROPOSAL)
     assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber.toLong())
     assertThat(metadata.roundNumber).isEqualTo(roundNumber.toLong())
@@ -112,7 +114,7 @@ class MinimalQbftMessageDecoderTest {
     val qbftMessage = mock<QbftMessage>()
     whenever(qbftMessage.data).thenReturn(messageData)
 
-    val metadata = MinimalQbftMessageDecoder.deserialize(qbftMessage)
+    val metadata = decoder.deserialize(qbftMessage)
     assertThat(metadata.messageCode).isEqualTo(QbftV1.ROUND_CHANGE)
     assertThat(metadata.sequenceNumber).isEqualTo(sequenceNumber.toLong())
     assertThat(metadata.roundNumber).isEqualTo(roundNumber.toLong())

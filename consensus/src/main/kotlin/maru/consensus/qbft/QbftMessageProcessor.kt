@@ -37,6 +37,7 @@ class QbftMessageProcessor(
   private val validatorProvider: QbftValidatorProviderAdapter,
   private val localAddress: Address,
   private val bftEventQueue: BftEventQueue,
+  private val messageDecoder: MinimalQbftMessageDecoder,
 ) {
   /**
    * Validates a QBFT message and determines whether it should be gossiped.
@@ -46,7 +47,7 @@ class QbftMessageProcessor(
    */
   fun handleMessage(qbftMessage: QbftMessage): SafeFuture<ValidationResult> =
     try {
-      val metadata = MinimalQbftMessageDecoder.deserialize(qbftMessage)
+      val metadata = messageDecoder.deserialize(qbftMessage)
       val result = processMessage(qbftMessage, metadata)
       SafeFuture.completedFuture(result)
     } catch (e: Exception) {

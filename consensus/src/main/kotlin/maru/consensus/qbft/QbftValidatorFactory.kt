@@ -43,6 +43,7 @@ import maru.core.BeaconState
 import maru.core.Protocol
 import maru.core.Validator
 import maru.crypto.Hashing
+import maru.crypto.SecpCrypto
 import maru.crypto.Signing
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -251,12 +252,14 @@ class QbftValidatorFactory(
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())
 
+    val messageDecoder = MinimalQbftMessageDecoder(SecpCrypto)
     val qbftMessageProcessor =
       QbftMessageProcessor(
         blockChain = blockChain,
         validatorProvider = besuValidatorProvider,
         localAddress = localAddress,
         bftEventQueue = bftEventQueue,
+        messageDecoder = messageDecoder,
       )
 
     // Subscribe to QBFT messages from P2P network and validate before adding to event queue
