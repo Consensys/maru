@@ -135,17 +135,18 @@ class MaruCluster(
     label: String,
     configurator: (NodeBuilder) -> Unit = {},
   ): MaruCluster {
-    if (runningState != RunningState.STOPPED) {
-      throw IllegalStateException("Cannot ADD NODE to MaruCluster that is $runningState. Please use addNodeAndStart()")
+    if (runningState == RunningState.RUNNING || runningState == RunningState.STARTING) {
+      addNewExtraNodeAndStart(label, configurator)
+    } else {
+      nodesBuilders.add(createNodeBuilder(label, configurator))
     }
-    nodesBuilders.add(createNodeBuilder(label, configurator))
     return this
   }
 
   /**
    *  Add new node to already existing cluster and start it immediately.
    */
-  fun addNewExtraNodeAndStart(
+  private fun addNewExtraNodeAndStart(
     nodeLabel: String,
     configurator: (NodeBuilder) -> Unit = {},
   ): MaruCluster {

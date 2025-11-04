@@ -212,7 +212,7 @@ class MaruClusterTest {
       .untilAsserted { cluster.assertNodesAreSyncedUpTo(targetBlockNumber = 2UL) }
 
     // add new node and wait for sync
-    cluster.addNewExtraNodeAndStart("follower-new-node")
+    cluster.addNode("follower-new-node")
     await()
       .pollInterval(1.seconds.toJavaDuration())
       // besu peering takes time sometimes, necessary for back sync
