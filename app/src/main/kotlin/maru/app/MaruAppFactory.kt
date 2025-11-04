@@ -124,7 +124,6 @@ class MaruAppFactory {
         vertx = vertx,
       )
 
-    ensureDirectoryExists(config.persistence.dataPath)
     val kvDatabase =
       KvDatabaseFactory
         .createRocksDbDatabase(
