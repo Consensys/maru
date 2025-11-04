@@ -42,7 +42,7 @@ object PrivateKeyGenerator {
       if (!prefixedPrivateKey.contentEquals(other.prefixedPrivateKey)) return false
       if (!address.contentEquals(other.address)) return false
       if (peerId != other.peerId) return false
-      if (nodeKey != other.nodeKey) return false
+      if (nodeKey.publicKey != other.nodeKey.publicKey) return false
 
       return true
     }
