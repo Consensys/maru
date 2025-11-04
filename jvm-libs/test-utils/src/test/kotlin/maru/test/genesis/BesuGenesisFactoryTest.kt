@@ -181,7 +181,7 @@ class BesuGenesisFactoryTest {
       val forksSchedule = ForksSchedule(13U, listOf(ttdForkSpec, shanghaiForkSpec, cancunForkSpec, pragueForkSpec))
 
       val result =
-        BesuGenesisFactory.Companion.createGenesisWithClique(
+        BesuGenesisFactory.createGenesisWithClique(
           cliqueBlockTimeSeconds = 4U,
           cliqueEmptyBlocks = true,
           forks = forksSchedule,

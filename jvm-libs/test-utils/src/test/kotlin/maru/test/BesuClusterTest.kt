@@ -8,6 +8,7 @@
  */
 package maru.test
 
+import java.net.ConnectException
 import java.util.Optional
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
@@ -28,8 +29,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.fail
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import testutils.besu.BesuFactory
 
 class BesuClusterTest {
@@ -42,7 +45,7 @@ class BesuClusterTest {
         .apply {
           setForkSchedule(
             ForksSchedule(
-              chainId = Random.nextInt(0, Int.MAX_VALUE).toUInt(),
+              chainId = Random.nextInt(1, Int.MAX_VALUE).toUInt(),
               forks =
                 listOf(
                   ForkSpec(
@@ -76,13 +79,23 @@ class BesuClusterTest {
       jsonRpcPort = Optional.ofNullable(jsonRpcPort),
     )
 
+  private lateinit var cluster: BesuCluster
+
+  @AfterEach
+  fun afterEach() {
+    if (::cluster.isInitialized) {
+      cluster.stop()
+    }
+  }
+
   @Test
   fun `should allow to add nodes to existing cluster and sync`() {
-    val cluster =
+    cluster =
       BesuCluster()
         .apply {
           addNode(createBesu("besu-0"))
           addNode(createBesu("besu-1", validator = true))
+          addNode(createBesu("besu-2"))
           start(false)
         }
 
@@ -92,8 +105,13 @@ class BesuClusterTest {
         cluster.assertNodesAreSyncedUpTo(3UL)
       }
 
+    val node2 = cluster.nodes["besu-2"]!!
+    cluster.stopNode("besu-2")
+    // it should throw if node was effectively stopped
+    assertThrows<ConnectException> { node2.latestBlockNumber() }
+
     val newBesu = createBesu("besu-new-0")
-    cluster.addNodeAndStart(newBesu)
+    cluster.addNodeAndStart(newBesu, awaitPeerDiscovery = true)
     await
       .atMost(120.seconds.toJavaDuration())
       .untilAsserted {
@@ -103,7 +121,7 @@ class BesuClusterTest {
 
   @Test
   fun `should allow to start nodes 1 by 1 and sync`() {
-    val cluster =
+    cluster =
       BesuCluster()
         .apply {
           addNodeAndStart(createBesu("besu-0"))
@@ -123,6 +141,36 @@ class BesuClusterTest {
       .atMost(120.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(newBesu.latestBlockNumber()).isGreaterThanOrEqualTo(5UL)
+      }
+  }
+
+  @Test
+  fun `should remove,stop and add back nodes to the cluster`() {
+    cluster =
+      BesuCluster().apply {
+        addNode(createBesu("sequencer", validator = true))
+        addNode(createBesu("follower-1"))
+        start(false)
+      }
+
+    await
+      .atMost(120.seconds.toJavaDuration())
+      .untilAsserted {
+        cluster.assertNodesAreSyncedUpTo(3UL)
+      }
+
+    val sequencer = cluster.nodes["sequencer"]!!
+    val lastMinedBlock = sequencer.latestBlockNumber()
+    cluster.stopNode("sequencer")
+
+    // it should throw if node was effectively stopped
+    assertThrows<ConnectException> { sequencer.latestBlockNumber() }
+    cluster.addNodeAndStart(sequencer)
+
+    await
+      .atMost(120.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(cluster.nodes["follower-1"]!!.latestBlockNumber()).isGreaterThanOrEqualTo(lastMinedBlock + 3UL)
       }
   }
 

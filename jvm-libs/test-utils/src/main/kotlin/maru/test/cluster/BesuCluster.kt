@@ -29,11 +29,6 @@ class BesuCluster(
   internal val nodes: MutableMap<String, BesuNode> = HashMap()
   internal val bootnodes: MutableList<URI> = ArrayList()
 
-  constructor(net: NetConditions) : this(ClusterConfigurationBuilder().build(), net, BesuNodeRunner.instance())
-
-  constructor(clusterConfiguration: ClusterConfiguration, net: NetConditions) :
-    this(clusterConfiguration, net, ThreadBesuNodeRunner())
-
   private fun startCluster(awaitPeerDiscovery: Boolean) {
     require(nodes.isNotEmpty()) { "Can't start a cluster with no nodes" }
     val nodesList = nodes.values.toList()
@@ -124,21 +119,21 @@ class BesuCluster(
   fun start(awaitPeerDiscovery: Boolean = true) = startCluster(awaitPeerDiscovery)
 
   fun stop() {
-    for (node in nodes.values) {
+    // to avoid ConcurrentModificationException
+    val nodesList = nodes.values.toList()
+    for (node in nodesList) {
       stopNode(node)
     }
   }
 
-  fun stopNode(node: RunnableNode) {
-    if (node is BesuNode) {
-      besuNodeRunner.stopNode(node)
-    } else {
-      node.stop()
-    }
+  fun stopNode(nodeName: String) {
+    val node = nodes[nodeName] ?: throw IllegalArgumentException("Node $nodeName not found in cluster")
+    stopNode(node)
   }
 
-  fun stopNode(node: BesuNode) {
+  private fun stopNode(node: BesuNode) {
     besuNodeRunner.stopNode(node)
+    nodes.remove(node.name)
   }
 
   override fun close() {
