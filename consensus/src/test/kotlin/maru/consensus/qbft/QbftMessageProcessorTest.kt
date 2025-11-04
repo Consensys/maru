@@ -13,6 +13,7 @@ import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.core.ext.DataGenerators
+import maru.crypto.PrivateKeyGenerator
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResultCode
 import org.apache.tuweni.bytes.Bytes
@@ -26,9 +27,7 @@ import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Proposal
 import org.hyperledger.besu.consensus.qbft.core.payload.ProposalPayload
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.consensus.qbft.core.types.QbftReceivedMessageEvent
-import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.datatypes.Address
-import org.hyperledger.besu.ethereum.core.Util
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -38,9 +37,9 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 class QbftMessageProcessorTest {
-  private val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
-  private val keyPair = signatureAlgorithm.generateKeyPair()
-  private val messageAuthor = Util.publicKeyToAddress(keyPair.publicKey)
+  private val keyData = PrivateKeyGenerator.generatePrivateKey()
+  private val nodeKey = keyData.nodeKey
+  private val messageAuthor = Address.wrap(Bytes.wrap(keyData.address))
   private val localAddress = Address.fromHexString("0x1234567890123456789012345678901234567890")
 
   private val blockChain = mock<QbftBlockchainAdapter>()
@@ -143,7 +142,7 @@ class QbftMessageProcessorTest {
     val qbftBlock = QbftBlockAdapter(beaconBlock)
 
     val proposalPayload = ProposalPayload(roundIdentifier, qbftBlock, QbftBlockCodecAdapter)
-    val signature = signatureAlgorithm.sign(proposalPayload.hashForSignature(), keyPair)
+    val signature = nodeKey.sign(proposalPayload.hashForSignature())
     val signedPayload = SignedData.create(proposalPayload, signature)
     val proposal = Proposal(signedPayload, emptyList(), emptyList())
     val messageData = ProposalMessageData.create(proposal)
