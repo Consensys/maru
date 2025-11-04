@@ -69,7 +69,6 @@ fun initPersistence(
   persistence: Persistence,
   nodeKeyData: PrivateKeyGenerator.KeyData,
 ) {
-  if (!Files.exists(persistence.dataPath)) Files.createDirectory(persistence.dataPath)
   if (!Files.exists(persistence.privateKeyPath.parent)) Files.createDirectory(persistence.privateKeyPath.parent)
   Files.writeString(persistence.privateKeyPath, nodeKeyData.prefixedPrivateKey.encodeHex())
 }

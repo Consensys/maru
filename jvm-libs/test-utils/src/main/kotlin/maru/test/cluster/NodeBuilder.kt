@@ -50,8 +50,8 @@ class NodeBuilder(
     prevConfig.copy(
       persistence =
         prevConfig.persistence.copy(
-          dataPath = clusterDataDir.resolve(label),
-          privateKeyPath = clusterDataDir.resolve(label).resolve("private-key"),
+          dataPath = clusterDataDir.resolve("$label-data"),
+          privateKeyPath = clusterDataDir.resolve("$label-private-key"),
         ),
     )
 
