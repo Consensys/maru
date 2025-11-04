@@ -78,7 +78,7 @@ object PrivateKeyGenerator {
     val privateKeyTyped = unmarshalSecp256k1PrivateKey(privateKey)
     val peerId = PeerId.fromPubKey(privateKeyTyped.publicKey())
     val libP2PNodeId = LibP2PNodeId(peerId)
-    val nodeKey = NodeKey(createNodeKey(normalizedPrivateKey))
+    val nodeKey = createNodeKey(normalizedPrivateKey)
     return KeyData(
       privateKey = privateKeyTyped.raw(),
       prefixedPrivateKey = marshalPrivateKey(privateKeyTyped),
@@ -95,11 +95,12 @@ object PrivateKeyGenerator {
       else -> privateKey.takeLast(32).toByteArray()
     }
 
-  private fun createNodeKey(normalizedPrivateKey: ByteArray): KeyPairSecurityModule {
+  private fun createNodeKey(normalizedPrivateKey: ByteArray): NodeKey {
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val besuPrivateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(normalizedPrivateKey))
     val keyPair = signatureAlgorithm.createKeyPair(besuPrivateKey)
-    return KeyPairSecurityModule(keyPair)
+    val keyPairSecurityModule = KeyPairSecurityModule(keyPair)
+    return NodeKey(keyPairSecurityModule)
   }
 
   fun getKeyDataByPrefixedKey(prefixedPrivateKey: ByteArray): KeyData {
