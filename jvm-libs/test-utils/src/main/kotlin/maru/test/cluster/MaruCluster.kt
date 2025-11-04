@@ -282,8 +282,8 @@ class MaruCluster(
   fun stop() {
     this.runningState = RunningState.STOPPING
     nodes.forEach {
-      it.maru.close()
       it.maru.stop()
+      it.maru.close()
       it.elNode?.stop()
     }
     besuCluster.stop()
