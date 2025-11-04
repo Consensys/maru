@@ -233,6 +233,7 @@ class MaruFactory(
       }
 
     return MaruConfig(
+      allowEmptyBlocks = allowEmptyBlocks,
       persistence = Persistence(dataPath = dataDir),
       qbft = qbftOptions,
       p2p = p2pConfig,
