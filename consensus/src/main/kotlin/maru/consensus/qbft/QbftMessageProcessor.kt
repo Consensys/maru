@@ -58,11 +58,13 @@ class QbftMessageProcessor(
     metadata: QbftMessageMetadata,
   ): ValidationResult {
     if (isMsgForCurrentHeight(metadata.sequenceNumber)) {
-      return if (isMsgFromKnownValidator(metadata.author) && isLocalNodeValidator()) {
+      return if (!isMsgFromKnownValidator(metadata.author)) {
+        Invalid("Message from unknown validator: ${metadata.author}")
+      } else if (!isLocalNodeValidator()) {
+        Ignore("Local node is not a validator")
+      } else {
         bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())
         Valid
-      } else {
-        Ignore("Not from known validator or not a local validator")
       }
     } else if (isMsgForFutureChainHeight(metadata.sequenceNumber)) {
       bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())

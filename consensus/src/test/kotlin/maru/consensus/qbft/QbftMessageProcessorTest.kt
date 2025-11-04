@@ -98,7 +98,7 @@ class QbftMessageProcessorTest {
   }
 
   @Test
-  fun `should ignore current message from unknown validator`() {
+  fun `should reject current message from unknown validator`() {
     val knownValidator = Address.fromHexString("0xABCDEF1234567890123456789012345678901234")
 
     whenever(blockChain.chainHeadBlockNumber).thenReturn(100L)
@@ -109,7 +109,7 @@ class QbftMessageProcessorTest {
 
     val qbftMessage = createQbftMessage(100L)
     val result = messageProcessor.handleMessage(qbftMessage).get()
-    assertThat(result.code).isEqualTo(ValidationResultCode.IGNORE)
+    assertThat(result.code).isEqualTo(ValidationResultCode.REJECT)
     verify(bftEventQueue, never()).add(any())
   }
 
