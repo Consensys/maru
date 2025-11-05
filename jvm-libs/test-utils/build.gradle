@@ -29,3 +29,7 @@ dependencies {
   implementation 'org.assertj:assertj-core'
   implementation 'org.awaitility:awaitility-kotlin'
 }
+
+test {
+  maxParallelForks = Runtime.runtime.availableProcessors() / 2 ?: 1
+}
