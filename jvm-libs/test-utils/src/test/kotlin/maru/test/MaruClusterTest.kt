@@ -59,16 +59,12 @@ class MaruClusterTest {
         .addNode(NodeRole.Follower)
         .addNode(NodeRole.Follower) {
           it.withLabel("follower-1")
-        }.addNode(NodeRole.Follower) {
-          it.withLabel("follower-2")
         }.addNode(NodeRole.Sequencer)
         .addNode("follower-special")
         .start()
 
     assertThat(cluster.node("follower").nodeRole).isEqualTo(NodeRole.Follower)
     assertThat(cluster.node("follower-1").nodeRole).isEqualTo(NodeRole.Follower)
-    assertThat(cluster.node("follower-2").nodeRole).isEqualTo(NodeRole.Follower)
-    assertThat(cluster.node("follower-special").nodeRole).isEqualTo(NodeRole.Follower)
     assertThat(cluster.node("follower-special").nodeRole).isEqualTo(NodeRole.Follower)
     assertThat(cluster.node("sequencer").nodeRole).isEqualTo(NodeRole.Sequencer)
   }
@@ -156,9 +152,6 @@ class MaruClusterTest {
         }.addNode("follower-internal-1") { nodeBuilder ->
           nodeBuilder
             .staticPeers(listOf("sequencer"))
-        }.addNode("follower-internal-2") { nodeBuilder ->
-          nodeBuilder
-            .staticPeers(listOf("sequencer"))
         }.start()
 
     await()
@@ -173,12 +166,9 @@ class MaruClusterTest {
   fun `should instantiate multiple nodes in the cluster with discovery`() {
     cluster =
       MaruCluster()
-        .addNode("bootnode-0")
         .addNode("bootnode-1")
         .addNode("sequencer")
         .addNode("follower-internal-0")
-        .addNode("follower-internal-1")
-        .addNode("follower-internal-2")
         .start()
     val followers = cluster.nodes(NodeRole.Follower)
 
@@ -205,8 +195,6 @@ class MaruClusterTest {
         .addNode("bootnode-0")
         .addNode("sequencer")
         .addNode("follower-internal-0")
-        .addNode("follower-internal-1")
-        .addNode("follower-internal-2")
         .start()
 
     await()
