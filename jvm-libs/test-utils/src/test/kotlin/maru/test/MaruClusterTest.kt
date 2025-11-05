@@ -28,8 +28,15 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.MethodOrderer
+import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestMethodOrder
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
+@Execution(ExecutionMode.SAME_THREAD)
 class MaruClusterTest {
   private lateinit var cluster: MaruCluster
 
@@ -53,6 +60,7 @@ class MaruClusterTest {
   }
 
   @Test
+  @Order(1)
   fun `should allow to retrieve nodes by label`() {
     cluster =
       MaruCluster()
@@ -67,6 +75,7 @@ class MaruClusterTest {
   }
 
   @Test
+  @Order(2)
   fun `should create network starting at prague`() {
     cluster =
       MaruCluster(
@@ -92,6 +101,7 @@ class MaruClusterTest {
   }
 
   @Test
+  @Order(3)
   fun `should create network starting with all forks and switch post ttd`() {
     val now = Clock.System.now()
     val terminalTotalDifficulty = 20UL
@@ -139,6 +149,7 @@ class MaruClusterTest {
   }
 
   @Test
+  @Order(4)
   fun `should instantiate multiple nodes in the cluster with static peering and sync`() {
     cluster =
       MaruCluster()
@@ -160,6 +171,7 @@ class MaruClusterTest {
   }
 
   @Test
+  @Order(5)
   fun `should instantiate multiple nodes in the cluster with discovery`() {
     cluster =
       MaruCluster()
@@ -186,6 +198,7 @@ class MaruClusterTest {
   }
 
   @Test
+  @Order(6)
   fun `should allow to add nodes after cluster is has started`() {
     cluster =
       MaruCluster()
@@ -214,6 +227,7 @@ class MaruClusterTest {
   }
 
   @Test
+  @Order(7)
   fun `should fail when nodes with duplicated labels are added`() {
     cluster =
       MaruCluster()
