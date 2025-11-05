@@ -13,22 +13,24 @@ import java.net.ServerSocket
 object NetworkUtil {
   fun findFreePorts(count: Int): List<UInt> {
     val ports = mutableListOf<UInt>()
-    while (ports.size < count) {
-      val freePort = findFreePort()
-      if (!ports.contains(freePort)) {
-        ports.add(freePort)
+    val sockets = mutableListOf<ServerSocket>()
+    var error: Throwable? = null
+    while (ports.size < count && error == null) {
+      runCatching {
+        ServerSocket(0).also { socket ->
+          sockets.add(socket)
+          ports.add(socket.localPort.toUInt())
+        }
+      }.onFailure {
+        error = it
       }
+    }
+    sockets.forEach { runCatching { it.close() } }
+    if (error != null) {
+      throw RuntimeException("Could not find a free port", error)
     }
     return ports
   }
 
-  fun findFreePort(): UInt =
-    runCatching {
-      ServerSocket(0).use { socket ->
-        socket.reuseAddress = true
-        socket.localPort.toUInt()
-      }
-    }.getOrElse {
-      throw RuntimeException("Could not find a free port", it)
-    }
+  fun findFreePort(): UInt = findFreePorts(1).first()
 }
