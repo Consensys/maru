@@ -56,6 +56,7 @@ enum class Network(
   descriptionHeading = "%nDescription:%n%n",
   optionListHeading = "%nOptions:%n",
   footerHeading = "%n",
+  mixinStandardHelpOptions = true,
 )
 class MaruAppCli(
   private val maruAppFactory: MaruAppFactoryCreator = MaruAppFactory(),
@@ -64,9 +65,13 @@ class MaruAppCli(
 
   @Option(
     names = ["--config"],
-    paramLabel = "CONFIG.toml,CONFIG.overrides.toml",
-    description = ["Configuration files"],
+    paramLabel = "CONFIG.toml",
+    description = [
+      "Comma-separated list of configuration files or in multiple options" +
+        " e.g. \"--config=CONFIG.toml --config=CONFIG.overrides.toml\"",
+    ],
     arity = "1..*",
+    split = ",",
     required = true,
   )
   val configFiles: List<File>? = null

@@ -307,7 +307,38 @@ class MaruAppCliTest {
   }
 
   @Test
-  fun `should parse commandline args with overrides configs and 'genesis-file' specified`() {
+  fun `should parse commandline args with comma-separated configs and 'genesis-file' specified`() {
+    val args =
+      listOf(
+        "--config=${tempMaruConfigFile.absolutePath},${tempMaruConfigOverridesFile.absolutePath}",
+        "--genesis-file=${tempMaruGenesisFile.absolutePath}",
+      )
+    val exitCode = cmd.execute(*args.toTypedArray())
+    assertThat(exitCode).isEqualTo(0)
+
+    val expectedMaruConfig = parseConfig<MaruConfigDtoToml>(expectedMaruConfigDtoToml).domainFriendly()
+    val expectedMaruGenesis = parseBeaconChainConfig(expectedMaruGenesisJson).domainFriendly()
+
+    verify(mockMaruAppFactory).create(
+      eq(expectedMaruConfig),
+      eq(expectedMaruGenesis),
+      anyOrNull(),
+      anyOrNull(),
+      anyOrNull(),
+      anyOrNull(),
+      anyOrNull(),
+      anyOrNull(),
+    )
+
+    val cli = cmd.getCommand<MaruAppCli>()
+    assertThat(cli.genesisOptions!!.network).isNull()
+    assertThat(cli.genesisOptions!!.genesisFile!!).isEqualTo(tempMaruGenesisFile.absolutePath)
+    assertThat(cli.configFiles!![0].path).isEqualTo(tempMaruConfigFile.absolutePath)
+    assertThat(cli.configFiles[1].path).isEqualTo(tempMaruConfigOverridesFile.absolutePath)
+  }
+
+  @Test
+  fun `should parse commandline args with multiple configs and 'genesis-file' specified`() {
     val args =
       listOf(
         "--config=${tempMaruConfigFile.absolutePath}",
