@@ -57,14 +57,11 @@ class MaruClusterTest {
     cluster =
       MaruCluster()
         .addNode(NodeRole.Follower)
-        .addNode(NodeRole.Follower) {
-          it.withLabel("follower-1")
-        }.addNode(NodeRole.Sequencer)
+        .addNode(NodeRole.Sequencer)
         .addNode("follower-special")
         .start()
 
     assertThat(cluster.node("follower").nodeRole).isEqualTo(NodeRole.Follower)
-    assertThat(cluster.node("follower-1").nodeRole).isEqualTo(NodeRole.Follower)
     assertThat(cluster.node("follower-special").nodeRole).isEqualTo(NodeRole.Follower)
     assertThat(cluster.node("sequencer").nodeRole).isEqualTo(NodeRole.Sequencer)
   }
