@@ -32,8 +32,8 @@ class MaruAppCliTest {
       allow-empty-blocks = true
 
       [persistence]
-      data-path="/tmp/maru-db"
-      private-key-path="/tmp/maru-db/private-key"
+      data-path="/maru-db"
+      private-key-path="/maru-db/private-key"
 
       [qbft]
       fee-recipient = "0x0000000000000000000000000000000000000000"
@@ -94,6 +94,11 @@ class MaruAppCliTest {
       static-peers = []
       reconnect-delay = "500 ms"
 
+      [follower-engine-apis]
+      "follower-erigon" = { endpoint = "http://localhost:18551", jwt-secret-path = "./tmp/docker/jwt" }
+      "follower-nethermind" = { endpoint = "http://localhost:18552", jwt-secret-path = "./tmp/docker/jwt" }
+      "follower-geth" = { endpoint = "http://localhost:18553", jwt-secret-path = "./tmp/docker/jwt" }
+
       [payload-validator]
       engine-api-endpoint = { endpoint = "http://localhost:8550" }
       eth-api-endpoint = { endpoint = "http://localhost:8545" }
@@ -126,9 +131,9 @@ class MaruAppCliTest {
       eth-api-endpoint = { endpoint = "http://localhost:8545" }
 
       [follower-engine-apis]
-      "follower-erigon" = { endpoint = "http://follower-erigon:8551", jwt-secret-path = "../docker/jwt" }
-      "follower-nethermind" = { endpoint = "http://follower-nethermind:8550", jwt-secret-path = "../docker/jwt" }
-      "follower-geth" = { endpoint = "http://follower-geth:8551", jwt-secret-path = "../docker/jwt" }
+      "follower-erigon" = { endpoint = "http://localhost:18551", jwt-secret-path = "./tmp/docker/jwt" }
+      "follower-nethermind" = { endpoint = "http://localhost:18552", jwt-secret-path = "./tmp/docker/jwt" }
+      "follower-geth" = { endpoint = "http://localhost:18553", jwt-secret-path = "./tmp/docker/jwt" }
 
       [observability]
       port = 9090
@@ -286,12 +291,28 @@ class MaruAppCliTest {
   }
 
   @Test
-  fun `should parse commandline args with overrides configs and 'maru-genesis-file' specified`() {
+  fun `should parse commandline args with 'genesis-file' specified`() {
     val args =
       listOf(
         "--config=${tempMaruConfigFile.absolutePath}",
-        "--config=${tempMaruConfigOverridesFile!!.absolutePath}",
-        "--maru-genesis-file=${tempMaruGenesisFile.absolutePath}",
+        "--genesis-file=${tempMaruGenesisFile.absolutePath}",
+      )
+    val exitCode = cmd.execute(*args.toTypedArray())
+    assertThat(exitCode).isEqualTo(0)
+
+    val cli = cmd.getCommand<MaruAppCli>()
+    assertThat(cli.genesisOptions!!.network).isNull()
+    assertThat(cli.genesisOptions!!.genesisFile!!).isEqualTo(tempMaruGenesisFile.absolutePath)
+    assertThat(cli.configFiles!!.first().path).isEqualTo(tempMaruConfigFile.absolutePath)
+  }
+
+  @Test
+  fun `should parse commandline args with overrides configs and 'genesis-file' specified`() {
+    val args =
+      listOf(
+        "--config=${tempMaruConfigFile.absolutePath}",
+        "--config=${tempMaruConfigOverridesFile.absolutePath}",
+        "--genesis-file=${tempMaruGenesisFile.absolutePath}",
       )
     val exitCode = cmd.execute(*args.toTypedArray())
     assertThat(exitCode).isEqualTo(0)
@@ -314,23 +335,7 @@ class MaruAppCliTest {
     assertThat(cli.genesisOptions!!.network).isNull()
     assertThat(cli.genesisOptions!!.genesisFile!!).isEqualTo(tempMaruGenesisFile.absolutePath)
     assertThat(cli.configFiles!![0].path).isEqualTo(tempMaruConfigFile.absolutePath)
-    assertThat(cli.configFiles[1].path).isEqualTo(tempMaruConfigOverridesFile!!.absolutePath)
-  }
-
-  @Test
-  fun `should parse commandline args with 'genesis-file' specified`() {
-    val args =
-      listOf(
-        "--config=${tempMaruConfigFile.absolutePath}",
-        "--genesis-file=${tempMaruGenesisFile.absolutePath}",
-      )
-    val exitCode = cmd.execute(*args.toTypedArray())
-    assertThat(exitCode).isEqualTo(0)
-
-    val cli = cmd.getCommand<MaruAppCli>()
-    assertThat(cli.genesisOptions!!.network).isNull()
-    assertThat(cli.genesisOptions!!.genesisFile!!).isEqualTo(tempMaruGenesisFile.absolutePath)
-    assertThat(cli.configFiles!!.first().path).isEqualTo(tempMaruConfigFile.absolutePath)
+    assertThat(cli.configFiles[1].path).isEqualTo(tempMaruConfigOverridesFile.absolutePath)
   }
 
   @Test
