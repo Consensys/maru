@@ -313,8 +313,8 @@ class MaruCluster(
 
   private fun assertUniqueLabel(nodeLabel: String) {
     val allNodesLabels = nodesBuilders.map { it.nodeLabel } + nodes.map { it.label }
-    require(allNodesLabels == allNodesLabels.distinct()) {
-      "Node label '$nodeLabel' is already used in the cluster. Please use unique labels for each node."
+    require(!allNodesLabels.contains(nodeLabel)) {
+      "Node labels must be unique: label=$nodeLabel already exists in the cluster"
     }
   }
 

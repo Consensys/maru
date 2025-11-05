@@ -227,4 +227,19 @@ class MaruClusterTest {
         }
       }
   }
+
+  @Test
+  fun `should fail when nodes with duplicated labels are added`() {
+    cluster =
+      MaruCluster()
+        .addNode("node-1")
+        .addNode("node-2")
+
+    try {
+      cluster.addNode("node-1")
+      throw AssertionError("Expected exception was not thrown")
+    } catch (e: IllegalArgumentException) {
+      assertThat(e.message).isEqualTo("Node labels must be unique: label=node-1 already exists in the cluster")
+    }
+  }
 }
