@@ -73,6 +73,7 @@ class BesuCluster(
       node.configuration.isDiscoveryEnabled
 
   fun addNode(node: BesuNode) {
+    require(nodes[node.name] == null) { "Node with name ${node.name} already exists" }
     nodes[node.name] = node
   }
 
@@ -133,6 +134,7 @@ class BesuCluster(
 
   private fun stopNode(node: BesuNode) {
     besuNodeRunner.stopNode(node)
+    node.stop()
     nodes.remove(node.name)
   }
 

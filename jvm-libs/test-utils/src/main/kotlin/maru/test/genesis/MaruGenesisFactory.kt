@@ -32,7 +32,7 @@ class MaruGenesisFactory(
     require(blockTimeSeconds in 1u..60u) { "blockTimeSeconds must be between 1 and 60 seconds" }
     require(validators.isNotEmpty()) { "Validators must not be empty" }
     require(terminalTotalDifficulty == null || terminalTotalDifficulty > 0uL) {
-      "terminalTotalDifficulty must be greater than 0"
+      "terminalTotalDifficulty must be greater than 0 or null"
     }
 
     val validatorsSet = validators.map { Validator(it) }.toSet()
