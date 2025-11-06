@@ -31,14 +31,14 @@ import maru.database.InMemoryP2PState
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusManager
+import maru.p2p.testutils.NetworkUtil.findFreePort
+import maru.p2p.testutils.NetworkUtil.findFreePorts
 import maru.p2p.topics.BesuMessageDataSerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
 import maru.syncing.FakeSyncStatusProvider
 import maru.syncing.SyncStatusProvider
-import maru.test.util.NetworkUtil.findFreePort
-import maru.test.util.NetworkUtil.findFreePorts
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException

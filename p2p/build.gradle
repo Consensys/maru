@@ -51,7 +51,6 @@ dependencies {
   implementation(project(":core"))
 
   testImplementation(testFixtures(project(":core")))
-  testImplementation(project(":jvm-libs:test-utils"))
   testFixturesImplementation(project(":serialization"))
   testFixturesImplementation(project(":crypto"))
   testFixturesImplementation(testImplementation(testFixtures(project(":core"))))
