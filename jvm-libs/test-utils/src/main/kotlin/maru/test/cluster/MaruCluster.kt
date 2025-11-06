@@ -127,9 +127,6 @@ class MaruCluster(
     ).also(configurator)
   }
 
-  /**
-   *  Add new node to the cluster configuration, before starting the cluster.
-   */
   @Synchronized
   fun addNode(
     label: String,
