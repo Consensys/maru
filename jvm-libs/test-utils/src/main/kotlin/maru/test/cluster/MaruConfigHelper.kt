@@ -34,11 +34,7 @@ val configTemplate: MaruConfig =
     allowEmptyBlocks = true,
     persistence = Persistence(dataPath = Path.of("maru-data")),
     forkTransition = ForkTransition(),
-    validatorElNode =
-      ValidatorElNode(
-        payloadValidationEnabled = false,
-        engineApiEndpoint = ApiEndpointConfig(URI.create("http://replace-me:8551").toURL()),
-      ),
+    validatorElNode = null,
     api = ApiConfig(port = 0u),
     qbft = null, // Followers by default
     p2p =
@@ -128,11 +124,14 @@ internal fun setValidatorConfig(
   if (elNode == null) return config
 
   val updatedValidatorConfig =
-    config.validatorElNode!!.copy(
+    config.validatorElNode?.copy(
       engineApiEndpoint =
         config.validatorElNode!!.engineApiEndpoint.copy(
           endpoint = URI.create(elNode.engineApiUrl()).toURL(),
         ),
+    ) ?: ValidatorElNode(
+      payloadValidationEnabled = false,
+      engineApiEndpoint = ApiEndpointConfig(endpoint = URI.create(elNode.engineApiUrl()).toURL()),
     )
   val updatedForkTransition =
     config.forkTransition.copy(
