@@ -40,8 +40,8 @@ class MaruClusterTest {
       rootLevel = Level.WARN,
       logLevels =
         listOf(
-          "maru" to Level.INFO,
-          "maru.clients" to Level.DEBUG,
+          "maru" to Level.WARN,
+          "maru.clients" to Level.TRACE,
         ),
     )
   }
