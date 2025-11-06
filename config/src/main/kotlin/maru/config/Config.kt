@@ -274,7 +274,7 @@ data class MaruConfig(
   val linea: LineaConfig? = null,
   val api: ApiConfig,
   val syncing: SyncingConfig,
-  val forkTransition: ForkTransition,
+  val forkTransition: ForkTransition = ForkTransition(),
 ) {
   init {
     if (qbft != null) {

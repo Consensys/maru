@@ -16,6 +16,7 @@ import kotlin.time.Duration.Companion.seconds
 import maru.config.ApiConfig
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
+import maru.config.ForkTransition
 import maru.config.MaruConfig
 import maru.config.ObservabilityConfig
 import maru.config.P2PConfig
@@ -35,7 +36,6 @@ val configTemplate: MaruConfig =
     validatorElNode =
       ValidatorElNode(
         payloadValidationEnabled = false,
-        ethApiEndpoint = ApiEndpointConfig(URI.create("http://replace-me:8545").toURL()),
         engineApiEndpoint = ApiEndpointConfig(URI.create("http://replace-me:8551").toURL()),
       ),
     api = ApiConfig(port = 0u),
@@ -56,6 +56,10 @@ val configTemplate: MaruConfig =
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection = SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
+      ),
+    forkTransition =
+      ForkTransition(
+        l2EthApiEndpoint = ApiEndpointConfig(URI.create("http://replace-me:8545").toURL()),
       ),
     observability =
       ObservabilityConfig(
@@ -120,23 +124,33 @@ internal fun setP2pConfig(
   return config.copy(p2p = p2pConfig)
 }
 
-internal fun setValidatorConfig(
+internal fun setElValidatorConfig(
   config: MaruConfig,
   elNode: ElNode?,
 ): MaruConfig {
+  require(elNode == null || config.validatorElNode != null) {
+    "If ElNode is defined, validatorElNode has to be set!"
+  }
+  require(elNode == null || config.forkTransition.l2EthApiEndpoint != null) {
+    "If ElNode is defined, forkTransition.l2EthApiEndpoint has to be set!"
+  }
   val validatorConfig =
-    elNode
-      ?.let {
-        config.validatorElNode.copy(
-          ethApiEndpoint =
-            config.validatorElNode.ethApiEndpoint.copy(
-              endpoint = URI.create(it.ethApiUrl()).toURL(),
-            ),
-          engineApiEndpoint =
-            config.validatorElNode.engineApiEndpoint.copy(
-              endpoint = URI.create(it.engineApiUrl()).toURL(),
-            ),
-        )
-      } ?: throw IllegalArgumentException("Maru still depends on a El Node")
-  return config.copy(validatorElNode = validatorConfig)
+    elNode?.let {
+      config.validatorElNode!!.copy(
+        engineApiEndpoint =
+          config.validatorElNode!!.engineApiEndpoint.copy(
+            endpoint = URI.create(it.engineApiUrl()).toURL(),
+          ),
+      )
+    }
+  val forkTransitionConfig =
+    elNode?.let {
+      config.forkTransition.copy(
+        l2EthApiEndpoint =
+          config.forkTransition.l2EthApiEndpoint!!.copy(
+            endpoint = URI.create(it.ethApiUrl()).toURL(),
+          ),
+      )
+    } ?: config.forkTransition
+  return config.copy(validatorElNode = validatorConfig, forkTransition = forkTransitionConfig)
 }

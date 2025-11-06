@@ -28,7 +28,7 @@ fun createMaru(
   effectiveConfig =
     setQbftConfigIfSequencer(effectiveConfig, isSequencer = nodeRole == NodeRole.Sequencer, nodeKeyData)
   effectiveConfig = setP2pConfig(effectiveConfig, bootnodes, staticpeers)
-  effectiveConfig = setValidatorConfig(effectiveConfig, elNode)
+  effectiveConfig = setElValidatorConfig(effectiveConfig, elNode)
 
   return MaruAppFactory().create(
     config = effectiveConfig,
