@@ -104,9 +104,9 @@ class MaruCluster(
     ),
   val maruConfigTemplate: MaruConfig = configTemplate,
   val maruClusterDataDir: Path = createClusterDir(),
-  val besuClusterWaitPeerDiscovery: Boolean = false,
+  private val besuClusterWaitPeerDiscovery: Boolean = false,
   val besuCluster: BesuCluster = BesuCluster(),
-  val log: Logger = LogManager.getLogger(MaruCluster::class.java),
+  private val log: Logger = LogManager.getLogger(MaruCluster::class.java),
 ) {
   private val genesisFactory: GenesisFactory = GenesisFactory(chainId, blockTimeSeconds)
   private val nodesBuilders: MutableList<NodeBuilder> = mutableListOf()
