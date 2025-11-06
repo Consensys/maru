@@ -40,6 +40,10 @@ import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 
+interface LongRunningCloseable :
+  LongRunningService,
+  AutoCloseable
+
 class MaruApp(
   val config: MaruConfig,
   val beaconGenesisConfig: ForksSchedule,
@@ -57,7 +61,7 @@ class MaruApp(
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
-) : AutoCloseable {
+) : LongRunningCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   private fun getPrivateKeyWithoutPrefix() = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
@@ -109,7 +113,7 @@ class MaruApp(
       privateKeyWithoutPrefix = getPrivateKeyWithoutPrefix(),
     )
 
-  fun start() {
+  override fun start() {
     if (finalizationProvider is LineaFinalizationProvider) {
       start("Finalization Provider", finalizationProvider::start)
     }
@@ -125,7 +129,7 @@ class MaruApp(
     log.info("Maru is up")
   }
 
-  fun stop() {
+  override fun stop() {
     stop("Sync service", syncControllerManager::stop)
     stop("P2P Network") { p2pNetwork.stop().get() }
     if (finalizationProvider is LineaFinalizationProvider) {

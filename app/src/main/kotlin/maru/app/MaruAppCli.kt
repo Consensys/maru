@@ -59,7 +59,7 @@ enum class Network(
   mixinStandardHelpOptions = true,
 )
 class MaruAppCli(
-  private val maruAppFactory: MaruAppFactoryCreator = MaruAppFactory(),
+  private val maruAppFactory: MaruAppFactory = MaruAppFactory(),
 ) : Callable<Int> {
   private val log = LogManager.getLogger(this.javaClass)
 
@@ -129,22 +129,20 @@ class MaruAppCli(
         config = parsedAppConfig.domainFriendly(),
         beaconGenesisConfig = parsedBeaconGenesisConfig.domainFriendly(),
       )
-    if (app != null) {
-      app.start()
+    app.start()
 
-      Runtime
-        .getRuntime()
-        .addShutdownHook(
-          Thread {
-            app.stop()
-            if (LogManager.getContext() is LoggerContext) {
-              // Disable log4j auto shutdown hook is not used otherwise
-              // Messages in App.stop won't appear in the logs
-              Configurator.shutdown(LogManager.getContext() as LoggerContext)
-            }
-          },
-        )
-    }
+    Runtime
+      .getRuntime()
+      .addShutdownHook(
+        Thread {
+          app.stop()
+          if (LogManager.getContext() is LoggerContext) {
+            // Disable log4j auto shutdown hook is not used otherwise
+            // Messages in App.stop won't appear in the logs
+            Configurator.shutdown(LogManager.getContext() as LoggerContext)
+          }
+        },
+      )
 
     return 0
   }

@@ -21,42 +21,25 @@ import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import picocli.CommandLine
 
 class MaruAppCliTest {
   companion object {
+    object NoOpMaruApp : LongRunningCloseable {
+      override fun start() = Unit
+
+      override fun stop() = Unit
+
+      override fun close() = Unit
+    }
+
     private val maruConfigDtoToml =
       """
-      allow-empty-blocks = true
-
       [persistence]
-      data-path="/maru-db"
-      private-key-path="/maru-db/private-key"
-
-      [qbft]
-      fee-recipient = "0x0000000000000000000000000000000000000000"
-
-      [p2p]
-      port = 3322
-      ip-address = "0.0.0.0"
-      static-peers = []
-      reconnect-delay = "500 ms"
-
-      [p2p.discovery]
-      port = 3324
-      bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
-      refresh-interval = "2 minutes"
-
-      [payload-validator]
-      engine-api-endpoint = { endpoint = "http://sequencer:8550" }
-      eth-api-endpoint = { endpoint = "http://sequencer:8545" }
-
-      [follower-engine-apis]
-      "follower-erigon" = { endpoint = "http://follower-erigon:8551", jwt-secret-path = "../docker/jwt" }
-      "follower-nethermind" = { endpoint = "http://follower-nethermind:8550", jwt-secret-path = "../docker/jwt" }
-      "follower-geth" = { endpoint = "http://follower-geth:8551", jwt-secret-path = "../docker/jwt" }
+      data-path="/tmp/maru-db"
 
       [observability]
       port = 9090
@@ -66,74 +49,34 @@ class MaruAppCliTest {
       [api]
       port = 8080
 
+      [payload-validator]
+      engine-api-endpoint = { endpoint = "http://localhost:8550" }
+      eth-api-endpoint = { endpoint = "http://localhost:8545" }
+
       [syncing]
       peer-chain-height-polling-interval = "5 seconds"
-      el-sync-status-refresh-interval = "5 seconds"
       sync-target-selection = "Highest"
-      # sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
-      desync-tolerance = 10
-
-      [syncing.download]
-      block-range-request-timeout = "10 seconds"
-      blocks-batch-size = 10
-      blocks-parallelism = 10
-      max-retries = 5
-      backoff-delay = "1 seconds"
-      use-unconditional-random-download-peer = false
+      el-sync-status-refresh-interval = "5 seconds"
       """.trimIndent()
 
     private val maruConfigOverridesDtoToml =
       """
       [persistence]
-      data-path="./tmp/maru-db"
-      private-key-path="./tmp/maru-db/private-key"
-
-      [p2p]
-      port = 3321
-      ip-address = "0.0.0.0"
-      static-peers = []
-      reconnect-delay = "500 ms"
-
-      [follower-engine-apis]
-      "follower-erigon" = { endpoint = "http://localhost:18551", jwt-secret-path = "./tmp/docker/jwt" }
-      "follower-nethermind" = { endpoint = "http://localhost:18552", jwt-secret-path = "./tmp/docker/jwt" }
-      "follower-geth" = { endpoint = "http://localhost:18553", jwt-secret-path = "./tmp/docker/jwt" }
+      data-path="./OVERRIDE/maru-db"
+      private-key-path="./OVERRIDE/maru-db/private-key"
 
       [payload-validator]
-      engine-api-endpoint = { endpoint = "http://localhost:8550" }
-      eth-api-endpoint = { endpoint = "http://localhost:8545" }
+      engine-api-endpoint = { endpoint = "http://OVEERRIDE:8550" }
+
+      [syncing]
+      peer-chain-height-polling-interval = "10 seconds"
       """.trimIndent()
 
     private val expectedMaruConfigDtoToml =
       """
-      allow-empty-blocks = true
-
       [persistence]
-      data-path="./tmp/maru-db"
-      private-key-path="./tmp/maru-db/private-key"
-
-      [qbft]
-      fee-recipient = "0x0000000000000000000000000000000000000000"
-
-      [p2p]
-      port = 3321
-      ip-address = "0.0.0.0"
-      static-peers = []
-      reconnect-delay = "500 ms"
-
-      [p2p.discovery]
-      port = 3324
-      bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
-      refresh-interval = "2 minutes"
-
-      [payload-validator]
-      engine-api-endpoint = { endpoint = "http://localhost:8550" }
-      eth-api-endpoint = { endpoint = "http://localhost:8545" }
-
-      [follower-engine-apis]
-      "follower-erigon" = { endpoint = "http://localhost:18551", jwt-secret-path = "./tmp/docker/jwt" }
-      "follower-nethermind" = { endpoint = "http://localhost:18552", jwt-secret-path = "./tmp/docker/jwt" }
-      "follower-geth" = { endpoint = "http://localhost:18553", jwt-secret-path = "./tmp/docker/jwt" }
+      data-path="./OVERRIDE/maru-db"
+      private-key-path="./OVERRIDE/maru-db/private-key"
 
       [observability]
       port = 9090
@@ -143,55 +86,21 @@ class MaruAppCliTest {
       [api]
       port = 8080
 
-      [syncing]
-      peer-chain-height-polling-interval = "5 seconds"
-      el-sync-status-refresh-interval = "5 seconds"
-      sync-target-selection = "Highest"
-      # sync-target-selection = { _type = "MostFrequent", peer-chain-height-granularity = 10 }
-      desync-tolerance = 10
+      [payload-validator]
+      engine-api-endpoint = { endpoint = "http://OVEERRIDE:8550" }
+      eth-api-endpoint = { endpoint = "http://localhost:8545" }
 
-      [syncing.download]
-      block-range-request-timeout = "10 seconds"
-      blocks-batch-size = 10
-      blocks-parallelism = 10
-      max-retries = 5
-      backoff-delay = "1 seconds"
-      use-unconditional-random-download-peer = false
+      [syncing]
+      peer-chain-height-polling-interval = "10 seconds"
+      sync-target-selection = "Highest"
+      el-sync-status-refresh-interval = "5 seconds"
       """.trimIndent()
 
     private val expectedMaruGenesisJson =
       """
       {
         "chainId": 59144,
-        "config": {
-          "0": {
-            "type": "difficultyAwareQbft",
-            "blockTimeSeconds": 1,
-            "postTtdConfig": {
-              "validatorSet": ["0x9f31730181441beb67b10efaed5773767ea959bc"],
-              "elFork": "Paris"
-            },
-            "terminalTotalDifficulty": 49575263
-          },
-          "1761213600": {
-            "type": "qbft",
-            "validatorSet": ["0x9f31730181441beb67b10efaed5773767ea959bc"],
-            "blockTimeSeconds": 1,
-            "elFork": "Shanghai"
-          },
-          "1761645600": {
-            "type": "qbft",
-            "validatorSet": ["0x9f31730181441beb67b10efaed5773767ea959bc"],
-            "blockTimeSeconds": 1,
-            "elFork": "Cancun"
-          },
-          "1761646200": {
-            "type": "qbft",
-            "validatorSet": ["0x9f31730181441beb67b10efaed5773767ea959bc"],
-            "blockTimeSeconds": 1,
-            "elFork": "Prague"
-          }
-        }
+        "config": {}
       }
       """.trimIndent()
 
@@ -227,14 +136,23 @@ class MaruAppCliTest {
     }
   }
 
-  private val mockMaruAppFactory = Mockito.mock(MaruAppFactoryCreator::class.java)
+  private val mockMaruAppFactory = Mockito.mock(MaruAppFactory::class.java)
   private val cmd = CommandLine(MaruAppCli(mockMaruAppFactory))
 
   @BeforeEach
   fun setUp() {
     whenever(
-      mockMaruAppFactory.create(any(), any(), any(), any(), any(), any(), any(), any()),
-    ).thenReturn(null)
+      mockMaruAppFactory.create(
+        any(),
+        any(),
+        anyOrNull(),
+        anyOrNull(),
+        anyOrNull(),
+        anyOrNull(),
+        anyOrNull(),
+        anyOrNull(),
+      ),
+    ).thenReturn(NoOpMaruApp)
 
     cmd.registerConverter(
       Network::class.java,
@@ -307,7 +225,7 @@ class MaruAppCliTest {
   }
 
   @Test
-  fun `should parse commandline args with comma-separated configs and 'genesis-file' specified`() {
+  fun `should parse commandline args with comma-separated configs with latter overrides former`() {
     val args =
       listOf(
         "--config=${tempMaruConfigFile.absolutePath},${tempMaruConfigOverridesFile.absolutePath}",
@@ -338,7 +256,7 @@ class MaruAppCliTest {
   }
 
   @Test
-  fun `should parse commandline args with multiple configs and 'genesis-file' specified`() {
+  fun `should parse commandline args with multiple configs with latter overrides former`() {
     val args =
       listOf(
         "--config=${tempMaruConfigFile.absolutePath}",
