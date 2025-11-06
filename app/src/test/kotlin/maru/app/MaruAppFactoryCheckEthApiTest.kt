@@ -13,6 +13,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
+import maru.consensus.ConsensusConfig
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
@@ -23,62 +24,62 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 class MaruAppFactoryCheckEthApiTest {
-  private fun forksScheduleWithFutureDifficultyAware(nowTs: ULong): ForksSchedule {
-    val pre =
-      ForkSpec(
-        timestampSeconds = nowTs,
-        blockTimeSeconds = 1u,
-        configuration =
-          QbftConsensusConfig(
-            DataGenerators.randomValidators(),
-            ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-          ),
+  private fun baseQbftConfig() =
+    QbftConsensusConfig(
+      DataGenerators.randomValidators(),
+      ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+    )
+
+  private fun difficultyAware(base: QbftConsensusConfig) =
+    DifficultyAwareQbftConfig(
+      postTtdConfig = base,
+      terminalTotalDifficulty = 42u,
+    )
+
+  private fun forkSpec(
+    timestampSeconds: ULong,
+    config: ConsensusConfig,
+  ) = ForkSpec(
+    timestampSeconds = timestampSeconds,
+    blockTimeSeconds = 1u,
+    configuration = config,
+  )
+
+  // Creates a fork Schedule with 2 forks. Timestamps are set as offsets relative to the `nowTs`
+  private fun createForksSchedule(
+    nowTs: ULong,
+    currentOffsetSeconds: Long,
+    futureOneOffsetSeconds: Long,
+    futureOneIsDifficultyAware: Boolean,
+  ): ForksSchedule {
+    val firstTs = (nowTs.toLong() + currentOffsetSeconds).toULong()
+    val secondTs = (nowTs.toLong() + futureOneOffsetSeconds).toULong()
+    require(firstTs < secondTs) { "First timestamp has to be lower than the second one!" }
+
+    val first = forkSpec(firstTs, baseQbftConfig())
+    val second =
+      forkSpec(
+        secondTs,
+        if (futureOneIsDifficultyAware) difficultyAware(baseQbftConfig()) else baseQbftConfig(),
       )
-    val future =
-      ForkSpec(
-        timestampSeconds = nowTs + 10u,
-        blockTimeSeconds = 1u,
-        configuration =
-          DifficultyAwareQbftConfig(
-            postTtdConfig =
-              QbftConsensusConfig(
-                DataGenerators.randomValidators(),
-                ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-              ),
-            terminalTotalDifficulty = 42u,
-          ),
-      )
-    return ForksSchedule(chainId = 1337u, forks = listOf(pre, future))
+
+    return ForksSchedule(chainId = 1337u, forks = listOf(first, second))
   }
 
-  private fun forksScheduleWithoutFutureDifficultyAware(nowTs: ULong): ForksSchedule {
-    val pre =
-      ForkSpec(
-        timestampSeconds = nowTs,
-        blockTimeSeconds = 1u,
-        configuration =
-          QbftConsensusConfig(
-            DataGenerators.randomValidators(),
-            ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-          ),
-      )
-    val future =
-      ForkSpec(
-        timestampSeconds = nowTs + 10u,
-        blockTimeSeconds = 1u,
-        configuration =
-          QbftConsensusConfig(
-            DataGenerators.randomValidators(),
-            ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-          ),
-      )
-    return ForksSchedule(chainId = 1337u, forks = listOf(pre, future))
-  }
+  private fun futureSchedule(
+    nowTs: ULong,
+    futureDifficultyAware: Boolean,
+  ) = createForksSchedule(nowTs, 0L, 10L, futureDifficultyAware)
+
+  private fun currentSchedule(
+    nowTs: ULong,
+    currentDifficultyAware: Boolean,
+  ) = createForksSchedule(nowTs, -100L, 0L, currentDifficultyAware)
 
   @Test
   fun `throws when future DifficultyAwareQbft exists and l2EthWeb3j is null`() {
     val nowTs = 1_000_000UL
-    val schedule = forksScheduleWithFutureDifficultyAware(nowTs)
+    val schedule = futureSchedule(nowTs = nowTs, futureDifficultyAware = true)
     val fixedClock = Clock.fixed(Instant.ofEpochSecond(nowTs.toLong()), ZoneOffset.UTC)
 
     assertThatThrownBy {
@@ -90,17 +91,16 @@ class MaruAppFactoryCheckEthApiTest {
   @Test
   fun `does not throw when future DifficultyAwareQbft exists in the future and l2EthWeb3j is provided`() {
     val nowTs = 1_000_000UL
-    val schedule = forksScheduleWithFutureDifficultyAware(nowTs)
+    val schedule = futureSchedule(nowTs = nowTs, futureDifficultyAware = true)
     val fixedClock = Clock.fixed(Instant.ofEpochSecond(nowTs.toLong()), ZoneOffset.UTC)
 
-    // any non-null object
     MaruAppFactory().checkL2EthApiEndpointAndForks(fixedClock, schedule, Any())
   }
 
   @Test
   fun `does not throw when no future DifficultyAwareQbft exists`() {
     val nowTs = 1_000_000UL
-    val schedule = forksScheduleWithoutFutureDifficultyAware(nowTs)
+    val schedule = futureSchedule(nowTs = nowTs, futureDifficultyAware = false)
     val fixedClock = Clock.fixed(Instant.ofEpochSecond(nowTs.toLong()), ZoneOffset.UTC)
 
     MaruAppFactory().checkL2EthApiEndpointAndForks(fixedClock, schedule, null)
@@ -109,31 +109,7 @@ class MaruAppFactoryCheckEthApiTest {
   @Test
   fun `throws when current fork is DifficultyAwareQbft and l2EthWeb3j is null`() {
     val nowTs = 1_000_000UL
-    val pre =
-      ForkSpec(
-        timestampSeconds = nowTs - 100u,
-        blockTimeSeconds = 1u,
-        configuration =
-          QbftConsensusConfig(
-            DataGenerators.randomValidators(),
-            ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-          ),
-      )
-    val current =
-      ForkSpec(
-        timestampSeconds = nowTs,
-        blockTimeSeconds = 1u,
-        configuration =
-          DifficultyAwareQbftConfig(
-            postTtdConfig =
-              QbftConsensusConfig(
-                DataGenerators.randomValidators(),
-                ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-              ),
-            terminalTotalDifficulty = 42u,
-          ),
-      )
-    val schedule = ForksSchedule(chainId = 1337u, forks = listOf(pre, current))
+    val schedule = currentSchedule(nowTs = nowTs, currentDifficultyAware = true)
     val fixedClock = Clock.fixed(Instant.ofEpochSecond(nowTs.toLong()), ZoneOffset.UTC)
 
     assertThatThrownBy {
@@ -145,31 +121,7 @@ class MaruAppFactoryCheckEthApiTest {
   @Test
   fun `does not throw when current fork is DifficultyAwareQbft and l2EthWeb3j is provided`() {
     val nowTs = 1_000_000UL
-    val pre =
-      ForkSpec(
-        timestampSeconds = nowTs - 100u,
-        blockTimeSeconds = 1u,
-        configuration =
-          QbftConsensusConfig(
-            DataGenerators.randomValidators(),
-            ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-          ),
-      )
-    val current =
-      ForkSpec(
-        timestampSeconds = nowTs,
-        blockTimeSeconds = 1u,
-        configuration =
-          DifficultyAwareQbftConfig(
-            postTtdConfig =
-              QbftConsensusConfig(
-                DataGenerators.randomValidators(),
-                ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-              ),
-            terminalTotalDifficulty = 42u,
-          ),
-      )
-    val schedule = ForksSchedule(chainId = 1337u, forks = listOf(pre, current))
+    val schedule = currentSchedule(nowTs = nowTs, currentDifficultyAware = true)
     val fixedClock = Clock.fixed(Instant.ofEpochSecond(nowTs.toLong()), ZoneOffset.UTC)
 
     MaruAppFactory().checkL2EthApiEndpointAndForks(fixedClock, schedule, Any())
