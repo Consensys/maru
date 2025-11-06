@@ -356,7 +356,7 @@ class MaruFactory(
           override fun port(): Int = 0
         },
       p2pNetworkFactory = p2pNetworkFactory,
-    )
+    ) as MaruApp
 
   private fun buildP2pConfig(
     p2pPort: UInt = 0u,
