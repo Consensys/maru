@@ -59,9 +59,10 @@ class QbftMessageProcessor(
     metadata: QbftMessageMetadata,
   ): ValidationResult {
     if (isMsgForCurrentHeight(metadata.sequenceNumber)) {
-      return if (!isMsgFromKnownValidator(metadata.author)) {
+      val validators = validatorProvider.getValidatorsForBlock(blockChain.chainHeadHeader)
+      return if (!isMsgFromKnownValidator(metadata.author, validators)) {
         Invalid("Message from unknown validator: ${metadata.author}")
-      } else if (!isLocalNodeValidator()) {
+      } else if (!isLocalNodeValidator(validators)) {
         Ignore("Local node is not a validator")
       } else {
         bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())
@@ -75,18 +76,15 @@ class QbftMessageProcessor(
     }
   }
 
-  private fun isMsgFromKnownValidator(messageAuthor: Address): Boolean {
-    val validators = validatorProvider.getValidatorsForBlock(blockChain.chainHeadHeader)
-    return validators.contains(messageAuthor)
-  }
+  private fun isMsgFromKnownValidator(
+    messageAuthor: Address,
+    validators: Collection<Address>,
+  ): Boolean = validators.contains(messageAuthor)
 
   private fun isMsgForCurrentHeight(sequenceNumber: Long): Boolean = sequenceNumber == blockChain.chainHeadBlockNumber
 
   private fun isMsgForFutureChainHeight(sequenceNumber: Long): Boolean =
     sequenceNumber > blockChain.chainHeadBlockNumber
 
-  private fun isLocalNodeValidator(): Boolean {
-    val validators = validatorProvider.getValidatorsForBlock(blockChain.chainHeadHeader)
-    return validators.contains(localAddress)
-  }
+  private fun isLocalNodeValidator(validators: Collection<Address>): Boolean = validators.contains(localAddress)
 }
