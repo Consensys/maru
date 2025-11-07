@@ -25,6 +25,8 @@ import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
  * Utility tool to generate a prefixed private key and corresponding node ID
  */
 object PrivateKeyGenerator {
+  private val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+
   data class KeyData(
     val privateKey: ByteArray,
     val prefixedPrivateKey: ByteArray,
@@ -96,7 +98,6 @@ object PrivateKeyGenerator {
     }
 
   private fun createNodeKey(normalizedPrivateKey: ByteArray): NodeKey {
-    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val besuPrivateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(normalizedPrivateKey))
     val keyPair = signatureAlgorithm.createKeyPair(besuPrivateKey)
     val keyPairSecurityModule = KeyPairSecurityModule(keyPair)

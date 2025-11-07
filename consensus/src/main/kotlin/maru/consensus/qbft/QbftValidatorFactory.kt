@@ -66,7 +66,6 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMinedBlockObserver
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
 import org.hyperledger.besu.consensus.qbft.core.validation.MessageValidatorFactory
-import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.cryptoservices.KeyPairSecurityModule
 import org.hyperledger.besu.cryptoservices.NodeKey
 import org.hyperledger.besu.ethereum.core.Util
@@ -90,7 +89,7 @@ class QbftValidatorFactory(
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
-    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    val signatureAlgorithm = SecpCrypto.signatureAlgorithm
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(privateKeyBytes))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
     val securityModule = KeyPairSecurityModule(keyPair)

@@ -33,11 +33,12 @@ interface Crypto {
  * SECP256K1 implementation of cryptographic operations.
  */
 object SecpCrypto : Crypto {
+  val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+
   override fun privateKeyToValidator(rawPrivateKey: ByteArray): Validator =
     Validator(privateKeyToAddress(rawPrivateKey))
 
   override fun privateKeyToAddress(rawPrivateKey: ByteArray): ByteArray {
-    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(rawPrivateKey))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
 
@@ -48,7 +49,6 @@ object SecpCrypto : Crypto {
     signature: Seal,
     hash: ByteArray,
   ): ByteArray {
-    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val secpSignature = signatureAlgorithm.decodeSignature(Bytes.wrap(signature.signature))
     return Util.signatureToAddress(secpSignature, Hash.wrap(Bytes32.wrap(hash))).toArray()
   }
