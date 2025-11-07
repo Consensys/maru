@@ -89,7 +89,7 @@ class QbftMessageProcessorTest {
     val messageProcessor = createMessageProcessor(chainHeight = 100UL)
 
     val qbftMessage = createQbftMessage(50L)
-    val result = messageProcessor.handleMessage(qbftMessage).get()
+    val result = messageProcessor.handleQbftMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.IGNORE)
     assertThat(result).isInstanceOf(Ignore::class.java)
@@ -101,7 +101,7 @@ class QbftMessageProcessorTest {
     val messageProcessor = createMessageProcessor(chainHeight = 100UL)
 
     val qbftMessage = createQbftMessage(150L)
-    val result = messageProcessor.handleMessage(qbftMessage).get()
+    val result = messageProcessor.handleQbftMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.IGNORE)
     val bftEvent = bftEventQueue.poll(100, TimeUnit.MILLISECONDS)
@@ -116,7 +116,7 @@ class QbftMessageProcessorTest {
     )
 
     val qbftMessage = createQbftMessage(100L)
-    val result = messageProcessor.handleMessage(qbftMessage).get()
+    val result = messageProcessor.handleQbftMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.ACCEPT)
     val bftEvent = bftEventQueue.poll(100, TimeUnit.MILLISECONDS)
@@ -132,7 +132,7 @@ class QbftMessageProcessorTest {
     )
 
     val qbftMessage = createQbftMessage(100L)
-    val result = messageProcessor.handleMessage(qbftMessage).get()
+    val result = messageProcessor.handleQbftMessage(qbftMessage).get()
     assertThat(result.code).isEqualTo(ValidationResultCode.REJECT)
     assertThat(bftEventQueue.isEmpty).isTrue()
   }
@@ -145,7 +145,7 @@ class QbftMessageProcessorTest {
     )
 
     val qbftMessage = createQbftMessage(100L)
-    val result = messageProcessor.handleMessage(qbftMessage).get()
+    val result = messageProcessor.handleQbftMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.IGNORE)
     assertThat(bftEventQueue.isEmpty).isTrue()
@@ -159,7 +159,7 @@ class QbftMessageProcessorTest {
     whenever(invalidMessageData.data).thenReturn(EMPTY)
     whenever(qbftMessage.data).thenReturn(invalidMessageData)
 
-    val result = messageProcessor.handleMessage(qbftMessage).get()
+    val result = messageProcessor.handleQbftMessage(qbftMessage).get()
 
     assertThat(result.code).isEqualTo(ValidationResultCode.REJECT)
     assertThat(bftEventQueue.isEmpty).isTrue()

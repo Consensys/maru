@@ -12,6 +12,7 @@ import maru.consensus.qbft.MinimalQbftMessageDecoder.QbftMessageMetadata
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.consensus.qbft.adapters.toQbftReceivedMessageEvent
+import maru.p2p.QbftMessageHandler
 import maru.p2p.ValidationResult
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResult.Companion.Invalid
@@ -38,14 +39,14 @@ class QbftMessageProcessor(
   private val localAddress: Address,
   private val bftEventQueue: BftEventQueue,
   private val messageDecoder: MinimalQbftMessageDecoder,
-) {
+) : QbftMessageHandler<ValidationResult> {
   /**
    * Validates a QBFT message and determines whether it should be gossiped.
    *
    * @param qbftMessage The QBFT message to validate
    * @return A future containing the validation result
    */
-  fun handleMessage(qbftMessage: QbftMessage): SafeFuture<ValidationResult> =
+  override fun handleQbftMessage(qbftMessage: QbftMessage): SafeFuture<ValidationResult> =
     try {
       val metadata = messageDecoder.deserialize(qbftMessage)
       val result = processMessage(qbftMessage, metadata)

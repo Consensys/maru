@@ -262,7 +262,7 @@ class QbftValidatorFactory(
       )
 
     // Subscribe to QBFT messages from P2P network and validate before adding to event queue
-    p2PNetwork.subscribeToQbftMessages(qbftMessageProcessor::handleMessage)
+    p2PNetwork.subscribeToQbftMessages(qbftMessageProcessor)
 
     return QbftConsensusValidator(
       qbftController = qbftController,
