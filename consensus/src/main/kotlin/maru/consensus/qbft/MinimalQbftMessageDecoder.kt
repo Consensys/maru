@@ -36,6 +36,18 @@ class MinimalQbftMessageDecoder(
   /**
    * Deserializes a QBFT message to extract metadata.
    *
+   * The RLP structure of signed data varies by message type:
+   * - **PREPARE/COMMIT**: `[payload, signature]`
+   *   - Schema: [org.hyperledger.besu.consensus.common.bft.payload.SignedData]
+   *   - Message wrappers: [org.hyperledger.besu.consensus.qbft.core.messagewrappers.Prepare],
+   *     [org.hyperledger.besu.consensus.qbft.core.messagewrappers.Commit]
+   * - **PROPOSAL**: `[[payload], signature]` (extra list wrapper around payload)
+   *   - Schema: [org.hyperledger.besu.consensus.qbft.core.messagewrappers.Proposal]
+   * - **ROUND_CHANGE**: `[[payload], signature]` (extra list wrapper around payload)
+   *   - Schema: [org.hyperledger.besu.consensus.qbft.core.messagewrappers.RoundChange]
+   *
+   * All payloads contain: `[sequenceNumber: LONG_SCALAR, roundNumber: INT_SCALAR, ...]`
+   *
    * @param qbftMessage The QBFT message to decode
    * @return The decoded metadata
    */
