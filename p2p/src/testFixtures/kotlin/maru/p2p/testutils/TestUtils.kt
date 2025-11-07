@@ -8,7 +8,6 @@
  */
 package maru.p2p.testutils
 
-import java.net.ServerSocket
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,16 +21,6 @@ import testutils.besu.BesuTransactionsHelper
 
 object TestUtils {
   private val log = LogManager.getLogger(this.javaClass)
-
-  fun findFreePort(): UInt =
-    runCatching {
-      ServerSocket(0).use { socket ->
-        socket.reuseAddress = true
-        socket.localPort.toUInt()
-      }
-    }.getOrElse {
-      throw IllegalStateException("Could not find a free port", it)
-    }
 
   fun startTransactionSendingJob(
     besuNode: BesuNode,

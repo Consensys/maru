@@ -13,7 +13,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import kotlinx.coroutines.Job
 import maru.p2p.testutils.TestUtils
-import maru.p2p.testutils.TestUtils.findFreePort
+import maru.test.util.NetworkUtil.findFreePort
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -26,7 +26,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import testutils.Checks.getBlockNumber
 import testutils.PeeringNodeNetworkStack
-
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
