@@ -33,5 +33,5 @@ fun createMaru(
   return MaruAppFactory().create(
     config = effectiveConfig,
     beaconGenesisConfig = forkSchedule,
-  )
+  ) as MaruApp
 }
