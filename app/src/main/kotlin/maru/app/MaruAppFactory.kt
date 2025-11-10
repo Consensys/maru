@@ -352,10 +352,10 @@ class MaruAppFactory : MaruAppFactoryCreator {
                 web3j =
                   createWeb3jHttpClient(
                     rpcUrl = lineaConfig.l1EthApiEndpoint.endpoint.toString(),
-                    log = LogManager.getLogger("clients.l1.linea"),
+                    log = LogManager.getLogger("maru.clients.l1.linea"),
                   ),
                 contractAddress = lineaConfig.contractAddress.encodeHex(),
-                log = LogManager.getLogger("clients.l1.linea"),
+                log = LogManager.getLogger("maru.clients.l1.linea"),
               )
           val l2Endpoint = lineaConfig.l2EthApiEndpoint
           LineaFinalizationProvider(
@@ -365,7 +365,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
                 rpcUrl =
                   l2Endpoint.endpoint
                     .toString(),
-                log = LogManager.getLogger("clients.l2.eth.el"),
+                log = LogManager.getLogger("maru.clients.l2.eth.el"),
                 requestRetryConfig = l2Endpoint.requestRetries,
                 vertx = vertx,
                 stopRetriesOnErrorPredicate = { true },
