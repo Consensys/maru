@@ -9,30 +9,38 @@
 package maru.app
 
 import java.io.File
+import java.time.Clock
+import linea.contract.l1.LineaRollupSmartContractClientReadOnly
+import maru.api.ApiServer
+import maru.config.MaruConfig
 import maru.config.MaruConfigDtoToml
-import maru.config.MaruConfigLoader.parseBeaconChainConfig
 import maru.config.MaruConfigLoader.parseConfig
+import maru.config.P2PConfig
+import maru.consensus.ForksSchedule
+import maru.consensus.state.FinalizationProvider
+import maru.core.SealedBeaconBlock
+import maru.database.BeaconChain
+import maru.database.P2PState
+import maru.p2p.P2PNetwork
+import maru.p2p.P2PNetworkImpl
+import maru.p2p.fork.ForkPeeringManager
+import maru.p2p.messages.StatusManager
+import maru.serialization.SerDe
+import maru.services.LongRunningService
+import maru.services.NoOpLongRunningService
+import maru.syncing.SyncStatusProvider
+import net.consensys.linea.metrics.MetricsFacade
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
-import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
-import org.mockito.kotlin.eq
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
 import picocli.CommandLine
+import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MaruAppCliTest {
   companion object {
-    object NoOpMaruApp : LongRunningCloseable {
-      override fun start() = Unit
-
-      override fun stop() = Unit
-
+    object NoOpMaruApp : LongRunningCloseable, LongRunningService by NoOpLongRunningService {
       override fun close() = Unit
     }
 
@@ -96,13 +104,15 @@ class MaruAppCliTest {
       el-sync-status-refresh-interval = "5 seconds"
       """.trimIndent()
 
-    private val expectedMaruGenesisJson =
+    private val maruGenesisJson =
       """
       {
         "chainId": 59144,
         "config": {}
       }
       """.trimIndent()
+
+    private val expectedForksSchedule = ForksSchedule(59144U, emptySet())
 
     private lateinit var tempMaruConfigFile: File
     private lateinit var tempMaruConfigOverridesFile: File
@@ -121,7 +131,7 @@ class MaruAppCliTest {
         }
       tempMaruGenesisFile =
         File.createTempFile("MaruAppCliTest", ".json").also {
-          it.writeText(expectedMaruGenesisJson)
+          it.writeText(maruGenesisJson)
         }
     }
 
@@ -136,24 +146,42 @@ class MaruAppCliTest {
     }
   }
 
-  private val mockMaruAppFactory = Mockito.mock(MaruAppFactory::class.java)
-  private val cmd = CommandLine(MaruAppCli(mockMaruAppFactory))
+  private lateinit var capturedMaruConfig: MaruConfig
+  private lateinit var capturedBeaconGenesisConfig: ForksSchedule
+  private val fakeMaruAppFactory =
+    object : MaruAppFactoryCreator {
+      override fun create(
+        config: MaruConfig,
+        beaconGenesisConfig: ForksSchedule,
+        clock: Clock,
+        overridingP2PNetwork: P2PNetwork?,
+        overridingFinalizationProvider: FinalizationProvider?,
+        overridingLineaContractClient: LineaRollupSmartContractClientReadOnly?,
+        overridingApiServer: ApiServer?,
+        p2pNetworkFactory: (
+          ByteArray,
+          P2PConfig,
+          UInt,
+          SerDe<SealedBeaconBlock>,
+          MetricsFacade,
+          BesuMetricsSystem,
+          StatusManager,
+          BeaconChain,
+          ForkPeeringManager,
+          () -> Boolean,
+          P2PState,
+          () -> SyncStatusProvider,
+        ) -> P2PNetworkImpl,
+      ): LongRunningCloseable {
+        capturedMaruConfig = config
+        capturedBeaconGenesisConfig = beaconGenesisConfig
+        return NoOpMaruApp
+      }
+    }
+  private val cmd = CommandLine(MaruAppCli(fakeMaruAppFactory))
 
   @BeforeEach
   fun setUp() {
-    whenever(
-      mockMaruAppFactory.create(
-        any(),
-        any(),
-        anyOrNull(),
-        anyOrNull(),
-        anyOrNull(),
-        anyOrNull(),
-        anyOrNull(),
-        anyOrNull(),
-      ),
-    ).thenReturn(NoOpMaruApp)
-
     cmd.registerConverter(
       Network::class.java,
       KebabToEnumConverter(Network::class.java),
@@ -235,18 +263,8 @@ class MaruAppCliTest {
     assertThat(exitCode).isEqualTo(0)
 
     val expectedMaruConfig = parseConfig<MaruConfigDtoToml>(expectedMaruConfigDtoToml).domainFriendly()
-    val expectedMaruGenesis = parseBeaconChainConfig(expectedMaruGenesisJson).domainFriendly()
-
-    verify(mockMaruAppFactory).create(
-      eq(expectedMaruConfig),
-      eq(expectedMaruGenesis),
-      anyOrNull(),
-      anyOrNull(),
-      anyOrNull(),
-      anyOrNull(),
-      anyOrNull(),
-      anyOrNull(),
-    )
+    assertThat(capturedMaruConfig).isEqualTo(expectedMaruConfig)
+    assertThat(capturedBeaconGenesisConfig).isEqualTo(expectedForksSchedule)
 
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network).isNull()
@@ -267,18 +285,8 @@ class MaruAppCliTest {
     assertThat(exitCode).isEqualTo(0)
 
     val expectedMaruConfig = parseConfig<MaruConfigDtoToml>(expectedMaruConfigDtoToml).domainFriendly()
-    val expectedMaruGenesis = parseBeaconChainConfig(expectedMaruGenesisJson).domainFriendly()
-
-    verify(mockMaruAppFactory).create(
-      eq(expectedMaruConfig),
-      eq(expectedMaruGenesis),
-      anyOrNull(),
-      anyOrNull(),
-      anyOrNull(),
-      anyOrNull(),
-      anyOrNull(),
-      anyOrNull(),
-    )
+    assertThat(capturedMaruConfig).isEqualTo(expectedMaruConfig)
+    assertThat(capturedBeaconGenesisConfig).isEqualTo(expectedForksSchedule)
 
     val cli = cmd.getCommand<MaruAppCli>()
     assertThat(cli.genesisOptions!!.network).isNull()
