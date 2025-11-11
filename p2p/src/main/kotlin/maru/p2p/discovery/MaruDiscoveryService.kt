@@ -132,7 +132,7 @@ class MaruDiscoveryService(
       .listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
       .secretKey(privateKey)
       .localNodeRecord(createLocalNodeRecord())
-      .localNodeRecordListener(this::localNodeRecordUpdated)
+      .localNodeRecordListener { _, newRecord -> localNodeRecordUpdated(newRecord) }
       .build()
 
   private var poller: Timer? = null
@@ -232,11 +232,9 @@ class MaruDiscoveryService(
     return nodeRecordBuilder.build()
   }
 
-  private fun localNodeRecordUpdated(
-    oldRecord: NodeRecord?,
-    newRecord: NodeRecord,
-  ) = p2PState
-    .newP2PStateUpdater()
-    .putDiscoverySequenceNumber(newRecord.seq.toBigInteger().toULong())
-    .commit()
+  private fun localNodeRecordUpdated(newRecord: NodeRecord) =
+    p2PState
+      .newP2PStateUpdater()
+      .putDiscoverySequenceNumber(newRecord.seq.toBigInteger().toULong())
+      .commit()
 }
