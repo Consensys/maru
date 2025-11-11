@@ -133,7 +133,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
       P2PState,
       () -> SyncStatusProvider,
     ) -> P2PNetworkImpl,
-  ): LongRunningCloseable {
+  ): MaruApp {
     log.info("configs={}", config)
     log.info("beaconGenesisConfig={}", beaconGenesisConfig)
 
