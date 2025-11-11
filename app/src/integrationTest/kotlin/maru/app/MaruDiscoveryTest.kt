@@ -13,7 +13,6 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import kotlinx.coroutines.Job
 import maru.p2p.testutils.TestUtils
-import maru.test.util.NetworkUtil.findFreePort
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -128,15 +127,13 @@ class MaruDiscoveryTest {
 
     // Create and start the bootnode (validator)
     val bootnodeStack = networkStacks[0]
-    val bootnodeUdpPort = findFreePort()
 
-    log.info("Creating bootnode Maru on UDP port $bootnodeUdpPort")
     val bootnodeMaruApp =
       maruFactory.buildTestMaruValidatorWithDiscovery(
         ethereumJsonRpcUrl = bootnodeStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = bootnodeStack.besuNode.engineRpcUrl().get(),
         dataDir = bootnodeStack.tmpDir,
-        discoveryPort = bootnodeUdpPort,
+        discoveryPort = 0u,
         allowEmptyBlocks = true,
       )
 
@@ -170,16 +167,14 @@ class MaruDiscoveryTest {
       // Create and start follower nodes
       for (i in 1 until numberOfNodes) {
         val stack = networkStacks[i]
-        val udpPort = findFreePort()
 
-        log.info("Creating follower node $i on UDP port $udpPort")
         val followerMaruApp =
           maruFactory.buildTestMaruFollowerWithDiscovery(
             ethereumJsonRpcUrl = stack.besuNode.jsonRpcBaseUrl().get(),
             engineApiRpc = stack.besuNode.engineRpcUrl().get(),
             dataDir = stack.tmpDir,
             bootnode = bootnodeEnr,
-            discoveryPort = udpPort,
+            discoveryPort = 0u,
             allowEmptyBlocks = true,
           )
 

@@ -29,7 +29,7 @@ import maru.p2p.messages.StatusManager
 import maru.p2p.testutils.TestUtils
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
-import maru.test.util.NetworkUtil.findFreePort
+import net.bytebuddy.implementation.bytecode.Throw
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -58,7 +58,6 @@ class MaruPeerScoringTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
-  private lateinit var fakeLineaContract: FakeLineaRollupSmartContractClient
   private lateinit var validatorEthApiClient: EthApiClient
   private lateinit var followerEthApiClient: EthApiClient
 
@@ -161,7 +160,6 @@ class MaruPeerScoringTest {
     followerCooldownPeriod: Duration = 10.seconds,
     blockRangeRequestTimeout: Duration = 5.seconds,
   ): MaruNodeSetup {
-    fakeLineaContract = FakeLineaRollupSmartContractClient()
     transactionsHelper = BesuTransactionsHelper()
     cluster =
       Cluster(
@@ -178,16 +176,13 @@ class MaruPeerScoringTest {
 
     PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
 
-    val tcpPort = findFreePort()
-    val udpPort = findFreePort()
     val validatorMaruApp =
       maruFactory.buildTestMaruValidatorWithDiscovery(
         ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
         dataDir = validatorStack.tmpDir,
-        overridingLineaContractClient = fakeLineaContract,
-        p2pPort = tcpPort,
-        discoveryPort = udpPort,
+        p2pPort = 0u,
+        discoveryPort = 0u,
         cooldownPeriod = validatorCooldownPeriod,
         p2pNetworkFactory = {
           privateKeyBytes: ByteArray,
@@ -227,6 +222,7 @@ class MaruPeerScoringTest {
     val bootnodeEnr =
       validatorStack.maruApp.p2pNetwork.localNodeRecord
         ?.asEnr()
+    log.info("Validator ENR: $bootnodeEnr")
 
     validatorEthApiClient =
       createEthApiClient(
@@ -250,17 +246,14 @@ class MaruPeerScoringTest {
     val followerGenesis = followerStack.besuNode.ethGetBlockByNumber("earliest", false)
     assertThat(validatorGenesis).isEqualTo(followerGenesis)
 
-    val tcpPortFollower = findFreePort()
-    val udpPortFollower = findFreePort()
     val followerMaruApp =
       maruFactory.buildTestMaruFollowerWithDiscovery(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
-        overridingLineaContractClient = fakeLineaContract,
         bootnode = bootnodeEnr,
-        p2pPort = tcpPortFollower,
-        discoveryPort = udpPortFollower,
+        p2pPort = 0u,
+        discoveryPort = 0u,
         banPeriod = banPeriod,
         cooldownPeriod = followerCooldownPeriod,
         blockRangeRequestTimeout = blockRangeRequestTimeout,
@@ -299,7 +292,6 @@ class MaruPeerScoringTest {
           followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(0UL)
       }
-
     return MaruNodeSetup(validatorMaruApp = validatorMaruApp, followerMaruApp = followerMaruApp)
   }
 }
