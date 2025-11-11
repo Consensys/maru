@@ -137,9 +137,7 @@ class ProtocolStarter(
 
     newProtocol.start()
     log.debug("started new protocol {}", newProtocol)
-    if (currentProtocolWithFork != null) {
-      forkTransitionNotifier.notifySubscribers(nextForkSpec)
-    }
+    forkTransitionNotifier.notifySubscribers(nextForkSpec)
   }
 
   override fun start() {
