@@ -66,7 +66,6 @@ class P2PNetworkImpl(
   private val forkIdHashManager: ForkPeeringManager,
   isBlockImportEnabledProvider: () -> Boolean,
   private val p2PState: P2PState,
-  private val syncStatusProviderProvider: () -> SyncStatusProvider,
   // for testing:
   private val rpcMethodsFactory: (
     StatusManager,

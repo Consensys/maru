@@ -52,7 +52,6 @@ class MisbehavingP2PNetwork(
       forkIdHashManager = forkIdHashManager,
       isBlockImportEnabledProvider = isBlockImportEnabledProvider,
       p2PState = p2pState,
-      syncStatusProviderProvider = syncStatusProviderProvider,
       rpcMethodsFactory = { statusMessageFactory, lineaRpcProtocolIdGenerator, peerLookup, beaconChain ->
         RpcMethods(statusMessageFactory, lineaRpcProtocolIdGenerator, peerLookup, beaconChain, blockRetrievalStrategy)
       },

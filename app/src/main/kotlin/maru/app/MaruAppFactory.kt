@@ -105,7 +105,6 @@ class MaruAppFactory {
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     log.info("configs={}", config)
@@ -193,7 +192,6 @@ class MaruAppFactory {
           }
         },
         p2PState = kvDatabase,
-        syncStatusProviderProvider = { syncControllerImpl!! },
         clock = clock,
         p2pNetworkFactory = p2pNetworkFactory,
       )
@@ -360,7 +358,6 @@ class MaruAppFactory {
       besuMetricsSystem: BesuMetricsSystem,
       clock: Clock,
       p2PState: P2PState,
-      syncStatusProviderProvider: () -> SyncStatusProvider,
       p2pNetworkFactory: (
         ByteArray,
         P2PConfig,
@@ -373,7 +370,6 @@ class MaruAppFactory {
         ForkPeeringManager,
         () -> Boolean,
         P2PState,
-        () -> SyncStatusProvider,
       ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     ): P2PNetwork {
       if (p2pConfig == null) {
@@ -407,7 +403,6 @@ class MaruAppFactory {
         forkIdHashManager,
         isBlockImportEnabledProvider,
         p2PState,
-        syncStatusProviderProvider,
       )
     }
 

@@ -347,7 +347,6 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     startApiServer: Boolean = false,
   ): MaruApp =
@@ -458,7 +457,6 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     apiPort: UInt = 0u,
     startApiServer: Boolean = false,
@@ -530,7 +528,6 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =
@@ -598,7 +595,6 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =
