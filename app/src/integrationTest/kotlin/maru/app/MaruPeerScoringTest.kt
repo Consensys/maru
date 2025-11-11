@@ -29,7 +29,6 @@ import maru.p2p.messages.StatusManager
 import maru.p2p.testutils.TestUtils
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
-import net.bytebuddy.implementation.bytecode.Throw
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -69,14 +68,10 @@ class MaruPeerScoringTest {
     job = null
     if (::followerStack.isInitialized) {
       followerStack.maruApp.stop()
-    }
-    if (::validatorStack.isInitialized) {
-      validatorStack.maruApp.stop()
-    }
-    if (::followerStack.isInitialized) {
       followerStack.maruApp.close()
     }
     if (::validatorStack.isInitialized) {
+      validatorStack.maruApp.stop()
       validatorStack.maruApp.close()
     }
     if (::cluster.isInitialized) {
@@ -86,8 +81,7 @@ class MaruPeerScoringTest {
 
   @Test
   fun `node gets in sync with default block retrieval strategy`() {
-    val maruNodeSetup =
-      setUpNodes(blockRetrievalStrategy = DefaultBlockRetrievalStrategy())
+    setUpNodes(blockRetrievalStrategy = DefaultBlockRetrievalStrategy())
 
     await
       .atMost(20.seconds.toJavaDuration())
@@ -140,7 +134,7 @@ class MaruPeerScoringTest {
         blockRetrievalStrategy = TimeOutResponsesStrategy(delay = delay),
         validatorCooldownPeriod = 20.seconds,
       )
-    sleep((delay - 1.seconds).inWholeMilliseconds)
+    sleep((timeout - 1.seconds).inWholeMilliseconds)
     assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount).isEqualTo(1)
 
     await.untilAsserted {

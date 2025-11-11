@@ -235,8 +235,11 @@ class MaruDiscoveryService(
   private fun localNodeRecordUpdated(
     oldRecord: NodeRecord?,
     newRecord: NodeRecord,
-  ) = p2PState
-    .newP2PStateUpdater()
-    .putDiscoverySequenceNumber(newRecord.seq.toBigInteger().toULong())
-    .commit()
+  ) {
+    log.info("Node record updated. $newRecord")
+    p2PState
+      .newP2PStateUpdater()
+      .putDiscoverySequenceNumber(newRecord.seq.toBigInteger().toULong())
+      .commit()
+  }
 }

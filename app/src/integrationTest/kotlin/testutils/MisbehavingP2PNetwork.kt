@@ -22,7 +22,6 @@ import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MisbehavingP2PNetwork(
