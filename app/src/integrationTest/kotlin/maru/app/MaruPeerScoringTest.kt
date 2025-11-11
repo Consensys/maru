@@ -134,7 +134,7 @@ class MaruPeerScoringTest {
         blockRetrievalStrategy = TimeOutResponsesStrategy(delay = delay),
         validatorCooldownPeriod = 20.seconds,
       )
-    sleep((delay - 1.seconds).inWholeMilliseconds)
+    sleep((timeout - 1.seconds).inWholeMilliseconds)
     assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount).isEqualTo(1)
 
     await.untilAsserted {
