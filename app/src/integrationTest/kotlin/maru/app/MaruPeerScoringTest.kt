@@ -117,9 +117,7 @@ class MaruPeerScoringTest {
       .pollInterval(250.milliseconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
-        assertThat(
-          maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0,
-        )
+        assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount).isEqualTo(0)
       }
     // reconnects after ban period and finishes syncing
     await
@@ -144,10 +142,10 @@ class MaruPeerScoringTest {
         validatorCooldownPeriod = 20.seconds,
       )
     sleep((delay - 1.seconds).inWholeMilliseconds)
-    assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 1)
+    assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount).isEqualTo(1)
 
     await.untilAsserted {
-      assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount == 0)
+      assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount).isEqualTo(0)
     }
   }
 
