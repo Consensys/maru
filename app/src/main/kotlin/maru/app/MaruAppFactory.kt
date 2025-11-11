@@ -129,7 +129,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
     ) -> P2PNetworkImpl,
   ): MaruApp {
     log.info("configs={}", config)
