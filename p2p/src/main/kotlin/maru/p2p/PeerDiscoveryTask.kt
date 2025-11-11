@@ -14,11 +14,11 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.toJavaDuration
 import maru.config.P2PConfig
-import maru.p2p.discovery.MaruDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
+import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
 import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.peer.Peer
@@ -90,7 +90,7 @@ class PeerDiscoveryTask(
     }
   }
 
-  private fun tryToConnect(peer: MaruDiscoveryPeer) {
+  private fun tryToConnect(peer: DiscoveryPeer) {
     try {
       if (!started.get()) return
       if (getPeerCount() >= maxPeers) return

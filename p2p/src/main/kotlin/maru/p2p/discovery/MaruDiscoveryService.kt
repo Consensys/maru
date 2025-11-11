@@ -8,6 +8,7 @@
  */
 package maru.p2p.discovery
 
+import java.util.Optional
 import java.util.Timer
 import java.util.TimerTask
 import java.util.UUID
@@ -32,6 +33,7 @@ import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
 import tech.pegasys.teku.networking.p2p.discovery.discv5.SecretKeyParser
 
 class MaruDiscoveryService(
@@ -106,13 +108,17 @@ class MaruDiscoveryService(
       return true
     }
 
-    internal fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): MaruDiscoveryPeer {
+    internal fun convertSafeNodeRecordToDiscoveryPeer(node: NodeRecord): DiscoveryPeer {
       // node record has been checked in checkNodeRecord, so we can convert to MaruDiscoveryPeer safely
-      return MaruDiscoveryPeer(
-        publicKeyBytes = (node.get(EnrField.PKEY_SECP256K1) as Bytes),
-        nodeId = node.nodeId,
-        nodeAddress = node.tcpAddress.get(),
-        forkIdBytes = node.get(FORK_ID_HASH_FIELD_NAME) as Bytes,
+      return DiscoveryPeer(
+        node.get(EnrField.PKEY_SECP256K1) as Bytes,
+        node.nodeId,
+        node.tcpAddress.get(),
+        null,
+        null,
+        null,
+        Optional.empty(),
+        Optional.empty(),
       )
     }
   }
@@ -185,14 +191,14 @@ class MaruDiscoveryService(
     )
   }
 
-  fun searchForPeers(): SafeFuture<Collection<MaruDiscoveryPeer>> =
+  fun searchForPeers(): SafeFuture<Collection<DiscoveryPeer>> =
     discoverySystem
       .searchForNewPeers()
       // The current version of discovery doesn't return the found peers but next version will
       .toSafeFuture()
       .thenApply { getKnownPeers() }
 
-  fun getKnownPeers(): Collection<MaruDiscoveryPeer> =
+  fun getKnownPeers(): Collection<DiscoveryPeer> =
     discoverySystem
       .streamLiveNodes()
       .filter { isValidNodeRecord(forkIdHashManager, it) }
