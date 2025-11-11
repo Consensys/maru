@@ -35,10 +35,6 @@ import maru.p2p.testutils.NetworkUtil.findFreePort
 import maru.p2p.testutils.NetworkUtil.findFreePorts
 import maru.p2p.topics.BesuMessageDataSerDe
 import maru.serialization.rlp.RLPSerializers
-import maru.syncing.CLSyncStatus
-import maru.syncing.ELSyncStatus
-import maru.syncing.FakeSyncStatusProvider
-import maru.syncing.SyncStatusProvider
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
@@ -97,14 +93,6 @@ class P2PTest {
     private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
     private val p2PState = InMemoryP2PState()
 
-    private fun getSyncStatusProvider(): SyncStatusProvider =
-      FakeSyncStatusProvider(
-        clStatus = CLSyncStatus.SYNCED,
-        elStatus = ELSyncStatus.SYNCED,
-        beaconSyncDistanceValue = 10UL,
-        clSyncTarget = 100UL,
-      )
-
     private val beaconChain: InMemoryBeaconChain = InMemoryBeaconChain.fromGenesis()
     private val forkIdHashManager: ForkPeeringManager =
       createForkIdHashManager(
@@ -145,7 +133,6 @@ class P2PTest {
         forkIdHashManager = forkIdHashManager,
         isBlockImportEnabledProvider = { true },
         p2PState = p2PState,
-        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
   }
 

@@ -68,7 +68,6 @@ import maru.syncing.HighestHeadTargetSelector
 import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
-import maru.syncing.SyncStatusProvider
 import maru.syncing.SyncTargetSelector
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade

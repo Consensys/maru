@@ -20,7 +20,6 @@ import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
-import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
@@ -36,7 +35,6 @@ class MisbehavingP2PNetwork(
   forkIdHashManager: ForkPeeringManager,
   isBlockImportEnabledProvider: () -> Boolean,
   p2pState: P2PState,
-  syncStatusProviderProvider: () -> SyncStatusProvider,
   blockRetrievalStrategy: BlockRetrievalStrategy,
 ) {
   val p2pNetwork: P2PNetworkImpl =
