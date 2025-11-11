@@ -52,8 +52,7 @@ data class P2PConfig(
   val gossiping: Gossiping = Gossiping(),
 ) {
   init {
-    // just a sanity check to ensure the IP address is valid
-    InetAddress.getByName(ipAddress)
+    validateIpAddress(ipAddress)
     require(reputation.smallChange > 0) {
       "smallChange must be a positive number"
     }
@@ -68,7 +67,27 @@ data class P2PConfig(
     val refreshInterval: Duration,
     val searchInterval: Duration = 1.seconds,
     val searchTimeout: Duration = 30.seconds,
-  )
+    val advertisedIp: String? = null,
+  ) {
+    init {
+      advertisedIp?.let { validateIpAddress(it) }
+    }
+  }
+
+  companion object {
+    private fun validateIpAddress(ip: String) {
+      require(ip.isNotBlank()) {
+        "IP address must not be blank"
+      }
+      // InetAddress.getByName accepts both IP addresses and hostnames.
+      // We need to ensure it's actually an IP address by checking that
+      // the parsed address matches the input (no DNS resolution occurred)
+      val address = InetAddress.getByName(ip)
+      require(address.hostAddress == ip) {
+        "Invalid IP address format: $ip"
+      }
+    }
+  }
 
   data class StatusUpdate(
     val refreshInterval: Duration = 30.seconds,
@@ -102,11 +121,11 @@ data class P2PConfig(
     val seenTTL: Duration = 700.milliseconds * 1115,
     val floodPublishMaxMessageSizeThreshold: Int = 1 shl 14, // 16KiB
     val gossipFactor: Double = 0.25,
+    val considerPeersAsDirect: Boolean = false,
   )
 }
 
 data class ValidatorElNode(
-  val ethApiEndpoint: ApiEndpointConfig,
   val engineApiEndpoint: ApiEndpointConfig,
   val payloadValidationEnabled: Boolean,
 )
@@ -172,9 +191,10 @@ data class ObservabilityConfig(
 
 data class LineaConfig(
   val contractAddress: ByteArray,
-  val l1EthApi: ApiEndpointConfig,
+  val l1EthApiEndpoint: ApiEndpointConfig,
   val l1PollingInterval: Duration = 6.seconds,
   val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
+  val l2EthApiEndpoint: ApiEndpointConfig,
 ) {
   init {
     contractAddress.assertIs20Bytes("contractAddress")
@@ -187,18 +207,20 @@ data class LineaConfig(
     other as LineaConfig
 
     if (!contractAddress.contentEquals(other.contractAddress)) return false
-    if (l1EthApi != other.l1EthApi) return false
+    if (l1EthApiEndpoint != other.l1EthApiEndpoint) return false
     if (l1PollingInterval != other.l1PollingInterval) return false
     if (l1HighestBlockTag != other.l1HighestBlockTag) return false
+    if (l2EthApiEndpoint != other.l2EthApiEndpoint) return false
 
     return true
   }
 
   override fun hashCode(): Int {
     var result = contractAddress.contentHashCode()
-    result = 31 * result + l1EthApi.hashCode()
+    result = 31 * result + l1EthApiEndpoint.hashCode()
     result = 31 * result + l1PollingInterval.hashCode()
     result = 31 * result + l1HighestBlockTag.hashCode()
+    result = 31 * result + l2EthApiEndpoint.hashCode()
     return result
   }
 }
@@ -238,26 +260,38 @@ data class SyncingConfig(
   )
 }
 
-data class MaruConfig(
+data class ForkTransition(
+  val l2EthApiEndpoint: ApiEndpointConfig? = null,
   val protocolTransitionPollingInterval: Duration = 1.seconds,
+)
+
+data class MaruConfig(
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
   val qbft: QbftConfig?,
   val p2p: P2PConfig?,
-  val validatorElNode: ValidatorElNode,
+  val validatorElNode: ValidatorElNode?,
   val followers: FollowersConfig,
   val observability: ObservabilityConfig,
   val linea: LineaConfig? = null,
   val api: ApiConfig,
   val syncing: SyncingConfig,
+  val forkTransition: ForkTransition,
 ) {
   init {
-    require(
-      !followers.followers.values
-        .map { it.endpoint }
-        .contains(validatorElNode.engineApiEndpoint.endpoint),
-    ) {
-      "Validator EL node cannot be defined as a follower"
+    if (qbft != null) {
+      require(validatorElNode != null) {
+        "Validator EL node is required when a node is a QBFT Validator"
+      }
+    }
+    if (validatorElNode != null) {
+      require(
+        !followers.followers.values
+          .map { it.endpoint }
+          .contains(validatorElNode.engineApiEndpoint.endpoint),
+      ) {
+        "Validator EL node cannot be defined as a follower"
+      }
     }
   }
 }

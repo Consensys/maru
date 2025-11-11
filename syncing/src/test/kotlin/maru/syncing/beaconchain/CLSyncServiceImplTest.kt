@@ -8,7 +8,6 @@
  */
 package maru.syncing.beaconchain
 
-import java.net.ServerSocket
 import java.util.SequencedSet
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -45,6 +44,7 @@ import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
 import maru.syncing.SyncStatusProvider
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
+import maru.test.util.NetworkUtil.findFreePort
 import net.consensys.linea.metrics.Counter
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.tuweni.bytes.Bytes32
@@ -496,14 +496,4 @@ class CLSyncServiceImplTest {
   ) {
     assertThat(network.peerCount).isEqualTo(peers)
   }
-
-  private fun findFreePort(): UInt =
-    runCatching {
-      ServerSocket(0).use { socket ->
-        socket.reuseAddress = true
-        socket.localPort.toUInt()
-      }
-    }.getOrElse {
-      throw IllegalStateException("Could not find a free port", it)
-    }
 }

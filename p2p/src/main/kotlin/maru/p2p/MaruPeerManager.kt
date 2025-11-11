@@ -88,8 +88,10 @@ class MaruPeerManager(
 
   private fun logConnectedPeers() {
     log.info("Currently connected peers={}", connectedPeers().keys.toList())
-    if (log.isTraceEnabled) {
-      log.trace("discovered peers={}", discoveryService?.getKnownPeers())
+    if (log.isDebugEnabled) {
+      discoveryService?.getKnownPeers()?.forEach { peer ->
+        log.debug("discovered peer={}", peer)
+      }
     }
   }
 

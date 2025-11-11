@@ -38,6 +38,7 @@ import net.consensys.linea.vertx.ObservabilityServer
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
+import org.web3j.protocol.Web3j
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 
 class MaruApp(
@@ -46,14 +47,14 @@ class MaruApp(
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
   val p2pNetwork: P2PNetwork,
+  val beaconChain: BeaconChain,
   private val privateKeyProvider: () -> ByteArray,
   private val finalizationProvider: FinalizationProvider,
   private val vertx: Vertx,
   private val metricsFacade: MetricsFacade,
-  private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
-  private val validatorELNodeEthJsonRpcClient: Web3JClient,
-  private val validatorELNodeEngineApiWeb3JClient: Web3JClient,
+  private val l2EthWeb3j: Web3j?,
+  private val validatorELNodeEngineApiWeb3JClient: Web3JClient?,
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
@@ -95,6 +96,8 @@ class MaruApp(
 
   fun p2pPort(): UInt = p2pNetwork.port
 
+  fun apiPort(): UInt = apiServer.port().toUInt()
+
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
@@ -115,7 +118,7 @@ class MaruApp(
     }
     start("P2P Network") { p2pNetwork.start().get() }
     start("Sync Service", syncControllerManager::start)
-    start("beacon Api", apiServer::start)
+    start("Beacon Api", apiServer::start)
     // observability shall be the last to start because of liveness/readiness probe
     start("Observability Server") {
       ObservabilityServer(
@@ -142,14 +145,14 @@ class MaruApp(
   }
 
   override fun close() {
-    validatorELNodeEngineApiWeb3JClient.eth1Web3j.shutdown()
-    validatorELNodeEthJsonRpcClient.eth1Web3j.shutdown()
+    validatorELNodeEngineApiWeb3JClient?.eth1Web3j?.shutdown()
+    l2EthWeb3j?.shutdown()
     followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
     p2pNetwork.close()
     vertx.close()
+    protocolStarter.close()
     // close db last, otherwise other components may fail trying to save data
     beaconChain.close()
-    protocolStarter.close()
   }
 
   private fun start(
@@ -157,6 +160,7 @@ class MaruApp(
     action: () -> Unit,
   ) {
     runCatching(action)
+      .onSuccess { log.info("{} started!", serviceName) }
       .onFailure { log.error("Failed to start {}, errorMessage={}", serviceName, it.message, it) }
       .getOrThrow()
   }
@@ -184,7 +188,7 @@ class MaruApp(
         QbftProtocolValidatorFactory(
           qbftOptions = config.qbft!!,
           privateKeyBytes = privateKeyWithoutPrefix,
-          validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient,
+          validatorELNodeEngineApiWeb3JClient = validatorELNodeEngineApiWeb3JClient!!,
           followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
           metricsSystem = metricsSystem,
           finalizationStateProvider = finalizationProvider,
@@ -196,7 +200,7 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
           forksSchedule = beaconGenesisConfig,
-          payloadValidationEnabled = config.validatorElNode.payloadValidationEnabled,
+          payloadValidationEnabled = config.validatorElNode!!.payloadValidationEnabled,
         )
       } else {
         QbftFollowerFactory(
@@ -207,14 +211,14 @@ class MaruApp(
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
           finalizationStateProvider = finalizationProvider,
-          payloadValidationEnabled = config.validatorElNode.payloadValidationEnabled,
+          payloadValidationEnabled = config.validatorElNode?.payloadValidationEnabled ?: false,
         )
       }
     val forkTransitionSubscriptionManager = InOrderFanoutSubscriptionManager<ForkSpec>()
     forkTransitionSubscriptionManager.addSyncSubscriber(p2pNetwork::handleForkTransition)
     val difficultyAwareQbftFactory =
       DifficultyAwareQbftFactory(
-        ethereumJsonRpcClient = validatorELNodeEthJsonRpcClient.eth1Web3j,
+        ethereumJsonRpcClient = l2EthWeb3j,
         postTtdProtocolFactory = qbftFactory,
       )
     val protocolStarter =
@@ -227,7 +231,7 @@ class MaruApp(
           ),
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         syncStatusProvider = syncStatusProvider,
-        forkTransitionCheckInterval = config.protocolTransitionPollingInterval,
+        forkTransitionCheckInterval = config.forkTransition.protocolTransitionPollingInterval,
         forkTransitionNotifier = forkTransitionSubscriptionManager,
         clock = clock,
       )

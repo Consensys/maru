@@ -29,8 +29,10 @@ import kotlin.random.Random
 import kotlin.time.toJavaDuration
 import maru.config.P2PConfig
 import maru.core.SealedBeaconBlock
+import maru.p2p.topics.ImmediateTopicHandler
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import pubsub.pb.Rpc
 import tech.pegasys.teku.infrastructure.async.AsyncRunner
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
@@ -63,6 +65,8 @@ class Libp2pNetworkFactory(
     ipAddress: String,
     sealedBlocksTopicHandler: TopicHandlerWithInOrderDelivering<SealedBeaconBlock>,
     sealedBlocksTopicId: String,
+    qbftTopicHandler: ImmediateTopicHandler<QbftMessage>,
+    qbftTopicId: String,
     rpcMethods: List<RpcMethod<*, *, *>>,
     maruPeerManager: MaruPeerManager,
     metricsSystem: BesuMetricsSystem,
@@ -76,6 +80,11 @@ class Libp2pNetworkFactory(
     gossipTopicHandlers.add(
       sealedBlocksTopicId,
       sealedBlocksTopicHandler,
+    )
+
+    gossipTopicHandlers.add(
+      qbftTopicId,
+      qbftTopicHandler,
     )
 
     val gossipParams =
@@ -93,11 +102,16 @@ class Libp2pNetworkFactory(
         .gossipFactor(gossipingConfig.gossipFactor)
         .build()
     val gossipRouterBuilder =
-      GossipRouterBuilder().apply {
-        params = gossipParams
-        scoreParams = GossipScoreParams(GossipPeerScoreParams(), GossipTopicsScoreParams())
-        messageFactory = { getMessageFactory(it, gossipTopicHandlers) }
-      }
+      GossipRouterBuilder()
+        .apply {
+          params = gossipParams
+          scoreParams =
+            GossipScoreParams(
+              GossipPeerScoreParams(isDirect = { _ -> gossipingConfig.considerPeersAsDirect }),
+              GossipTopicsScoreParams(),
+            )
+          messageFactory = { getMessageFactory(it, gossipTopicHandlers) }
+        }
     val gossipRouter = gossipRouterBuilder.build()
     val pubsubApiImpl = PubsubApiImpl(gossipRouter)
     val gossip = Gossip(gossipRouter, pubsubApiImpl)
