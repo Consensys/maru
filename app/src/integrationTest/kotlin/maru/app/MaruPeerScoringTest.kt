@@ -14,7 +14,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import kotlinx.coroutines.Job
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
@@ -26,7 +25,6 @@ import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.DefaultBlockRetrievalStrategy
 import maru.p2p.messages.StatusManager
-import maru.p2p.testutils.TestUtils
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
@@ -51,7 +49,7 @@ import testutils.besu.ethGetBlockByNumber
 import testutils.maru.MaruFactory
 
 class MaruPeerScoringTest {
-  private lateinit var cluster: Cluster
+  private lateinit var besuCluster: Cluster
   private lateinit var validatorStack: PeeringNodeNetworkStack
   private lateinit var followerStack: PeeringNodeNetworkStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
@@ -60,12 +58,8 @@ class MaruPeerScoringTest {
   private lateinit var validatorEthApiClient: EthApiClient
   private lateinit var followerEthApiClient: EthApiClient
 
-  private var job: Job? = null
-
   @AfterEach
   fun tearDown() {
-    job?.cancel()
-    job = null
     if (::followerStack.isInitialized) {
       followerStack.maruApp.stop()
       followerStack.maruApp.close()
@@ -74,8 +68,8 @@ class MaruPeerScoringTest {
       validatorStack.maruApp.stop()
       validatorStack.maruApp.close()
     }
-    if (::cluster.isInitialized) {
-      cluster.close()
+    if (::besuCluster.isInitialized) {
+      besuCluster.close()
     }
   }
 
@@ -155,7 +149,7 @@ class MaruPeerScoringTest {
     blockRangeRequestTimeout: Duration = 5.seconds,
   ): MaruNodeSetup {
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
+    besuCluster =
       Cluster(
         ClusterConfigurationBuilder().build(),
         NetConditions(NetTransactions()),
@@ -168,10 +162,11 @@ class MaruPeerScoringTest {
         besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
       )
 
-    PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
+    PeeringNodeNetworkStack.startBesuNodes(besuCluster, validatorStack, followerStack)
 
     val validatorMaruApp =
       maruFactory.buildTestMaruValidatorWithDiscovery(
+        allowEmptyBlocks = true,
         ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
         dataDir = validatorStack.tmpDir,
@@ -242,6 +237,7 @@ class MaruPeerScoringTest {
 
     val followerMaruApp =
       maruFactory.buildTestMaruFollowerWithDiscovery(
+        allowEmptyBlocks = true,
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
@@ -253,8 +249,6 @@ class MaruPeerScoringTest {
         blockRangeRequestTimeout = blockRangeRequestTimeout,
       )
     followerStack.setMaruApp(followerMaruApp)
-
-    job = TestUtils.startTransactionSendingJob(validatorStack.besuNode)
 
     await
       .atMost(20.seconds.toJavaDuration())

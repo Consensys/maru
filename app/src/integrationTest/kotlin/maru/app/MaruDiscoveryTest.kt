@@ -11,8 +11,6 @@ package maru.app
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import kotlinx.coroutines.Job
-import maru.p2p.testutils.TestUtils
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -34,18 +32,15 @@ import testutils.maru.MaruFactory
  * Tests that multiple Maru nodes can discover each other using discovery protocol.
  */
 class MaruDiscoveryTest {
-  private lateinit var cluster: Cluster
+  private lateinit var besuCluster: Cluster
   private val networkStacks = mutableListOf<PeeringNodeNetworkStack>()
   private val maruApps = mutableListOf<MaruApp>()
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
-  private var job: Job? = null
 
   @AfterEach
   fun tearDown() {
-    job?.cancel()
-    job = null
     maruApps.forEach { app ->
       try {
         app.stop()
@@ -58,8 +53,8 @@ class MaruDiscoveryTest {
 
     networkStacks.clear()
 
-    if (::cluster.isInitialized) {
-      cluster.close()
+    if (::besuCluster.isInitialized) {
+      besuCluster.close()
     }
   }
 
@@ -89,7 +84,7 @@ class MaruDiscoveryTest {
 
     // Initialize test infrastructure
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
+    besuCluster =
       Cluster(
         ClusterConfigurationBuilder().build(),
         NetConditions(NetTransactions()),
@@ -110,7 +105,7 @@ class MaruDiscoveryTest {
 
     // Start all Besu nodes (they will automatically peer with each other at EL layer)
     log.info("Starting ${networkStacks.size} Besu nodes")
-    PeeringNodeNetworkStack.startBesuNodes(cluster, *networkStacks.toTypedArray())
+    PeeringNodeNetworkStack.startBesuNodes(besuCluster, *networkStacks.toTypedArray())
 
     // Wait for Besu nodes to be ready
     await
@@ -149,84 +144,76 @@ class MaruDiscoveryTest {
     // Start block production on validator
     log.info("Starting block production on validator")
 
-    job =
-      TestUtils.startTransactionSendingJob(besuNode = bootnodeStack.besuNode, transactionsHelper = transactionsHelper)
-
-    try {
-      // Wait for some blocks to be produced
-      await
-        .atMost(20.seconds.toJavaDuration())
-        .pollInterval(500.milliseconds.toJavaDuration())
-        .untilAsserted {
-          val blockNumber = bootnodeStack.besuNode.getBlockNumber()
-          assertThat(blockNumber.toLong()).isGreaterThanOrEqualTo(5L)
-        }
-
-      log.info("Validator is producing blocks")
-
-      // Create and start follower nodes
-      for (i in 1 until numberOfNodes) {
-        val stack = networkStacks[i]
-
-        val followerMaruApp =
-          maruFactory.buildTestMaruFollowerWithDiscovery(
-            ethereumJsonRpcUrl = stack.besuNode.jsonRpcBaseUrl().get(),
-            engineApiRpc = stack.besuNode.engineRpcUrl().get(),
-            dataDir = stack.tmpDir,
-            bootnode = bootnodeEnr,
-            discoveryPort = 0u,
-            allowEmptyBlocks = true,
-          )
-
-        stack.setMaruApp(followerMaruApp)
-        maruApps.add(followerMaruApp)
-        followerMaruApp.start()
+    // Wait for some blocks to be produced
+    await
+      .atMost(20.seconds.toJavaDuration())
+      .pollInterval(500.milliseconds.toJavaDuration())
+      .untilAsserted {
+        val blockNumber = bootnodeStack.besuNode.getBlockNumber()
+        assertThat(blockNumber.toLong()).isGreaterThanOrEqualTo(5L)
       }
 
-      log.info("All $numberOfNodes Maru nodes started")
+    log.info("Validator is producing blocks")
 
-      // Wait for all nodes to discover each other
-      log.info("Waiting for all nodes to discover $expectedPeers peers")
-      await
-        .atMost(60.seconds.toJavaDuration())
-        .pollInterval(2.seconds.toJavaDuration())
-        .untilAsserted {
-          maruApps.forEachIndexed { index, app ->
-            val peerCount = app.peersConnected()
-            log.info("Node $index has $peerCount peers (expected: $expectedPeers)")
-            assertThat(peerCount).isGreaterThanOrEqualTo(expectedPeers)
-          }
-        }
+    // Create and start follower nodes
+    for (i in 1 until numberOfNodes) {
+      val stack = networkStacks[i]
 
-      log.info("All nodes have discovered their peers!")
+      val followerMaruApp =
+        maruFactory.buildTestMaruFollowerWithDiscovery(
+          ethereumJsonRpcUrl = stack.besuNode.jsonRpcBaseUrl().get(),
+          engineApiRpc = stack.besuNode.engineRpcUrl().get(),
+          dataDir = stack.tmpDir,
+          bootnode = bootnodeEnr,
+          discoveryPort = 0u,
+          allowEmptyBlocks = true,
+        )
 
-      // Verify each node can see the others
-      maruApps.forEachIndexed { index, app ->
-        val peers = app.p2pNetwork.getPeers()
-        log.info("Node $index peers: ${peers.map { it.nodeId }}")
-        assertThat(peers.size).isGreaterThanOrEqualTo(expectedPeers.toInt())
-      }
-
-      log.info("Verifying followers sync EL blocks")
-      val validatorBlockHeight =
-        networkStacks[0].besuNode.getBlockNumber()
-
-      await
-        .atMost(30.seconds.toJavaDuration())
-        .pollInterval(1.seconds.toJavaDuration())
-        .untilAsserted {
-          networkStacks.forEachIndexed { i, stack ->
-            val followerBlockHeight =
-              stack.besuNode.getBlockNumber()
-            log.info("Follower $i EL block height: $followerBlockHeight (validator: $validatorBlockHeight)")
-            assertThat(followerBlockHeight).isGreaterThanOrEqualTo(validatorBlockHeight)
-          }
-        }
-
-      log.info("All followers have synced EL blocks successfully!")
-    } catch (e: Exception) {
-      job?.cancel()
-      throw e
+      stack.setMaruApp(followerMaruApp)
+      maruApps.add(followerMaruApp)
+      followerMaruApp.start()
     }
+
+    log.info("All $numberOfNodes Maru nodes started")
+
+    // Wait for all nodes to discover each other
+    log.info("Waiting for all nodes to discover $expectedPeers peers")
+    await
+      .atMost(60.seconds.toJavaDuration())
+      .pollInterval(2.seconds.toJavaDuration())
+      .untilAsserted {
+        maruApps.forEachIndexed { index, app ->
+          val peerCount = app.peersConnected()
+          log.info("Node $index has $peerCount peers (expected: $expectedPeers)")
+          assertThat(peerCount).isGreaterThanOrEqualTo(expectedPeers)
+        }
+      }
+
+    log.info("All nodes have discovered their peers!")
+
+    // Verify each node can see the others
+    maruApps.forEachIndexed { index, app ->
+      val peers = app.p2pNetwork.getPeers()
+      log.info("Node $index peers: ${peers.map { it.nodeId }}")
+      assertThat(peers.size).isGreaterThanOrEqualTo(expectedPeers.toInt())
+    }
+
+    log.info("Verifying followers sync EL blocks")
+    val validatorBlockHeight =
+      networkStacks[0].besuNode.getBlockNumber()
+
+    await
+      .atMost(30.seconds.toJavaDuration())
+      .pollInterval(1.seconds.toJavaDuration())
+      .untilAsserted {
+        networkStacks.forEachIndexed { i, stack ->
+          val followerBlockHeight =
+            stack.besuNode.getBlockNumber()
+          log.info("Follower $i EL block height: $followerBlockHeight (validator: $validatorBlockHeight)")
+          assertThat(followerBlockHeight).isGreaterThanOrEqualTo(validatorBlockHeight)
+        }
+      }
+
+    log.info("All followers have synced EL blocks successfully!")
   }
 }
