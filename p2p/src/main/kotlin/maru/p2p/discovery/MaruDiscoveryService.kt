@@ -236,7 +236,7 @@ class MaruDiscoveryService(
     oldRecord: NodeRecord?,
     newRecord: NodeRecord,
   ) {
-    log.info("Node record updated. $newRecord")
+    log.info("Node record updated, enr={}", newRecord.asEnr())
     p2PState
       .newP2PStateUpdater()
       .putDiscoverySequenceNumber(newRecord.seq.toBigInteger().toULong())
