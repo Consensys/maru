@@ -125,12 +125,7 @@ internal fun setValidatorConfig(
   if (elNode == null) return config
 
   val updatedValidatorConfig =
-    config.validatorElNode?.copy(
-      engineApiEndpoint =
-        config.validatorElNode!!.engineApiEndpoint.copy(
-          endpoint = URI.create(elNode.engineApiUrl()).toURL(),
-        ),
-    ) ?: ValidatorElNode(
+    ValidatorElNode(
       payloadValidationEnabled = payloadValidationEnabled,
       engineApiEndpoint = ApiEndpointConfig(endpoint = URI.create(elNode.engineApiUrl()).toURL()),
     )
