@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
+import linea.timer.TimerFactory
 import maru.config.P2PConfig
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
@@ -67,6 +68,7 @@ class P2PNetworkImpl(
   isBlockImportEnabledProvider: () -> Boolean,
   private val p2PState: P2PState,
   private val syncStatusProviderProvider: () -> SyncStatusProvider,
+  private val timerFactory: TimerFactory,
   // for testing:
   private val rpcMethodsFactory: (
     StatusManager,
@@ -219,6 +221,7 @@ class P2PNetworkImpl(
                 ),
               forkIdHashManager = forkIdHashManager,
               p2PState = p2PState,
+              timerFactory = timerFactory,
             )
           }
         discoveryService?.start()

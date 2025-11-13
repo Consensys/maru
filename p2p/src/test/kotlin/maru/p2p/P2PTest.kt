@@ -18,6 +18,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import linea.timer.JvmTimerFactory
 import maru.config.P2PConfig
 import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
 import maru.core.BeaconBlockHeader
@@ -174,6 +175,7 @@ class P2PTest {
         isBlockImportEnabledProvider = { true },
         p2PState = p2PState,
         syncStatusProviderProvider = { getSyncStatusProvider() },
+        timerFactory = JvmTimerFactory(),
       )
   }
 

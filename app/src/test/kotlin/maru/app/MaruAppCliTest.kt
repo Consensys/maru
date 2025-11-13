@@ -11,6 +11,7 @@ package maru.app
 import java.io.File
 import java.time.Clock
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
+import linea.timer.TimerFactory
 import maru.api.ApiServer
 import maru.config.MaruConfig
 import maru.config.MaruConfigDtoToml
@@ -171,6 +172,7 @@ class MaruAppCliTest {
           () -> Boolean,
           P2PState,
           () -> SyncStatusProvider,
+          TimerFactory,
         ) -> P2PNetworkImpl,
       ): LongRunningCloseable {
         capturedMaruConfig = config

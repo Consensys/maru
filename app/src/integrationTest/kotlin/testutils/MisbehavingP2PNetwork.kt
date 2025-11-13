@@ -9,6 +9,7 @@
 package testutils
 
 import kotlin.time.Duration
+import linea.timer.TimerFactory
 import maru.config.P2PConfig
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
@@ -38,6 +39,7 @@ class MisbehavingP2PNetwork(
   p2pState: P2PState,
   syncStatusProviderProvider: () -> SyncStatusProvider,
   blockRetrievalStrategy: BlockRetrievalStrategy,
+  timerFactory: TimerFactory,
 ) {
   val p2pNetwork: P2PNetworkImpl =
     P2PNetworkImpl(
@@ -56,6 +58,7 @@ class MisbehavingP2PNetwork(
       rpcMethodsFactory = { statusMessageFactory, lineaRpcProtocolIdGenerator, peerLookup, beaconChain ->
         RpcMethods(statusMessageFactory, lineaRpcProtocolIdGenerator, peerLookup, beaconChain, blockRetrievalStrategy)
       },
+      timerFactory = timerFactory,
     )
 }
 
