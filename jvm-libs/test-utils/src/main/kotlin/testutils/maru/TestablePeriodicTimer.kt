@@ -24,11 +24,16 @@ class TestablePeriodicTimer(
   override val errorHandler: (Throwable) -> Unit = { }
   override val timerSchedule: TimerSchedule = TimerSchedule.FIXED_RATE
 
-  public val startCount = AtomicInteger(0)
-  public val stopCount = AtomicInteger(0)
+  private val startCounter = AtomicInteger(0)
+  public val startCount: Int
+    get() = startCounter.get()
+
+  private val stopCounter = AtomicInteger(0)
+  public val stopCount: Int
+    get() = stopCounter.get()
 
   override fun start() {
-    startCount.incrementAndGet()
+    startCounter.incrementAndGet()
   }
 
   fun runNextTask() {
@@ -36,7 +41,7 @@ class TestablePeriodicTimer(
   }
 
   override fun stop() {
-    stopCount.incrementAndGet()
+    stopCounter.incrementAndGet()
   }
 }
 

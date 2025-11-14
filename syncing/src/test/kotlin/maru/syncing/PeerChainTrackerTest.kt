@@ -96,7 +96,7 @@ class PeerChainTrackerTest {
     val timer = timerFactory.getTimer("peer-chain-tracker")!!
     // Assert
     assertThat(timer.task).isNotNull
-    assertThat(timer.startCount.get()).isEqualTo(1)
+    assertThat(timer.startCount).isEqualTo(1)
     // TODO: Fix Periodic Polling Service with default initial delay of 0 seconds
     assertThat(timer.initialDelay).isEqualTo(1.seconds)
     assertThat(timer.period).isEqualTo(1.seconds)
@@ -112,7 +112,7 @@ class PeerChainTrackerTest {
     peerChainTracker.stop()
 
     // Assert
-    assertThat(timer.stopCount.get()).isEqualTo(1)
+    assertThat(timer.stopCount).isEqualTo(1)
   }
 
   @Test

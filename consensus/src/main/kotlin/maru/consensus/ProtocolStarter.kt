@@ -140,8 +140,8 @@ class ProtocolStarter(
 
   override fun start() {
     synchronized(this) {
-      poller.start()
       checkAndHandleForkTransition()
+      poller.start()
       log.debug("Starting fork transition polling with interval {}", forkTransitionCheckInterval)
     }
   }
