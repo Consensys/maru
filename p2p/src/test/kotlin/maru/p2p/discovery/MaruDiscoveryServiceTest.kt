@@ -150,7 +150,7 @@ class MaruDiscoveryServiceTest {
         .toULong(),
     ).isEqualTo(sequenceNumberAfterInitialization + 2uL)
 
-    service.stop()
+    service.stop().get()
   }
 
   @Test
@@ -247,9 +247,9 @@ class MaruDiscoveryServiceTest {
           foundPeersContains(foundPeers, bootnode, discoveryService2)
         }
     } finally {
-      bootnode.stop()
-      discoveryService2.stop()
-      discoveryService3.stop()
+      bootnode.stop().get()
+      discoveryService2.stop().get()
+      discoveryService3.stop().get()
     }
   }
 

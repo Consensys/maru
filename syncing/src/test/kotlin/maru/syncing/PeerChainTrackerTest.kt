@@ -8,6 +8,7 @@
  */
 package maru.syncing
 
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
@@ -97,8 +98,7 @@ class PeerChainTrackerTest {
     // Assert
     assertThat(timer.task).isNotNull
     assertThat(timer.startCount).isEqualTo(1)
-    // TODO: Fix Periodic Polling Service with default initial delay of 0 seconds
-    assertThat(timer.initialDelay).isEqualTo(1.seconds)
+    assertThat(timer.initialDelay).isEqualTo(Duration.ZERO)
     assertThat(timer.period).isEqualTo(1.seconds)
   }
 

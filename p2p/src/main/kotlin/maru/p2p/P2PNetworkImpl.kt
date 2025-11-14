@@ -34,6 +34,7 @@ import maru.p2p.topics.QbftMessageSerDe
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import maru.serialization.rlp.MaruCompressorRLPSerDe
+import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
@@ -251,8 +252,13 @@ class P2PNetworkImpl(
   override fun stop(): SafeFuture<Unit> {
     log.info("Stopping={}", this::class.simpleName)
     maruPeerManager.stop()
-    discoveryService?.stop()
-    return p2pNetwork.stop().thenApply {}
+    return discoveryService?.stop()?.toSafeFuture().let { discoveryServiceStopFuture ->
+      if (discoveryServiceStopFuture != null) {
+        discoveryServiceStopFuture.thenCompose { p2pNetwork.stop() }.thenApply { }
+      } else {
+        p2pNetwork.stop().thenApply { }
+      }
+    }
   }
 
   override fun close() {
