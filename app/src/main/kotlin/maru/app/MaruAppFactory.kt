@@ -335,7 +335,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
     private fun getMetricsRegistry(): MeterRegistry =
       BackendRegistries.getDefaultNow() ?: BackendRegistries
         .setupBackend(
-          MicrometerMetricsOptions().setEnabled(true),
+          MicrometerMetricsOptions(),
           null,
         ).let { BackendRegistries.getDefaultNow() }
 
