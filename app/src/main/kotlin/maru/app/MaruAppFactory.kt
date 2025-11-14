@@ -71,7 +71,6 @@ import maru.syncing.HighestHeadTargetSelector
 import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
-import maru.syncing.SyncStatusProvider
 import maru.syncing.SyncTargetSelector
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
@@ -106,7 +105,6 @@ interface MaruAppFactoryCreator {
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
       TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): LongRunningCloseable
@@ -135,7 +133,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
       TimerFactory,
     ) -> P2PNetworkImpl,
   ): MaruApp {
@@ -152,24 +149,23 @@ class MaruAppFactory : MaruAppFactoryCreator {
     config.persistence.dataPath.createDirectories()
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
-    val metricsFacade =
-      MicrometerMetricsFacade(
-        registry = getMetricsRegistry(),
-        metricsPrefix = "maru",
-        allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
-      )
     val vertx =
       VertxFactory.createVertx(
         jvmMetricsEnabled = config.observability.jvmMetricsEnabled,
         prometheusMetricsEnabled = config.observability.prometheusMetricsEnabled,
       )
-
     val timerFactory =
       if (config.useVertxTimers) {
         VertxTimerFactory(vertx)
       } else {
         JvmTimerFactory()
       }
+    val metricsFacade =
+      MicrometerMetricsFacade(
+        registry = getMetricsRegistry(),
+        metricsPrefix = "maru",
+        allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
+      )
     val besuMetricsSystemAdapter =
       BesuMetricsSystemAdapter(
         metricsFacade = metricsFacade,
@@ -231,7 +227,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
           }
         },
         p2PState = kvDatabase,
-        syncStatusProviderProvider = { syncControllerImpl!! },
         clock = clock,
         timerFactory = timerFactory,
         p2pNetworkFactory = p2pNetworkFactory,
@@ -404,7 +399,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
       besuMetricsSystem: BesuMetricsSystem,
       clock: Clock,
       p2PState: P2PState,
-      syncStatusProviderProvider: () -> SyncStatusProvider,
       timerFactory: TimerFactory,
       p2pNetworkFactory: (
         ByteArray,
@@ -418,7 +412,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
         ForkPeeringManager,
         () -> Boolean,
         P2PState,
-        () -> SyncStatusProvider,
         TimerFactory,
       ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     ): P2PNetwork {
@@ -453,7 +446,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
         forkIdHashManager,
         isBlockImportEnabledProvider,
         p2PState,
-        syncStatusProviderProvider,
         timerFactory,
       )
     }

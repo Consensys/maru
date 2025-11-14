@@ -34,7 +34,6 @@ import maru.p2p.topics.QbftMessageSerDe
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import maru.serialization.rlp.MaruCompressorRLPSerDe
-import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
@@ -67,7 +66,6 @@ class P2PNetworkImpl(
   private val forkIdHashManager: ForkPeeringManager,
   isBlockImportEnabledProvider: () -> Boolean,
   private val p2PState: P2PState,
-  private val syncStatusProviderProvider: () -> SyncStatusProvider,
   private val timerFactory: TimerFactory,
   // for testing:
   private val rpcMethodsFactory: (
@@ -143,7 +141,6 @@ class P2PNetworkImpl(
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
         isStaticPeer = this::isStaticPeer,
-        syncStatusProviderProvider = syncStatusProviderProvider,
       )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
@@ -253,10 +250,9 @@ class P2PNetworkImpl(
 
   override fun stop(): SafeFuture<Unit> {
     log.info("Stopping={}", this::class.simpleName)
-    val pmStop = maruPeerManager.stop()
+    maruPeerManager.stop()
     discoveryService?.stop()
-    val p2pStop = p2pNetwork.stop()
-    return SafeFuture.allOf(p2pStop, pmStop).thenApply {}
+    return p2pNetwork.stop().thenApply {}
   }
 
   override fun close() {

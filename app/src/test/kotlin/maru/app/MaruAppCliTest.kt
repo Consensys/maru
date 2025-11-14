@@ -29,7 +29,6 @@ import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.services.LongRunningService
 import maru.services.NoOpLongRunningService
-import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
@@ -171,7 +170,6 @@ class MaruAppCliTest {
           ForkPeeringManager,
           () -> Boolean,
           P2PState,
-          () -> SyncStatusProvider,
           TimerFactory,
         ) -> P2PNetworkImpl,
       ): LongRunningCloseable {

@@ -25,7 +25,6 @@ import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
 import maru.database.P2PState
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
-import maru.p2p.discovery.MaruDiscoveryService.Companion.convertSafeNodeRecordToDiscoveryPeer
 import maru.p2p.discovery.MaruDiscoveryService.Companion.isValidNodeRecord
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
@@ -36,10 +35,10 @@ import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
 import org.ethereum.beacon.discovery.schema.NodeRecordFactory
 import org.ethereum.beacon.discovery.util.Functions
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
 
 class MaruDiscoveryServiceTest {
   companion object {
@@ -116,17 +115,6 @@ class MaruDiscoveryServiceTest {
         p2PState = p2PState,
         timerFactory = JvmTimerFactory(),
       )
-  }
-
-  @Test
-  fun `converts node record with valid forkId`() {
-    val node = createValidNodeRecord()
-
-    val peer = convertSafeNodeRecordToDiscoveryPeer(node)
-
-    assertEquals(publicKey, peer.publicKey)
-    assertEquals(dummyAddr.get(), peer.nodeAddress)
-    assertEquals(Bytes.wrap(forkIdHashProvider.currentForkHash()), peer.forkIdBytes)
   }
 
   @Test
@@ -266,7 +254,7 @@ class MaruDiscoveryServiceTest {
   }
 
   private fun foundPeersContains(
-    foundPeers: Collection<MaruDiscoveryPeer>,
+    foundPeers: Collection<DiscoveryPeer>,
     vararg nodes: MaruDiscoveryService,
   ) {
     nodes.forEach { node -> assertThat(foundPeers.any { it.nodeId == node.getLocalNodeRecord().nodeId }).isTrue }

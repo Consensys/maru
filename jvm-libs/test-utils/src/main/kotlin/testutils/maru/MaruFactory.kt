@@ -61,7 +61,6 @@ import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.services.NoOpLongRunningService
-import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
@@ -350,7 +349,6 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
       TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     startApiServer: Boolean = false,
@@ -462,7 +460,6 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
       TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     apiPort: UInt = 0u,
@@ -535,7 +532,6 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
       TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
@@ -604,7 +600,6 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
       TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
