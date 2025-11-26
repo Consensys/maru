@@ -134,6 +134,8 @@ class ForksScheduleTest {
 
     assertThat(schedule1).isEqualTo(schedule2)
     assertThat(schedule1.hashCode()).isEqualTo(schedule2.hashCode())
+    assertThat(schedule1.hashCode()).isEqualTo(ForksSchedule(expectedChainId, forks1).hashCode())
+    assertThat(schedule2.hashCode()).isEqualTo(ForksSchedule(expectedChainId, forks2).hashCode())
   }
 
   @Test
@@ -185,6 +187,8 @@ class ForksScheduleTest {
 
     assertThat(schedule1).isNotEqualTo(schedule2)
     assertThat(schedule1.hashCode()).isNotEqualTo(schedule2.hashCode())
+    assertThat(schedule1.hashCode()).isEqualTo(ForksSchedule(expectedChainId, listOf(fork1)).hashCode())
+    assertThat(schedule2.hashCode()).isEqualTo(ForksSchedule(expectedChainId, listOf(fork2)).hashCode())
   }
 
   @Test
