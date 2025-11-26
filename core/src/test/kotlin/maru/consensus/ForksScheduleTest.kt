@@ -183,12 +183,17 @@ class ForksScheduleTest {
     assertThat(fork1).isNotEqualTo(fork2)
 
     val schedule1 = ForksSchedule(expectedChainId, listOf(fork1))
+    val schedule1Instance2 = ForksSchedule(expectedChainId, listOf(fork1))
     val schedule2 = ForksSchedule(expectedChainId, listOf(fork2))
+    val schedule2Instance2 = ForksSchedule(expectedChainId, listOf(fork2))
 
     assertThat(schedule1).isNotEqualTo(schedule2)
+    assertThat(schedule1).isEqualTo(schedule1Instance2)
+    assertThat(schedule2).isEqualTo(schedule2Instance2)
+
     assertThat(schedule1.hashCode()).isNotEqualTo(schedule2.hashCode())
-    assertThat(schedule1.hashCode()).isEqualTo(ForksSchedule(expectedChainId, listOf(fork1)).hashCode())
-    assertThat(schedule2.hashCode()).isEqualTo(ForksSchedule(expectedChainId, listOf(fork2)).hashCode())
+    assertThat(schedule1.hashCode()).isEqualTo(schedule1Instance2.hashCode())
+    assertThat(schedule2.hashCode()).isEqualTo(schedule2Instance2.hashCode())
   }
 
   @Test
