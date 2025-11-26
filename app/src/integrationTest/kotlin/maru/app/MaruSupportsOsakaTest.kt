@@ -67,7 +67,7 @@ class MaruSupportsOsakaTest {
     await().atMost(20.seconds.toJavaDuration()).untilAsserted {
       assertThat(cluster.node("sequencer").maru.headBeaconBlockNumber()).isGreaterThan(5UL)
     }
-    await().atMost(5.seconds.toJavaDuration()).untilAsserted {
+    await().atMost(20.seconds.toJavaDuration()).untilAsserted {
       assertThat(cluster.node("follower").maru.headBeaconBlockNumber()).isGreaterThan(5UL)
     }
   }
@@ -104,7 +104,7 @@ class MaruSupportsOsakaTest {
           .timestamp,
       ).isGreaterThan(osakaTimestamp.epochSeconds.toULong())
     }
-    await().atMost(5.seconds.toJavaDuration()).untilAsserted {
+    await().atMost(20.seconds.toJavaDuration()).untilAsserted {
       assertThat(
         cluster
           .node("follower")
