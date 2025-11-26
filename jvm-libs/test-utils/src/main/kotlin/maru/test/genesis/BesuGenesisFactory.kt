@@ -130,7 +130,7 @@ class BesuGenesisFactory(
       )
     }
 
-    fun calculateForkTimestampOrNull(
+    private fun calculateForkTimestampOrNull(
       forks: List<ForkSpec>,
       elFork: ElFork,
     ): ULong? {
@@ -206,11 +206,7 @@ class BesuGenesisFactory(
 
       configNode.set<ObjectNode>("clique", cliqueNode)
 
-      return jsonObjectMapper.writeValueAsString(rootNode).also {
-        println("\n\n\n")
-        println(it)
-        println("\n\n\n")
-      }
+      return jsonObjectMapper.writeValueAsString(rootNode)
     }
 
     private fun setGenesisConfigProperty(
