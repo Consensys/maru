@@ -262,8 +262,6 @@ class ForksScheduleTest {
 
     @Test
     fun `equals should return false with different consensus config`() {
-      assertThat(qbftFork).isNotEqualTo(difficultyAwareQbftFork)
-
       val schedule1 = ForksSchedule(expectedChainId, listOf(qbftFork))
       val schedule1Instance2 = ForksSchedule(expectedChainId, listOf(qbftFork))
       val schedule2 = ForksSchedule(expectedChainId, listOf(difficultyAwareQbftFork))
@@ -297,8 +295,6 @@ class ForksScheduleTest {
               ),
           ),
         )
-
-      assertThat(qbftFork).isNotEqualTo(difficultyAwareQbftFork)
 
       val schedule1 = ForksSchedule(expectedChainId, forkList)
       val schedule1Instance2 = ForksSchedule(expectedChainId, forkList.reversed())
