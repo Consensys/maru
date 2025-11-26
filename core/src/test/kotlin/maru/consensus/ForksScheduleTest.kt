@@ -8,6 +8,8 @@
  */
 package maru.consensus
 
+import kotlin.random.Random
+import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -144,6 +146,42 @@ class ForksScheduleTest {
 
     val schedule1 = ForksSchedule(expectedChainId, forks1)
     val schedule2 = ForksSchedule(expectedChainId, forks2)
+
+    assertThat(schedule1).isNotEqualTo(schedule2)
+    assertThat(schedule1.hashCode()).isNotEqualTo(schedule2.hashCode())
+  }
+
+  @Test
+  fun `equals should return false with different consensus config`() {
+    val validators = setOf(Validator(Random.nextBytes(20)))
+    val fork1 =
+      ForkSpec(
+        timestampSeconds = 1000UL,
+        blockTimeSeconds = 10u,
+        configuration =
+          QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+          ),
+      )
+    val fork2 =
+      ForkSpec(
+        timestampSeconds = 1000UL,
+        blockTimeSeconds = 10u,
+        configuration =
+          DifficultyAwareQbftConfig(
+            postTtdConfig =
+              QbftConsensusConfig(
+                validatorSet = validators,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+              ),
+            terminalTotalDifficulty = 1000UL,
+          ),
+      )
+    assertThat(fork1).isNotEqualTo(fork2)
+
+    val schedule1 = ForksSchedule(expectedChainId, listOf(fork1))
+    val schedule2 = ForksSchedule(expectedChainId, listOf(fork2))
 
     assertThat(schedule1).isNotEqualTo(schedule2)
     assertThat(schedule1.hashCode()).isNotEqualTo(schedule2.hashCode())
