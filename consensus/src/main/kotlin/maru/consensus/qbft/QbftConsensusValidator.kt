@@ -9,6 +9,7 @@
 package maru.consensus.qbft
 
 import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicBoolean
 import maru.core.Protocol
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
@@ -19,17 +20,24 @@ class QbftConsensusValidator(
   private val bftExecutors: BftExecutors,
   private val eventQueueExecutor: Executor,
 ) : Protocol {
+  private val isRunning = AtomicBoolean(false)
+
   override fun start() {
+    if (isRunning.get()) {
+      return
+    }
     eventProcessor.start()
     bftExecutors.start()
     qbftController.start()
     eventQueueExecutor.execute(eventProcessor)
+    isRunning.set(true)
   }
 
   override fun pause() {
     eventProcessor.stop()
     bftExecutors.stop()
     qbftController.stop()
+    isRunning.set(false)
   }
 
   override fun close() {
