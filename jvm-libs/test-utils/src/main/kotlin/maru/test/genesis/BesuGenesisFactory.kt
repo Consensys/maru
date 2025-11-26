@@ -11,6 +11,7 @@ package maru.test.genesis
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import linea.kotlin.isSortedBy
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
@@ -100,18 +101,22 @@ class BesuGenesisFactory(
               pragueTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Prague) ?: 0UL
               osakaTimestamp = forkSpec.timestampSeconds
             }
+
             ElFork.Prague -> {
               shanghaiTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Shanghai) ?: 0UL
               cancunTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Cancun) ?: 0UL
               pragueTimestamp = forkSpec.timestampSeconds
             }
+
             ElFork.Cancun -> {
               shanghaiTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Shanghai) ?: 0UL
               cancunTimestamp = forkSpec.timestampSeconds
             }
+
             ElFork.Shanghai -> {
               shanghaiTimestamp = forkSpec.timestampSeconds
             }
+
             ElFork.Paris -> {} // nothing to do, terminalTotalDifficulty already set
           }
         }
@@ -134,6 +139,9 @@ class BesuGenesisFactory(
       forks: List<ForkSpec>,
       elFork: ElFork,
     ): ULong? {
+      require(forks.isSortedBy { it.timestampSeconds }) {
+        "forks must be sorted in ascending order by timestampSeconds"
+      }
       val forkTimestamp =
         forks
           .firstOrNull { it.configuration.fork.elFork == elFork }
