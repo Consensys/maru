@@ -24,7 +24,6 @@ import org.junit.jupiter.api.Test
 
 class GenesisFactoryTest {
   val objectMapper = jacksonObjectMapper()
-  val validator = Random.nextBytes(20)
   val validators = listOf(Random.nextBytes(20))
   private lateinit var genesisFactory: GenesisFactory
 
@@ -44,6 +43,7 @@ class GenesisFactoryTest {
     val cancunTimestamp = Instant.parse("2025-02-02T00:00:00Z")
     val pragueTimestamp = Instant.parse("2025-03-03T00:00:00Z")
     val osakaTimestamp = Instant.parse("2025-04-04T00:00:00Z")
+    val osakaTimestamp2 = Instant.parse("2025-04-05T00:00:00Z")
 
     val forks =
       mapOf(
@@ -52,6 +52,7 @@ class GenesisFactoryTest {
         cancunTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
         pragueTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
         osakaTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Osaka),
+        osakaTimestamp2 to ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
       )
 
     genesisFactory.initForkSchedule(
