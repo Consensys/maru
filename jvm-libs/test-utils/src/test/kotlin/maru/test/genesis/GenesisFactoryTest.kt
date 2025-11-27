@@ -40,17 +40,19 @@ class GenesisFactoryTest {
   fun `should create genesis with ttd and all chain forks from Paris to Osaka`() {
     val parisTime = Instant.fromEpochSeconds(0)
     val shanghaiTimestamp = Instant.parse("2025-01-01T00:00:00Z")
-    val cancunTimestamp = Instant.parse("2025-02-02T00:00:00Z")
-    val pragueTimestamp = Instant.parse("2025-03-03T00:00:00Z")
-    val osakaTimestamp = Instant.parse("2025-04-04T00:00:00Z")
-    val osakaTimestamp2 = Instant.parse("2025-04-05T00:00:00Z")
+    val cancunTimestamp = Instant.parse("2025-02-01T00:00:00Z")
+    val cancunTimestamp2 = Instant.parse("2025-02-02T00:00:00Z")
+    val pragueTimestamp = Instant.parse("2025-03-01T00:00:00Z")
+    val osakaTimestamp = Instant.parse("2025-04-01T00:00:00Z")
+    val osakaTimestamp2 = Instant.parse("2025-04-02T00:00:00Z")
 
     val forks =
       mapOf(
         parisTime to ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
         shanghaiTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
         cancunTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
-        pragueTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+        cancunTimestamp2 to ChainFork(ClFork.QBFT_PHASE1, ElFork.Cancun),
+        pragueTimestamp to ChainFork(ClFork.QBFT_PHASE1, ElFork.Prague),
         osakaTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Osaka),
         osakaTimestamp2 to ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
       )
