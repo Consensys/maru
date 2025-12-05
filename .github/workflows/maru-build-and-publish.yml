@@ -124,8 +124,7 @@ jobs:
         with:
           context: app
           build-contexts: |
-            libs=./app/build/install/app/lib/
-            maru=./app/build/libs/
+            app=./app/build/install/app/
           platforms: linux/amd64
           load: true
           push: false
@@ -147,8 +146,7 @@ jobs:
         with:
           context: app
           build-contexts: |
-            libs=./app/build/install/app/lib/
-            maru=./app/build/libs/
+            app=./app/build/install/app/
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.TAGS }}
