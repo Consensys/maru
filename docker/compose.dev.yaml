@@ -12,6 +12,8 @@ services:
       - sequencer
       - follower-geth
     environment:
+      # '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005'
+      # '-Dvertx.configurationFile=/opt/consensys/maru/configs/vertx-options.json',
       JAVA_OPTS: '-Dlog4j2.configurationFile=configs/log4j.xml'
     command: [ '--maru-genesis-file', 'configs/genesis.json',
                '--config', 'configs/config.dev.toml' ]
