@@ -25,7 +25,7 @@ chaos-reload-k3s-and-chaos-mesh:
 
 chaos-full-reload:
 	@$(MAKE) k3s-reload
-	@$(MAKE) chaos-redeploy-chaos-mesh-and-linea maru	_image=$(if $(maru_image),$(maru_image))
+	@$(MAKE) chaos-redeploy-chaos-mesh-and-linea maru_image=$(if $(maru_image),$(maru_image))
 	@if [ "$(skip_initial_health_check)" != "true" ]; then \
 		$(MAKE) chaos-health-check; \
 	else \
