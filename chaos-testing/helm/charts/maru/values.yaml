@@ -55,6 +55,9 @@ probes:
     timeoutSeconds: 5
     successThreshold: 1
     failureThreshold: 3
+env:
+  - name: JAVA_OPTS
+    value: "-Dlog4j2.configurationFile=configs/log4j.xml"
 
 configFiles:
   privateKey: |

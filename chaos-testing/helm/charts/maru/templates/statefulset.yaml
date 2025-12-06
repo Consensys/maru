@@ -27,12 +27,8 @@ spec:
             {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-
           command:
-            - java
-            - -Dlog4j2.configurationFile=configs/log4j.xml
-            - -jar
-            - maru.jar
+            - /opt/consensys/maru/bin/app
             - --maru-genesis-file
             - /opt/consensys/maru/configs/genesis.json
             - --config
