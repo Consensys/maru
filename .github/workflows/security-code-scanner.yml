@@ -41,7 +41,7 @@ jobs:
           {
             "language": "java-kotlin",
             "build_mode": "manual",
-            "build_command": "./gradlew build",
+            "build_command": "./gradlew :app:installDist",
             "version": "21",
             "distribution": "temurin"
           }
