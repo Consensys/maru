@@ -92,8 +92,8 @@ jobs:
           echo "COMMIT_TAG=$COMMIT_TAG" >> $GITHUB_ENV
           echo "TAGS=${{ env.IMAGE_NAME }}:$COMMIT_TAG" >> $GITHUB_ENV
           echo "COMMIT_TAG=$COMMIT_TAG"
-      - name: Set develop tag if main branch or explicit commit tag provided
-        if: ${{ github.ref == 'refs/heads/main' || inputs.commit_tag != '' }}
+      - name: Set develop tag if main branch
+        if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }},${{ env.IMAGE_NAME }}:${{ env.DEVELOP_TAG }}" >> $GITHUB_ENV
       - uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b #v4.5.0

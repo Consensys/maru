@@ -36,10 +36,10 @@ jobs:
           echo "Tag: $TAG_NAME"
 
           # Validate tag format: v<semver>-<product-label-ver>?
-          # Examples: v2.0.1-betav4 OR v2.0.1
-          if [[ ! $TAG_NAME =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+          # Examples: v2.0.1-betav4 OR v2.0.1 OR v2.0.1-beta-v4
+          if [[ ! $TAG_NAME =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9-]+)?$ ]]; then
             echo "Error: Tag format is invalid. Expected format: v<semver>-<product-label-ver>?"
-            echo "Examples: v2.0.1-betav4 OR v2.0.1"
+            echo "Examples: v2.0.1-betav4 OR v2.0.1 OR v2.0.1-beta-v4"
             exit 1
           fi
 
