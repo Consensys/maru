@@ -94,7 +94,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           draft: true
-          generate_release_notes: true
           body_path: CHANGELOG.md
           files: maru-${{ needs.compute-version.outputs.full_version }}.tar.gz
           fail_on_unmatched_files: true
