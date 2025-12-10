@@ -111,6 +111,3 @@ jobs:
           files: maru-${{ needs.compute-version.outputs.full_version }}.tar.gz
           fail_on_unmatched_files: true
           make_latest: true
-
-
-
