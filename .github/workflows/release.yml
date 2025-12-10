@@ -88,15 +88,22 @@ jobs:
       - name: Create distribution archive
         run: |
           tar -czf maru-${{ needs.compute-version.outputs.full_version }}.tar.gz -C app/build/install/app .
-          ls -lh maru-${{ needs.compute-version.outputs.full_version }}.tar.gz
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           body_path: CHANGELOG.md
+          body: |
+            ## Docker Image
+
+            🐳 **Docker Hub:** https://hub.docker.com/r/consensys/maru/tags?name=${{ needs.compute-version.outputs.full_version }}
+
+            ```bash
+            docker pull consensys/maru:${{ needs.compute-version.outputs.full_version }}
+            ```
           files: maru-${{ needs.compute-version.outputs.full_version }}.tar.gz
           fail_on_unmatched_files: true
+          make_latest: true
 
 
 
