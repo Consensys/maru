@@ -1,6 +1,6 @@
 # Changelog
 
-## Upcoming Breaking Changes
+### Upcoming Breaking Changes
 
 ### Breaking Changes
 
