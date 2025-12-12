@@ -45,7 +45,7 @@ jobs:
 
           # Compute date and commit hash
           DATE=$(date -u +%Y%m%d%H%M%S)
-          COMMIT_HASH=$(git rev-parse --short HEAD)
+          COMMIT_HASH=$(git show-ref -s $TAG_NAME | cut -c1-7)
 
           # Create full version: <semver>-<product-label-ver>?-<date>-<commit-hash>
           FULL_VERSION="${TAG_NAME}-${DATE}-${COMMIT_HASH}"
