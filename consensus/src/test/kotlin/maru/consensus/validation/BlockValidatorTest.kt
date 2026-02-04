@@ -480,4 +480,28 @@ class BlockValidatorTest {
       )
     assertThat(result).isEqualTo(expectedResult)
   }
+
+  @Test
+  fun `test invalid payload block number, number higher`() {
+    val parentExecutionPayload = validCurrBlockBody.executionPayload
+    val invalidBlockBody =
+      validNewBlockBody.copy(
+        executionPayload =
+          validNewBlockBody.executionPayload.copy(
+            blockNumber = parentExecutionPayload.blockNumber + 2UL,
+          ),
+      )
+    val invalidBlock = validNewBlock.copy(beaconBlockBody = invalidBlockBody)
+
+    val payloadBlockNumberValidator = PayloadBlockNumberValidator(parentExecutionPayload)
+    val result = payloadBlockNumberValidator.validateBlock(block = invalidBlock).get()
+
+    val expectedResult =
+      error(
+        "Execution payload block number is not the next block number " +
+          "elBlockNumber=${invalidBlockBody.executionPayload.blockNumber} " +
+          "parentElBlockNumber=${parentExecutionPayload.blockNumber}",
+      )
+    assertThat(result).isEqualTo(expectedResult)
+  }
 }
