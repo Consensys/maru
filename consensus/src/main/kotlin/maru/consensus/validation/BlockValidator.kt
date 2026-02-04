@@ -16,7 +16,6 @@ import maru.consensus.qbft.ProposerSelector
 import maru.consensus.qbft.toConsensusRoundIdentifier
 import maru.consensus.state.StateTransition
 import maru.consensus.validation.BlockValidator.BlockValidationError
-import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
@@ -89,10 +88,16 @@ class PayloadBlockNumberValidator(
 ) : BlockValidator {
   override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
     val parentPayloadBlockNumber = parentExecutionPayload.blockNumber
+    if (parentPayloadBlockNumber == 0UL) {
+      // CL may start from an EL block that is past the genesis one
+      return SafeFuture.completedFuture(BlockValidator.ok())
+    }
     return SafeFuture.completedFuture(
       BlockValidator.require(block.beaconBlockBody.executionPayload.blockNumber == parentPayloadBlockNumber + 1u) {
-        "Execution payload block number is not the next block number elBlockNumber=${block.beaconBlockBody
-          .executionPayload.blockNumber} " +
+        "Execution payload block number is not the next block number elBlockNumber=${
+          block.beaconBlockBody
+            .executionPayload.blockNumber
+        } " +
           "parentElBlockNumber=$parentPayloadBlockNumber"
       },
     )
