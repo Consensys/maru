@@ -335,12 +335,7 @@ class BlockValidatorTest {
   fun `seals verification failed future is propagated`() {
     val expectedMessage = "Test exception!"
     val sealsVerifier =
-      object : SealsVerifier {
-        override fun verifySeals(
-          seals: Set<Seal>,
-          beaconBlockHeader: BeaconBlockHeader,
-        ): SafeFuture<Result<Unit, String>> = SafeFuture.failedFuture(Exception(expectedMessage))
-      }
+      SealsVerifier { _, _ -> SafeFuture.failedFuture(Exception(expectedMessage)) }
     val prevCommitSealValidator =
       PrevCommitSealValidator(
         beaconChain = beaconChain,

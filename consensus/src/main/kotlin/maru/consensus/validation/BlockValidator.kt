@@ -129,7 +129,9 @@ class ProposerValidator(
     val parentState = beaconChain.getBeaconState(block.beaconBlockHeader.parentRoot)
     return if (parentState == null) {
       SafeFuture.completedFuture(
-        error("Beacon state not found for block parentHash=${block.beaconBlockHeader.parentRoot.encodeHex()}"),
+        BlockValidator.error(
+          "Beacon state not found for block parentHash=${block.beaconBlockHeader.parentRoot.encodeHex()}",
+        ),
       )
     } else {
       proposerSelector
@@ -215,7 +217,7 @@ class PrevCommitSealValidator(
 
     val prevBlock =
       beaconChain.getSealedBeaconBlock(prevBlockNumber)?.beaconBlock ?: return SafeFuture.completedFuture(
-        error("Previous block not found, previousBlockNumber=$prevBlockNumber"),
+        BlockValidator.error("Previous block not found, previousBlockNumber=$prevBlockNumber"),
       )
 
     return sealsVerifier
@@ -225,7 +227,7 @@ class PrevCommitSealValidator(
           BlockValidationError("Previous block seal verification failed. Reason: $errorMessage")
         }
       }.exceptionally { ex ->
-        error(ex.message!!)
+        BlockValidator.error(ex.message!!)
       }
   }
 }
