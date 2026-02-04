@@ -6,6 +6,6 @@
 
 ### Additions and Improvements
 
-Introducing Maru release process
+Added new validator for the EL payload block number
 
 ### Bug Fixes
