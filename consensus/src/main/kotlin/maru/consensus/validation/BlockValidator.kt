@@ -20,6 +20,7 @@ import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
+import maru.core.ExecutionPayload
 import maru.core.HashUtil
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -78,6 +79,21 @@ class BlockNumberValidator(
       BlockValidator.require(block.beaconBlockHeader.number == parentBlockNumber + 1u) {
         "Beacon block number is not the next block number blockNumber=${block.beaconBlockHeader.number} " +
           "parentBlockNumber=$parentBlockNumber"
+      },
+    )
+  }
+}
+
+class PayloadBlockNumberValidator(
+  private val parentExecutionPayload: ExecutionPayload,
+) : BlockValidator {
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+    val parentPayloadBlockNumber = parentExecutionPayload.blockNumber
+    return SafeFuture.completedFuture(
+      BlockValidator.require(block.beaconBlockBody.executionPayload.blockNumber == parentPayloadBlockNumber + 1u) {
+        "Execution payload block number is not the next block number elBlockNumber=${block.beaconBlockBody
+          .executionPayload.blockNumber} " +
+          "parentElBlockNumber=$parentPayloadBlockNumber"
       },
     )
   }
