@@ -451,8 +451,8 @@ class BlockValidatorTest {
       )
     val validBlock = validNewBlock.copy(beaconBlockBody = validBlockBody)
 
-    val payloadBlockNumberValidator = PayloadBlockNumberValidator(parentExecutionPayload)
-    val result = payloadBlockNumberValidator.validateBlock(block = validBlock).get()
+    val executionPayloadBlockNumberValidator = ExecutionPayloadBlockNumberValidator(parentExecutionPayload)
+    val result = executionPayloadBlockNumberValidator.validateBlock(block = validBlock).get()
 
     assertThat(result).isEqualTo(BlockValidator.ok())
   }
@@ -469,8 +469,8 @@ class BlockValidatorTest {
       )
     val invalidBlock = validNewBlock.copy(beaconBlockBody = invalidBlockBody)
 
-    val payloadBlockNumberValidator = PayloadBlockNumberValidator(parentExecutionPayload)
-    val result = payloadBlockNumberValidator.validateBlock(block = invalidBlock).get()
+    val executionPayloadBlockNumberValidator = ExecutionPayloadBlockNumberValidator(parentExecutionPayload)
+    val result = executionPayloadBlockNumberValidator.validateBlock(block = invalidBlock).get()
 
     val expectedResult =
       error(
@@ -493,8 +493,8 @@ class BlockValidatorTest {
       )
     val invalidBlock = validNewBlock.copy(beaconBlockBody = invalidBlockBody)
 
-    val payloadBlockNumberValidator = PayloadBlockNumberValidator(parentExecutionPayload)
-    val result = payloadBlockNumberValidator.validateBlock(block = invalidBlock).get()
+    val executionPayloadBlockNumberValidator = ExecutionPayloadBlockNumberValidator(parentExecutionPayload)
+    val result = executionPayloadBlockNumberValidator.validateBlock(block = invalidBlock).get()
 
     val expectedResult =
       error(

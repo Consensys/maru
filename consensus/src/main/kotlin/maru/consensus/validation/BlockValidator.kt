@@ -83,7 +83,7 @@ class BlockNumberValidator(
   }
 }
 
-class PayloadBlockNumberValidator(
+class ExecutionPayloadBlockNumberValidator(
   private val parentExecutionPayload: ExecutionPayload,
 ) : BlockValidator {
   override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
