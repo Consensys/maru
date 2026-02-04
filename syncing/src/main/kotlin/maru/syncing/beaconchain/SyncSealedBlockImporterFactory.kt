@@ -19,8 +19,8 @@ import maru.consensus.validation.BlockNumberValidator
 import maru.consensus.validation.BodyRootValidator
 import maru.consensus.validation.CompositeBlockValidator
 import maru.consensus.validation.EmptyBlockValidator
-import maru.consensus.validation.ParentRootValidator
 import maru.consensus.validation.ExecutionPayloadBlockNumberValidator
+import maru.consensus.validation.ParentRootValidator
 import maru.consensus.validation.ProposerValidator
 import maru.consensus.validation.QuorumOfSealsVerifier
 import maru.consensus.validation.SCEP256SealVerifier
