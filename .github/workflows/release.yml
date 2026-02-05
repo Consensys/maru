@@ -58,6 +58,8 @@ jobs:
           echo "Full version: $FULL_VERSION"
 
   build-and-publish-docker:
+    permissions:
+      contents: read # for actions/checkout in called workflow
     needs: compute-version
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
