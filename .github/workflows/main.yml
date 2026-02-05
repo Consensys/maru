@@ -7,12 +7,16 @@ on:
     branches:
       - main
 
+permissions: {} # lock everything by default (least-privilege)
+
 concurrency:
   group: maru-main-workflow-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   filter-commit-changes:
+    permissions:
+      contents: read # for actions/checkout and dorny/paths-filter
     runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-small]
     name: Filter commit changes
     outputs:
@@ -54,6 +58,7 @@ jobs:
           echo "All filter outputs: ${{ toJSON(steps.filter.outputs) }}"
 
   debug:
+    permissions: {} # no permissions needed
     name: Debug Filters outputs
     needs: [ filter-commit-changes ]
     runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-small ]
