@@ -59,7 +59,7 @@ jobs:
         if: ${{ inputs.e2e-tests-with-ssh }}
         uses: lhotari/action-upterm@v1
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
