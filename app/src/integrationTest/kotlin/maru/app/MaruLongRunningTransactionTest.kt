@@ -9,23 +9,10 @@
 package maru.app
 
 import java.time.Duration
-import java.util.UUID
-import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import maru.config.QbftConfig
-import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.core.Appender
-import org.apache.logging.log4j.core.Core
-import org.apache.logging.log4j.core.Filter
-import org.apache.logging.log4j.core.LogEvent
-import org.apache.logging.log4j.core.Logger
-import org.apache.logging.log4j.core.appender.AbstractAppender
-import org.apache.logging.log4j.core.config.Property
-import org.apache.logging.log4j.core.config.plugins.Plugin
-import org.apache.logging.log4j.core.config.plugins.PluginAttribute
-import org.apache.logging.log4j.core.config.plugins.PluginFactory
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -38,33 +25,10 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import testutils.Checks.getMinedBlocks
+import testutils.RecordingEngineProxy
 import testutils.SingleNodeNetworkStack
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
-
-@Plugin(name = "ListAppender", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
-class ListAppender(
-  name: String,
-  filter: Filter?,
-) : AbstractAppender(name, filter, null, true, Property.EMPTY_ARRAY) {
-  val events: MutableList<LogEvent> = CopyOnWriteArrayList()
-
-  override fun append(event: LogEvent) {
-    events.add(event.toImmutable())
-  }
-
-  fun clear() {
-    events.clear()
-  }
-
-  companion object {
-    @JvmStatic
-    @PluginFactory
-    fun createAppender(
-      @PluginAttribute("name") name: String,
-    ): ListAppender = ListAppender(name, null)
-  }
-}
 
 class MaruLongRunningTransactionTest {
   private lateinit var cluster: Cluster
@@ -72,30 +36,12 @@ class MaruLongRunningTransactionTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
-  private lateinit var listAppender: ListAppender
+  private lateinit var proxy: RecordingEngineProxy
 
   private val expectedMinBuildTime = 1700L
 
   @BeforeEach
   fun setUp() {
-    // Setup Log4j2 Appender
-    listAppender = ListAppender.createAppender("ListAppender-${UUID.randomUUID()}")
-    listAppender.start()
-
-    val fcuLogger =
-      LogManager.getLogger(
-        "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineForkchoiceUpdated",
-      ) as Logger
-    fcuLogger.addAppender(listAppender)
-    fcuLogger.level = Level.INFO
-
-    val getPayloadLogger =
-      LogManager.getLogger(
-        "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineGetPayload",
-      ) as Logger
-    getPayloadLogger.addAppender(listAppender)
-    getPayloadLogger.level = Level.INFO
-
     transactionsHelper = BesuTransactionsHelper()
     cluster =
       Cluster(
@@ -106,9 +52,12 @@ class MaruLongRunningTransactionTest {
 
     networkParticipantStack =
       SingleNodeNetworkStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        proxy = RecordingEngineProxy(engineRpcUrl)
+        proxy.start()
+
         maruFactory.buildTestMaruValidatorWithoutP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
-          engineApiRpc = engineRpcUrl,
+          engineApiRpc = proxy.url(),
           dataDir = tmpDir,
           allowEmptyBlocks = false,
           syncingConfig =
@@ -130,33 +79,19 @@ class MaruLongRunningTransactionTest {
   fun tearDown() {
     networkParticipantStack.maruApp.stop().get()
     networkParticipantStack.maruApp.close()
+    proxy.stop()
     cluster.close()
-
-    val fcuLogger =
-      LogManager.getLogger(
-        "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineForkchoiceUpdated",
-      ) as Logger
-    fcuLogger.removeAppender(listAppender)
-
-    val getPayloadLogger =
-      LogManager.getLogger(
-        "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineGetPayload",
-      ) as Logger
-    getPayloadLogger.removeAppender(listAppender)
-
-    listAppender.stop()
   }
 
   @Test
   fun `Maru waits for minBlockBuildTime in Round 1 when empty blocks are rejected`() {
     mineBlockWithTransaction(expectedBlockNumber = 1)
 
-    // Clear logs to only capture Block 2 building
-    listAppender.clear()
+    proxy.clear()
 
-    // In Round 0, it will create an empty block (since we send no transactions) and it will be rejected.
-    // Then it will transition to Round 1 and use EagerQbftBlockCreator, which sleeps for minBlockBuildTime.
-    waitForBlockBuildingGapToExceed(expectedMinBuildTime - 50L)
+    // In Round 0, Maru creates an empty block (no pending transactions) which gets rejected.
+    // It transitions to Round 1 and uses EagerQbftBlockCreator, which sends FCU then sleeps for minBlockBuildTime.
+    waitForFcuToGetPayloadGapToExceed(expectedMinBuildTime - 100L)
 
     mineBlockWithTransaction(expectedBlockNumber = 2)
   }
@@ -172,47 +107,33 @@ class MaruLongRunningTransactionTest {
     assertThat(networkParticipantStack.besuNode.getMinedBlocks(expectedBlockNumber)).hasSize(expectedBlockNumber)
   }
 
-  private fun waitForBlockBuildingGapToExceed(minimumGapMs: Long) {
+  private fun waitForFcuToGetPayloadGapToExceed(minimumGapMs: Long) {
     var maxGap = 0L
     await.atMost(Duration.ofSeconds(30)).untilAsserted {
-      val fcuLogs = listAppender.events.filter { it.message.formattedMessage.contains("FCU(VALID)") }
-      val getPayloadLogs = listAppender.events.filter { it.message.formattedMessage.contains("Produced #") }
+      val fcuCalls = proxy.calls.filter { it.method.startsWith("engine_forkchoiceUpdated") }
+      val getPayloadCalls = proxy.calls.filter { it.method.startsWith("engine_getPayload") }
 
-      val hasLongRunningBlock =
-        getPayloadLogs.any { getPayloadLog ->
-          val precedingFcu = fcuLogs.lastOrNull { it.timeMillis <= getPayloadLog.timeMillis }
+      val hasLongGap =
+        getPayloadCalls.any { getPayload ->
+          val precedingFcu = fcuCalls.lastOrNull { it.timestampMs <= getPayload.timestampMs }
           if (precedingFcu != null) {
-            val gap = getPayloadLog.timeMillis - precedingFcu.timeMillis
-            if (gap > maxGap) {
-              maxGap = gap
-            }
+            val gap = getPayload.timestampMs - precedingFcu.timestampMs
+            if (gap > maxGap) maxGap = gap
             gap >= minimumGapMs
           } else {
             false
           }
         }
 
-      assertThat(hasLongRunningBlock)
+      assertThat(hasLongGap)
         .withFailMessage {
-          val fcuDump = fcuLogs.joinToString("\n") { "FCU at ${it.timeMillis}: ${it.message.formattedMessage}" }
-          val payloadDump =
-            getPayloadLogs.joinToString("\n") { "Payload at ${it.timeMillis}: ${it.message.formattedMessage}" }
-          val allLogsDump =
-            listAppender.events.joinToString("\n") {
-              "[${it.threadName}] ${it.timeMillis}: ${it.message.formattedMessage}"
-            }
+          val callsDump = proxy.calls.joinToString("\n") { "${it.timestampMs}: ${it.method}" }
 
           """
-          No block building process took >= $minimumGapMs ms. Max gap found so far: $maxGap ms
-
-          FCU Logs:
-          $fcuDump
-
-          Payload Logs:
-          $payloadDump
-
-          All Logs:
-          $allLogsDump
+          No FCU-to-getPayload gap took >= $minimumGapMs ms. Max gap: $maxGap ms
+          
+          All Engine API calls:
+          $callsDump
           """.trimIndent()
         }.isTrue()
     }

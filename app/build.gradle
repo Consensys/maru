@@ -57,6 +57,8 @@ dependencies {
   integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
   integrationTestImplementation("org.hyperledger.besu.internal:besu-ethereum-p2p")
   integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
+  integrationTestImplementation("com.squareup.okhttp3:okhttp")
+  integrationTestImplementation("io.javalin:javalin")
   testImplementation(testFixtures(project(":core")))
 }
 
