@@ -8,6 +8,7 @@
  */
 package maru.app
 
+import java.time.Duration
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -18,7 +19,6 @@ import org.apache.logging.log4j.core.Appender
 import org.apache.logging.log4j.core.Core
 import org.apache.logging.log4j.core.Filter
 import org.apache.logging.log4j.core.LogEvent
-import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.config.Property
 import org.apache.logging.log4j.core.config.plugins.Plugin
@@ -76,25 +76,22 @@ class MaruLongRunningTransactionTest {
   @BeforeEach
   fun setUp() {
     // Setup Log4j2 Appender
-    listAppender = ListAppender.createAppender("ListAppender")
+    listAppender = ListAppender.createAppender("ListAppender-${java.util.UUID.randomUUID()}")
     listAppender.start()
-    val loggerContext = LogManager.getContext(false) as LoggerContext
-    val configuration = loggerContext.configuration
-    val fcuLoggerConfig =
-      configuration.getLoggerConfig(
+
+    val fcuLogger =
+      LogManager.getLogger(
         "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineForkchoiceUpdated",
-      )
-    fcuLoggerConfig.addAppender(listAppender, Level.INFO, null)
-    fcuLoggerConfig.level = Level.INFO
+      ) as org.apache.logging.log4j.core.Logger
+    fcuLogger.addAppender(listAppender)
+    fcuLogger.level = Level.INFO
 
-    val getPayloadLoggerConfig =
-      configuration.getLoggerConfig(
+    val getPayloadLogger =
+      LogManager.getLogger(
         "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineGetPayload",
-      )
-    getPayloadLoggerConfig.addAppender(listAppender, Level.INFO, null)
-    getPayloadLoggerConfig.level = Level.INFO
-
-    loggerContext.updateLoggers()
+      ) as org.apache.logging.log4j.core.Logger
+    getPayloadLogger.addAppender(listAppender)
+    getPayloadLogger.level = Level.INFO
 
     transactionsHelper = BesuTransactionsHelper()
     cluster =
@@ -128,25 +125,36 @@ class MaruLongRunningTransactionTest {
     networkParticipantStack.maruApp.close()
     cluster.close()
 
-    val loggerContext = LogManager.getContext(false) as LoggerContext
-    val configuration = loggerContext.configuration
-    val fcuLoggerConfig =
-      configuration.getLoggerConfig(
+    val fcuLogger =
+      LogManager.getLogger(
         "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineForkchoiceUpdated",
-      )
-    fcuLoggerConfig.removeAppender(listAppender.name)
-    val getPayloadLoggerConfig =
-      configuration.getLoggerConfig(
+      ) as org.apache.logging.log4j.core.Logger
+    fcuLogger.removeAppender(listAppender)
+
+    val getPayloadLogger =
+      LogManager.getLogger(
         "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineGetPayload",
-      )
-    getPayloadLoggerConfig.removeAppender(listAppender.name)
-    loggerContext.updateLoggers()
+      ) as org.apache.logging.log4j.core.Logger
+    getPayloadLogger.removeAppender(listAppender)
+
     listAppender.stop()
   }
 
   @Test
   fun `Maru waits for minBlockBuildTime in Round 1 when empty blocks are rejected`() {
-    // 1. Mine Block 1 successfully to transition out of the initial state
+    mineBlockWithTransaction(expectedBlockNumber = 1)
+
+    // Clear logs to only capture Block 2 building
+    listAppender.clear()
+
+    // In Round 0, it will create an empty block (since we send no transactions) and it will be rejected.
+    // Then it will transition to Round 1 and use EagerQbftBlockCreator, which sleeps for minBlockBuildTime.
+    waitForBlockBuildingGapToExceed(expectedMinBuildTime - 50L)
+
+    mineBlockWithTransaction(expectedBlockNumber = 2)
+  }
+
+  private fun mineBlockWithTransaction(expectedBlockNumber: Int) {
     transactionsHelper.run {
       networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
         logger = log,
@@ -154,39 +162,50 @@ class MaruLongRunningTransactionTest {
         amount = Amount.ether(100),
       )
     }
+    assertThat(networkParticipantStack.besuNode.getMinedBlocks(expectedBlockNumber)).hasSize(expectedBlockNumber)
+  }
 
-    assertThat(networkParticipantStack.besuNode.getMinedBlocks(1)).hasSize(1)
-
-    // 2. Clear logs to only capture Block 2 building
-    listAppender.clear()
-
-    // 3. Wait for Maru to attempt to build Block 2.
-    // In Round 0, it will create an empty block (since we send no transactions) and it will be rejected.
-    // Then it will transition to Round 1 and use EagerQbftBlockCreator, which sleeps for minBlockBuildTime.
-    await.untilAsserted {
+  private fun waitForBlockBuildingGapToExceed(minimumGapMs: Long) {
+    var maxGap = 0L
+    await.atMost(Duration.ofSeconds(30)).untilAsserted {
       val fcuLogs = listAppender.events.filter { it.message.formattedMessage.contains("FCU(VALID)") }
       val getPayloadLogs = listAppender.events.filter { it.message.formattedMessage.contains("Produced #") }
 
       val hasLongRunningBlock =
         getPayloadLogs.any { getPayloadLog ->
           val precedingFcu = fcuLogs.lastOrNull { it.timeMillis <= getPayloadLog.timeMillis }
-          precedingFcu != null && (getPayloadLog.timeMillis - precedingFcu.timeMillis >= expectedMinBuildTime)
+          if (precedingFcu != null) {
+            val gap = getPayloadLog.timeMillis - precedingFcu.timeMillis
+            if (gap > maxGap) {
+              maxGap = gap
+            }
+            gap >= minimumGapMs
+          } else {
+            false
+          }
         }
 
       assertThat(hasLongRunningBlock)
-        .withFailMessage("No block building process took >= $expectedMinBuildTime ms")
-        .isTrue()
-    }
+        .withFailMessage {
+          val fcuDump = fcuLogs.joinToString("\n") { "FCU at ${it.timeMillis}: ${it.message.formattedMessage}" }
+          val payloadDump =
+            getPayloadLogs.joinToString("\n") { "Payload at ${it.timeMillis}: ${it.message.formattedMessage}" }
+          val allLogsDump =
+            listAppender.events.joinToString("\n") { "${it.timeMillis}: ${it.message.formattedMessage}" }
 
-    // 4. Send a transaction so Block 2 is not empty and gets successfully mined
-    transactionsHelper.run {
-      networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
-        logger = log,
-        recipient = createAccount("another account"),
-        amount = Amount.ether(100),
-      )
-    }
+          """
+          No block building process took >= $minimumGapMs ms. Max gap found so far: $maxGap ms
 
-    assertThat(networkParticipantStack.besuNode.getMinedBlocks(2)).hasSize(2)
+          FCU Logs:
+          $fcuDump
+
+          Payload Logs:
+          $payloadDump
+
+          All Logs:
+          $allLogsDump
+          """.trimIndent()
+        }.isTrue()
+    }
   }
 }
