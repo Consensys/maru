@@ -422,13 +422,14 @@ class MaruFactory(
     overridingP2PNetwork: P2PNetwork? = null,
     allowEmptyBlocks: Boolean = false,
     syncingConfig: SyncingConfig = defaultSyncingConfig,
+    qbftOptions: QbftConfig = validatorQbftOptions,
   ): MaruApp {
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
-        qbftOptions = validatorQbftOptions,
+        qbftOptions = qbftOptions,
         allowEmptyBlocks = allowEmptyBlocks,
         syncingConfig = syncingConfig,
       )
