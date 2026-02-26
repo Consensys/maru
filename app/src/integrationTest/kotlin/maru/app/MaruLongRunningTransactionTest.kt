@@ -9,6 +9,7 @@
 package maru.app
 
 import java.time.Duration
+import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -19,6 +20,7 @@ import org.apache.logging.log4j.core.Appender
 import org.apache.logging.log4j.core.Core
 import org.apache.logging.log4j.core.Filter
 import org.apache.logging.log4j.core.LogEvent
+import org.apache.logging.log4j.core.Logger
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.config.Property
 import org.apache.logging.log4j.core.config.plugins.Plugin
@@ -38,6 +40,7 @@ import org.junit.jupiter.api.Test
 import testutils.Checks.getMinedBlocks
 import testutils.SingleNodeNetworkStack
 import testutils.besu.BesuTransactionsHelper
+import testutils.maru.MaruFactory
 
 @Plugin(name = "ListAppender", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
 class ListAppender(
@@ -68,7 +71,7 @@ class MaruLongRunningTransactionTest {
   private lateinit var networkParticipantStack: SingleNodeNetworkStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
-  private val maruFactory = testutils.maru.MaruFactory()
+  private val maruFactory = MaruFactory()
   private lateinit var listAppender: ListAppender
 
   private val expectedMinBuildTime = 1700L
@@ -76,20 +79,20 @@ class MaruLongRunningTransactionTest {
   @BeforeEach
   fun setUp() {
     // Setup Log4j2 Appender
-    listAppender = ListAppender.createAppender("ListAppender-${java.util.UUID.randomUUID()}")
+    listAppender = ListAppender.createAppender("ListAppender-${UUID.randomUUID()}")
     listAppender.start()
 
     val fcuLogger =
       LogManager.getLogger(
         "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineForkchoiceUpdated",
-      ) as org.apache.logging.log4j.core.Logger
+      ) as Logger
     fcuLogger.addAppender(listAppender)
     fcuLogger.level = Level.INFO
 
     val getPayloadLogger =
       LogManager.getLogger(
         "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineGetPayload",
-      ) as org.apache.logging.log4j.core.Logger
+      ) as Logger
     getPayloadLogger.addAppender(listAppender)
     getPayloadLogger.level = Level.INFO
 
@@ -108,6 +111,10 @@ class MaruLongRunningTransactionTest {
           engineApiRpc = engineRpcUrl,
           dataDir = tmpDir,
           allowEmptyBlocks = false,
+          syncingConfig =
+            MaruFactory.defaultSyncingConfig.copy(
+              elSyncStatusRefreshInterval = 1000.seconds,
+            ),
           qbftOptions =
             QbftConfig(
               feeRecipient = maruFactory.qbftValidator.address.reversedArray(),
@@ -128,13 +135,13 @@ class MaruLongRunningTransactionTest {
     val fcuLogger =
       LogManager.getLogger(
         "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineForkchoiceUpdated",
-      ) as org.apache.logging.log4j.core.Logger
+      ) as Logger
     fcuLogger.removeAppender(listAppender)
 
     val getPayloadLogger =
       LogManager.getLogger(
         "org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.engine.AbstractEngineGetPayload",
-      ) as org.apache.logging.log4j.core.Logger
+      ) as Logger
     getPayloadLogger.removeAppender(listAppender)
 
     listAppender.stop()
@@ -191,7 +198,9 @@ class MaruLongRunningTransactionTest {
           val payloadDump =
             getPayloadLogs.joinToString("\n") { "Payload at ${it.timeMillis}: ${it.message.formattedMessage}" }
           val allLogsDump =
-            listAppender.events.joinToString("\n") { "${it.timeMillis}: ${it.message.formattedMessage}" }
+            listAppender.events.joinToString("\n") {
+              "[${it.threadName}] ${it.timeMillis}: ${it.message.formattedMessage}"
+            }
 
           """
           No block building process took >= $minimumGapMs ms. Max gap found so far: $maxGap ms
