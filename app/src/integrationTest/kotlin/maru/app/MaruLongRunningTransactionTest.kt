@@ -174,7 +174,7 @@ class MaruLongRunningTransactionTest {
         }
 
       assertThat(hasLongRunningBlock)
-        .withFailMessage("No block building process took >= \$expectedMinBuildTime ms")
+        .withFailMessage("No block building process took >= $expectedMinBuildTime ms")
         .isTrue()
     }
 
