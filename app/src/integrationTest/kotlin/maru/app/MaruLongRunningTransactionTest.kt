@@ -71,6 +71,8 @@ class MaruLongRunningTransactionTest {
   private val maruFactory = testutils.maru.MaruFactory()
   private lateinit var listAppender: ListAppender
 
+  private val expectedMinBuildTime = 1700L
+
   @BeforeEach
   fun setUp() {
     // Setup Log4j2 Appender
@@ -112,7 +114,7 @@ class MaruLongRunningTransactionTest {
           qbftOptions =
             QbftConfig(
               feeRecipient = maruFactory.qbftValidator.address.reversedArray(),
-              minBlockBuildTime = 1700.milliseconds,
+              minBlockBuildTime = expectedMinBuildTime.milliseconds,
               roundExpiry = 2.seconds,
             ),
         )
@@ -153,33 +155,27 @@ class MaruLongRunningTransactionTest {
       )
     }
 
-    val blocks = networkParticipantStack.besuNode.getMinedBlocks(1)
-    assertThat(blocks).hasSize(1)
+    assertThat(networkParticipantStack.besuNode.getMinedBlocks(1)).hasSize(1)
 
     // 2. Clear logs to only capture Block 2 building
     listAppender.clear()
 
     // 3. Wait for Maru to attempt to build Block 2.
-    // In Round 0, it will create an empty block (since we send no transactions) and it will be rejected (allowEmptyBlocks = false).
-    // Then it will transition to Round 1 and use EagerQbftBlockCreator.
+    // In Round 0, it will create an empty block (since we send no transactions) and it will be rejected.
+    // Then it will transition to Round 1 and use EagerQbftBlockCreator, which sleeps for minBlockBuildTime.
     await.untilAsserted {
-      val fcuLogs =
-        listAppender.events.filter { it.message.formattedMessage.contains("FCU(VALID)") }
-      val getPayloadLogs =
-        listAppender.events.filter {
-          it.message.formattedMessage.contains("Produced #")
+      val fcuLogs = listAppender.events.filter { it.message.formattedMessage.contains("FCU(VALID)") }
+      val getPayloadLogs = listAppender.events.filter { it.message.formattedMessage.contains("Produced #") }
+
+      val hasLongRunningBlock =
+        getPayloadLogs.any { getPayloadLog ->
+          val precedingFcu = fcuLogs.lastOrNull { it.timeMillis <= getPayloadLog.timeMillis }
+          precedingFcu != null && (getPayloadLog.timeMillis - precedingFcu.timeMillis >= expectedMinBuildTime)
         }
 
-      assertThat(fcuLogs).isNotEmpty()
-      assertThat(getPayloadLogs).isNotEmpty()
-
-      // We might have multiple FCU logs (e.g. for Round 0 and Round 1).
-      // The last FCU log corresponds to Round 1.
-      val lastFcuTime = fcuLogs.last().timeMillis
-      val lastGetPayloadTime = getPayloadLogs.last().timeMillis
-
-      val timeDiff = lastGetPayloadTime - lastFcuTime
-      assertThat(timeDiff).isGreaterThanOrEqualTo(1700L)
+      assertThat(hasLongRunningBlock)
+        .withFailMessage("No block building process took >= \$expectedMinBuildTime ms")
+        .isTrue()
     }
 
     // 4. Send a transaction so Block 2 is not empty and gets successfully mined
@@ -191,7 +187,6 @@ class MaruLongRunningTransactionTest {
       )
     }
 
-    val blocksAfterRound1 = networkParticipantStack.besuNode.getMinedBlocks(2)
-    assertThat(blocksAfterRound1).hasSize(2)
+    assertThat(networkParticipantStack.besuNode.getMinedBlocks(2)).hasSize(2)
   }
 }
