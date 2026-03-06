@@ -38,8 +38,10 @@ spec:
             - --config
             {{ if .Values.configFiles.configsDefaultsToml }}
             - /opt/consensys/maru/configs/configs-defaults.toml
-            {{ end}}
+            {{ end }}
+            {{ if .Values.configFiles.configsToml }}
             - /opt/consensys/maru/configs/configs.toml
+            {{ end }}
           volumeMounts:
             - name: data
               mountPath: /opt/consensys/maru/data

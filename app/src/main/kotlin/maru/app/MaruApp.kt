@@ -33,7 +33,6 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.services.LongRunningService
 import maru.subscription.InOrderFanoutSubscriptionManager
-import maru.syncing.SyncStatusProvider
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
@@ -62,7 +61,6 @@ class MaruApp(
   private val l2EthWeb3j: Web3j?,
   private val validatorELNodeEngineApiWeb3JClient: Web3JClient?,
   private val apiServer: ApiServer,
-  private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
   private val timerFactory: TimerFactory,
 ) : LongRunningCloseable {
@@ -116,6 +114,15 @@ class MaruApp(
 
   fun apiPort(): UInt = apiServer.port().toUInt()
 
+  /**
+   * Optional observer called when BLOCK_TIMER_EXPIRY fires on this validator.
+   * Can be set after construction but must be set before [start] to capture the first block.
+   * Parameters: (blockNumber: Long, wallClockMs: Long).
+   * Intended for benchmarking — gives the actual timer-fire wall-clock time so that true QBFT
+   * consensus latency can be separated from JVM scheduling jitter.
+   */
+  var onBlockTimerFired: ((blockNumber: Long, wallClockMs: Long) -> Unit)? = null
+
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
@@ -137,6 +144,7 @@ class MaruApp(
     }
     start("P2P Network") { p2pNetwork.start().get() }
     start("Sync Service") { syncControllerManager.start().get() }
+    start("Protocol") { protocolStarter.start() }
     start("Beacon Api") { apiServer.start().get() }
     // observability shall be the last to start because of liveness/readiness probe
     start("Observability Server") {
@@ -220,9 +228,11 @@ class MaruApp(
           p2pNetwork = p2pNetwork,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
-          syncStatusProvider = syncStatusProvider,
           forksSchedule = beaconGenesisConfig,
           payloadValidationEnabled = config.validatorElNode!!.payloadValidationEnabled,
+          // Forwarding lambda: reads onBlockTimerFired dynamically so the caller can set it
+          // on MaruApp after construction (but before start()) and the callback will still fire.
+          onBlockTimerFired = { blockNumber, wallClockMs -> onBlockTimerFired?.invoke(blockNumber, wallClockMs) },
         )
       } else {
         QbftFollowerFactory(
@@ -245,7 +255,7 @@ class MaruApp(
         timerFactory = timerFactory,
       )
     val protocolStarter =
-      ProtocolStarter.create(
+      ProtocolStarter(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
           OmniProtocolFactory(
@@ -253,7 +263,6 @@ class MaruApp(
             difficultyAwareQbftFactory = difficultyAwareQbftFactory,
           ),
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
-        syncStatusProvider = syncStatusProvider,
         forkTransitionCheckInterval = config.forkTransition.protocolTransitionPollingInterval,
         forkTransitionNotifier = forkTransitionSubscriptionManager,
         clock = clock,

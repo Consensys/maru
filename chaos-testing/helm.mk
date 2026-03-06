@@ -54,6 +54,21 @@ wait-for-log-entry:
 	done
 
 
+helm-deploy-maru-only-node:
+	@if [ -z "$(maru_release_name)" ] || [ -z "$(maru_values)" ]; then \
+		echo "Usage: make helm-deploy-maru-only-node maru_release_name=<name> maru_values=<values_file> [maru_bootnode=<bootnode>]"; \
+		exit 1; \
+	fi
+	@echo "Deploying Maru-only node: $(maru_release_name)"
+	@MARU_ARGS=""; \
+	if [ -n "$(maru_bootnode)" ]; then \
+		MARU_ARGS="--set bootnodes=$(maru_bootnode)"; \
+	fi; \
+	if [ -n "$(maru_image)" ]; then \
+		MARU_ARGS="$$MARU_ARGS --set image.name=$(maru_image)"; \
+	fi; \
+	helm --kubeconfig $(KUBECONFIG) upgrade --install $(maru_release_name) ./helm/charts/maru --force -f ./helm/charts/maru/values.yaml -f ./helm/values/$(maru_values) --namespace default $$MARU_ARGS
+
 # make helm-deploy-linea-node maru_release_name=maru-bootnode-0 maru_values=maru-bootnode-0.yaml besu_release_name=besu-bootnode-0 besu_values=besu-bootnode-0.yaml
 # to debug templates:
 # helm template maru-test ./helm/charts/maru -f ./helm/charts/maru/values.yaml -f ./helm/values/maru-bootnode-0.yaml --debug
@@ -68,7 +83,7 @@ helm-deploy-linea-node:
 		BESU_ARGS="--set bootnodes=$(besu_bootnode)"; \
 	fi; \
 	helm --kubeconfig $(KUBECONFIG) upgrade --install $(besu_release_name) ./helm/charts/besu --force -f ./helm/charts/besu/values.yaml -f ./helm/values/$(besu_values) --namespace default $$BESU_ARGS
-#	@$(MAKE) wait-for-log-entry pod_name=$(besu_release_name)-0 log_entry="Ethereum main loop is up"
+	@kubectl wait --for=condition=ready pod/$(besu_release_name)-0 --timeout=120s
 	@MARU_ARGS=""; \
 	if [ -n "$(maru_bootnode)" ]; then \
 		MARU_ARGS="--set bootnodes=$(maru_bootnode)"; \
@@ -142,6 +157,38 @@ helm-redeploy-linea:
 	sleep 3; \
 	$(MAKE) wait-all-running; \
 	echo "Deployment done"
+
+helm-redeploy-linea-multi-validator:
+	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) helm-clean-linea-releases
+	@set -e; \
+	pid1=""; \
+	if [ "$(maru_image)" ]; then \
+		case "$(maru_image)" in \
+			*local) \
+				echo "maru_image ends with 'local' -> build/import local image"; \
+				$(MAKE) build-and-import-maru-image & pid1=$$!; \
+				;; \
+			*) \
+				echo "Using provided maru_image=$(maru_image)"; \
+				;; \
+		esac; \
+	fi; \
+	if [ -n "$$pid1" ]; then wait $$pid1 || exit 1; fi;
+	@$(MAKE) helm-deploy-maru-only-node maru_release_name=maru-bootnode-0 maru_values=maru-bootnode-mv-0.yaml $(if $(maru_image),maru_image=$(maru_image),);
+	@$(MAKE) get-pod-enr pod_name=maru-bootnode-0-0 dst_file=maru-bootnode.txt
+	@MARU_BOOTNODE=$$(cat tmp/maru-bootnode.txt); \
+	echo "Deploying validator-0 with Maru bootnode: $$MARU_BOOTNODE"; \
+	$(MAKE) helm-deploy-linea-node maru_release_name=maru-validator-0 maru_values=maru-validator-0.yaml besu_release_name=besu-validator-0 besu_values=besu-validator-0.yaml maru_bootnode=$$MARU_BOOTNODE $(if $(maru_image),maru_image=$(maru_image),)
+	@$(MAKE) get-pod-enode pod_name=besu-validator-0-0 dst_file=el-bootnode.txt
+	@EL_BOOTNODE=$$(cat tmp/el-bootnode.txt); \
+	MARU_BOOTNODE=$$(cat tmp/maru-bootnode.txt); \
+	echo "Deploying validators 1-3 with bootnodes - EL: $$EL_BOOTNODE, Maru: $$MARU_BOOTNODE"; \
+	$(MAKE) helm-deploy-linea-node maru_release_name=maru-validator-1 maru_values=maru-validator-1.yaml besu_release_name=besu-validator-1 besu_values=besu-validator-1.yaml maru_bootnode=$$MARU_BOOTNODE besu_bootnode=$$EL_BOOTNODE $(if $(maru_image),maru_image=$(maru_image),); \
+	$(MAKE) helm-deploy-linea-node maru_release_name=maru-validator-2 maru_values=maru-validator-2.yaml besu_release_name=besu-validator-2 besu_values=besu-validator-2.yaml maru_bootnode=$$MARU_BOOTNODE besu_bootnode=$$EL_BOOTNODE $(if $(maru_image),maru_image=$(maru_image),); \
+	$(MAKE) helm-deploy-linea-node maru_release_name=maru-validator-3 maru_values=maru-validator-3.yaml besu_release_name=besu-validator-3 besu_values=besu-validator-3.yaml maru_bootnode=$$MARU_BOOTNODE besu_bootnode=$$EL_BOOTNODE $(if $(maru_image),maru_image=$(maru_image),); \
+	sleep 3; \
+	$(MAKE) wait-all-running; \
+	echo "Multi-validator deployment done"
 
 build-maru-image:
 	@echo "Building Maru image"

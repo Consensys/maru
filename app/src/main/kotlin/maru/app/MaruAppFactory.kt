@@ -252,8 +252,11 @@ class MaruAppFactory : MaruAppFactoryCreator {
             followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
             finalizationProvider = finalizationProvider,
           )
+        // Validators manage EL sync through QBFT consensus itself.
+        // Followers only use ELSyncService when an explicit polling interval is configured.
+        val elSyncEnabled = config.qbft == null && config.syncing.elSyncStatusRefreshInterval != null
         val elSyncServiceFactory: ((ELSyncStatus) -> Unit) -> LongRunningService = { onStatusChange ->
-          if (engineApiWeb3jClient != null) {
+          if (elSyncEnabled && engineApiWeb3jClient != null) {
             val validatorImportHandler =
               ElForkAwareBlockImporter(
                 forksSchedule = beaconGenesisConfig,
@@ -262,7 +265,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
                 finalizationProvider = finalizationProvider,
               )
             ELSyncService(
-              config = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval),
+              config = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval!!),
               beaconChain = kvDatabase,
               eLValidatorBlockImportHandler = validatorImportHandler,
               followerELBLockImportHandler = elSyncBlockImportHandlers,
@@ -283,6 +286,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
           metricsFacade = metricsFacade,
           peerChainTrackerConfig = PeerChainTracker.Config(config.syncing.peerChainHeightPollingInterval),
           elSyncServiceFactory = elSyncServiceFactory,
+          elSyncEnabled = elSyncEnabled,
           desyncTolerance = config.syncing.desyncTolerance,
           pipelineConfig =
             BeaconChainDownloadPipelineFactory.Config(
@@ -335,7 +339,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
       validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
       apiServer = apiServer,
       syncControllerManager = syncControllerImpl,
-      syncStatusProvider = syncControllerImpl,
       timerFactory = timerFactory,
     )
   }

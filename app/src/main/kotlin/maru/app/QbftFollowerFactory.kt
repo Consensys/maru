@@ -12,7 +12,6 @@ import maru.consensus.ForkSpec
 import maru.consensus.ProtocolFactory
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
-import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
 import maru.consensus.qbft.ProposerSelectorImpl
@@ -52,33 +51,12 @@ class QbftFollowerFactory(
         )
       }
 
-    // Import to EL (engine_newPayload / FCU) should happen whenever client exists,
-    // regardless of validation flag
-    val elPayloadImportHandler =
-      elManager?.let {
-        FollowerBeaconBlockImporter.create(
-          executionLayerManager = it,
-          finalizationStateProvider = finalizationStateProvider,
-          importerName = "payload-validator",
-        )
-      }
-
-    val blockImportHandlers =
-      Helpers.createBlockImportHandlers(
-        elFork = qbftConsensusConfig.elFork,
-        metricsFacade = metricsFacade,
-        finalizationStateProvider = finalizationStateProvider,
-        followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
-      )
-
     val validatorProvider = StaticValidatorProvider(validators = qbftConsensusConfig.validatorSet)
     val stateTransition = StateTransitionImpl(validatorProvider)
 
     val transactionalSealedBeaconBlockImporter =
-      TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition) { _, beaconBlock ->
-        (elPayloadImportHandler?.handleNewBlock(beaconBlock) ?: SafeFuture.completedFuture(Unit)).thenCompose {
-          blockImportHandlers.handleNewBlock(beaconBlock)
-        }
+      TransactionalSealedBeaconBlockImporter(beaconChain, stateTransition) { _, _ ->
+        SafeFuture.completedFuture(Unit)
       }
 
     val beaconBlockValidatorFactory =
@@ -98,6 +76,18 @@ class QbftFollowerFactory(
         beaconBlockValidatorFactory = beaconBlockValidatorFactory,
       )
 
-    return QbftConsensusFollower(p2pNetwork, payloadValidatorNewBlockImporter)
+    // Subscribe EL driving outside of the follower — fires for all blocks
+    // (P2P-received and CL-synced), driving both this node's EL and any follower ELs.
+    return QbftConsensusFollower(p2pNetwork, payloadValidatorNewBlockImporter).subscribeElSync(
+      beaconChain,
+      Helpers.buildElImporterHandlers(
+        ownExecutionLayerManager = elManager,
+        ownHandlerName = "follower-el",
+        followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+        elFork = qbftConsensusConfig.elFork,
+        finalizationStateProvider = finalizationStateProvider,
+        metricsFacade = metricsFacade,
+      ),
+    )
   }
 }

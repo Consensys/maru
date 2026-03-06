@@ -8,14 +8,19 @@
  */
 package maru.app
 
+import java.util.UUID
 import maru.config.ApiEndpointConfig
 import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
+import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.blockimport.ElForkAwareBlockImporter
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.state.FinalizationProvider
+import maru.core.Protocol
+import maru.database.BeaconChain
 import maru.executionlayer.ExecutionLayerFactory.buildExecutionLayerManager
+import maru.executionlayer.manager.ExecutionLayerManager
 import maru.web3j.TekuWeb3JClientFactory
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.Logger
@@ -82,4 +87,48 @@ object Helpers {
       }
     return NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)
   }
+
+  fun buildElImporterHandlers(
+    ownExecutionLayerManager: ExecutionLayerManager?,
+    ownHandlerName: String,
+    followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,
+    elFork: ElFork,
+    finalizationStateProvider: FinalizationProvider,
+    metricsFacade: MetricsFacade,
+  ): Map<String, NewBlockHandler<*>> =
+    buildMap {
+      followerELNodeEngineApiWeb3JClients.forEach { (name, client) ->
+        put(
+          name,
+          FollowerBeaconBlockImporter.create(
+            executionLayerManager = buildExecutionLayerManager(client, elFork, metricsFacade),
+            finalizationStateProvider = finalizationStateProvider,
+            importerName = name,
+          ),
+        )
+      }
+      ownExecutionLayerManager?.let {
+        put(
+          ownHandlerName,
+          FollowerBeaconBlockImporter.create(
+            executionLayerManager = it,
+            finalizationStateProvider = finalizationStateProvider,
+            importerName = ownHandlerName,
+          ),
+        )
+      }
+    }
+}
+
+fun Protocol.subscribeElSync(
+  beaconChain: BeaconChain,
+  handlers: Map<String, NewBlockHandler<*>>,
+): Protocol {
+  if (handlers.isEmpty()) return this
+  val multiplexer = NewBlockHandlerMultiplexer(handlers)
+  val subscriberId = "el-sync-${UUID.randomUUID()}"
+  beaconChain.addAsyncSubscriber(subscriberId) {
+    multiplexer.handleNewBlock(it.beaconBlock).toCompletableFuture()
+  }
+  return ProtocolWithBeaconChainObserver(this, beaconChain, subscriberId)
 }

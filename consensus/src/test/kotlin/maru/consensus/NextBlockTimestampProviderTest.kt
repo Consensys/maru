@@ -47,7 +47,7 @@ class NextBlockTimestampProviderTest {
   }
 
   @Test
-  fun `if current time is overdue it targets next integer second`() {
+  fun `if current time is overdue it targets current integer second`() {
     val nextBlockTimestampProvider =
       NextBlockTimestampProviderImpl(
         createCLockForTimestamp(11123),
@@ -56,7 +56,7 @@ class NextBlockTimestampProviderTest {
 
     val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockTimestamp)
 
-    assertThat(result).isEqualTo(12UL)
+    assertThat(result).isEqualTo(11UL)
   }
 
   @Test

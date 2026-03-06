@@ -90,7 +90,6 @@ class MaruFactory(
       SyncingConfig(
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection = SyncTargetSelection.Highest,
-        elSyncStatusRefreshInterval = 500.milliseconds,
         desyncTolerance = 0UL,
         download = SyncingConfig.Download(),
       )
@@ -517,7 +516,6 @@ class MaruFactory(
       SyncingConfig(
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection = SyncTargetSelection.Highest,
-        elSyncStatusRefreshInterval = 500.milliseconds,
         desyncTolerance = 0UL,
         download = SyncingConfig.Download(blockRangeRequestTimeout = blockRangeRequestTimeout),
       ),

@@ -25,12 +25,15 @@ class QbftBlockValidatorAdapter(
   override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
     log.trace("validating ${blockValidator.javaClass.canonicalName}")
     val beaconBlock = qbftBlock.toBeaconBlock()
+    val t0 = System.nanoTime()
     return when (val blockValidationResult = blockValidator.validateBlock(beaconBlock).get()) {
       is Ok -> {
+        log.debug("validateBlock OK in {}ms", (System.nanoTime() - t0) / 1_000_000L)
         QbftBlockValidator.ValidationResult(true, Optional.empty())
       }
 
       is Err -> {
+        log.debug("validateBlock FAIL in {}ms: {}", (System.nanoTime() - t0) / 1_000_000L, blockValidationResult.error)
         QbftBlockValidator.ValidationResult(
           false,
           Optional.of(blockValidationResult.error.toString()),

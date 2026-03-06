@@ -88,14 +88,24 @@ class TransactionalSealedBeaconBlockImporter(
   override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ValidationResult> {
     val clBlockNumber = sealedBeaconBlock.beaconBlock.beaconBlockHeader.number
     val elBLockNumber = sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber
+    val importStartNs = System.nanoTime()
     log.debug(
       "Importing clBlockNumber={} elBlockNumber={}",
       clBlockNumber,
       elBLockNumber,
     )
-    val stateTransition =
+    val stateTransitionFuture =
       try {
-        stateTransition.processBlock(sealedBeaconBlock.beaconBlock)
+        val stT0 = System.nanoTime()
+        stateTransition.processBlock(sealedBeaconBlock.beaconBlock).also {
+          // Log synchronous portion of state transition (future may not be resolved yet here,
+          // but if the implementation is synchronous the log appears right after the call).
+          log.debug(
+            "StateTransition.processBlock() call returned in {}ms clBlockNumber={}",
+            (System.nanoTime() - stT0) / 1_000_000L,
+            clBlockNumber,
+          )
+        }
       } catch (ex: Throwable) {
         log.error(
           "State transition threw an exception clBlockNumber={} elBlockNumber={}",
@@ -106,18 +116,21 @@ class TransactionalSealedBeaconBlockImporter(
         return SafeFuture.failedFuture(ex)
       }
 
-    return stateTransition
+    return stateTransitionFuture
       .thenApply { resultingState ->
+        val dbT0 = System.nanoTime()
         beaconChain.newBeaconChainUpdater().use { updater ->
           updater
             .putBeaconState(resultingState)
             .putSealedBeaconBlock(sealedBeaconBlock)
             .commit()
         }
-        log.trace(
-          "DB Import complete clBlockNumber={} elBlockNumber={}",
+        val dbMs = (System.nanoTime() - dbT0) / 1_000_000L
+        log.debug(
+          "DB write clBlockNumber={} took {}ms (total import so far {}ms)",
           clBlockNumber,
-          elBLockNumber,
+          dbMs,
+          (System.nanoTime() - importStartNs) / 1_000_000L,
         )
         resultingState
       }.thenPeek { resultingState ->
@@ -179,11 +192,16 @@ class ValidatingSealedBeaconBlockImporter(
       val blockValidators =
         beaconBlockValidatorFactory
           .createValidatorForBlock(beaconBlockHeader)
-      return sealsVerifier
-        .verifySeals(sealedBeaconBlock.commitSeals, beaconBlockHeader)
-        .thenComposeCombined(
-          blockValidators.validateBlock(beaconBlock),
-        ) { sealsVerificationResult, blockValidationResult ->
+      val validationStartNs = System.nanoTime()
+      val sealsVerifyFuture = sealsVerifier.verifySeals(sealedBeaconBlock.commitSeals, beaconBlockHeader)
+      val blockValidateFuture = blockValidators.validateBlock(beaconBlock)
+      return sealsVerifyFuture
+        .thenComposeCombined(blockValidateFuture) { sealsVerificationResult, blockValidationResult ->
+          log.debug(
+            "Seal verification + block validation took {}ms clBlockNumber={}",
+            (System.nanoTime() - validationStartNs) / 1_000_000L,
+            beaconBlockHeader.number,
+          )
           val combinedValidationResult =
             sealsVerificationResult.flatMap { blockValidationResult.mapError { it.message } }
           when (combinedValidationResult) {

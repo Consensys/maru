@@ -27,12 +27,14 @@ class QbftBlockImporterAdapter(
 
   override fun importBlock(qbftBlock: QbftBlock): Boolean {
     val sealedBeaconBlock = qbftBlock.toSealedBeaconBlock()
+    val t0 = System.nanoTime()
     try {
       sealedBeaconBlockImporter.importBlock(sealedBeaconBlock).get()
     } catch (e: Exception) {
       log.error("Block import failed: ${e.message}", e)
       return false
     }
+    log.debug("importBlock took {}ms", (System.nanoTime() - t0) / 1_000_000L)
     return true
   }
 }

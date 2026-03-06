@@ -14,6 +14,8 @@ import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.database.P2PState
+import maru.subscription.InOrderFanoutSubscriptionManager
+import maru.subscription.SubscriptionManager
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor.KvStoreTransaction
 import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreColumn
@@ -22,6 +24,7 @@ import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
 class KvDatabase(
   private val kvStoreAccessor: KvStoreAccessor,
 ) : BeaconChain,
+  SubscriptionManager<SealedBeaconBlock> by InOrderFanoutSubscriptionManager(),
   P2PState {
   override fun isInitialized(): Boolean = kvStoreAccessor.get(Schema.LatestBeaconState).getOrNull() != null
 
@@ -82,7 +85,10 @@ class KvDatabase(
       .flatMap { blockRoot -> kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, blockRoot) }
       .getOrNull()
 
-  override fun newBeaconChainUpdater(): BeaconChain.Updater = KvUpdater(this.kvStoreAccessor)
+  override fun newBeaconChainUpdater(): BeaconChain.Updater =
+    KvUpdater(this.kvStoreAccessor) { block ->
+      notifySubscribers(block)
+    }
 
   override fun getLocalNodeRecordSequenceNumber(): ULong =
     kvStoreAccessor
@@ -97,9 +103,11 @@ class KvDatabase(
 
   class KvUpdater(
     kvStoreAccessor: KvStoreAccessor,
+    private val onBlockAdded: (SealedBeaconBlock) -> Unit = {},
   ) : BeaconChain.Updater,
     P2PState.Updater {
     private val transaction: KvStoreTransaction = kvStoreAccessor.startTransaction()
+    private var committedBlock: SealedBeaconBlock? = null
 
     override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
       transaction.put(Schema.BeaconStateByBlockRoot, beaconState.beaconBlockHeader.hash, beaconState)
@@ -118,7 +126,7 @@ class KvDatabase(
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash,
       )
-
+      committedBlock = sealedBeaconBlock
       return this
     }
 
@@ -129,6 +137,7 @@ class KvDatabase(
 
     override fun commit() {
       transaction.commit()
+      committedBlock?.let { onBlockAdded(it) }
     }
 
     override fun rollback() {

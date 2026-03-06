@@ -82,7 +82,6 @@ configFiles:
 
     [syncing]
     peer-chain-height-polling-interval = "1 seconds"
-    el-sync-status-refresh-interval = "1 seconds"
     use-unconditional-random-download-peer = false
     sync-target-selection = "Highest"
 
@@ -119,6 +118,9 @@ configFiles:
       <Logger name="maru" level="INFO"/>
       <Logger name="maru.syncing" level="DEBUG"/>
       <Logger name="maru.clients" level="DEBUG"/>
+      <Logger name="maru.executionlayer.manager" level="DEBUG"/>
+      <Logger name="maru.consensus.qbft" level="DEBUG"/>
+      <Logger name="maru.consensus.blockimport" level="DEBUG"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>
       </Root>

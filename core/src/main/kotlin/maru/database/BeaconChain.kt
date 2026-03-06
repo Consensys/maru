@@ -12,8 +12,11 @@ import kotlin.math.min
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
+import maru.subscription.SubscriptionManager
 
-interface BeaconChain : AutoCloseable {
+interface BeaconChain :
+  AutoCloseable,
+  SubscriptionManager<SealedBeaconBlock> {
   fun isInitialized(): Boolean
 
   fun getLatestBeaconState(): BeaconState

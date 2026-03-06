@@ -17,7 +17,9 @@ import maru.p2p.ValidationResult
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResult.Companion.Invalid
 import maru.p2p.ValidationResult.Companion.Valid
+import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
+import org.hyperledger.besu.consensus.qbft.core.messagedata.QbftV1
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.datatypes.Address
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -40,6 +42,8 @@ class QbftMessageProcessor(
   private val bftEventQueue: BftEventQueue,
   private val messageDecoder: MinimalQbftMessageDecoder,
 ) : QbftMessageHandler<ValidationResult> {
+  private val log = LogManager.getLogger(this.javaClass)
+
   /**
    * Validates a QBFT message and determines whether it should be gossiped.
    *
@@ -49,6 +53,13 @@ class QbftMessageProcessor(
   override fun handleQbftMessage(qbftMessage: QbftMessage): SafeFuture<ValidationResult> =
     try {
       val metadata = messageDecoder.deserialize(qbftMessage)
+      log.debug(
+        "P2P message received: type={} sequence={} round={} from={}",
+        messageTypeName(metadata.messageCode),
+        metadata.sequenceNumber,
+        metadata.roundNumber,
+        metadata.author,
+      )
       val result = processMessage(qbftMessage, metadata)
       SafeFuture.completedFuture(result)
     } catch (e: Exception) {
@@ -67,6 +78,12 @@ class QbftMessageProcessor(
         Ignore("Local node is not a validator")
       } else {
         bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())
+        log.debug(
+          "P2P message queued to BftEventQueue: type={} sequence={} round={}",
+          messageTypeName(metadata.messageCode),
+          metadata.sequenceNumber,
+          metadata.roundNumber,
+        )
         Valid
       }
     } else if (isMsgForFutureChainHeight(metadata.sequenceNumber)) {
@@ -88,4 +105,13 @@ class QbftMessageProcessor(
     sequenceNumber > blockChain.chainHeadBlockNumber
 
   private fun isLocalNodeValidator(validators: Collection<Address>): Boolean = validators.contains(localAddress)
+
+  private fun messageTypeName(code: Int): String =
+    when (code) {
+      QbftV1.PROPOSAL -> "PROPOSAL"
+      QbftV1.PREPARE -> "PREPARE"
+      QbftV1.COMMIT -> "COMMIT"
+      QbftV1.ROUND_CHANGE -> "ROUND_CHANGE"
+      else -> "UNKNOWN($code)"
+    }
 }
