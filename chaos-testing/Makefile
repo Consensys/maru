@@ -1,7 +1,6 @@
 include chaos-mesh.mk
 include helm.mk
 include k3s.mk
-include devnet.mk
 
 .PHONY: chaos-full-reload \
 	chaos-mesh-install-with-curl \

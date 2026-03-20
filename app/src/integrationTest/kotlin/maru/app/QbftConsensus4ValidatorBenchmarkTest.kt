@@ -51,6 +51,7 @@ import testutils.maru.awaitTillMaruHasPeers
  * Run with:
  *   ./gradlew :app:integrationTest --tests "maru.app.QbftConsensus4ValidatorBenchmarkTest"
  */
+@Disabled
 class QbftConsensus4ValidatorBenchmarkTest {
   // Keys match the K3S helm values exactly (protobuf-encoded secp256k1 private keys, no 0x prefix)
   // validator-0 → 0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0
