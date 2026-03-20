@@ -126,6 +126,7 @@ class NodesSyncTest {
         getPathTo("tmp/port-forward-besu-8545.txt"),
       ).filterNot { it.label.contains("bootnode") }
     await
+      .ignoreExceptions()
       .pollInterval(5.seconds.toJavaDuration())
       .atMost(60.seconds.toJavaDuration())
       .untilAsserted {
@@ -141,6 +142,7 @@ class NodesSyncTest {
         getPathTo("tmp/port-forward-maru-5060.txt"),
       )
     await
+      .ignoreExceptions()
       .pollInterval(5.seconds.toJavaDuration())
       .atMost(60.seconds.toJavaDuration())
       .untilAsserted {
