@@ -358,14 +358,21 @@ class QbftValidatorFactory(
         shouldBuildNextBlock = shouldBuildNextBlock,
         feeRecipient = feeRecipient,
       )
-    // Compose: first drive EL import for all handlers (own EL + follower ELs),
-    // then do block building (setHead/setHeadAndStartBlockBuilding).
+    // Fire EL import handlers (own EL + follower ELs) as fire-and-forget,
+    // then always run block building regardless of EL import result.
+    // EL import failures (e.g. besu restarting, follower EL down) must NOT
+    // prevent blockBuildingImporter from running setHead/setHeadAndStartBlockBuilding.
     val composedImporter =
       if (newBlockHandler != null) {
         BeaconBlockImporter { beaconState, beaconBlock ->
-          newBlockHandler.handleNewBlock(beaconBlock).thenCompose {
-            blockBuildingImporter.importBlock(beaconState, beaconBlock)
+          newBlockHandler.handleNewBlock(beaconBlock).whenException { e ->
+            log.warn(
+              "EL import handlers failed for block={}, continuing with block building",
+              beaconBlock.beaconBlockHeader.number,
+              e,
+            )
           }
+          blockBuildingImporter.importBlock(beaconState, beaconBlock)
         }
       } else {
         blockBuildingImporter
