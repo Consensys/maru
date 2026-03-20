@@ -43,6 +43,7 @@ chaos-full-reload-with-local-maru-image:
 
 chaos-health-check:
 	@echo "Running health check for chaos testing environment"
+	@$(MAKE) wait-all-running
 	@$(MAKE) port-forward-restart-all-linea
 	@cd .. && ./gradlew :chaos-testing:health-check:acceptanceTest
 
@@ -122,5 +123,6 @@ chaos-multi-validator-full-reload-local-latency-%:
 
 chaos-multi-validator-health-check:
 	@echo "Running health check for multi-validator chaos testing environment"
+	@$(MAKE) wait-all-running
 	@$(MAKE) port-forward-restart-all-linea
 	@cd .. && ./gradlew :chaos-testing:health-check:acceptanceTest
