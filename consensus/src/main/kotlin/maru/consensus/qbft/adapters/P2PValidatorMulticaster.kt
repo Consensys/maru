@@ -50,7 +50,9 @@ class P2PValidatorMulticaster(
     p2pNetwork
       .broadcastMessage(message.toDomain())
       .whenException { e ->
-        if (e !is NoPeersForOutboundMessageException) {
+        if (hasNoPeersCause(e)) {
+          log.debug("No gossip peers subscribed to QBFT topic, message not delivered")
+        } else {
           log.error("Failed to broadcast QBFT message", e)
         }
       }
@@ -68,6 +70,19 @@ class P2PValidatorMulticaster(
     denyList: Collection<Address>,
   ) {
     send(message)
+  }
+
+  /**
+   * Walks the exception cause chain to detect [NoPeersForOutboundMessageException].
+   * The async future delivers it wrapped in [java.util.concurrent.CompletionException].
+   */
+  private fun hasNoPeersCause(e: Throwable): Boolean {
+    var current: Throwable? = e
+    while (current != null) {
+      if (current is NoPeersForOutboundMessageException) return true
+      current = current.cause
+    }
+    return false
   }
 
   /**
