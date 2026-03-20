@@ -32,7 +32,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
   const val MIN_BLOCK_TIME = 1L
-  const val BLOCK_REBUILD_TIME = 100L
+  const val BLOCK_REBUILD_TIME = 15L
 
   fun buildTestBesu(
     genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS),
@@ -85,6 +85,7 @@ object BesuFactory {
       val unstableMiningConfig =
         ImmutableMiningConfiguration.Unstable
           .builder()
+          .posBlockFinalizationTimeoutMs(10)
           .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
           .build()
 

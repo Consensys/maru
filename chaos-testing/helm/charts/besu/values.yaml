@@ -2,6 +2,10 @@ replicaCount: 3
 image:
   name: hyperledger/besu:25.11.0
   pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
 service:
   name: besu
   headless: true

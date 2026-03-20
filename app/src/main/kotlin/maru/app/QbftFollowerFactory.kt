@@ -87,6 +87,7 @@ class QbftFollowerFactory(
         elFork = qbftConsensusConfig.elFork,
         finalizationStateProvider = finalizationStateProvider,
         metricsFacade = metricsFacade,
+        payloadValidationEnabled = false,
       ),
     )
   }

@@ -26,14 +26,17 @@ class QbftGossiperTest {
   private val gossiper = QbftGossiper(mockP2PValidatorMulticaster)
 
   @Test
-  fun `should not re-broadcast replayed messages from the future buffer`() {
-    // Replayed messages were received from P2P peers and already gossiped by libp2p flood-publish.
-    // Re-publishing them would fail with MessageAlreadySeenException from libp2p's seen cache.
-    // Besu drains the FutureMessageBuffer on height advance by calling send(msg, replayed=true),
-    // but for libp2p gossip this re-broadcast must NOT happen.
+  fun `should send message when replayed is true`() {
     whenever(mockQbftMessage.data).thenReturn(mockMessageData)
 
     gossiper.send(mockQbftMessage, replayed = true)
+
+    verify(mockP2PValidatorMulticaster).send(mockMessageData)
+  }
+
+  @Test
+  fun `should not send message when replayed is false`() {
+    gossiper.send(mockQbftMessage, replayed = false)
 
     verify(mockP2PValidatorMulticaster, never()).send(any<BesuMessageData>())
   }

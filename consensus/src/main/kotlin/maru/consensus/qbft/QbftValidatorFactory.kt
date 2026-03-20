@@ -89,7 +89,17 @@ class QbftValidatorFactory(
   private val forksSchedule: ForksSchedule,
   private val payloadValidationEnabled: Boolean,
   /** Optional: called when BLOCK_TIMER_EXPIRY fires. See [QbftEventMultiplexer.onBlockTimerFired]. */
-  private val onBlockTimerFired: ((blockNumber: Long, wallClockMs: Long) -> Unit)? = null,
+  private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
+  /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
+  private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
+  /** Optional: called just before a QBFT message is broadcast. See [P2PValidatorMulticaster.onMessageSent]. */
+  private val onMessageSent: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
+  /** Optional: called when the QBFT event loop starts block import. See [QbftBlockImporterAdapter.onImportStarted]. */
+  private val onImportStarted: ((blockNumber: Long) -> Unit)? = null,
+  /** Optional: called before every event is processed on the event loop. See [QbftEventMultiplexer.onBeforeEvent]. */
+  private val onBeforeEvent: ((eventLabel: String) -> Unit)? = null,
+  /** Optional: called after every event is processed on the event loop. See [QbftEventMultiplexer.onAfterEvent]. */
+  private val onAfterEvent: ((eventLabel: String) -> Unit)? = null,
 ) : ProtocolFactory {
   private val log = LogManager.getLogger(QbftValidatorFactory::class.java)
 
@@ -133,6 +143,10 @@ class QbftValidatorFactory(
         proposerSelector = qbftProposerSelector,
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
+        finalizationStateProvider = finalizationStateProvider,
+        prevRandaoProvider = prevRandaoProvider,
+        feeRecipient = qbftOptions.feeRecipient,
+        eagerQbftBlockCreatorConfig = EagerQbftBlockCreator.Config(qbftOptions.minBlockBuildTime),
       )
 
     val besuForksSchedule = ForksScheduleAdapter(forkSpec, qbftOptions)
@@ -153,7 +167,10 @@ class QbftValidatorFactory(
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
-    val validatorMulticaster = P2PValidatorMulticaster(p2PNetwork)
+    val validatorMulticaster =
+      P2PValidatorMulticaster(p2PNetwork).also {
+        it.onMessageSent = onMessageSent
+      }
     val finalState =
       QbftFinalStateAdapter(
         localAddress = localAddress,
@@ -178,7 +195,10 @@ class QbftValidatorFactory(
       }
     }
 
-    val blockImporter = QbftBlockImporterAdapter(sealedBeaconBlockImporter)
+    val blockImporter =
+      QbftBlockImporterAdapter(sealedBeaconBlockImporter).also {
+        it.onImportStarted = onImportStarted
+      }
 
     val blockCodec = QbftBlockCodecAdapter
     val blockInterface = QbftBlockInterfaceAdapter(stateTransition)
@@ -248,63 +268,11 @@ class QbftValidatorFactory(
         /* blockEncoder = */ blockCodec,
       )
 
-    val onRoundStartedCallback: (Long, Int) -> Unit = onRoundStartedCallback@{ blockNumber, roundJustStarted ->
-      val latestBeaconState = beaconChain.getLatestBeaconState()
-      // Guard: ignore stale events (block already advanced past this height)
-      if (latestBeaconState.beaconBlockHeader.number.toLong() + 1L == blockNumber) {
-        val nextRound = roundJustStarted + 1
-        val nextRoundProposer =
-          proposerSelector
-            .getProposerForBlock(latestBeaconState, ConsensusRoundIdentifier(blockNumber, nextRound))
-            .get() // ProposerSelectorImpl is synchronous (pure computation)
-        if (localValidator.address.contentEquals(nextRoundProposer.address)) {
-          val parentBlock =
-            beaconChain.getSealedBeaconBlock(latestBeaconState.beaconBlockHeader.hash)?.beaconBlock
-              ?: run {
-                log.warn(
-                  "Parent block not found for round-start build trigger (block={}), skipping",
-                  blockNumber,
-                )
-                return@onRoundStartedCallback
-              }
-          val headHash =
-            if (parentBlock.beaconBlockHeader.number == 0UL) {
-              executionLayerManager.getLatestBlockHash().get()
-            } else {
-              parentBlock.beaconBlockBody.executionPayload.blockHash
-            }
-          val finState = finalizationStateProvider(parentBlock.beaconBlockBody)
-          val nextBlockTimestamp =
-            nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(
-              latestBeaconState.beaconBlockHeader.timestamp,
-            )
-          log.debug(
-            "Round {} started for block {}, pre-building as round-{} proposer",
-            roundJustStarted,
-            blockNumber,
-            nextRound,
-          )
-          executionLayerManager.setHeadAndStartBlockBuilding(
-            headHash = headHash,
-            safeHash = finState.safeBlockHash,
-            finalizedHash = finState.finalizedBlockHash,
-            nextBlockTimestamp = nextBlockTimestamp,
-            feeRecipient = qbftOptions.feeRecipient,
-            prevRandao =
-              prevRandaoProvider.calculateNextPrevRandao(
-                signee =
-                  parentBlock.beaconBlockBody.executionPayload.blockNumber
-                    .inc(),
-                prevRandao = parentBlock.beaconBlockBody.executionPayload.prevRandao,
-              ),
-          )
-        }
-      }
-    }
     val eventMultiplexer =
       QbftEventMultiplexer(qbftController).also {
         it.onBlockTimerFired = onBlockTimerFired
-        it.onRoundStarted = onRoundStartedCallback
+        it.onBeforeEvent = onBeforeEvent
+        it.onAfterEvent = onAfterEvent
       }
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor =
@@ -312,7 +280,6 @@ class QbftValidatorFactory(
         Thread
           .ofPlatform()
           .name("qbft-event-loop-${localAddress.toHexString().takeLast(8)}")
-          .priority(Thread.MAX_PRIORITY)
           .daemon(true)
           .factory(),
       )
@@ -325,7 +292,9 @@ class QbftValidatorFactory(
         localAddress = localAddress,
         bftEventQueue = bftEventQueue,
         messageDecoder = messageDecoder,
-      )
+      ).also {
+        it.onMessageReceived = onMessageReceived
+      }
 
     // Subscribe to QBFT messages from P2P network and validate before adding to event queue
     p2PNetwork.subscribeToQbftMessages(qbftMessageProcessor)
@@ -358,7 +327,7 @@ class QbftValidatorFactory(
     proposerSelector: ProposerSelector,
   ): SealedBeaconBlockImporter<ValidationResult> {
     val shouldBuildNextBlock =
-      { beaconState: BeaconState, _: ConsensusRoundIdentifier, nextBlockTimestamp: ULong ->
+      { beaconState: BeaconState, nextBlockRoundIdentifier: ConsensusRoundIdentifier, nextBlockTimestamp: ULong ->
         // We shouldn't build next block if this fork ends.
         val nextForkTimestamp =
           forksSchedule.getNextForkByTimestamp(beaconState.beaconBlockHeader.timestamp)?.timestampSeconds
@@ -367,12 +336,11 @@ class QbftValidatorFactory(
           false
         } else {
           // Build only if this node is the round-0 proposer for the next block.
-          // Round-change proposers (round 1+) are covered by the onRoundStarted trigger in
-          // QbftEventMultiplexer which fires at the beginning of each round.
-          val nextBlockNumber = beaconState.beaconBlockHeader.number + 1u
+          // Round-change proposers (round 1+) are covered by EagerQbftBlockCreator which
+          // sends FCU and waits for the block to build before delegating to DelayedQbftBlockCreator.
           val round0Proposer =
             proposerSelector
-              .getProposerForBlock(beaconState, ConsensusRoundIdentifier(nextBlockNumber.toLong(), 0))
+              .getProposerForBlock(beaconState, ConsensusRoundIdentifier(nextBlockRoundIdentifier.sequenceNumber, 0))
               .get() // ProposerSelectorImpl is synchronous (pure computation)
           localValidator.address.contentEquals(round0Proposer.address)
         }

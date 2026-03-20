@@ -53,6 +53,8 @@ dependencies {
 
   integrationTestImplementation(project(":jvm-libs:test-utils"))
   integrationTestImplementation(testFixtures(project(":p2p")))
+  integrationTestImplementation(testFixtures(project(":crypto")))
+  integrationTestImplementation("org.hyperledger.besu.internal:besu-crypto-services")
   integrationTestImplementation "org.hyperledger.besu.internal:besu-ethereum-api"
   integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
   integrationTestImplementation("org.hyperledger.besu.internal:besu-ethereum-p2p")
@@ -105,25 +107,17 @@ task integrationTest(type: Test) {
   // Output written to /tmp/jfr/qbft-benchmark.jfr; open with JDK Mission Control for flame graphs.
   if (project.hasProperty('jfr')) {
     jvmArgs '-XX:+FlightRecorder',
-    '-XX:StartFlightRecording=settings=profile,name=benchmark,' +
-    'filename=/tmp/jfr/qbft-benchmark.jfr,dumponexit=true'
+      '-XX:StartFlightRecording=settings=profile,name=benchmark,' +
+      'filename=/tmp/jfr/qbft-benchmark.jfr,dumponexit=true'
   }
 
   classpath = sourceSets.integrationTest.runtimeClasspath
   testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-  // To make room for Besu threads
-  systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
-  int maxThreads = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
-  systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"]
-  = maxThreads
-  systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"]
-  = maxThreads
-
   testLogging {
     events TestLogEvent.FAILED,
-    TestLogEvent.SKIPPED,
-    TestLogEvent.STANDARD_ERROR
+      TestLogEvent.SKIPPED,
+      TestLogEvent.STANDARD_ERROR
     // TestLogEvent.STARTED,
     // TestLogEvent.PASSED
     exceptionFormat TestExceptionFormat.FULL

@@ -45,6 +45,15 @@ class QbftMessageProcessor(
   private val log = LogManager.getLogger(this.javaClass)
 
   /**
+   * Called when a QBFT message arrives from the P2P network, **before** validation and queue insertion.
+   * Parameters: (msgCode, sequenceNumber).
+   *
+   * This fires at the earliest possible point after P2P delivery — before the message enters
+   * [BftEventQueue] — so the callback implementer can capture timestamps for P2P transit time.
+   */
+  var onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null
+
+  /**
    * Validates a QBFT message and determines whether it should be gossiped.
    *
    * @param qbftMessage The QBFT message to validate
@@ -53,6 +62,7 @@ class QbftMessageProcessor(
   override fun handleQbftMessage(qbftMessage: QbftMessage): SafeFuture<ValidationResult> =
     try {
       val metadata = messageDecoder.deserialize(qbftMessage)
+      onMessageReceived?.invoke(metadata.messageCode, metadata.sequenceNumber)
       log.debug(
         "P2P message received: type={} sequence={} round={} from={}",
         messageTypeName(metadata.messageCode),
@@ -60,8 +70,7 @@ class QbftMessageProcessor(
         metadata.roundNumber,
         metadata.author,
       )
-      val result = processMessage(qbftMessage, metadata)
-      SafeFuture.completedFuture(result)
+      SafeFuture.completedFuture(processMessage(qbftMessage, metadata))
     } catch (e: Exception) {
       SafeFuture.completedFuture(Invalid("Failed to decode or validate message: ${e.message}"))
     }

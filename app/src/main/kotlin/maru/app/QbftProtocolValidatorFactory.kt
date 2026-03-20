@@ -43,7 +43,17 @@ class QbftProtocolValidatorFactory(
   private val forksSchedule: ForksSchedule,
   private val payloadValidationEnabled: Boolean,
   /** Optional: called when BLOCK_TIMER_EXPIRY fires. See [QbftEventMultiplexer.onBlockTimerFired]. */
-  private val onBlockTimerFired: ((blockNumber: Long, wallClockMs: Long) -> Unit)? = null,
+  private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
+  /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
+  private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
+  /** Optional: called just before a QBFT message is broadcast via P2P. */
+  private val onMessageSent: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
+  /** Optional: called when the QBFT event loop starts block import. */
+  private val onImportStarted: ((blockNumber: Long) -> Unit)? = null,
+  /** Optional: called before every event is dispatched on the event loop. See [QbftEventMultiplexer.onBeforeEvent]. */
+  private val onBeforeEvent: ((eventLabel: String) -> Unit)? = null,
+  /** Optional: called after every event is processed on the event loop. See [QbftEventMultiplexer.onAfterEvent]. */
+  private val onAfterEvent: ((eventLabel: String) -> Unit)? = null,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
@@ -77,14 +87,20 @@ class QbftProtocolValidatorFactory(
         forksSchedule = forksSchedule,
         payloadValidationEnabled = payloadValidationEnabled,
         onBlockTimerFired = onBlockTimerFired,
+        onMessageReceived = onMessageReceived,
+        onMessageSent = onMessageSent,
+        onImportStarted = onImportStarted,
+        onBeforeEvent = onBeforeEvent,
+        onAfterEvent = onAfterEvent,
       )
     val qbftProtocol = qbftValidatorFactory.create(forkSpec)
 
     // Subscribe EL driving for the validator's own EL and external follower EL nodes.
-    // Fires for all blocks (consensus-committed and CL-synced), keeping Besu in sync
-    // with the beacon chain head via newPayload+setHead. For proposer rounds,
-    // BlockBuildingBeaconBlockImporter subsequently calls setHeadAndStartBlockBuilding
-    // (via thenPeek, after commit()) which overrides the setHead and starts building.
+    // Fires for all blocks (consensus-committed and CL-synced), keeping Besu in sync.
+    // When payloadValidationEnabled, the own EL uses SetHeadOnlyBlockImporter (setHead only)
+    // because newPayload was already called during PROPOSAL validation (non-proposer) or
+    // the EL already has the payload from building it (proposer). Follower ELs still use
+    // FollowerBeaconBlockImporter (newPayload+setHead) since they haven't seen the payload.
     return qbftProtocol.subscribeElSync(
       beaconChain,
       Helpers.buildElImporterHandlers(
@@ -94,6 +110,7 @@ class QbftProtocolValidatorFactory(
         elFork = qbftConsensusConfig.elFork,
         finalizationStateProvider = finalizationStateProvider,
         metricsFacade = metricsFacade,
+        payloadValidationEnabled = payloadValidationEnabled,
       ),
     )
   }

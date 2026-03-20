@@ -25,35 +25,40 @@ class QbftEventMultiplexer(
 
   /**
    * Optional observer called immediately when BLOCK_TIMER_EXPIRY fires, before the event is
-   * dispatched to the QBFT state machine. Parameters: (blockNumber, wallClockMs).
-   * Intended for benchmarking/testing — records the actual timer-fire wall-clock time so that
-   * true consensus latency can be separated from JVM scheduling jitter.
+   * dispatched to the QBFT state machine. Parameters: (blockNumber).
+   * Intended for benchmarking/testing — the callback implementer captures timestamps themselves.
    */
-  var onBlockTimerFired: ((blockNumber: Long, wallClockMs: Long) -> Unit)? = null
+  var onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null
 
   /**
-   * Called at the beginning of every round before the event is dispatched to the QBFT state
-   * machine. Parameters: (blockNumber, roundJustStarted).
-   * Used to trigger pre-building for the next round's proposer so they have a payload ready
-   * in case the current round results in a ROUND_CHANGE.
-   * - Fires with roundJustStarted=0 on BLOCK_TIMER_EXPIRY (round 0 starts)
-   * - Fires with roundJustStarted=R+1 on ROUND_EXPIRY for round R (round R+1 starts)
+   * Optional observer called before every event is dispatched on the event loop thread.
+   * Parameters: (eventLabel).
+   * eventLabel encodes the event type and, for MESSAGE events, the QBFT message code:
+   * - "BLOCK_TIMER_EXPIRY", "NEW_CHAIN_HEAD", "ROUND_EXPIRY"
+   * - "MESSAGE_PROPOSAL", "MESSAGE_PREPARE", "MESSAGE_COMMIT", "MESSAGE_ROUND_CHANGE"
    */
-  var onRoundStarted: ((blockNumber: Long, roundJustStarted: Int) -> Unit)? = null
+  var onBeforeEvent: ((eventLabel: String) -> Unit)? = null
+
+  /**
+   * Optional observer called after every event is processed on the event loop thread.
+   * Parameters: (eventLabel).
+   * Fires in both success and error paths.
+   */
+  var onAfterEvent: ((eventLabel: String) -> Unit)? = null
 
   fun handleEvent(event: BftEvent) {
-    val t0 = System.nanoTime()
-    // Log at dequeue time so the wall-clock timestamp in the log line marks when Thread-14
-    // actually picked this event up from BftEventQueue.  Comparing with the "queued" timestamp
-    // logged by QbftMessageProcessor gives the queue-wait latency.
-    log.debug("Dequeued event type={}", event.type)
+    var eventLabel = event.type.name
+    // Compute eventLabel for MESSAGE events before invoking onBeforeEvent
+    if (event.type == BftEvents.Type.MESSAGE) {
+      val msgEvent = event as QbftReceivedMessageEvent
+      eventLabel = "MESSAGE_${messageCodeName(msgEvent.message.data.code)}"
+    }
+    onBeforeEvent?.invoke(eventLabel)
     try {
       log.trace("Received event type: {}, event: {},", event.type, event)
       when (event.type) {
         BftEvents.Type.ROUND_EXPIRY -> {
-          val roundExpiry = event as RoundExpiry
-          onRoundStarted?.invoke(roundExpiry.view.sequenceNumber, roundExpiry.view.roundNumber + 1)
-          eventHandler.handleRoundExpiry(roundExpiry)
+          eventHandler.handleRoundExpiry(event as RoundExpiry)
         }
 
         BftEvents.Type.NEW_CHAIN_HEAD -> {
@@ -62,8 +67,7 @@ class QbftEventMultiplexer(
 
         BftEvents.Type.BLOCK_TIMER_EXPIRY -> {
           val timerExpiry = event as BlockTimerExpiry
-          onBlockTimerFired?.invoke(timerExpiry.roundIdentifier.sequenceNumber, System.currentTimeMillis())
-          onRoundStarted?.invoke(timerExpiry.roundIdentifier.sequenceNumber, 0)
+          onBlockTimerFired?.invoke(timerExpiry.roundIdentifier.sequenceNumber)
           eventHandler.handleBlockTimerExpiry(timerExpiry)
         }
 
@@ -78,6 +82,15 @@ class QbftEventMultiplexer(
     } catch (e: Exception) {
       log.error("State machine threw exception while processing event \\{$event\\}", e)
     }
-    log.debug("handleEvent type={} took {}ms", event.type, (System.nanoTime() - t0) / 1_000_000L)
+    onAfterEvent?.invoke(eventLabel)
   }
+
+  private fun messageCodeName(code: Int): String =
+    when (code) {
+      0x12 -> "PROPOSAL"
+      0x13 -> "PREPARE"
+      0x14 -> "COMMIT"
+      0x15 -> "ROUND_CHANGE"
+      else -> "UNKNOWN(0x${code.toString(16)})"
+    }
 }

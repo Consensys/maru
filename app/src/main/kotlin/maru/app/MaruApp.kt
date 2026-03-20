@@ -117,11 +117,51 @@ class MaruApp(
   /**
    * Optional observer called when BLOCK_TIMER_EXPIRY fires on this validator.
    * Can be set after construction but must be set before [start] to capture the first block.
-   * Parameters: (blockNumber: Long, wallClockMs: Long).
-   * Intended for benchmarking — gives the actual timer-fire wall-clock time so that true QBFT
-   * consensus latency can be separated from JVM scheduling jitter.
+   * Parameters: (blockNumber: Long).
+   * Intended for benchmarking — the callback implementer captures timestamps themselves.
    */
-  var onBlockTimerFired: ((blockNumber: Long, wallClockMs: Long) -> Unit)? = null
+  var onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null
+
+  /**
+   * Optional observer called when a QBFT message arrives from the P2P network, before validation
+   * and queue insertion. This fires at the earliest point after P2P delivery.
+   * Parameters: (msgCode: Int, sequenceNumber: Long).
+   * Message codes: PROPOSAL=0x12, PREPARE=0x13, COMMIT=0x14, ROUND_CHANGE=0x15.
+   * Must be set before [start] to avoid missing early messages.
+   */
+  var onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null
+
+  /**
+   * Optional observer called just before a QBFT message is submitted to the P2P network for
+   * broadcast. Parameters: (msgCode: Int, sequenceNumber: Long).
+   * The callback implementer captures timestamps themselves for P2P transit time computation.
+   * Must be set before [start].
+   */
+  var onMessageSent: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null
+
+  /**
+   * Optional observer called when the QBFT event loop starts block import (on the event loop thread).
+   * Parameters: (blockNumber: Long).
+   * Compare with onMessageReceived timestamps to measure the BFT event queue wait time.
+   * Must be set before [start].
+   */
+  var onImportStarted: ((blockNumber: Long) -> Unit)? = null
+
+  /**
+   * Optional observer called before every event is dispatched on the QBFT event loop thread.
+   * Parameters: (eventLabel: String).
+   * eventLabel examples: "BLOCK_TIMER_EXPIRY", "MESSAGE_PROPOSAL", "MESSAGE_PREPARE", etc.
+   * Must be set before [start] to avoid missing early events.
+   */
+  var onBeforeEvent: ((eventLabel: String) -> Unit)? = null
+
+  /**
+   * Optional observer called after every event is processed on the QBFT event loop thread.
+   * Parameters: (eventLabel: String).
+   * Fires in both success and error paths.
+   * Must be set before [start] to avoid missing early events.
+   */
+  var onAfterEvent: ((eventLabel: String) -> Unit)? = null
 
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
@@ -230,9 +270,12 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           forksSchedule = beaconGenesisConfig,
           payloadValidationEnabled = config.validatorElNode!!.payloadValidationEnabled,
-          // Forwarding lambda: reads onBlockTimerFired dynamically so the caller can set it
-          // on MaruApp after construction (but before start()) and the callback will still fire.
-          onBlockTimerFired = { blockNumber, wallClockMs -> onBlockTimerFired?.invoke(blockNumber, wallClockMs) },
+          onBlockTimerFired = { blockNumber -> onBlockTimerFired?.invoke(blockNumber) },
+          onMessageReceived = { msgCode, seqNum -> onMessageReceived?.invoke(msgCode, seqNum) },
+          onMessageSent = { msgCode, seqNum -> onMessageSent?.invoke(msgCode, seqNum) },
+          onImportStarted = { blockNumber -> onImportStarted?.invoke(blockNumber) },
+          onBeforeEvent = { label -> onBeforeEvent?.invoke(label) },
+          onAfterEvent = { label -> onAfterEvent?.invoke(label) },
         )
       } else {
         QbftFollowerFactory(

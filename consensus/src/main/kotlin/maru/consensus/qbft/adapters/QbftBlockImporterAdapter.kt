@@ -25,16 +25,27 @@ class QbftBlockImporterAdapter(
 ) : QbftBlockImporter {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
+  /**
+   * Called when the QBFT event loop starts the import, on the event loop thread.
+   * Parameters: (blockNumber).
+   *
+   * Compare with [QbftMessageProcessor.onMessageReceived] to measure the time a message
+   * spent in the BFT event queue + the state machine processing before import began.
+   */
+  var onImportStarted: ((blockNumber: Long) -> Unit)? = null
+
   override fun importBlock(qbftBlock: QbftBlock): Boolean {
     val sealedBeaconBlock = qbftBlock.toSealedBeaconBlock()
-    val t0 = System.nanoTime()
+    val blockNumber =
+      sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber
+        .toLong()
+    onImportStarted?.invoke(blockNumber)
     try {
       sealedBeaconBlockImporter.importBlock(sealedBeaconBlock).get()
     } catch (e: Exception) {
       log.error("Block import failed: ${e.message}", e)
       return false
     }
-    log.debug("importBlock took {}ms", (System.nanoTime() - t0) / 1_000_000L)
     return true
   }
 }

@@ -8,13 +8,11 @@
  */
 package maru.app
 
-import java.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import maru.config.QbftConfig
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
@@ -84,15 +82,13 @@ class MaruLongRunningTransactionTest {
   }
 
   @Test
-  fun `Maru waits for minBlockBuildTime in Round 1 when empty blocks are rejected`() {
+  fun `Maru creates a block in the next round when empty blocks are rejected`() {
     mineBlockWithTransaction(expectedBlockNumber = 1)
 
-    proxy.clear()
-
     // In Round 0, Maru creates an empty block (no pending transactions) which gets rejected.
-    // It transitions to Round 1 and uses EagerQbftBlockCreator, which sends FCU then sleeps for minBlockBuildTime.
-    waitForFcuToGetPayloadGapToExceed(expectedMinBuildTime - 100L)
-
+    // With the pre-build design, the round-1 proposer pre-builds during round 0 expiry (~roundExpiry
+    // time), giving transactions time to arrive. The transaction sent here is included in round 1
+    // (or a later round), verifying that allowEmptyBlocks=false is respected.
     mineBlockWithTransaction(expectedBlockNumber = 2)
   }
 
@@ -105,37 +101,5 @@ class MaruLongRunningTransactionTest {
       )
     }
     assertThat(networkParticipantStack.besuNode.getMinedBlocks(expectedBlockNumber)).hasSize(expectedBlockNumber)
-  }
-
-  private fun waitForFcuToGetPayloadGapToExceed(minimumGapMs: Long) {
-    var maxGap = 0L
-    await.atMost(Duration.ofSeconds(30)).untilAsserted {
-      val fcuCalls = proxy.calls.filter { it.method.startsWith("engine_forkchoiceUpdated") }
-      val getPayloadCalls = proxy.calls.filter { it.method.startsWith("engine_getPayload") }
-
-      val hasLongGap =
-        getPayloadCalls.any { getPayload ->
-          val precedingFcu = fcuCalls.lastOrNull { it.timestampMs <= getPayload.timestampMs }
-          if (precedingFcu != null) {
-            val gap = getPayload.timestampMs - precedingFcu.timestampMs
-            if (gap > maxGap) maxGap = gap
-            gap >= minimumGapMs
-          } else {
-            false
-          }
-        }
-
-      assertThat(hasLongGap)
-        .withFailMessage {
-          val callsDump = proxy.calls.joinToString("\n") { "${it.timestampMs}: ${it.method}" }
-
-          """
-          No FCU-to-getPayload gap took >= $minimumGapMs ms. Max gap: $maxGap ms
-          
-          All Engine API calls:
-          $callsDump
-          """.trimIndent()
-        }.isTrue()
-    }
   }
 }

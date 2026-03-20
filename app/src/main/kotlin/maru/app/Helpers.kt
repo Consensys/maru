@@ -16,6 +16,7 @@ import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.blockimport.ElForkAwareBlockImporter
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
+import maru.consensus.blockimport.SetHeadOnlyBlockImporter
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.database.BeaconChain
@@ -95,6 +96,7 @@ object Helpers {
     elFork: ElFork,
     finalizationStateProvider: FinalizationProvider,
     metricsFacade: MetricsFacade,
+    payloadValidationEnabled: Boolean = false,
   ): Map<String, NewBlockHandler<*>> =
     buildMap {
       followerELNodeEngineApiWeb3JClients.forEach { (name, client) ->
@@ -110,11 +112,19 @@ object Helpers {
       ownExecutionLayerManager?.let {
         put(
           ownHandlerName,
-          FollowerBeaconBlockImporter.create(
-            executionLayerManager = it,
-            finalizationStateProvider = finalizationStateProvider,
-            importerName = ownHandlerName,
-          ),
+          if (payloadValidationEnabled) {
+            SetHeadOnlyBlockImporter.create(
+              executionLayerManager = it,
+              finalizationStateProvider = finalizationStateProvider,
+              importerName = ownHandlerName,
+            )
+          } else {
+            FollowerBeaconBlockImporter.create(
+              executionLayerManager = it,
+              finalizationStateProvider = finalizationStateProvider,
+              importerName = ownHandlerName,
+            )
+          },
         )
       }
     }

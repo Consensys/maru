@@ -9,6 +9,7 @@
 package maru.app
 
 import kotlin.collections.map
+import kotlin.time.Duration.Companion.seconds
 import maru.config.SyncingConfig
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -312,6 +313,7 @@ class MaruFollowerTest {
       ),
     )
     followerStack.maruApp.start().get()
+    followerStack.maruApp.awaitTillMaruHasPeers(1u, pollingInterval = 1.seconds)
 
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->
@@ -370,6 +372,8 @@ class MaruFollowerTest {
       ),
     )
     followerStack.maruApp.start().get()
+    // Wait for peer connection before starting the sync-check countdown
+    followerStack.maruApp.awaitTillMaruHasPeers(1u, pollingInterval = 1.seconds)
 
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->
@@ -428,6 +432,7 @@ class MaruFollowerTest {
     peers.forEach {
       followerP2PNetwork.addPeer("${it.address}/p2p/${it.nodeId}")
     }
+    followerStack.maruApp.awaitTillMaruHasPeers(1u, pollingInterval = 1.seconds)
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->
         checkValidatorAndFollowerBlocks(

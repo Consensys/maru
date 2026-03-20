@@ -15,6 +15,10 @@ spec:
       labels:
         {{- include "maru.labels" . | nindent 8 }}
     spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: maru
           image: "{{ .Values.image.name }}"
@@ -42,6 +46,10 @@ spec:
             {{ if .Values.configFiles.configsToml }}
             - /opt/consensys/maru/configs/configs.toml
             {{ end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: data
               mountPath: /opt/consensys/maru/data
