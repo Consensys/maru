@@ -9,6 +9,7 @@
 package maru.syncing.beaconchain
 
 import maru.consensus.ValidatorProvider
+import maru.consensus.blockimport.BeaconBlockImporter
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.blockimport.ValidatingSealedBeaconBlockImporter
@@ -36,6 +37,7 @@ class SyncSealedBlockImporterFactory {
     beaconChain: BeaconChain,
     validatorProvider: ValidatorProvider,
     allowEmptyBlocks: Boolean = false,
+    beaconBlockImporter: BeaconBlockImporter = BeaconBlockImporter { _, _ -> SafeFuture.completedFuture(Unit) },
   ): SealedBeaconBlockImporter<ValidationResult> {
     val stateTransition = StateTransitionImpl(validatorProvider)
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())
@@ -44,15 +46,11 @@ class SyncSealedBlockImporterFactory {
     val beaconBlockValidatorFactory =
       createBeaconBlockValidatorFactory(beaconChain, validatorProvider, allowEmptyBlocks)
 
-    // Create TransactionalSealedBeaconBlockImporter without BeaconBlockImporter
-    // We'll handle state transitions and database commits directly
     val transactionalSealedBeaconBlockImporter =
       TransactionalSealedBeaconBlockImporter(
         beaconChain = beaconChain,
         stateTransition = stateTransition,
-        beaconBlockImporter = { _, _ ->
-          SafeFuture.completedFuture(Unit)
-        },
+        beaconBlockImporter = beaconBlockImporter,
       )
 
     // Create ValidatingSealedBeaconBlockImporter

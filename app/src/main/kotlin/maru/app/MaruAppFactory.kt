@@ -38,6 +38,7 @@ import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
+import maru.consensus.blockimport.BeaconBlockImporter
 import maru.consensus.blockimport.ElForkAwareBlockImporter
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
@@ -82,6 +83,7 @@ import org.apache.logging.log4j.LogManager
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.http.HttpService
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
@@ -276,6 +278,38 @@ class MaruAppFactory : MaruAppFactoryCreator {
             NoOpLongRunningService
           }
         }
+        // Build a BeaconBlockImporter for the CL sync path:
+        // pushes each synced block to own EL (newPayload + setHead) and follower ELs
+        val ownElSyncImporter: ElForkAwareBlockImporter? =
+          if (elManagerMap.isNotEmpty()) {
+            ElForkAwareBlockImporter(
+              forksSchedule = beaconGenesisConfig,
+              elManagerMap = elManagerMap,
+              importerName = "cl-sync-own-el",
+              finalizationProvider = finalizationProvider,
+            )
+          } else {
+            null
+          }
+        // The beaconBlockImporter is called inside thenPeek (fire-and-forget) in
+        // TransactionalSealedBeaconBlockImporter. During CL sync, blocks are imported rapidly
+        // and concurrent fire-and-forget newPayload calls arrive at besu out of order, causing
+        // SYNCING responses. By blocking inside importBlock, we serialize the EL imports per block.
+        val clSyncBeaconBlockImporter =
+          BeaconBlockImporter { _, beaconBlock ->
+            try {
+              ownElSyncImporter?.handleNewBlock(beaconBlock)?.join()
+              elSyncBlockImportHandlers.handleNewBlock(beaconBlock).join()
+            } catch (e: Exception) {
+              log.warn(
+                "CL sync EL import failed for block={}, continuing",
+                beaconBlock.beaconBlockHeader.number,
+                e,
+              )
+            }
+            SafeFuture.completedFuture(Unit)
+          }
+
         BeaconSyncControllerImpl.create(
           beaconChain = kvDatabase,
           peersHeadsProvider = peersHeadBlockProvider,
@@ -299,6 +333,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
             ),
           allowEmptyBlocks = config.allowEmptyBlocks,
           timerFactory = timerFactory,
+          beaconBlockImporter = clSyncBeaconBlockImporter,
         )
       } else {
         AlwaysSyncedController(kvDatabase)

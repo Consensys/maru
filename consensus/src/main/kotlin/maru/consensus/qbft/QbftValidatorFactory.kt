@@ -14,12 +14,14 @@ import kotlin.time.Duration.Companion.seconds
 import maru.config.QbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.PrevRandaoProvider
 import maru.consensus.PrevRandaoProviderImpl
 import maru.consensus.ProtocolFactory
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
+import maru.consensus.blockimport.BeaconBlockImporter
 import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
@@ -82,6 +84,8 @@ class QbftValidatorFactory(
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val blockMinedHandler: SealedBeaconBlockHandler<*>,
+  /** Handler invoked for every committed block (not just proposer). Used for EL import (newPayload+setHead). */
+  private val newBlockHandler: NewBlockHandler<*>? = null,
   private val executionLayerManager: ExecutionLayerManager,
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,
@@ -345,7 +349,7 @@ class QbftValidatorFactory(
           localValidator.address.contentEquals(round0Proposer.address)
         }
       }
-    val beaconBlockImporter =
+    val blockBuildingImporter =
       BlockBuildingBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = finalizationStateProvider,
@@ -354,10 +358,22 @@ class QbftValidatorFactory(
         shouldBuildNextBlock = shouldBuildNextBlock,
         feeRecipient = feeRecipient,
       )
+    // Compose: first drive EL import for all handlers (own EL + follower ELs),
+    // then do block building (setHead/setHeadAndStartBlockBuilding).
+    val composedImporter =
+      if (newBlockHandler != null) {
+        BeaconBlockImporter { beaconState, beaconBlock ->
+          newBlockHandler.handleNewBlock(beaconBlock).thenCompose {
+            blockBuildingImporter.importBlock(beaconState, beaconBlock)
+          }
+        }
+      } else {
+        blockBuildingImporter
+      }
     return TransactionalSealedBeaconBlockImporter(
       beaconChain = beaconChain,
       stateTransition = stateTransition,
-      beaconBlockImporter = beaconBlockImporter,
+      beaconBlockImporter = composedImporter,
     )
   }
 }

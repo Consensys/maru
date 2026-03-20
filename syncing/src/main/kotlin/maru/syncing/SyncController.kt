@@ -16,6 +16,7 @@ import kotlin.concurrent.write
 import linea.kotlin.minusCoercingUnderflow
 import linea.timer.TimerFactory
 import maru.consensus.ValidatorProvider
+import maru.consensus.blockimport.BeaconBlockImporter
 import maru.database.BeaconChain
 import maru.p2p.PeerLookup
 import maru.p2p.PeersHeadBlockProvider
@@ -26,6 +27,7 @@ import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.plugin.services.MetricsSystem
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 internal data class SyncState(
   val clStatus: CLSyncStatus,
@@ -210,6 +212,8 @@ class BeaconSyncControllerImpl(
       pipelineConfig: BeaconChainDownloadPipelineFactory.Config,
       allowEmptyBlocks: Boolean = true,
       timerFactory: TimerFactory,
+      beaconBlockImporter: BeaconBlockImporter =
+        BeaconBlockImporter { _, _ -> SafeFuture.completedFuture(Unit) },
     ): SyncController {
       val clSyncService =
         CLSyncServiceImpl(
@@ -222,6 +226,7 @@ class BeaconSyncControllerImpl(
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,
           metricsFacade = metricsFacade,
+          beaconBlockImporter = beaconBlockImporter,
         )
       val controller =
         BeaconSyncControllerImpl(

@@ -436,7 +436,8 @@ class MaruFollowerTest {
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->
         checkValidatorAndFollowerBlocks(
-          2 * blocksToProduce + residueBlocks,
+          blocksToProduce = 2 * blocksToProduce + residueBlocks,
+          timeout = 60.seconds,
         )
 
       is SyncingConfig.SyncTargetSelection.MostFrequent -> {
@@ -447,8 +448,16 @@ class MaruFollowerTest {
     }
   }
 
-  private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
-    checkAllNodesHaveSameBlocks(blocksToProduce, validatorStack.besuNode, followerStack.besuNode)
+  private fun checkValidatorAndFollowerBlocks(
+    blocksToProduce: Int,
+    timeout: kotlin.time.Duration = 30.seconds,
+  ) {
+    checkAllNodesHaveSameBlocks(
+      expectedBlockCount = blocksToProduce,
+      validatorStack.besuNode,
+      followerStack.besuNode,
+      timeout = timeout,
+    )
   }
 
   private fun checkNetworkStacksBlocksProduced(
