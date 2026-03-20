@@ -137,8 +137,8 @@ fun Protocol.subscribeElSync(
   if (handlers.isEmpty()) return this
   val multiplexer = NewBlockHandlerMultiplexer(handlers)
   val subscriberId = "el-sync-${UUID.randomUUID()}"
-  beaconChain.addAsyncSubscriber(subscriberId) {
-    multiplexer.handleNewBlock(it.beaconBlock).toCompletableFuture()
+  beaconChain.addSyncSubscriber(subscriberId) { block ->
+    multiplexer.handleNewBlock(block.beaconBlock)
   }
   return ProtocolWithBeaconChainObserver(this, beaconChain, subscriberId)
 }
