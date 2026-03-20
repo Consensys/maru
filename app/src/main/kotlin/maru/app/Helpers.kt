@@ -24,6 +24,7 @@ import maru.executionlayer.ExecutionLayerFactory.buildExecutionLayerManager
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.web3j.TekuWeb3JClientFactory
 import net.consensys.linea.metrics.MetricsFacade
+import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 
@@ -135,10 +136,19 @@ fun Protocol.subscribeElSync(
   handlers: Map<String, NewBlockHandler<*>>,
 ): Protocol {
   if (handlers.isEmpty()) return this
+  val log = LogManager.getLogger("maru.app.ElSyncSubscriber")
   val multiplexer = NewBlockHandlerMultiplexer(handlers)
   val subscriberId = "el-sync-${UUID.randomUUID()}"
   beaconChain.addSyncSubscriber(subscriberId) { block ->
-    multiplexer.handleNewBlock(block.beaconBlock)
+    multiplexer.handleNewBlock(block.beaconBlock).whenComplete { _, error ->
+      if (error != null) {
+        log.warn(
+          "EL sync failed for block={}: {}",
+          block.beaconBlock.beaconBlockHeader.number,
+          error.message,
+        )
+      }
+    }
   }
   return ProtocolWithBeaconChainObserver(this, beaconChain, subscriberId)
 }

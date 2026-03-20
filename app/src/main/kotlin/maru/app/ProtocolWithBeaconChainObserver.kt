@@ -18,7 +18,10 @@ class ProtocolWithBeaconChainObserver(
   private val subscriberId: String,
 ) : Protocol by delegate {
   override fun close() {
-    delegate.close()
-    blockAdded.removeSubscriber(subscriberId)
+    try {
+      delegate.close()
+    } finally {
+      blockAdded.removeSubscriber(subscriberId)
+    }
   }
 }

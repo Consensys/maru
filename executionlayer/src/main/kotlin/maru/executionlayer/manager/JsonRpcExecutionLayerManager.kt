@@ -67,7 +67,7 @@ class JsonRpcExecutionLayerManager(
           payloadId.set(it.payloadId)
         }
       }
-    blockBuildingFuture.set(fcuFuture.thenApply { payloadId.get() })
+    blockBuildingFuture.set(fcuFuture.thenApply { it.payloadId })
     return fcuFuture
   }
 
