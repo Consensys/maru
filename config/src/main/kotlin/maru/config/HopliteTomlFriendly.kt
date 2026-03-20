@@ -99,7 +99,7 @@ data class QbftOptionsDtoToml(
     result = 31 * result + futureMessagesLimit.hashCode()
     result = 31 * result + minBlockBuildTime.hashCode()
     result = 31 * result + (roundExpiry?.hashCode() ?: 0)
-    result = 31 * result + (roundExpiryCoefficient?.hashCode() ?: 0)
+    result = 31 * result + roundExpiryCoefficient.hashCode()
     result = 31 * result + feeRecipient.contentHashCode()
     return result
   }

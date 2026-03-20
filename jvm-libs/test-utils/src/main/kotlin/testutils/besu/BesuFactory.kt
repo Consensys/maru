@@ -78,10 +78,10 @@ object BesuFactory {
             .build(),
         )
 
-      // Always cap the inter-rebuild sleep to BLOCK_REBUILD_TIME (100 ms).
+      // Always cap the inter-rebuild sleep to BLOCK_REBUILD_TIME (15 ms).
       // Without this, non-validator nodes use the Besu default of 500 ms, which means
       // engine_getPayload's empty-block path (awaitCurrentBuildCompletion) waits up to
-      // 500 ms for the current iteration to finish instead of up to 100 ms.
+      // 500 ms for the current iteration to finish instead of up to 15 ms.
       val unstableMiningConfig =
         ImmutableMiningConfiguration.Unstable
           .builder()

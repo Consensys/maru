@@ -72,7 +72,7 @@ class JsonRpcExecutionLayerManager(
   }
 
   override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> {
-    val future = blockBuildingFuture.get()
+    val future = blockBuildingFuture.getAndSet(null)
     if (future == null) {
       log.warn("finishBlockBuilding called but no block building was started")
       return SafeFuture.failedFuture(
