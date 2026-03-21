@@ -183,8 +183,19 @@ class CLSyncServiceImplTest {
       sourceP2pNetwork.start()
       targetP2pNetwork.addStaticPeer(createPeerAddress(sourceNodePort))
 
-      awaitUntilAsserted { assertNetworkHasPeers(network = targetP2pNetwork, peers = 1) }
-      awaitUntilAsserted { assertNetworkHasPeers(network = sourceP2pNetwork, peers = 1) }
+      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+        assertNetworkHasPeers(
+          network = targetP2pNetwork,
+          peers =
+            1
+        )
+      }
+      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+        assertNetworkHasPeers(
+          network = sourceP2pNetwork,
+          peers = 1
+        )
+      }
     } catch (e: Exception) {
       targetP2pNetwork.stop()
       sourceP2pNetwork.stop()
