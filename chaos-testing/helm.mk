@@ -242,8 +242,23 @@ port-forward-component:
 		kubectl --kubeconfig $(KUBECONFIG) -n $(NAMESPACE) port-forward $$pod $$current_port:$(port) > "$$log_file" 2>&1 & \
 		pf_pid=$$!; \
 		echo $$pf_pid > "$$pid_file"; \
+		retries=0; \
+		while ! lsof -i TCP:$$current_port -sTCP:LISTEN >/dev/null 2>&1; do \
+			if ! kill -0 $$pf_pid 2>/dev/null; then \
+				echo "ERROR: port-forward process died for $$pod on port $$current_port. Log:"; \
+				cat "$$log_file"; \
+				exit 1; \
+			fi; \
+			retries=$$((retries + 1)); \
+			if [ $$retries -ge 30 ]; then \
+				echo "ERROR: port-forward for $$pod not listening on $$current_port after 30s"; \
+				cat "$$log_file"; \
+				exit 1; \
+			fi; \
+			sleep 1; \
+		done; \
 		url="$$pod = http://127.0.0.1:$$current_port"; \
-		url_log="$$pod:$(port) -> http://127.0.0.1:$$current_port"; \
+		url_log="$$pod:$(port) -> http://127.0.0.1:$$current_port (pid=$$pf_pid)"; \
 		echo "$$url" >> "$$summary_file"; \
 		echo "$$url_log"; \
 		current_port=$$((current_port + 1)); \

@@ -114,6 +114,26 @@ jobs:
           echo "Log collection complete"
           ls -la chaos-testing/tmp/pod-logs/
 
+      - name: Collect port-forward logs
+        if: failure()
+        run: |
+          echo "Collecting port-forward logs..."
+          if [ -d chaos-testing/tmp/pf ]; then
+            ls -la chaos-testing/tmp/pf/
+          else
+            echo "No port-forward log directory found"
+          fi
+          # Also collect port-forward summary files
+          for f in chaos-testing/tmp/port-forward-*.txt; do
+            if [ -f "$f" ]; then
+              echo "=== $f ==="
+              cat "$f"
+            fi
+          done
+          # Check for any surviving port-forward processes
+          ps -o pid=,command= -ax | grep 'kubectl port-forward' | grep -v grep > chaos-testing/tmp/pod-logs/port-forward-processes.txt 2>&1 || true
+          echo "Port-forward process collection complete"
+
       - name: Store reports and pod logs
         if: failure()
         uses: actions/upload-artifact@v4
@@ -122,6 +142,8 @@ jobs:
           path: |
             **/build/reports/tests/
             chaos-testing/tmp/pod-logs/
+            chaos-testing/tmp/pf/
+            chaos-testing/tmp/port-forward-*.txt
 
       # SSH debugging session - on failure (if requested)
       - name: Setup upterm session after failure
