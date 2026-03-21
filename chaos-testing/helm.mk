@@ -233,7 +233,7 @@ port-forward-component:
 	if [ -z "$$pods" ]; then echo "No pods found for component $(component)"; exit 1; fi; \
 	current_port=$(local_port_start_number); \
 	for pod in $$pods; do \
-		while lsof -i TCP:$$current_port -sTCP:LISTEN >/dev/null 2>&1; do \
+		while ss -tln 2>/dev/null | grep -q ":$$current_port " || nc -z 127.0.0.1 $$current_port 2>/dev/null; do \
 			echo "Local port $$current_port in use, trying next..."; \
 			current_port=$$((current_port + 1)); \
 		done; \
