@@ -186,8 +186,7 @@ class CLSyncServiceImplTest {
       awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
         assertNetworkHasPeers(
           network = targetP2pNetwork,
-          peers =
-            1
+          peers = 1
         )
       }
       awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
