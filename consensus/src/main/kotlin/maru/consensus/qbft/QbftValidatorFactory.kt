@@ -14,14 +14,12 @@ import kotlin.time.Duration.Companion.seconds
 import maru.config.QbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
-import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.PrevRandaoProvider
 import maru.consensus.PrevRandaoProviderImpl
 import maru.consensus.ProtocolFactory
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
-import maru.consensus.blockimport.BeaconBlockImporter
 import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
@@ -84,8 +82,6 @@ class QbftValidatorFactory(
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val blockMinedHandler: SealedBeaconBlockHandler<*>,
-  /** Handler invoked for every committed block (not just proposer). Used for EL import (newPayload+setHead). */
-  private val newBlockHandler: NewBlockHandler<*>? = null,
   private val executionLayerManager: ExecutionLayerManager,
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,
@@ -349,7 +345,7 @@ class QbftValidatorFactory(
           localValidator.address.contentEquals(round0Proposer.address)
         }
       }
-    val blockBuildingImporter =
+    val beaconBlockImporter =
       BlockBuildingBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = finalizationStateProvider,
@@ -358,29 +354,10 @@ class QbftValidatorFactory(
         shouldBuildNextBlock = shouldBuildNextBlock,
         feeRecipient = feeRecipient,
       )
-    // Fire EL import handlers (own EL + follower ELs) as fire-and-forget,
-    // then always run block building regardless of EL import result.
-    // EL import failures (e.g. besu restarting, follower EL down) must NOT
-    // prevent blockBuildingImporter from running setHead/setHeadAndStartBlockBuilding.
-    val composedImporter =
-      if (newBlockHandler != null) {
-        BeaconBlockImporter { beaconState, beaconBlock ->
-          newBlockHandler.handleNewBlock(beaconBlock).whenException { e ->
-            log.warn(
-              "EL import handlers failed for block={}, continuing with block building",
-              beaconBlock.beaconBlockHeader.number,
-              e,
-            )
-          }
-          blockBuildingImporter.importBlock(beaconState, beaconBlock)
-        }
-      } else {
-        blockBuildingImporter
-      }
     return TransactionalSealedBeaconBlockImporter(
       beaconChain = beaconChain,
       stateTransition = stateTransition,
-      beaconBlockImporter = composedImporter,
+      beaconBlockImporter = beaconBlockImporter,
     )
   }
 }
