@@ -243,7 +243,7 @@ port-forward-component:
 		pf_pid=$$!; \
 		echo $$pf_pid > "$$pid_file"; \
 		retries=0; \
-		while ! lsof -i TCP:$$current_port -sTCP:LISTEN >/dev/null 2>&1; do \
+		while ! grep -q "Forwarding from" "$$log_file" 2>/dev/null; do \
 			if ! kill -0 $$pf_pid 2>/dev/null; then \
 				echo "ERROR: port-forward process died for $$pod on port $$current_port. Log:"; \
 				cat "$$log_file"; \
@@ -251,7 +251,7 @@ port-forward-component:
 			fi; \
 			retries=$$((retries + 1)); \
 			if [ $$retries -ge 30 ]; then \
-				echo "ERROR: port-forward for $$pod not listening on $$current_port after 30s"; \
+				echo "ERROR: port-forward for $$pod not listening on $$current_port after 30s. Log:"; \
 				cat "$$log_file"; \
 				exit 1; \
 			fi; \
