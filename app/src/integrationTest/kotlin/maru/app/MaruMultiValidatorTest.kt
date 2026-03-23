@@ -37,6 +37,11 @@ import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
 class MaruMultiValidatorTest {
+  companion object {
+    /** Number of consecutive round-0 blocks required to declare convergence / stable production. */
+    private const val STABLE_BLOCKS = 5
+  }
+
   private val key0 = "080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHex()
   private val key1 = "0802122100abb81ba53518eb0a206dfe80f2a973182e5d66c98cd31d00bf7471fcd5514157".fromHex()
   private val key2 = "080212202fec0750fe3edc7e8272d4814a36b632921fc5e835d20a2de874471e8ad9ad0b".fromHex()
@@ -302,20 +307,20 @@ class MaruMultiValidatorTest {
     startAllValidators()
 
     // Wait until 5 consecutive round-0 blocks are observed. During startup, validators run QBFT
-    // independently before the P2P mesh is wired, causing round skips on early blocks. Convergence
-    // time is non-deterministic (depends on node startup duration), so we detect it dynamically.
+    // independently before the P2P mesh is wired, causing round skips on early blocks
     val stableHeight =
       waitForConsecutiveRound0Blocks(
         stack0.maruApp.beaconChain,
-        requiredConsecutive = 5,
+        requiredConsecutive = STABLE_BLOCKS,
         timeout = 120.seconds,
       )
     log.info("QBFT convergence achieved at block $stableHeight")
 
-    // Verify 5 more blocks after convergence are also round-0
-    waitForBlockHeight(stack0.maruApp.beaconChain, stableHeight + 5uL, timeout = 30.seconds)
-    val verifyStart = stableHeight - 4uL
-    val verifyBlocks = stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL)
+    // Verify STABLE_BLOCKS more blocks after convergence are also round-0
+    waitForBlockHeight(stack0.maruApp.beaconChain, stableHeight + STABLE_BLOCKS.toULong(), timeout = 90.seconds)
+    val verifyStart = stableHeight - (STABLE_BLOCKS - 1).toULong()
+    val verifyCount = (STABLE_BLOCKS * 2).toULong()
+    val verifyBlocks = stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount)
     verifyBlocks.forEach { block ->
       val header = block.beaconBlock.beaconBlockHeader
       assertThat(header.round)
@@ -327,10 +332,10 @@ class MaruMultiValidatorTest {
     checkAllValidatorBlocksAreTheSame(
       validatorBlocks =
         listOf(
-          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL) },
-          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL) },
-          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL) },
-          { stack3.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL) },
+          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
+          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
+          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
+          { stack3.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
         ),
       blocksToMetadata = ::clBlocksToMetadata,
     )
@@ -339,7 +344,7 @@ class MaruMultiValidatorTest {
     checkBlockProposersMatchExpectedProposers(
       beaconChain = stack0.maruApp.beaconChain,
       startBlock = verifyStart,
-      endBlock = stableHeight + 5uL,
+      endBlock = stableHeight + STABLE_BLOCKS.toULong(),
     )
   }
 
@@ -350,7 +355,7 @@ class MaruMultiValidatorTest {
     // Wait for convergence before stopping a node
     waitForConsecutiveRound0Blocks(
       stack0.maruApp.beaconChain,
-      requiredConsecutive = 5,
+      requiredConsecutive = STABLE_BLOCKS,
       timeout = 120.seconds,
     )
 
@@ -358,15 +363,14 @@ class MaruMultiValidatorTest {
     log.info("Stopping validator 3")
     stopValidator(stack3)
 
-    // Record current height and wait for 5 more blocks
+    // Record current height and wait for STABLE_BLOCKS more blocks
     val heightAfterStop = currentBlockHeight(stack0)
     log.info("Height after stopping validator 3: $heightAfterStop")
-    waitForBlockHeight(stack0.maruApp.beaconChain, heightAfterStop + 5uL, timeout = 60.seconds)
+    waitForBlockHeight(stack0.maruApp.beaconChain, heightAfterStop + STABLE_BLOCKS.toULong(), timeout = 60.seconds)
 
     // Verify blocks consistent across the 3 remaining validators
     val verifyStart = heightAfterStop + 1uL
-    val verifyEnd = heightAfterStop + 5uL
-    val count = verifyEnd - verifyStart + 1uL
+    val count = STABLE_BLOCKS.toULong()
     checkAllValidatorBlocksAreTheSame(
       validatorBlocks =
         listOf(
@@ -386,7 +390,7 @@ class MaruMultiValidatorTest {
     // Wait for convergence before stopping nodes
     waitForConsecutiveRound0Blocks(
       stack0.maruApp.beaconChain,
-      requiredConsecutive = 5,
+      requiredConsecutive = STABLE_BLOCKS,
       timeout = 120.seconds,
     )
 
@@ -411,13 +415,12 @@ class MaruMultiValidatorTest {
     log.info("Restarting validator 2")
     restartValidator(stack2, maruFactory2, listOf(stack0.maruApp, stack1.maruApp))
 
-    // Wait for 5 more blocks
-    waitForBlockHeight(stack0.maruApp.beaconChain, heightAfterStop + 5uL, timeout = 90.seconds)
+    // Wait for STABLE_BLOCKS more blocks
+    waitForBlockHeight(stack0.maruApp.beaconChain, heightAfterStop + STABLE_BLOCKS.toULong(), timeout = 90.seconds)
 
     // Verify consistency across the 3 active validators
     val verifyStart = heightAfterStop + 1uL
-    val verifyEnd = heightAfterStop + 5uL
-    val count = verifyEnd - verifyStart + 1uL
+    val count = STABLE_BLOCKS.toULong()
     checkAllValidatorBlocksAreTheSame(
       validatorBlocks =
         listOf(
@@ -434,8 +437,8 @@ class MaruMultiValidatorTest {
   fun `block production resumes after all 4 nodes restart`() {
     startAllValidators()
 
-    // Wait for 5 blocks
-    waitForBlockHeight(stack0.maruApp.beaconChain, 5uL, timeout = 90.seconds)
+    // Wait for STABLE_BLOCKS blocks before recording the checkpoint
+    waitForBlockHeight(stack0.maruApp.beaconChain, STABLE_BLOCKS.toULong(), timeout = 90.seconds)
     val heightBeforeRestart = currentBlockHeight(stack0)
     log.info("Height before full restart: $heightBeforeRestart")
 
@@ -452,13 +455,12 @@ class MaruMultiValidatorTest {
     log.info("Restarting all 4 validators")
     startAllValidators()
 
-    // Wait for blocks beyond the recorded height
-    waitForBlockHeight(stack0.maruApp.beaconChain, heightBeforeRestart + 5uL, timeout = 90.seconds)
+    // Wait for STABLE_BLOCKS blocks beyond the recorded height
+    waitForBlockHeight(stack0.maruApp.beaconChain, heightBeforeRestart + STABLE_BLOCKS.toULong(), timeout = 90.seconds)
 
     // Verify consistency across all 4 validators
     val verifyStart = heightBeforeRestart + 1uL
-    val verifyEnd = heightBeforeRestart + 5uL
-    val count = verifyEnd - verifyStart + 1uL
+    val count = STABLE_BLOCKS.toULong()
     checkAllValidatorBlocksAreTheSame(
       validatorBlocks =
         listOf(
