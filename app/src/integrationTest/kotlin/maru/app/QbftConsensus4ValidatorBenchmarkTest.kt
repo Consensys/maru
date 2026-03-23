@@ -205,12 +205,13 @@ class QbftConsensus4ValidatorBenchmarkTest {
     txExecutor.shutdown()
 
     // Map nodeIds to human-readable names for the output.
-    val nodeIdToName = mapOf(
-      app0.p2pNetwork.nodeId to "validator-0",
-      app1.p2pNetwork.nodeId to "validator-1",
-      app2.p2pNetwork.nodeId to "validator-2",
-      app3.p2pNetwork.nodeId to "validator-3",
-    )
+    val nodeIdToName =
+      mapOf(
+        app0.p2pNetwork.nodeId to "validator-0",
+        app1.p2pNetwork.nodeId to "validator-1",
+        app2.p2pNetwork.nodeId to "validator-2",
+        app3.p2pNetwork.nodeId to "validator-3",
+      )
 
     val registry = BackendRegistries.getDefaultNow()
     if (registry != null) {
@@ -247,10 +248,15 @@ class QbftConsensus4ValidatorBenchmarkTest {
     log.info("")
 
     // Print histograms grouped by validator, then by role within each validator.
-    fun printHistogram(nameSuffix: String, label: String, description: String) {
-      val meters = registry.meters.filter { meter ->
-        meter.id.name.endsWith(nameSuffix) && meter is DistributionSummary
-      }
+    fun printHistogram(
+      nameSuffix: String,
+      label: String,
+      description: String,
+    ) {
+      val meters =
+        registry.meters.filter { meter ->
+          meter.id.name.endsWith(nameSuffix) && meter is DistributionSummary
+        }
       if (meters.isEmpty()) {
         log.info("  {}: not found", label)
         return
@@ -258,8 +264,10 @@ class QbftConsensus4ValidatorBenchmarkTest {
 
       // Group by nodeid → role
       for (meter in meters.sortedWith(
-        compareBy({ nodeIdToName[it.id.getTag("nodeid")!!] ?: it.id.getTag("nodeid") ?: "" }, { it.id.getTag("role")
-          ?: "" }),
+        compareBy({ nodeIdToName[it.id.getTag("nodeid")!!] ?: it.id.getTag("nodeid") ?: "" }, {
+          it.id.getTag("role")
+            ?: ""
+        }),
       )) {
         val summary = meter as DistributionSummary
         val snapshot = summary.takeSnapshot()
@@ -287,13 +295,19 @@ class QbftConsensus4ValidatorBenchmarkTest {
       log.info("    ^ {}", description)
     }
 
-    fun printCounter(nameSuffix: String, label: String) {
-      val meters = registry.meters.filter { meter ->
-        meter.id.name.endsWith(nameSuffix) && meter is io.micrometer.core.instrument.Counter
-      }
+    fun printCounter(
+      nameSuffix: String,
+      label: String,
+    ) {
+      val meters =
+        registry.meters.filter { meter ->
+          meter.id.name.endsWith(nameSuffix) && meter is io.micrometer.core.instrument.Counter
+        }
       for (meter in meters.sortedWith(
-        compareBy({ nodeIdToName[it.id.getTag("nodeid")!!] ?: it.id.getTag("nodeid") ?: "" }, { it.id.getTag("role")
-          ?: "" }),
+        compareBy({ nodeIdToName[it.id.getTag("nodeid")!!] ?: it.id.getTag("nodeid") ?: "" }, {
+          it.id.getTag("role")
+            ?: ""
+        }),
       )) {
         val counter = meter as io.micrometer.core.instrument.Counter
         if (counter.count() == 0.0) continue
