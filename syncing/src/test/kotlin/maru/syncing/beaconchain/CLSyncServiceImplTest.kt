@@ -169,7 +169,7 @@ class CLSyncServiceImplTest {
     clSyncService =
       CLSyncServiceImpl(
         beaconChain = targetBeaconChain,
-        executorService = Executors.newCachedThreadPool(),
+        executorService = executorService,
         validatorProvider = StaticValidatorProvider(validators),
         allowEmptyBlocks = true,
         peerLookup = peerLookup,
@@ -207,7 +207,8 @@ class CLSyncServiceImplTest {
     clSyncService.stop()
     targetP2pNetwork.stop()
     sourceP2pNetwork.stop()
-    executorService.shutdown()
+    executorService.shutdownNow()
+    executorService.awaitTermination(5, TimeUnit.SECONDS)
   }
 
   @Test
