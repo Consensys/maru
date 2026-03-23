@@ -256,7 +256,8 @@ class MaruAppFactory : MaruAppFactoryCreator {
         // Followers only use ELSyncService when an explicit polling interval is configured.
         val elSyncEnabled = config.qbft == null && config.syncing.elSyncStatusRefreshInterval != null
         val elSyncServiceFactory: ((ELSyncStatus) -> Unit) -> LongRunningService = { onStatusChange ->
-          if (elSyncEnabled && engineApiWeb3jClient != null) {
+          val refreshInterval = config.syncing.elSyncStatusRefreshInterval
+          if (elSyncEnabled && refreshInterval != null && engineApiWeb3jClient != null) {
             val validatorImportHandler =
               ElForkAwareBlockImporter(
                 forksSchedule = beaconGenesisConfig,
@@ -265,7 +266,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
                 finalizationProvider = finalizationProvider,
               )
             ELSyncService(
-              config = ELSyncService.Config(config.syncing.elSyncStatusRefreshInterval!!),
+              config = ELSyncService.Config(refreshInterval),
               beaconChain = kvDatabase,
               eLValidatorBlockImportHandler = validatorImportHandler,
               followerELBLockImportHandler = elSyncBlockImportHandlers,

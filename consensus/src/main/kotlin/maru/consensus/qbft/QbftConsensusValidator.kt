@@ -10,8 +10,6 @@ package maru.consensus.qbft
 
 import java.util.concurrent.Executor
 import maru.core.Protocol
-import maru.core.SealedBeaconBlock
-import maru.subscription.SubscriptionManager
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
 
@@ -20,8 +18,6 @@ class QbftConsensusValidator(
   private val eventProcessor: QbftEventProcessor,
   private val bftExecutors: BftExecutors,
   private val eventQueueExecutor: Executor,
-  private val blockAdded: SubscriptionManager<SealedBeaconBlock>,
-  private val beaconChainObserverId: String,
 ) : Protocol {
   private var isRunning = false
 
@@ -47,6 +43,5 @@ class QbftConsensusValidator(
 
   override fun close() {
     pause()
-    blockAdded.removeSubscriber(beaconChainObserverId)
   }
 }

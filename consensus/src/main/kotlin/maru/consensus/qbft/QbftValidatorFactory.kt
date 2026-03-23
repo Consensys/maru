@@ -27,7 +27,6 @@ import maru.consensus.qbft.adapters.ForksScheduleAdapter
 import maru.consensus.qbft.adapters.P2PValidatorMulticaster
 import maru.consensus.qbft.adapters.ProposerSelectorAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
-import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.QbftBlockImporterAdapter
 import maru.consensus.qbft.adapters.QbftBlockInterfaceAdapter
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
@@ -42,6 +41,7 @@ import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
 import maru.core.BeaconState
 import maru.core.Protocol
+import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.crypto.Hashing
 import maru.crypto.SecpCrypto
@@ -81,7 +81,7 @@ class QbftValidatorFactory(
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: FinalizationProvider,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val blockMinedHandler: SealedBeaconBlockHandler<*>,
+  private val newBlockHandler: SealedBeaconBlockHandler<*>,
   private val executionLayerManager: ExecutionLayerManager,
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,
@@ -100,6 +100,8 @@ class QbftValidatorFactory(
   private val onBeforeEvent: ((eventLabel: String) -> Unit)? = null,
   /** Optional: called after every event is processed on the event loop. See [QbftEventMultiplexer.onAfterEvent]. */
   private val onAfterEvent: ((eventLabel: String) -> Unit)? = null,
+  /** Optional: called when a block is committed by the QBFT consensus (mined). */
+  private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
 ) : ProtocolFactory {
   private val log = LogManager.getLogger(QbftValidatorFactory::class.java)
 
@@ -185,14 +187,11 @@ class QbftValidatorFactory(
       )
 
     val minedBlockObservers = Subscribers.create<QbftMinedBlockObserver>()
-    // Only broadcast to P2P when this node was the proposer — non-proposing validators
-    // already received the block from P2P and re-broadcasting it would trigger
-    // MessageAlreadySeenException from libp2p's deduplication.
     minedBlockObservers.subscribe { qbftBlock ->
       val sealedBlock = qbftBlock.toSealedBeaconBlock()
-      if (sealedBlock.beaconBlock.beaconBlockHeader.proposer == localValidator) {
-        blockMinedHandler.handleSealedBlock(sealedBlock)
-      }
+      newBlockHandler.handleSealedBlock(sealedBlock)
+      bftEventQueue.add(QbftNewChainHead(qbftBlock.header))
+      onBlockMined?.invoke(sealedBlock)
     }
 
     val blockImporter =
@@ -299,20 +298,11 @@ class QbftValidatorFactory(
     // Subscribe to QBFT messages from P2P network and validate before adding to event queue
     p2PNetwork.subscribeToQbftMessages(qbftMessageProcessor)
 
-    // Mirror Besu's BftMiningCoordinator.onBlockAdded: advance the QBFT state machine
-    // for every new canonical head, whether from consensus or CL sync.
-    val beaconChainObserverId = "qbft-new-chain-head-$localAddress"
-    beaconChain.addSyncSubscriber(beaconChainObserverId) { sealedBlock ->
-      bftEventQueue.add(QbftNewChainHead(QbftBlockHeaderAdapter(sealedBlock.beaconBlock.beaconBlockHeader)))
-    }
-
     return QbftConsensusValidator(
       qbftController = qbftController,
       eventProcessor = eventProcessor,
       bftExecutors = bftExecutors,
       eventQueueExecutor = eventQueueExecutor,
-      blockAdded = beaconChain,
-      beaconChainObserverId = beaconChainObserverId,
     )
   }
 

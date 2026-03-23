@@ -11,8 +11,6 @@ package maru.database
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
-import maru.subscription.InOrderFanoutSubscriptionManager
-import maru.subscription.SubscriptionManager
 
 // Wrapper class for ByteArray to use as a key in maps. This is necessary because ByteArray does not implement
 // equals/hashCode correctly for content comparison
@@ -27,8 +25,7 @@ private class ByteArrayWrapper(
 class InMemoryBeaconChain(
   initialBeaconState: BeaconState,
   initialBeaconBlock: SealedBeaconBlock? = null,
-) : BeaconChain,
-  SubscriptionManager<SealedBeaconBlock> by InOrderFanoutSubscriptionManager() {
+) : BeaconChain {
   private val beaconStateByBlockRoot = mutableMapOf<ByteArrayWrapper, BeaconState>()
   private val beaconStateByBlockNumber = mutableMapOf<ULong, BeaconState>()
   private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArrayWrapper, SealedBeaconBlock>()
@@ -105,7 +102,7 @@ class InMemoryBeaconChain(
       if (newBeaconState != null) {
         beaconChain.latestBeaconState = newBeaconState!!
       }
-      committedBlock?.let { block -> beaconChain.notifySubscribers(block) }
+      // no-op: notification removed (was used by subscribeElSync, now removed)
     }
 
     override fun rollback() {

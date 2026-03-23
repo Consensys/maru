@@ -15,10 +15,13 @@ import maru.consensus.ForksSchedule
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
 import maru.consensus.QbftConsensusConfig
+import maru.consensus.SealedBeaconBlockHandlerAdapter
+import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.qbft.QbftEventMultiplexer
 import maru.consensus.qbft.QbftValidatorFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
+import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.executionlayer.ExecutionLayerFactory.buildExecutionLayerManager
 import maru.p2p.P2PNetwork
@@ -54,6 +57,8 @@ class QbftProtocolValidatorFactory(
   private val onBeforeEvent: ((eventLabel: String) -> Unit)? = null,
   /** Optional: called after every event is processed on the event loop. See [QbftEventMultiplexer.onAfterEvent]. */
   private val onAfterEvent: ((eventLabel: String) -> Unit)? = null,
+  /** Optional: called when a block is committed by QBFT consensus. */
+  private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
@@ -67,6 +72,20 @@ class QbftProtocolValidatorFactory(
         elFork = qbftConsensusConfig.elFork,
         metricsFacade = metricsFacade,
       )
+    val blockImportHandlers =
+      Helpers.createBlockImportHandlers(
+        elFork = qbftConsensusConfig.elFork,
+        metricsFacade = metricsFacade,
+        finalizationStateProvider = finalizationStateProvider,
+        followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+      )
+    val sealedBlockHandlers =
+      mutableMapOf(
+        "beacon block handlers" to SealedBeaconBlockHandlerAdapter(blockImportHandlers),
+        "p2p broadcast sealed beacon block handler" to
+          SealedBeaconBlockBroadcaster(p2pNetwork),
+      )
+    val sealedBlockHandlerMultiplexer = NewSealedBeaconBlockHandlerMultiplexer<Unit>(handlersMap = sealedBlockHandlers)
 
     val qbftValidatorFactory =
       QbftValidatorFactory(
@@ -76,7 +95,7 @@ class QbftProtocolValidatorFactory(
         metricsSystem = metricsSystem,
         finalizationStateProvider = finalizationStateProvider,
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
-        blockMinedHandler = SealedBeaconBlockBroadcaster(p2pNetwork),
+        newBlockHandler = sealedBlockHandlerMultiplexer,
         executionLayerManager = payloadValidatorExecutionLayerManager,
         clock = clock,
         p2PNetwork = p2pNetwork,
@@ -89,26 +108,8 @@ class QbftProtocolValidatorFactory(
         onImportStarted = onImportStarted,
         onBeforeEvent = onBeforeEvent,
         onAfterEvent = onAfterEvent,
+        onBlockMined = onBlockMined,
       )
-    val qbftProtocol = qbftValidatorFactory.create(forkSpec)
-
-    // Subscribe EL driving for the validator's own EL and external follower EL nodes.
-    // Fires for all blocks (consensus-committed and CL-synced), keeping Besu in sync.
-    // When payloadValidationEnabled, the own EL uses SetHeadOnlyBlockImporter (setHead only)
-    // because newPayload was already called during PROPOSAL validation (non-proposer) or
-    // the EL already has the payload from building it (proposer). Follower ELs still use
-    // FollowerBeaconBlockImporter (newPayload+setHead) since they haven't seen the payload.
-    return qbftProtocol.subscribeElSync(
-      beaconChain,
-      Helpers.buildElImporterHandlers(
-        ownExecutionLayerManager = payloadValidatorExecutionLayerManager,
-        ownHandlerName = "validator-el",
-        followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
-        elFork = qbftConsensusConfig.elFork,
-        finalizationStateProvider = finalizationStateProvider,
-        metricsFacade = metricsFacade,
-        payloadValidationEnabled = payloadValidationEnabled,
-      ),
-    )
+    return qbftValidatorFactory.create(forkSpec)
   }
 }

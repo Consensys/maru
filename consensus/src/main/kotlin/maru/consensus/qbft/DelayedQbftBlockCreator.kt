@@ -28,7 +28,6 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
-import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
@@ -48,8 +47,6 @@ class DelayedQbftBlockCreator(
   private val beaconChain: BeaconChain,
   private val round: Int,
 ) : QbftBlockCreator {
-  private val log = LogManager.getLogger(this.javaClass)
-
   companion object {
     fun createSealedBlock(
       qbftBlock: QbftBlock,
@@ -107,14 +104,12 @@ class DelayedQbftBlockCreator(
     parentHeader: QbftBlockHeader,
   ): QbftBlock {
     val parentBeaconBlockHeader = parentHeader.toBeaconBlockHeader()
-    val t0 = System.nanoTime()
     val executionPayload =
       try {
         manager.finishBlockBuilding().get()
       } catch (e: Exception) {
         throw IllegalStateException("Execution payload unavailable, unable to create block", e)
       }
-    log.debug("finishBlockBuilding took {}ms", (System.nanoTime() - t0) / 1_000_000L)
     val parentSealedBeaconBlock =
       beaconChain.getSealedBeaconBlock(parentBeaconBlockHeader.hash())
         ?: throw IllegalStateException("Parent beacon block unavailable, unable to create block")

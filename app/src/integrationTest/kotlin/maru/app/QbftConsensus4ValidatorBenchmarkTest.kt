@@ -31,7 +31,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
@@ -376,7 +375,7 @@ class QbftConsensus4ValidatorBenchmarkTest {
     val latch = CountDownLatch(blocksToMeasure)
     val samples = ConcurrentLinkedQueue<Sample>()
 
-    app0.beaconChain.addAsyncSubscriber { sealedBlock: SealedBeaconBlock ->
+    app0.onBlockCommitted = { sealedBlock: SealedBeaconBlock ->
       val commitWallClock = System.currentTimeMillis()
       val header = sealedBlock.beaconBlock.beaconBlockHeader
       if (header.number > 0UL) {
@@ -424,7 +423,6 @@ class QbftConsensus4ValidatorBenchmarkTest {
           latch.countDown()
         }
       }
-      SafeFuture.completedFuture(Unit)
     }
 
     assertThat(latch.await(blocksToMeasure * 3L, TimeUnit.SECONDS))

@@ -9,6 +9,7 @@
 package maru.consensus
 
 import java.time.Clock
+import kotlin.math.ceil
 import kotlin.math.max
 
 fun interface NextBlockTimestampProvider {
@@ -22,7 +23,7 @@ class NextBlockTimestampProviderImpl(
   override fun nextTargetBlockUnixTimestamp(lastBlockTimestamp: ULong): ULong {
     val currentBlockTime = forksSchedule.getForkByTimestamp(lastBlockTimestamp).blockTimeSeconds
 
-    val currentSecond = clock.instant().epochSecond.toULong()
-    return max(lastBlockTimestamp + currentBlockTime, currentSecond)
+    val nextIntegerSecond = ceil(clock.millis() / 1000.0).toULong()
+    return max(lastBlockTimestamp + currentBlockTime, nextIntegerSecond)
   }
 }
