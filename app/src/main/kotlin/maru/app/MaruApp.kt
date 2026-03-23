@@ -69,6 +69,12 @@ class MaruApp(
 
   private fun getPrivateKeyWithoutPrefix() = SecpCrypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
 
+  /**
+   * Micrometer-based consensus metrics. Non-null when this node is a validator (config.qbft != null).
+   * Records QBFT phase latencies as histograms, queryable via Prometheus in K8S or via MeterRegistry in tests.
+   */
+  val consensusMetrics: ConsensusMetrics? = if (config.qbft != null) ConsensusMetrics(metricsFacade) else null
+
   init {
     if (config.qbft == null) {
       log.info("Qbft options are not defined. nodeRole=follower")
@@ -279,13 +285,25 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           forksSchedule = beaconGenesisConfig,
           payloadValidationEnabled = config.validatorElNode!!.payloadValidationEnabled,
-          onBlockTimerFired = { blockNumber -> onBlockTimerFired?.invoke(blockNumber) },
-          onMessageReceived = { msgCode, seqNum -> onMessageReceived?.invoke(msgCode, seqNum) },
+          onBlockTimerFired = { blockNumber ->
+            consensusMetrics?.recordTimerFire(blockNumber)
+            onBlockTimerFired?.invoke(blockNumber)
+          },
+          onMessageReceived = { msgCode, seqNum ->
+            consensusMetrics?.recordMessageReceived(msgCode, seqNum)
+            onMessageReceived?.invoke(msgCode, seqNum)
+          },
           onMessageSent = { msgCode, seqNum -> onMessageSent?.invoke(msgCode, seqNum) },
-          onImportStarted = { blockNumber -> onImportStarted?.invoke(blockNumber) },
+          onImportStarted = { blockNumber ->
+            consensusMetrics?.recordImportStarted(blockNumber)
+            onImportStarted?.invoke(blockNumber)
+          },
           onBeforeEvent = { label -> onBeforeEvent?.invoke(label) },
           onAfterEvent = { label -> onAfterEvent?.invoke(label) },
-          onBlockMined = { sealedBlock -> onBlockCommitted?.invoke(sealedBlock) },
+          onBlockMined = { sealedBlock ->
+            consensusMetrics?.recordBlockCommitted(sealedBlock)
+            onBlockCommitted?.invoke(sealedBlock)
+          },
         )
       } else {
         QbftFollowerFactory(

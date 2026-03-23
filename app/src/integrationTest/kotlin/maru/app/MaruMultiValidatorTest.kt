@@ -9,11 +9,13 @@
 package maru.app
 
 import io.libp2p.etc.types.fromHex
-import java.math.BigInteger
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.consensus.qbft.ProposerSelectorImpl
 import maru.core.SealedBeaconBlock
+import maru.core.Validator
 import maru.crypto.SecpCrypto
 import maru.database.BeaconChain
 import maru.extensions.encodeHex
@@ -21,7 +23,6 @@ import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
-import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
@@ -30,175 +31,209 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.web3j.protocol.core.methods.response.EthBlock
-import testutils.Checks.getMinedBlocks
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
-import testutils.besu.BesuTransactionsHelper
-import testutils.besu.ethGetBlockByNumber
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
 class MaruMultiValidatorTest {
-  private val key1 = "0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2".fromHex()
-  private val key2 = "0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".fromHex()
+  private val key0 = "080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHex()
+  private val key1 = "0802122100abb81ba53518eb0a206dfe80f2a973182e5d66c98cd31d00bf7471fcd5514157".fromHex()
+  private val key2 = "080212202fec0750fe3edc7e8272d4814a36b632921fc5e835d20a2de874471e8ad9ad0b".fromHex()
+  private val key3 = "080212207a19c01ce2246b94b48ed778d9bfb3b76eaabe8193c468d6751f4e4d1adf98a8".fromHex()
 
   private lateinit var cluster: Cluster
-  private lateinit var validator1Stack: PeeringNodeNetworkStack
-  private lateinit var validator2Stack: PeeringNodeNetworkStack
-  private lateinit var transactionsHelper: BesuTransactionsHelper
+  private lateinit var stack0: PeeringNodeNetworkStack
+  private lateinit var stack1: PeeringNodeNetworkStack
+  private lateinit var stack2: PeeringNodeNetworkStack
+  private lateinit var stack3: PeeringNodeNetworkStack
+
   private val log = LogManager.getLogger(this.javaClass)
+
+  private val maruFactory0 = MaruFactory(validatorPrivateKey = key0)
   private val maruFactory1 = MaruFactory(validatorPrivateKey = key1)
   private val maruFactory2 = MaruFactory(validatorPrivateKey = key2)
+  private val maruFactory3 = MaruFactory(validatorPrivateKey = key3)
+
+  private val initialValidators: Set<Validator> by lazy {
+    setOf(
+      SecpCrypto.privateKeyToValidator(SecpCrypto.privateKeyBytesWithoutPrefix(key0)),
+      SecpCrypto.privateKeyToValidator(SecpCrypto.privateKeyBytesWithoutPrefix(key1)),
+      SecpCrypto.privateKeyToValidator(SecpCrypto.privateKeyBytesWithoutPrefix(key2)),
+      SecpCrypto.privateKeyToValidator(SecpCrypto.privateKeyBytesWithoutPrefix(key3)),
+    )
+  }
 
   @BeforeEach
   fun setUp() {
-    transactionsHelper = BesuTransactionsHelper()
     cluster =
       Cluster(
         ClusterConfigurationBuilder().build(),
         NetConditions(NetTransactions()),
         ThreadBesuNodeRunner(),
       )
-
     val besuBuilder = { BesuFactory.buildTestBesu(validator = false) }
-    validator1Stack = PeeringNodeNetworkStack(besuBuilder)
-    validator2Stack = PeeringNodeNetworkStack(besuBuilder)
-
-    // Start all Besu nodes together for proper peering
-    PeeringNodeNetworkStack.startBesuNodes(cluster, validator1Stack, validator2Stack)
+    stack0 = PeeringNodeNetworkStack(besuBuilder)
+    stack1 = PeeringNodeNetworkStack(besuBuilder)
+    stack2 = PeeringNodeNetworkStack(besuBuilder)
+    stack3 = PeeringNodeNetworkStack(besuBuilder)
+    PeeringNodeNetworkStack.startBesuNodes(cluster, stack0, stack1, stack2, stack3)
   }
 
   @AfterEach
   fun tearDown() {
-    validator2Stack.maruApp.stop().get()
-    validator1Stack.maruApp.stop().get()
-    validator2Stack.maruApp.close()
-    validator1Stack.maruApp.close()
+    runCatching { stack3.maruApp.stop().get() }
+    runCatching { stack2.maruApp.stop().get() }
+    runCatching { stack1.maruApp.stop().get() }
+    runCatching { stack0.maruApp.stop().get() }
+    runCatching { stack3.maruApp.close() }
+    runCatching { stack2.maruApp.close() }
+    runCatching { stack1.maruApp.close() }
+    runCatching { stack0.maruApp.close() }
     cluster.close()
   }
 
-  @Test
-  fun `maru with multiple validators is able to produce blocks`() {
-    val validator1Address = SecpCrypto.privateKeyToValidator(SecpCrypto.privateKeyBytesWithoutPrefix(key1))
-    val validator2Address = SecpCrypto.privateKeyToValidator(SecpCrypto.privateKeyBytesWithoutPrefix(key2))
-    log.info("Validator 1 (key1) address: ${validator1Address.address.encodeHex()}")
-    log.info("Validator 2 (key2) address: ${validator2Address.address.encodeHex()}")
-    val initialValidators = setOf(validator1Address, validator2Address)
+  // -- Helper methods ---------------------------------------------------------
 
-    // Create and start validator 1 Maru app first
-    val validator1MaruApp =
+  private fun startAllValidators() {
+    val app0 =
+      maruFactory0.buildTestMaruValidatorWithP2pPeering(
+        ethereumJsonRpcUrl = stack0.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = stack0.besuNode.engineRpcUrl().get(),
+        dataDir = stack0.tmpDir,
+        syncingConfig = MaruFactory.defaultSyncingConfig,
+        allowEmptyBlocks = true,
+        initialValidators = initialValidators,
+      )
+    stack0.setMaruApp(app0)
+    app0.start().get()
+
+    val app1 =
       maruFactory1.buildTestMaruValidatorWithP2pPeering(
-        ethereumJsonRpcUrl = validator1Stack.besuNode.jsonRpcBaseUrl().get(),
-        engineApiRpc = validator1Stack.besuNode.engineRpcUrl().get(),
-        dataDir = validator1Stack.tmpDir,
+        ethereumJsonRpcUrl = stack1.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = stack1.besuNode.engineRpcUrl().get(),
+        dataDir = stack1.tmpDir,
         syncingConfig = MaruFactory.defaultSyncingConfig,
         allowEmptyBlocks = true,
         initialValidators = initialValidators,
       )
-    validator1Stack.setMaruApp(validator1MaruApp)
-    validator1Stack.maruApp.start().get()
-    // Get validator 1 p2p port and node ID after it's started
-    val validator1P2pPort = validator1Stack.p2pPort
-    val validator1NodeId = validator1Stack.maruApp.p2pNetwork.nodeId
+    stack1.setMaruApp(app1)
+    app1.start().get()
 
-    // Create validator 2 Maru app with the validator 1 p2p port and node ID for static peering
-    val validator2MaruApp =
+    val app2 =
       maruFactory2.buildTestMaruValidatorWithP2pPeering(
-        ethereumJsonRpcUrl = validator2Stack.besuNode.jsonRpcBaseUrl().get(),
-        engineApiRpc = validator2Stack.besuNode.engineRpcUrl().get(),
-        dataDir = validator2Stack.tmpDir,
-        validatorPortForStaticPeering = validator1P2pPort,
-        validatorNodeIdForStaticPeering = validator1NodeId,
+        ethereumJsonRpcUrl = stack2.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = stack2.besuNode.engineRpcUrl().get(),
+        dataDir = stack2.tmpDir,
         syncingConfig = MaruFactory.defaultSyncingConfig,
         allowEmptyBlocks = true,
         initialValidators = initialValidators,
       )
-    validator2Stack.setMaruApp(validator2MaruApp)
-    validator2Stack.maruApp.start().get()
+    stack2.setMaruApp(app2)
+    app2.start().get()
 
-    validator2Stack.maruApp.awaitTillMaruHasPeers(1u)
-    validator1Stack.maruApp.awaitTillMaruHasPeers(1u)
-    log.info("Nodes are peered")
+    val app3 =
+      maruFactory3.buildTestMaruValidatorWithP2pPeering(
+        ethereumJsonRpcUrl = stack3.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = stack3.besuNode.engineRpcUrl().get(),
+        dataDir = stack3.tmpDir,
+        syncingConfig = MaruFactory.defaultSyncingConfig,
+        allowEmptyBlocks = true,
+        initialValidators = initialValidators,
+      )
+    stack3.setMaruApp(app3)
+    app3.start().get()
 
-    val validator1besuGenesis = validator1Stack.besuNode.ethGetBlockByNumber("earliest", false)
-    val validator2besuGenesis = validator2Stack.besuNode.ethGetBlockByNumber("earliest", false)
-    assertThat(validator1besuGenesis).isEqualTo(validator2besuGenesis)
+    // Wire full mesh: 6 bidirectional connections for 4 nodes
+    fun peerAddr(app: MaruApp) = "/ip4/127.0.0.1/tcp/${app.p2pPort()}/p2p/${app.p2pNetwork.nodeId}"
+    app1.p2pNetwork.addPeer(peerAddr(app0))
+    app2.p2pNetwork.addPeer(peerAddr(app0))
+    app2.p2pNetwork.addPeer(peerAddr(app1))
+    app3.p2pNetwork.addPeer(peerAddr(app0))
+    app3.p2pNetwork.addPeer(peerAddr(app1))
+    app3.p2pNetwork.addPeer(peerAddr(app2))
 
-    val validator1MaruGenesis = validator1Stack.maruApp.beaconChain.getBeaconState(0u)
-    val validator2MaruGenesis = validator2Stack.maruApp.beaconChain.getBeaconState(0u)
-    assertThat(validator1MaruGenesis).isEqualTo(validator2MaruGenesis)
-
-    val blocksToProduce = 5
-    repeat(blocksToProduce) {
-      transactionsHelper.run {
-        validator1Stack.besuNode.sendTransactionAndAssertExecution(
-          logger = log,
-          recipient = createAccount("another account"),
-          amount = Amount.ether(100),
-        )
-      }
-    }
-
-    val beaconChain = validator1Stack.maruApp.beaconChain
-    waitForBlocksToBeProduced(blocksToProduce, beaconChain)
-
-    // verify that all EL blocks are the same
-    checkAllValidatorBlocksAreTheSame(
-      getValidator1Blocks = { validator1Stack.besuNode.getMinedBlocks(blocksToProduce) },
-      getValidator2Blocks = { validator2Stack.besuNode.getMinedBlocks(blocksToProduce) },
-      blocksToMetadata = ::elBlocksToMetadata,
-    )
-
-    // verify that all CL blocks are the same
-    checkAllValidatorBlocksAreTheSame(
-      getValidator1Blocks = { beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()) },
-      getValidator2Blocks = { beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()) },
-      blocksToMetadata = ::clBlocksToMetadata,
-    )
-
-    checkBlockProposersMatchExpectedProposers(
-      beaconChain = beaconChain,
-      blocksToProduce = blocksToProduce,
-    )
+    // Wait for full mesh -- each validator should see exactly 3 peers
+    app0.awaitTillMaruHasPeers(3u, pollingInterval = 500.milliseconds)
+    app1.awaitTillMaruHasPeers(3u, pollingInterval = 500.milliseconds)
+    app2.awaitTillMaruHasPeers(3u, pollingInterval = 500.milliseconds)
+    app3.awaitTillMaruHasPeers(3u, pollingInterval = 500.milliseconds)
+    log.info("All 4 validators peered in full mesh")
   }
 
-  private fun waitForBlocksToBeProduced(
-    blocksToProduce: Int,
+  private fun waitForBlockHeight(
     beaconChain: BeaconChain,
+    targetHeight: ULong,
+    timeout: Duration = 60.seconds,
   ) {
     await
-      .pollDelay(1.seconds.toJavaDuration())
-      .timeout(30.seconds.toJavaDuration())
+      .timeout(timeout.toJavaDuration())
+      .pollInterval(500.milliseconds.toJavaDuration())
       .untilAsserted {
-        assertThat(validator1Stack.besuNode.getMinedBlocks(blocksToProduce))
-          .hasSize(blocksToProduce)
-        assertThat(beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong()))
-          .hasSize(blocksToProduce)
+        assertThat(beaconChain.getLatestBeaconState().beaconBlockHeader.number)
+          .isGreaterThanOrEqualTo(targetHeight)
       }
+  }
+
+  private fun currentBlockHeight(stack: PeeringNodeNetworkStack): ULong =
+    stack.maruApp.beaconChain
+      .getLatestBeaconState()
+      .beaconBlockHeader.number
+
+  private fun stopValidator(stack: PeeringNodeNetworkStack) {
+    stack.maruApp.stop().get()
+    stack.maruApp.close()
+  }
+
+  private fun restartValidator(
+    stack: PeeringNodeNetworkStack,
+    factory: MaruFactory,
+    peersToConnect: List<MaruApp>,
+  ) {
+    val app =
+      factory.buildTestMaruValidatorWithP2pPeering(
+        ethereumJsonRpcUrl = stack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = stack.besuNode.engineRpcUrl().get(),
+        dataDir = stack.tmpDir,
+        syncingConfig = MaruFactory.defaultSyncingConfig,
+        allowEmptyBlocks = true,
+        initialValidators = initialValidators,
+      )
+    stack.setMaruApp(app)
+    app.start().get()
+
+    fun peerAddr(peer: MaruApp) = "/ip4/127.0.0.1/tcp/${peer.p2pPort()}/p2p/${peer.p2pNetwork.nodeId}"
+    peersToConnect.forEach { peer ->
+      app.p2pNetwork.addPeer(peerAddr(peer))
+    }
+    app.awaitTillMaruHasPeers(peersToConnect.size.toUInt(), pollingInterval = 500.milliseconds)
   }
 
   private fun <T, M> checkAllValidatorBlocksAreTheSame(
-    getValidator1Blocks: () -> List<T>,
-    getValidator2Blocks: () -> List<T>,
+    validatorBlocks: List<() -> List<T>>,
     blocksToMetadata: (List<T>) -> List<M>,
   ) {
-    val blocksProducedByQbftValidator1 = blocksToMetadata(getValidator1Blocks())
-    val blocksProducedByQbftValidator2 = blocksToMetadata(getValidator2Blocks())
-    assertThat(blocksProducedByQbftValidator2)
-      .isEqualTo(blocksProducedByQbftValidator1)
+    val allMetadata = validatorBlocks.map { blocksToMetadata(it()) }
+    for (i in 1 until allMetadata.size) {
+      assertThat(allMetadata[i])
+        .withFailMessage { "Validator $i blocks differ from validator 0" }
+        .isEqualTo(allMetadata[0])
+    }
   }
 
   private fun checkBlockProposersMatchExpectedProposers(
     beaconChain: BeaconChain,
-    blocksToProduce: Int,
+    startBlock: ULong,
+    endBlock: ULong,
   ) {
-    val blocks = beaconChain.getSealedBeaconBlocks(1uL, blocksToProduce.toULong())
+    val count = endBlock - startBlock + 1uL
+    val blocks = beaconChain.getSealedBeaconBlocks(startBlock, count)
     val proposerSelector = ProposerSelectorImpl
 
-    blocks.forEachIndexed { index, block ->
+    blocks.forEach { block ->
       val beaconBlockHeader = block.beaconBlock.beaconBlockHeader
-      val roundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong(), beaconBlockHeader.round.toInt())
+      val roundIdentifier =
+        ConsensusRoundIdentifier(beaconBlockHeader.number.toLong(), beaconBlockHeader.round.toInt())
       val parentBeaconState = beaconChain.getBeaconState(beaconBlockHeader.number - 1uL)
       val expectedProposer = proposerSelector.getProposerForBlock(parentBeaconState!!, roundIdentifier).get()
 
@@ -210,15 +245,177 @@ class MaruMultiValidatorTest {
     }
   }
 
-  private fun elBlocksToMetadata(blocks: List<EthBlock.Block>): List<Pair<BigInteger, String>> =
-    blocks.map {
-      it.number to it.hash
-    }
-
   private fun clBlocksToMetadata(blocks: List<SealedBeaconBlock>): List<Pair<ULong, String>> =
     blocks.map {
       it.beaconBlock.beaconBlockHeader.number to
         it.beaconBlock.beaconBlockHeader.hash
           .encodeHex()
     }
+
+  // -- Test scenarios ---------------------------------------------------------
+
+  @Test
+  fun `validators converge to stable block production without round skips`() {
+    startAllValidators()
+
+    // Wait for 15 blocks
+    waitForBlockHeight(stack0.maruApp.beaconChain, 15uL, timeout = 90.seconds)
+
+    // Get the last 5 blocks and verify all have round == 0
+    val blocks = stack0.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL)
+    assertThat(blocks).hasSize(12)
+    blocks.forEach { block ->
+      val header = block.beaconBlock.beaconBlockHeader
+      assertThat(header.round)
+        .withFailMessage { "Block ${header.number} has round ${header.round}, expected 0" }
+        .isEqualTo(0u)
+    }
+
+    // Verify blocks consistent across all 4 validators
+    checkAllValidatorBlocksAreTheSame(
+      validatorBlocks =
+        listOf(
+          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL) },
+          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL) },
+          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL) },
+          { stack3.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL) },
+        ),
+      blocksToMetadata = ::clBlocksToMetadata,
+    )
+
+    // Verify proposers match expected
+    checkBlockProposersMatchExpectedProposers(
+      beaconChain = stack0.maruApp.beaconChain,
+      startBlock = 1uL,
+      endBlock = 15uL,
+    )
+  }
+
+  @Test
+  fun `block production continues with 1 node offline`() {
+    startAllValidators()
+
+    // Wait for stable production (10 blocks, then check last 5 have round=0)
+    waitForBlockHeight(stack0.maruApp.beaconChain, 10uL, timeout = 90.seconds)
+    val preBlocks = stack0.maruApp.beaconChain.getSealedBeaconBlocks(6uL, 5uL)
+    preBlocks.forEach { block ->
+      val header = block.beaconBlock.beaconBlockHeader
+      assertThat(header.round)
+        .withFailMessage { "Block ${header.number} has round ${header.round}, expected 0 (pre-stop)" }
+        .isEqualTo(0u)
+    }
+
+    // Stop validator 3
+    log.info("Stopping validator 3")
+    stopValidator(stack3)
+
+    // Record current height and wait for 5 more blocks
+    val heightAfterStop = currentBlockHeight(stack0)
+    log.info("Height after stopping validator 3: $heightAfterStop")
+    waitForBlockHeight(stack0.maruApp.beaconChain, heightAfterStop + 5uL, timeout = 60.seconds)
+
+    // Verify blocks consistent across the 3 remaining validators
+    val verifyStart = heightAfterStop + 1uL
+    val verifyEnd = heightAfterStop + 5uL
+    val count = verifyEnd - verifyStart + 1uL
+    checkAllValidatorBlocksAreTheSame(
+      validatorBlocks =
+        listOf(
+          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        ),
+      blocksToMetadata = ::clBlocksToMetadata,
+    )
+    log.info("Block production continued successfully with 3 of 4 validators")
+  }
+
+  @Test
+  fun `block production recovers after 2 nodes offline and 1 returns`() {
+    startAllValidators()
+
+    // Wait for stable production
+    waitForBlockHeight(stack0.maruApp.beaconChain, 10uL, timeout = 90.seconds)
+
+    // Stop validators 2 and 3 -- only 2 of 4 remain, below quorum (need 3)
+    log.info("Stopping validators 2 and 3")
+    stopValidator(stack2)
+    stopValidator(stack3)
+
+    val heightAfterStop = currentBlockHeight(stack0)
+    log.info("Height after stopping 2 validators: $heightAfterStop")
+
+    // Wait 5 seconds and verify no new blocks were produced
+    Thread.sleep(5000)
+    val heightAfterWait = currentBlockHeight(stack0)
+    assertThat(heightAfterWait)
+      .withFailMessage {
+        "Expected no new blocks (height $heightAfterStop) but got height $heightAfterWait"
+      }.isEqualTo(heightAfterStop)
+    log.info("Confirmed: no blocks produced without quorum")
+
+    // Restart validator 2 -- quorum restored (3 of 4)
+    log.info("Restarting validator 2")
+    restartValidator(stack2, maruFactory2, listOf(stack0.maruApp, stack1.maruApp))
+
+    // Wait for 5 more blocks
+    waitForBlockHeight(stack0.maruApp.beaconChain, heightAfterStop + 5uL, timeout = 90.seconds)
+
+    // Verify consistency across the 3 active validators
+    val verifyStart = heightAfterStop + 1uL
+    val verifyEnd = heightAfterStop + 5uL
+    val count = verifyEnd - verifyStart + 1uL
+    checkAllValidatorBlocksAreTheSame(
+      validatorBlocks =
+        listOf(
+          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        ),
+      blocksToMetadata = ::clBlocksToMetadata,
+    )
+    log.info("Block production recovered after quorum was restored")
+  }
+
+  @Test
+  fun `block production resumes after all 4 nodes restart`() {
+    startAllValidators()
+
+    // Wait for 5 blocks
+    waitForBlockHeight(stack0.maruApp.beaconChain, 5uL, timeout = 90.seconds)
+    val heightBeforeRestart = currentBlockHeight(stack0)
+    log.info("Height before full restart: $heightBeforeRestart")
+
+    // Stop all 4 validators
+    log.info("Stopping all 4 validators")
+    stopValidator(stack0)
+    stopValidator(stack1)
+    stopValidator(stack2)
+    stopValidator(stack3)
+
+    Thread.sleep(2000)
+
+    // Restart all 4 and re-establish full mesh
+    log.info("Restarting all 4 validators")
+    startAllValidators()
+
+    // Wait for blocks beyond the recorded height
+    waitForBlockHeight(stack0.maruApp.beaconChain, heightBeforeRestart + 5uL, timeout = 90.seconds)
+
+    // Verify consistency across all 4 validators
+    val verifyStart = heightBeforeRestart + 1uL
+    val verifyEnd = heightBeforeRestart + 5uL
+    val count = verifyEnd - verifyStart + 1uL
+    checkAllValidatorBlocksAreTheSame(
+      validatorBlocks =
+        listOf(
+          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+          { stack3.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        ),
+      blocksToMetadata = ::clBlocksToMetadata,
+    )
+    log.info("Block production resumed successfully after full restart")
+  }
 }
