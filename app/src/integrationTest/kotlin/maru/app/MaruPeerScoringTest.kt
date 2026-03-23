@@ -285,6 +285,14 @@ class MaruPeerScoringTest {
           followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(0UL)
       }
+    // Wait until follower and validator are peered before returning
+    await
+      .atMost(20.seconds.toJavaDuration())
+      .pollInterval(200.milliseconds.toJavaDuration())
+      .ignoreExceptions()
+      .untilAsserted {
+        assertThat(followerMaruApp.p2pNetwork.peerCount).isEqualTo(1)
+      }
     return MaruNodeSetup(validatorMaruApp = validatorMaruApp, followerMaruApp = followerMaruApp)
   }
 }
