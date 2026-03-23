@@ -77,7 +77,6 @@ class InMemoryBeaconChain(
     private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
 
     private var newBeaconState: BeaconState? = null
-    private var committedBlock: SealedBeaconBlock? = null
 
     override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
       beaconStateByBlockRoot[ByteArrayWrapper(beaconState.beaconBlockHeader.hash)] = beaconState
@@ -90,7 +89,6 @@ class InMemoryBeaconChain(
       sealedBeaconBlockByBlockRoot[ByteArrayWrapper(sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash)] =
         sealedBeaconBlock
       sealedBeaconBlockByBlockNumber[sealedBeaconBlock.beaconBlock.beaconBlockHeader.number] = sealedBeaconBlock
-      committedBlock = sealedBeaconBlock
       return this
     }
 
@@ -102,7 +100,6 @@ class InMemoryBeaconChain(
       if (newBeaconState != null) {
         beaconChain.latestBeaconState = newBeaconState!!
       }
-      // no-op: notification removed (was used by subscribeElSync, now removed)
     }
 
     override fun rollback() {

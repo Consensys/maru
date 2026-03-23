@@ -97,11 +97,9 @@ class KvDatabase(
 
   class KvUpdater(
     kvStoreAccessor: KvStoreAccessor,
-    private val onBlockAdded: (SealedBeaconBlock) -> Unit = {},
   ) : BeaconChain.Updater,
     P2PState.Updater {
     private val transaction: KvStoreTransaction = kvStoreAccessor.startTransaction()
-    private var committedBlock: SealedBeaconBlock? = null
 
     override fun putBeaconState(beaconState: BeaconState): BeaconChain.Updater {
       transaction.put(Schema.BeaconStateByBlockRoot, beaconState.beaconBlockHeader.hash, beaconState)
@@ -120,7 +118,7 @@ class KvDatabase(
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
         sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash,
       )
-      committedBlock = sealedBeaconBlock
+
       return this
     }
 
@@ -131,7 +129,6 @@ class KvDatabase(
 
     override fun commit() {
       transaction.commit()
-      committedBlock?.let { onBlockAdded(it) }
     }
 
     override fun rollback() {

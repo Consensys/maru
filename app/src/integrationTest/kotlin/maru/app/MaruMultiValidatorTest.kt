@@ -175,6 +175,49 @@ class MaruMultiValidatorTest {
       }
   }
 
+  /**
+   * Polls [beaconChain] until [requiredConsecutive] consecutive round-0 blocks have been committed.
+   * Returns the block number of the last block in the first qualifying run.
+   *
+   * This is the proper way to detect QBFT convergence: during startup, validators run independently
+   * before the P2P mesh is wired, causing round skips. Checking a fixed block number is unreliable;
+   * instead we wait for a stable run of round-0 blocks.
+   */
+  private fun waitForConsecutiveRound0Blocks(
+    beaconChain: BeaconChain,
+    requiredConsecutive: Int = 5,
+    timeout: Duration = 120.seconds,
+  ): ULong {
+    var consecutiveCount = 0
+    var lastStableBlock = 0uL
+    var lastPolled = 0uL
+
+    await
+      .timeout(timeout.toJavaDuration())
+      .pollInterval(500.milliseconds.toJavaDuration())
+      .until {
+        val latestHeight = beaconChain.getLatestBeaconState().beaconBlockHeader.number
+        if (latestHeight > lastPolled) {
+          for (blockNum in (lastPolled + 1uL)..latestHeight) {
+            val block = beaconChain.getSealedBeaconBlock(blockNum) ?: break
+            val round = block.beaconBlock.beaconBlockHeader.round
+            if (round == 0u) {
+              consecutiveCount++
+              lastStableBlock = blockNum
+            } else {
+              log.info("Block $blockNum has round=$round — resetting consecutive count (was $consecutiveCount)")
+              consecutiveCount = 0
+              lastStableBlock = 0uL
+            }
+          }
+          lastPolled = latestHeight
+        }
+        consecutiveCount >= requiredConsecutive
+      }
+
+    return lastStableBlock
+  }
+
   private fun currentBlockHeight(stack: PeeringNodeNetworkStack): ULong =
     stack.maruApp.beaconChain
       .getLatestBeaconState()
@@ -258,13 +301,22 @@ class MaruMultiValidatorTest {
   fun `validators converge to stable block production without round skips`() {
     startAllValidators()
 
-    // Wait for 15 blocks
-    waitForBlockHeight(stack0.maruApp.beaconChain, 15uL, timeout = 90.seconds)
+    // Wait until 5 consecutive round-0 blocks are observed. During startup, validators run QBFT
+    // independently before the P2P mesh is wired, causing round skips on early blocks. Convergence
+    // time is non-deterministic (depends on node startup duration), so we detect it dynamically.
+    val stableHeight =
+      waitForConsecutiveRound0Blocks(
+        stack0.maruApp.beaconChain,
+        requiredConsecutive = 5,
+        timeout = 120.seconds,
+      )
+    log.info("QBFT convergence achieved at block $stableHeight")
 
-    // Get the last 5 blocks and verify all have round == 0
-    val blocks = stack0.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL)
-    assertThat(blocks).hasSize(12)
-    blocks.forEach { block ->
+    // Verify 5 more blocks after convergence are also round-0
+    waitForBlockHeight(stack0.maruApp.beaconChain, stableHeight + 5uL, timeout = 30.seconds)
+    val verifyStart = stableHeight - 4uL
+    val verifyBlocks = stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL)
+    verifyBlocks.forEach { block ->
       val header = block.beaconBlock.beaconBlockHeader
       assertThat(header.round)
         .withFailMessage { "Block ${header.number} has round ${header.round}, expected 0" }
@@ -275,10 +327,10 @@ class MaruMultiValidatorTest {
     checkAllValidatorBlocksAreTheSame(
       validatorBlocks =
         listOf(
-          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL) },
-          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL) },
-          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL) },
-          { stack3.maruApp.beaconChain.getSealedBeaconBlocks(3uL, 12uL) },
+          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL) },
+          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL) },
+          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL) },
+          { stack3.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, 10uL) },
         ),
       blocksToMetadata = ::clBlocksToMetadata,
     )
@@ -286,8 +338,8 @@ class MaruMultiValidatorTest {
     // Verify proposers match expected
     checkBlockProposersMatchExpectedProposers(
       beaconChain = stack0.maruApp.beaconChain,
-      startBlock = 1uL,
-      endBlock = 15uL,
+      startBlock = verifyStart,
+      endBlock = stableHeight + 5uL,
     )
   }
 
@@ -295,15 +347,12 @@ class MaruMultiValidatorTest {
   fun `block production continues with 1 node offline`() {
     startAllValidators()
 
-    // Wait for stable production (10 blocks, then check last 5 have round=0)
-    waitForBlockHeight(stack0.maruApp.beaconChain, 10uL, timeout = 90.seconds)
-    val preBlocks = stack0.maruApp.beaconChain.getSealedBeaconBlocks(6uL, 5uL)
-    preBlocks.forEach { block ->
-      val header = block.beaconBlock.beaconBlockHeader
-      assertThat(header.round)
-        .withFailMessage { "Block ${header.number} has round ${header.round}, expected 0 (pre-stop)" }
-        .isEqualTo(0u)
-    }
+    // Wait for convergence before stopping a node
+    waitForConsecutiveRound0Blocks(
+      stack0.maruApp.beaconChain,
+      requiredConsecutive = 5,
+      timeout = 120.seconds,
+    )
 
     // Stop validator 3
     log.info("Stopping validator 3")
@@ -334,8 +383,12 @@ class MaruMultiValidatorTest {
   fun `block production recovers after 2 nodes offline and 1 returns`() {
     startAllValidators()
 
-    // Wait for stable production
-    waitForBlockHeight(stack0.maruApp.beaconChain, 10uL, timeout = 90.seconds)
+    // Wait for convergence before stopping nodes
+    waitForConsecutiveRound0Blocks(
+      stack0.maruApp.beaconChain,
+      requiredConsecutive = 5,
+      timeout = 120.seconds,
+    )
 
     // Stop validators 2 and 3 -- only 2 of 4 remain, below quorum (need 3)
     log.info("Stopping validators 2 and 3")

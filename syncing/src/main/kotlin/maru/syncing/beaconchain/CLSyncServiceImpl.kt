@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import linea.kotlin.minusCoercingUnderflow
 import maru.consensus.ValidatorProvider
-import maru.consensus.blockimport.BeaconBlockImporter
 import maru.database.BeaconChain
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.PeerLookup
@@ -29,7 +28,6 @@ import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class CLSyncServiceImpl(
   private val beaconChain: BeaconChain,
@@ -40,10 +38,6 @@ class CLSyncServiceImpl(
   peerLookup: PeerLookup,
   besuMetrics: MetricsSystem,
   metricsFacade: MetricsFacade,
-  beaconBlockImporter: BeaconBlockImporter =
-    BeaconBlockImporter { _, _ ->
-      SafeFuture.completedFuture(Unit)
-    },
 ) : CLSyncService,
   LongRunningService {
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -57,7 +51,6 @@ class CLSyncServiceImpl(
         beaconChain = beaconChain,
         validatorProvider = validatorProvider,
         allowEmptyBlocks = allowEmptyBlocks,
-        beaconBlockImporter = beaconBlockImporter,
       )
   private var pipelineFactory =
     BeaconChainDownloadPipelineFactory(blockImporter, besuMetrics, peerLookup, pipelineConfig) {
