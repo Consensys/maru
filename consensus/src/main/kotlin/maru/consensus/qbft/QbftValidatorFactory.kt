@@ -92,14 +92,8 @@ class QbftValidatorFactory(
   private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
   /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
   private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
-  /** Optional: called just before a QBFT message is broadcast. See [P2PValidatorMulticaster.onMessageSent]. */
-  private val onMessageSent: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
   /** Optional: called when the QBFT event loop starts block import. See [QbftBlockImporterAdapter.onImportStarted]. */
   private val onImportStarted: ((blockNumber: Long) -> Unit)? = null,
-  /** Optional: called before every event is processed on the event loop. See [QbftEventMultiplexer.onBeforeEvent]. */
-  private val onBeforeEvent: ((eventLabel: String) -> Unit)? = null,
-  /** Optional: called after every event is processed on the event loop. See [QbftEventMultiplexer.onAfterEvent]. */
-  private val onAfterEvent: ((eventLabel: String) -> Unit)? = null,
   /** Optional: called when a block is committed by the QBFT consensus (mined). */
   private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
 ) : ProtocolFactory {
@@ -169,10 +163,7 @@ class QbftValidatorFactory(
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
-    val validatorMulticaster =
-      P2PValidatorMulticaster(p2PNetwork).also {
-        it.onMessageSent = onMessageSent
-      }
+    val validatorMulticaster = P2PValidatorMulticaster(p2PNetwork)
     val finalState =
       QbftFinalStateAdapter(
         localAddress = localAddress,
@@ -270,8 +261,6 @@ class QbftValidatorFactory(
     val eventMultiplexer =
       QbftEventMultiplexer(qbftController).also {
         it.onBlockTimerFired = onBlockTimerFired
-        it.onBeforeEvent = onBeforeEvent
-        it.onAfterEvent = onAfterEvent
       }
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor =

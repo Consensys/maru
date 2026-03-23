@@ -14,13 +14,11 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.distribution.HistogramSnapshot
 import io.vertx.micrometer.backends.BackendRegistries
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 import maru.crypto.SecpCrypto
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
-import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
@@ -32,7 +30,6 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
-import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
@@ -171,29 +168,11 @@ class QbftConsensus4ValidatorBenchmarkTest {
     app3.awaitTillMaruHasPeers(3u, pollingInterval = 500.milliseconds)
     log.info("All 4 validators peered in full mesh — starting measurement")
 
-    // Send 1 tx per block so blocks are non-empty (avoids Besu's empty-block wait).
-    val txHelper = BesuTransactionsHelper()
-    val txRecipient = txHelper.createAccount("benchmark-tx-recipient")
-    val txExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "tx-sender") }
-
-    val blocksToMeasure = 30
+    val blocksToMeasure = 100
     val latch = CountDownLatch(blocksToMeasure)
 
     app0.onBlockCommitted = { sealedBlock ->
-      val header = sealedBlock.beaconBlock.beaconBlockHeader
-      if (header.number > 0UL) {
-        val blockNum = header.number.toLong()
-        txExecutor.submit {
-          runCatching {
-            txHelper.run {
-              stack0.besuNode.sendTransaction(
-                logger = log,
-                recipient = txRecipient,
-                amount = Amount.ether(1),
-              )
-            }
-          }.onFailure { log.warn("tx submission failed for block {}: {}", blockNum, it.message) }
-        }
+      if (sealedBlock.beaconBlock.beaconBlockHeader.number > 0UL) {
         latch.countDown()
       }
     }
@@ -201,8 +180,6 @@ class QbftConsensus4ValidatorBenchmarkTest {
     assertThat(latch.await(blocksToMeasure * 3L, TimeUnit.SECONDS))
       .withFailMessage("Timed out waiting for $blocksToMeasure blocks — check validator logs")
       .isTrue()
-
-    txExecutor.shutdown()
 
     // Map nodeIds to human-readable names for the output.
     val nodeIdToName =

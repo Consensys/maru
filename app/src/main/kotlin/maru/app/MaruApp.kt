@@ -73,7 +73,7 @@ class MaruApp(
    * Micrometer-based consensus metrics. Non-null when this node is a validator (config.qbft != null).
    * Records QBFT phase latencies as histograms, queryable via Prometheus in K8S or via MeterRegistry in tests.
    */
-  val consensusMetrics: ConsensusMetrics? = if (config.qbft != null) ConsensusMetrics(metricsFacade) else null
+  private val consensusMetrics: ConsensusMetrics? = if (config.qbft != null) ConsensusMetrics(metricsFacade) else null
 
   init {
     if (config.qbft == null) {
@@ -120,55 +120,6 @@ class MaruApp(
   fun p2pPort(): UInt = p2pNetwork.port
 
   fun apiPort(): UInt = apiServer.port().toUInt()
-
-  /**
-   * Optional observer called when BLOCK_TIMER_EXPIRY fires on this validator.
-   * Can be set after construction but must be set before [start] to capture the first block.
-   * Parameters: (blockNumber: Long).
-   * Intended for benchmarking — the callback implementer captures timestamps themselves.
-   */
-  var onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null
-
-  /**
-   * Optional observer called when a QBFT message arrives from the P2P network, before validation
-   * and queue insertion. This fires at the earliest point after P2P delivery.
-   * Parameters: (msgCode: Int, sequenceNumber: Long).
-   * Message codes: PROPOSAL=0x12, PREPARE=0x13, COMMIT=0x14, ROUND_CHANGE=0x15.
-   * Must be set before [start] to avoid missing early messages.
-   */
-  var onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null
-
-  /**
-   * Optional observer called just before a QBFT message is submitted to the P2P network for
-   * broadcast. Parameters: (msgCode: Int, sequenceNumber: Long).
-   * The callback implementer captures timestamps themselves for P2P transit time computation.
-   * Must be set before [start].
-   */
-  var onMessageSent: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null
-
-  /**
-   * Optional observer called when the QBFT event loop starts block import (on the event loop thread).
-   * Parameters: (blockNumber: Long).
-   * Compare with onMessageReceived timestamps to measure the BFT event queue wait time.
-   * Must be set before [start].
-   */
-  var onImportStarted: ((blockNumber: Long) -> Unit)? = null
-
-  /**
-   * Optional observer called before every event is dispatched on the QBFT event loop thread.
-   * Parameters: (eventLabel: String).
-   * eventLabel examples: "BLOCK_TIMER_EXPIRY", "MESSAGE_PROPOSAL", "MESSAGE_PREPARE", etc.
-   * Must be set before [start] to avoid missing early events.
-   */
-  var onBeforeEvent: ((eventLabel: String) -> Unit)? = null
-
-  /**
-   * Optional observer called after every event is processed on the QBFT event loop thread.
-   * Parameters: (eventLabel: String).
-   * Fires in both success and error paths.
-   * Must be set before [start] to avoid missing early events.
-   */
-  var onAfterEvent: ((eventLabel: String) -> Unit)? = null
 
   /**
    * Optional observer called when a sealed beacon block is committed to the BeaconChain database.
@@ -285,21 +236,9 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           forksSchedule = beaconGenesisConfig,
           payloadValidationEnabled = config.validatorElNode!!.payloadValidationEnabled,
-          onBlockTimerFired = { blockNumber ->
-            consensusMetrics?.recordTimerFire(blockNumber)
-            onBlockTimerFired?.invoke(blockNumber)
-          },
-          onMessageReceived = { msgCode, seqNum ->
-            consensusMetrics?.recordMessageReceived(msgCode, seqNum)
-            onMessageReceived?.invoke(msgCode, seqNum)
-          },
-          onMessageSent = { msgCode, seqNum -> onMessageSent?.invoke(msgCode, seqNum) },
-          onImportStarted = { blockNumber ->
-            consensusMetrics?.recordImportStarted(blockNumber)
-            onImportStarted?.invoke(blockNumber)
-          },
-          onBeforeEvent = { label -> onBeforeEvent?.invoke(label) },
-          onAfterEvent = { label -> onAfterEvent?.invoke(label) },
+          onBlockTimerFired = { blockNumber -> consensusMetrics?.recordTimerFire(blockNumber) },
+          onMessageReceived = { msgCode, seqNum -> consensusMetrics?.recordMessageReceived(msgCode, seqNum) },
+          onImportStarted = { blockNumber -> consensusMetrics?.recordImportStarted(blockNumber) },
           onBlockMined = { sealedBlock ->
             consensusMetrics?.recordBlockCommitted(sealedBlock)
             onBlockCommitted?.invoke(sealedBlock)

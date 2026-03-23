@@ -108,7 +108,6 @@ class TransactionalSealedBeaconBlockImporter(
 
     return stateTransition
       .thenApply { resultingState ->
-        val dbT0 = System.nanoTime()
         beaconChain.newBeaconChainUpdater().use { updater ->
           updater
             .putBeaconState(resultingState)

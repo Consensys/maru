@@ -12,9 +12,7 @@ import io.libp2p.pubsub.NoPeersForOutboundMessageException
 import maru.p2p.P2PNetwork
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
-import org.hyperledger.besu.consensus.qbft.core.messagedata.QbftV1
 import org.hyperledger.besu.datatypes.Address
-import org.hyperledger.besu.ethereum.rlp.RLP
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
 /**
@@ -32,21 +30,11 @@ class P2PValidatorMulticaster(
   private val log = LogManager.getLogger(this.javaClass)
 
   /**
-   * Optional observer called just before a QBFT message is submitted to the P2P network for broadcast.
-   * Parameters: (msgCode: Int, sequenceNumber: Long).
-   * Intended for benchmarking — the callback implementer captures timestamps themselves.
-   */
-  var onMessageSent: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null
-
-  /**
    * Send a message to all connected validators.
    *
    * @param message The message to send.
    */
   override fun send(message: BesuMessageData) {
-    onMessageSent?.let { callback ->
-      extractCodeAndSequence(message)?.let { (code, seq) -> callback(code, seq) }
-    }
     p2pNetwork
       .broadcastMessage(message.toDomain())
       .whenException { e ->
@@ -84,25 +72,4 @@ class P2PValidatorMulticaster(
     }
     return false
   }
-
-  /**
-   * Lightweight extraction of QBFT message code and sequence number from RLP.
-   * Same structure as [maru.consensus.qbft.MinimalQbftMessageDecoder.deserialize] but
-   * skips signature recovery — only reads the first two scalars from the payload.
-   */
-  private fun extractCodeAndSequence(message: BesuMessageData): Pair<Int, Long>? =
-    try {
-      val messageCode = message.code
-      val rlp = RLP.input(message.data)
-      if (messageCode == QbftV1.PROPOSAL || messageCode == QbftV1.ROUND_CHANGE) {
-        rlp.enterList()
-      }
-      rlp.enterList()
-      val payloadRlp = rlp.readAsRlp()
-      payloadRlp.enterList()
-      val sequenceNumber = payloadRlp.readLongScalar()
-      Pair(messageCode, sequenceNumber)
-    } catch (_: Exception) {
-      null
-    }
 }

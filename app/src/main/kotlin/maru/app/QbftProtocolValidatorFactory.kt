@@ -49,14 +49,8 @@ class QbftProtocolValidatorFactory(
   private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
   /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
   private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
-  /** Optional: called just before a QBFT message is broadcast via P2P. */
-  private val onMessageSent: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
   /** Optional: called when the QBFT event loop starts block import. */
   private val onImportStarted: ((blockNumber: Long) -> Unit)? = null,
-  /** Optional: called before every event is dispatched on the event loop. See [QbftEventMultiplexer.onBeforeEvent]. */
-  private val onBeforeEvent: ((eventLabel: String) -> Unit)? = null,
-  /** Optional: called after every event is processed on the event loop. See [QbftEventMultiplexer.onAfterEvent]. */
-  private val onAfterEvent: ((eventLabel: String) -> Unit)? = null,
   /** Optional: called when a block is committed by QBFT consensus. */
   private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
 ) : ProtocolFactory {
@@ -104,10 +98,7 @@ class QbftProtocolValidatorFactory(
         payloadValidationEnabled = payloadValidationEnabled,
         onBlockTimerFired = onBlockTimerFired,
         onMessageReceived = onMessageReceived,
-        onMessageSent = onMessageSent,
         onImportStarted = onImportStarted,
-        onBeforeEvent = onBeforeEvent,
-        onAfterEvent = onAfterEvent,
         onBlockMined = onBlockMined,
       )
     return qbftValidatorFactory.create(forkSpec)
