@@ -34,7 +34,6 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.services.LongRunningService
 import maru.subscription.InOrderFanoutSubscriptionManager
-import maru.syncing.SyncController
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
@@ -63,7 +62,7 @@ class MaruApp(
   private val l2EthWeb3j: Web3j?,
   private val validatorELNodeEngineApiWeb3JClient: Web3JClient?,
   private val apiServer: ApiServer,
-  private val syncControllerManager: SyncController,
+  private val syncControllerManager: LongRunningService,
   private val timerFactory: TimerFactory,
 ) : LongRunningCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -193,15 +192,8 @@ class MaruApp(
       start("Finalization Provider") { finalizationProvider.start().get() }
     }
     start("P2P Network") { p2pNetwork.start().get() }
-    if (config.qbft != null) {
-      // Validators wait for full sync before starting QBFT consensus.
-      // qbftController.start() reads the latest chain head, so it picks up wherever sync left off.
-      syncControllerManager.onFullSyncComplete { protocolStarter.start() }
-    } else {
-      // Followers start immediately to receive P2P gossip blocks.
-      start("Protocol") { protocolStarter.start() }
-    }
     start("Sync Service") { syncControllerManager.start().get() }
+    start("Protocol") { protocolStarter.start() }
     start("Beacon Api") { apiServer.start().get() }
     // observability shall be the last to start because of liveness/readiness probe
     start("Observability Server") {
