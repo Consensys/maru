@@ -25,7 +25,7 @@ class JsonRpcExecutionLayerManager(
 ) : ExecutionLayerManager {
   private val log = LogManager.getLogger(this.javaClass)
 
-  private var blockBuildingFuture = AtomicReference<SafeFuture<ByteArray>?>()
+  private var blockBuildingFuture = AtomicReference<SafeFuture<ByteArray?>?>()
 
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
@@ -74,7 +74,7 @@ class JsonRpcExecutionLayerManager(
       log.warn("finishBlockBuilding called but no block building was started")
       return SafeFuture.failedFuture(
         IllegalStateException(
-          "finishBlockBuilding is called before setHeadAndStartBlockBuilding was completed",
+          "finishBlockBuilding called with no block building in progress",
         ),
       )
     }
@@ -110,13 +110,15 @@ class JsonRpcExecutionLayerManager(
     headHash: ByteArray,
     safeHash: ByteArray,
     finalizedHash: ByteArray,
-  ): SafeFuture<ForkChoiceUpdatedResult> =
-    forkChoiceUpdate(
+  ): SafeFuture<ForkChoiceUpdatedResult> {
+    blockBuildingFuture.set(null)
+    return forkChoiceUpdate(
       headHash = headHash,
       safeHash = safeHash,
       finalizedHash = finalizedHash,
       payloadAttributes = null,
     )
+  }
 
   private fun forkChoiceUpdate(
     headHash: ByteArray,
@@ -167,6 +169,9 @@ class JsonRpcExecutionLayerManager(
             "Cause: " + payloadStatusResponse.errorMessage,
         )
       }
+    }.thenPeek {
+      // A block was successfully imported; any in-progress build is now stale.
+      blockBuildingFuture.set(null)
     }
 
   override fun getLatestBlockHash(): SafeFuture<ByteArray> = executionLayerEngineApiClient.getLatestBlockHash()
