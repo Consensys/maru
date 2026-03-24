@@ -31,11 +31,15 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
+// This test is particularly heavy, so we need to amortize its CPU usage
+@Execution(ExecutionMode.SAME_THREAD)
 class MaruMultiValidatorTest {
   companion object {
     /** Number of consecutive round-0 blocks required to declare convergence / stable production. */
