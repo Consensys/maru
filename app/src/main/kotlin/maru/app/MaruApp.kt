@@ -34,7 +34,6 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.services.LongRunningService
 import maru.subscription.InOrderFanoutSubscriptionManager
-import maru.syncing.CLSyncStatus
 import maru.syncing.SyncController
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
@@ -165,10 +164,13 @@ class MaruApp(
       start("Finalization Provider") { finalizationProvider.start().get() }
     }
     start("P2P Network") { p2pNetwork.start().get() }
+    // Gate consensus start on CL sync: register before syncControllerManager.start() so the
+    // callback fires on the first sync completion (which is immediate for a node at genesis).
+    // We intentionally do NOT pause consensus on subsequent CLSyncStatus.SYNCING transitions:
+    // with desyncTolerance tuned appropriately, QBFT handles brief catch-up gaps naturally
+    // without needing an external pause, and pausing on every sync event would stall block
+    // production whenever a peer momentarily reports a higher head.
     syncControllerManager.onBeaconSyncComplete { protocolStarter.start() }
-    syncControllerManager.onClSyncStatusUpdate { status ->
-      if (status == CLSyncStatus.SYNCING) protocolStarter.pause()
-    }
     start("Sync Service") { syncControllerManager.start().get() }
     start("Beacon Api") { apiServer.start().get() }
     // observability shall be the last to start because of liveness/readiness probe
