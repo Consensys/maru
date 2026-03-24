@@ -152,27 +152,29 @@ class JsonRpcExecutionLayerManager(
       }
 
   override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus> =
-    executionLayerEngineApiClient.newPayload(executionPayload).thenApply { payloadStatusResponse ->
-      if (payloadStatusResponse.isSuccess) {
-        if (payloadStatusResponse.payload == null) {
+    executionLayerEngineApiClient
+      .newPayload(executionPayload)
+      .thenApply { payloadStatusResponse ->
+        if (payloadStatusResponse.isSuccess) {
+          if (payloadStatusResponse.payload == null) {
+            throw IllegalStateException(
+              "engine_newPayload request failed! elBlockNumber=${executionPayload.blockNumber} " +
+                "fork=${executionLayerEngineApiClient.getFork()} " +
+                "response=" + payloadStatusResponse,
+            )
+          }
+          payloadStatusResponse.payload.asInternalExecutionPayload().toDomain()
+        } else {
           throw IllegalStateException(
-            "engine_newPayload request failed! elBlockNumber=${executionPayload.blockNumber} " +
+            "engine_newPayload request failed: elBlockNumber=${executionPayload.blockNumber} " +
               "fork=${executionLayerEngineApiClient.getFork()} " +
-              "response=" + payloadStatusResponse,
+              "Cause: " + payloadStatusResponse.errorMessage,
           )
         }
-        payloadStatusResponse.payload.asInternalExecutionPayload().toDomain()
-      } else {
-        throw IllegalStateException(
-          "engine_newPayload request failed: elBlockNumber=${executionPayload.blockNumber} " +
-            "fork=${executionLayerEngineApiClient.getFork()} " +
-            "Cause: " + payloadStatusResponse.errorMessage,
-        )
+      }.thenPeek {
+        // A block was successfully imported; any in-progress build is now stale.
+        blockBuildingFuture.set(null)
       }
-    }.thenPeek {
-      // A block was successfully imported; any in-progress build is now stale.
-      blockBuildingFuture.set(null)
-    }
 
   override fun getLatestBlockHash(): SafeFuture<ByteArray> = executionLayerEngineApiClient.getLatestBlockHash()
 
