@@ -122,9 +122,10 @@ class MaruApp(
   fun apiPort(): UInt = apiServer.port().toUInt()
 
   /**
-   * Optional observer called when a sealed beacon block is committed to the BeaconChain database.
+   * Optional observer called when a sealed beacon block is committed to the BeaconChain database
+   * via the QBFT consensus path (validator nodes only).
    * Parameters: (sealedBeaconBlock: SealedBeaconBlock).
-   * Fires for both QBFT-committed and CL-synced blocks.
+   * Note: this callback is NOT invoked for blocks imported via the follower or CL-sync paths.
    * Must be set before [start].
    */
   var onBlockCommitted: ((SealedBeaconBlock) -> Unit)? = null

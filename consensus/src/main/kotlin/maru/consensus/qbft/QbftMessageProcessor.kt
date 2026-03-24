@@ -62,7 +62,6 @@ class QbftMessageProcessor(
   override fun handleQbftMessage(qbftMessage: QbftMessage): SafeFuture<ValidationResult> =
     try {
       val metadata = messageDecoder.deserialize(qbftMessage)
-      onMessageReceived?.invoke(metadata.messageCode, metadata.sequenceNumber)
       log.debug(
         "P2P message received: type={} sequence={} round={} from={}",
         messageTypeName(metadata.messageCode),
@@ -70,6 +69,11 @@ class QbftMessageProcessor(
         metadata.roundNumber,
         metadata.author,
       )
+      // Fire as early as possible — before validation — to capture the true P2P arrival
+      // timestamp. Validation overhead would skew phase-latency measurements.
+      // Trade-off: rejected messages (unknown validators, old rounds) may record stale
+      // timestamps, but this is rare and preferable to systematically late measurements.
+      onMessageReceived?.invoke(metadata.messageCode, metadata.sequenceNumber)
       SafeFuture.completedFuture(processMessage(qbftMessage, metadata))
     } catch (e: Exception) {
       SafeFuture.completedFuture(Invalid("Failed to decode or validate message: ${e.message}"))
