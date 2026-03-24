@@ -73,6 +73,12 @@ class MaruFactory(
   private val cancunTimestamp: ULong? = null,
   private val pragueTimestamp: ULong? = null,
   private val ttd: ULong? = null,
+  /**
+   * Overrides the QBFT round-0 expiry. Defaults to [blockTimeSeconds] (1 s).
+   * Increase for multi-validator tests where 8+ JVM processes compete for CPU
+   * and consensus messaging can exceed the default 1 s window.
+   */
+  private val roundExpiry: kotlin.time.Duration? = null,
 ) {
   init {
     // If one of pragueTimestamp, cancunTimestamp, shanghaiTimestamp is defined and some other is not, throw
@@ -123,6 +129,10 @@ class MaruFactory(
     QbftConfig(
       feeRecipient = qbftValidator.address.reversedArray(),
       minBlockBuildTime = 200.milliseconds,
+      // Default to 4 s so that test environments with CPU contention (8+ JVM processes)
+      // do not prematurely escalate to round-1. Block time stays at 1 s; this only
+      // widens the window before QBFT gives up on round-0.
+      roundExpiry = roundExpiry ?: 4.seconds,
     )
 
   private fun buildForkSchedule(
