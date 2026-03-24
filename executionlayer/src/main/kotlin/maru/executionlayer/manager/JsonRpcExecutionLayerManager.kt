@@ -11,7 +11,6 @@ package maru.executionlayer.manager
 import java.util.concurrent.atomic.AtomicReference
 import maru.core.ExecutionPayload
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
-import maru.extensions.encodeHex
 import maru.mappers.Mappers.toDomain
 import maru.mappers.Mappers.toPayloadAttributesV1
 import org.apache.logging.log4j.LogManager
@@ -26,7 +25,7 @@ class JsonRpcExecutionLayerManager(
 ) : ExecutionLayerManager {
   private val log = LogManager.getLogger(this.javaClass)
 
-  private var payloadId = AtomicReference<ByteArray>()
+  private var blockBuildingFuture = AtomicReference<SafeFuture<ByteArray>?>()
 
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
@@ -52,24 +51,27 @@ class JsonRpcExecutionLayerManager(
       payloadAttributes,
       executionLayerEngineApiClient.getFork(),
     )
-    return forkChoiceUpdate(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
-      if (it.payloadId == null) {
-        throw IllegalStateException("Unexpected FCU result. Payload ID is null! $it")
-      } else {
-        log.debug(
-          "setting payloadId={}, nextBlockTimestamp={}, fork={}",
-          it.payloadId?.encodeHex(),
-          nextBlockTimestamp,
-          executionLayerEngineApiClient.getFork(),
-        )
-        payloadId.set(it.payloadId)
+    val fcuFuture =
+      forkChoiceUpdate(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
+        if (it.payloadId == null) {
+          throw IllegalStateException("Unexpected FCU result. Payload ID is null! $it")
+        } else {
+          log.debug(
+            "payloadId={}, nextBlockTimestamp={}, fork={}",
+            Bytes.wrap(it.payloadId!!).toHexString(),
+            nextBlockTimestamp,
+            executionLayerEngineApiClient.getFork(),
+          )
+        }
       }
-    }
+    blockBuildingFuture.set(fcuFuture.thenApply { it.payloadId })
+    return fcuFuture
   }
 
   override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> {
-    val payloadId = this.payloadId.get()
-    if (payloadId == null) {
+    val future = blockBuildingFuture.getAndSet(null)
+    if (future == null) {
+      log.warn("finishBlockBuilding called but no block building was started")
       return SafeFuture.failedFuture(
         IllegalStateException(
           "finishBlockBuilding is called before setHeadAndStartBlockBuilding was completed",
@@ -77,17 +79,29 @@ class JsonRpcExecutionLayerManager(
       )
     }
 
-    return executionLayerEngineApiClient
-      .getPayload(Bytes8(Bytes.wrap(payloadId)))
-      .thenApply { payloadResponse ->
-        if (payloadResponse.isSuccess) {
-          payloadResponse.payload
-        } else {
-          throw IllegalStateException(
-            "engine_getPayload request failed: " +
-              "fork=${executionLayerEngineApiClient.getFork()} " +
-              "Cause: " + payloadResponse.errorMessage,
+    return future
+      .thenCompose { pid ->
+        if (pid == null) {
+          SafeFuture.failedFuture(
+            IllegalStateException(
+              "finishBlockBuilding: FCU did not return a payloadId",
+            ),
           )
+        } else {
+          log.debug("finishBlockBuilding using payloadId={}", Bytes.wrap(pid).toHexString())
+          executionLayerEngineApiClient
+            .getPayload(Bytes8(Bytes.wrap(pid)))
+            .thenApply { payloadResponse ->
+              if (payloadResponse.isSuccess) {
+                payloadResponse.payload
+              } else {
+                throw IllegalStateException(
+                  "engine_getPayload request failed: " +
+                    "fork=${executionLayerEngineApiClient.getFork()} " +
+                    "Cause: " + payloadResponse.errorMessage,
+                )
+              }
+            }
         }
       }
   }
@@ -145,12 +159,6 @@ class JsonRpcExecutionLayerManager(
               "response=" + payloadStatusResponse,
           )
         }
-        log.debug(
-          "setting payloadId=null after importing elBlockNumber={} fork={}",
-          executionPayload.blockNumber,
-          executionLayerEngineApiClient.getFork(),
-        )
-        payloadId.set(null) // Not necessary, but it helps to reinforce the order of calls
         payloadStatusResponse.payload.asInternalExecutionPayload().toDomain()
       } else {
         throw IllegalStateException(
