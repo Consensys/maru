@@ -19,11 +19,13 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
+import kotlin.time.Duration.Companion.seconds
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.methods.response.EthBlock
+import testutils.Checks.checkAllNodesHaveSameBlocks
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTime
 import testutils.besu.BesuFactory
@@ -175,6 +177,10 @@ class MaruConsensusSwitchTest {
     currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
     log.info("Current timestamp: $currentTimestamp, prague switch timestamp: $pragueTimestamp")
     assertThat(currentTimestamp).isGreaterThan(pragueTimestamp)
+
+    // Wait for both nodes to have all blocks before verifying contents.
+    // The follower may still be syncing when the validator has already committed all blocks.
+    checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 60.seconds)
 
     verifyConsensusSwitch(
       besuNode = validatorBesuNode,
