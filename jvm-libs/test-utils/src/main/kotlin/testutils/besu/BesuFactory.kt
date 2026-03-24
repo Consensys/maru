@@ -78,19 +78,11 @@ object BesuFactory {
             .build(),
         )
 
-      // Always cap the inter-rebuild sleep to BLOCK_REBUILD_TIME (15 ms).
-      // Without this, non-validator nodes use the Besu default of 500 ms, which means
-      // engine_getPayload's empty-block path (awaitCurrentBuildCompletion) waits up to
-      // 500 ms for the current iteration to finish instead of up to 15 ms.
-      val unstableMiningConfig =
-        ImmutableMiningConfiguration.Unstable
-          .builder()
-          .posBlockFinalizationTimeoutMs(10)
-          .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
-          .build()
-
       if (validator) {
         val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
+        // Cap the inter-rebuild sleep so engine_getPayload's empty-block path
+        // (awaitCurrentBuildCompletion) resolves within BLOCK_REBUILD_TIME (15 ms)
+        // instead of Besu's default 500 ms.
         val miningConfiguration =
           ImmutableMiningConfiguration
             .builder()
@@ -100,18 +92,17 @@ object BesuFactory {
                 .coinbase(AddressHelpers.ofValue(1))
                 .isMiningEnabled(true)
                 .build(),
-            ).unstable(unstableMiningConfig)
-            .build()
+            ).unstable(
+              ImmutableMiningConfiguration.Unstable
+                .builder()
+                .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
+                .build(),
+            ).build()
         builder
           .miningConfiguration(miningConfiguration)
           .keyPair(defaultSigner)
       } else {
-        val miningConfiguration =
-          ImmutableMiningConfiguration
-            .builder()
-            .unstable(unstableMiningConfig)
-            .build()
-        builder.miningConfiguration(miningConfiguration)
+        builder
       }
     }
 

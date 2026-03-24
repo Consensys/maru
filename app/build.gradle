@@ -45,6 +45,7 @@ dependencies {
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
 
+  implementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
   implementation("org.hyperledger.besu.internal:besu-metrics-core")
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
   implementation("tech.pegasys.teku.internal:p2p")

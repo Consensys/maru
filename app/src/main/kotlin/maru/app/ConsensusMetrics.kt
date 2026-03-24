@@ -13,6 +13,7 @@ import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
+import org.hyperledger.besu.consensus.qbft.core.messagedata.QbftV1
 
 /**
  * Micrometer-based consensus metrics that record QBFT phase latencies as histograms,
@@ -28,19 +29,13 @@ class ConsensusMetrics(
   metricsFacade: MetricsFacade,
 ) {
   companion object {
-    // QBFT V1 message codes (from org.hyperledger.besu.consensus.qbft.core.messagedata.QbftV1)
-    private const val MSG_PROPOSAL = 0x12
-    private const val MSG_PREPARE = 0x13
-    private const val MSG_COMMIT = 0x14
-
     private const val ROLE_PROPOSER = "proposer"
     private const val ROLE_NON_PROPOSER = "non_proposer"
   }
 
-  // ── per-block timestamp state (wall-clock ms) ──────────────────────────────
+  // ── per-block timestamp state (monotonic ns from System.nanoTime()) ─────────
 
   private val timerFireTimes = ConcurrentHashMap<Long, Long>()
-  private val importStartTimes = ConcurrentHashMap<Long, Long>()
   private val proposalTimes = ConcurrentHashMap<Long, Long>()
   private val firstPrepareTimes = ConcurrentHashMap<Long, Long>()
   private val lastPrepareTimes = ConcurrentHashMap<Long, Long>()
@@ -105,7 +100,7 @@ class ConsensusMetrics(
 
   /** Called when BLOCK_TIMER_EXPIRY fires on this validator. */
   fun recordTimerFire(blockNumber: Long) {
-    timerFireTimes[blockNumber] = System.currentTimeMillis()
+    timerFireTimes[blockNumber] = System.nanoTime()
     cleanupOldEntries(blockNumber)
   }
 
@@ -118,14 +113,14 @@ class ConsensusMetrics(
     sequenceNumber: Long,
   ) {
     if (sequenceNumber <= 0) return
-    val now = System.currentTimeMillis()
+    val now = System.nanoTime()
     when (msgCode) {
-      MSG_PROPOSAL -> proposalTimes.putIfAbsent(sequenceNumber, now)
-      MSG_PREPARE -> {
+      QbftV1.PROPOSAL -> proposalTimes.putIfAbsent(sequenceNumber, now)
+      QbftV1.PREPARE -> {
         firstPrepareTimes.putIfAbsent(sequenceNumber, now)
         lastPrepareTimes[sequenceNumber] = now
       }
-      MSG_COMMIT -> {
+      QbftV1.COMMIT -> {
         firstCommitTimes.putIfAbsent(sequenceNumber, now)
         lastCommitTimes[sequenceNumber] = now
       }
@@ -138,30 +133,30 @@ class ConsensusMetrics(
    * with the appropriate role tag.
    */
   fun recordBlockCommitted(sealedBlock: SealedBeaconBlock) {
-    val commitTime = System.currentTimeMillis()
+    val commitTime = System.nanoTime()
     val blockNumber =
       sealedBlock.beaconBlock.beaconBlockHeader.number
         .toLong()
     if (blockNumber <= 0) return
 
     val timerFire = timerFireTimes[blockNumber] ?: return
-    val totalLatency = commitTime - timerFire
-    if (totalLatency !in 0..5000) return
+    val totalLatencyMs = (commitTime - timerFire) / 1_000_000.0
+    if (totalLatencyMs !in 0.0..5000.0) return
 
     // Determine role: if a PROPOSAL was received via P2P, this node was a non-proposer.
     val proposalTime = proposalTimes[blockNumber]
     val isProposer = proposalTime == null
 
     if (isProposer) {
-      blockLatencyProposer.record(totalLatency.toDouble())
+      blockLatencyProposer.record(totalLatencyMs)
     } else {
-      blockLatencyNonProposer.record(totalLatency.toDouble())
+      blockLatencyNonProposer.record(totalLatencyMs)
     }
 
     // Phase: timer → PROPOSAL (non-proposer only)
     if (!isProposer) {
-      val duration = proposalTime!! - timerFire
-      if (duration >= 0) phaseProposal.record(duration.toDouble())
+      val duration = (proposalTime!! - timerFire) / 1_000_000.0
+      if (duration >= 0.0) phaseProposal.record(duration)
     }
 
     // Phase: start → first PREPARE
@@ -169,44 +164,44 @@ class ConsensusMetrics(
     val phaseStart = proposalTime ?: timerFire
     val firstPrepare = firstPrepareTimes[blockNumber]
     if (firstPrepare != null) {
-      val duration = firstPrepare - phaseStart
-      if (duration >= 0) {
-        (if (isProposer) phaseFirstPrepareProposer else phaseFirstPrepareNonProposer).record(duration.toDouble())
+      val duration = (firstPrepare - phaseStart) / 1_000_000.0
+      if (duration >= 0.0) {
+        (if (isProposer) phaseFirstPrepareProposer else phaseFirstPrepareNonProposer).record(duration)
       }
     }
 
     // Phase: first → last PREPARE
     val lastPrepare = lastPrepareTimes[blockNumber]
     if (firstPrepare != null && lastPrepare != null) {
-      val duration = lastPrepare - firstPrepare
-      if (duration >= 0) {
-        (if (isProposer) phasePrepareSpreadProposer else phasePrepareSpreadNonProposer).record(duration.toDouble())
+      val duration = (lastPrepare - firstPrepare) / 1_000_000.0
+      if (duration >= 0.0) {
+        (if (isProposer) phasePrepareSpreadProposer else phasePrepareSpreadNonProposer).record(duration)
       }
     }
 
     // Phase: last PREPARE → first COMMIT
     val firstCommit = firstCommitTimes[blockNumber]
     if (lastPrepare != null && firstCommit != null) {
-      val duration = firstCommit - lastPrepare
-      if (duration >= 0) {
-        (if (isProposer) phaseFirstCommitProposer else phaseFirstCommitNonProposer).record(duration.toDouble())
+      val duration = (firstCommit - lastPrepare) / 1_000_000.0
+      if (duration >= 0.0) {
+        (if (isProposer) phaseFirstCommitProposer else phaseFirstCommitNonProposer).record(duration)
       }
     }
 
     // Phase: first → last COMMIT
     val lastCommit = lastCommitTimes[blockNumber]
     if (firstCommit != null && lastCommit != null) {
-      val duration = lastCommit - firstCommit
-      if (duration >= 0) {
-        (if (isProposer) phaseCommitSpreadProposer else phaseCommitSpreadNonProposer).record(duration.toDouble())
+      val duration = (lastCommit - firstCommit) / 1_000_000.0
+      if (duration >= 0.0) {
+        (if (isProposer) phaseCommitSpreadProposer else phaseCommitSpreadNonProposer).record(duration)
       }
     }
 
     // Phase: last COMMIT → committed
     if (lastCommit != null) {
-      val duration = commitTime - lastCommit
-      if (duration >= 0) {
-        (if (isProposer) phaseImportProposer else phaseImportNonProposer).record(duration.toDouble())
+      val duration = (commitTime - lastCommit) / 1_000_000.0
+      if (duration >= 0.0) {
+        (if (isProposer) phaseImportProposer else phaseImportNonProposer).record(duration)
       }
     }
   }
