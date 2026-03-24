@@ -202,20 +202,18 @@ class MaruMultiValidatorTest {
       .pollInterval(500.milliseconds.toJavaDuration())
       .until {
         val latestHeight = beaconChain.getLatestBeaconState().beaconBlockHeader.number
-        if (latestHeight > lastPolled) {
-          for (blockNum in (lastPolled + 1uL)..latestHeight) {
-            val block = beaconChain.getSealedBeaconBlock(blockNum) ?: break
-            val round = block.beaconBlock.beaconBlockHeader.round
-            if (round == 0u) {
-              consecutiveCount++
-              lastStableBlock = blockNum
-            } else {
-              log.info("Block $blockNum has round=$round — resetting consecutive count (was $consecutiveCount)")
-              consecutiveCount = 0
-              lastStableBlock = 0uL
-            }
+        for (blockNum in (lastPolled + 1uL)..latestHeight) {
+          val block = beaconChain.getSealedBeaconBlock(blockNum) ?: break
+          val round = block.beaconBlock.beaconBlockHeader.round
+          if (round == 0u) {
+            consecutiveCount++
+            lastStableBlock = blockNum
+          } else {
+            log.info("Block $blockNum has round=$round — resetting consecutive count (was $consecutiveCount)")
+            consecutiveCount = 0
+            lastStableBlock = 0uL
           }
-          lastPolled = latestHeight
+          lastPolled = blockNum
         }
         consecutiveCount >= requiredConsecutive
       }
