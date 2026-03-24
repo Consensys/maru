@@ -91,7 +91,9 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection = SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
-        desyncTolerance = 0UL,
+        // desyncTolerance intentionally uses the Config default (5 blocks).
+        // Setting it to 0 causes every 1-block peer difference to trigger a CLSyncStatus.SYNCING
+        // transition, which with the onBeaconSyncComplete gating would stall QBFT on every block.
         download = SyncingConfig.Download(),
       )
 
