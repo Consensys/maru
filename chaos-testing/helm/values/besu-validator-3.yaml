@@ -3,4 +3,4 @@ fullnameOverride: besu-validator-3
 componentRole: validator
 configFiles:
   privateKey: |
-    0xf3f61f30399831b8b6b00b67fd357faa3a641768846e6df25fd9990f151e3846
+    0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6
