@@ -49,8 +49,6 @@ class QbftProtocolValidatorFactory(
   private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
   /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
   private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
-  /** Optional: called when the QBFT event loop starts block import. */
-  private val onImportStarted: ((blockNumber: Long) -> Unit)? = null,
   /** Optional: called when a block is committed by QBFT consensus. */
   private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
 ) : ProtocolFactory {
@@ -98,7 +96,6 @@ class QbftProtocolValidatorFactory(
         payloadValidationEnabled = payloadValidationEnabled,
         onBlockTimerFired = onBlockTimerFired,
         onMessageReceived = onMessageReceived,
-        onImportStarted = onImportStarted,
         onBlockMined = onBlockMined,
       )
     return qbftValidatorFactory.create(forkSpec)

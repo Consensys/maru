@@ -132,11 +132,6 @@ class ConsensusMetrics(
     }
   }
 
-  /** Called when the QBFT event loop starts block import. */
-  fun recordImportStarted(blockNumber: Long) {
-    importStartTimes[blockNumber] = System.currentTimeMillis()
-  }
-
   /**
    * Called when a sealed beacon block is committed to the database.
    * Determines the role (proposer vs non-proposer) and records all phase durations
@@ -217,14 +212,13 @@ class ConsensusMetrics(
   }
 
   /**
-   * Remove entries older than 10 blocks to prevent memory leaks.
+   * Remove older entries to prevent memory leaks.
    */
   private fun cleanupOldEntries(currentBlockNumber: Long) {
     val threshold = currentBlockNumber - 1
     if (threshold <= 0) return
     listOf(
       timerFireTimes,
-      importStartTimes,
       proposalTimes,
       firstPrepareTimes,
       lastPrepareTimes,

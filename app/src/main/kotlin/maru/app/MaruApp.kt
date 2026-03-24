@@ -238,7 +238,6 @@ class MaruApp(
           payloadValidationEnabled = config.validatorElNode!!.payloadValidationEnabled,
           onBlockTimerFired = { blockNumber -> consensusMetrics?.recordTimerFire(blockNumber) },
           onMessageReceived = { msgCode, seqNum -> consensusMetrics?.recordMessageReceived(msgCode, seqNum) },
-          onImportStarted = { blockNumber -> consensusMetrics?.recordImportStarted(blockNumber) },
           onBlockMined = { sealedBlock ->
             consensusMetrics?.recordBlockCommitted(sealedBlock)
             onBlockCommitted?.invoke(sealedBlock)

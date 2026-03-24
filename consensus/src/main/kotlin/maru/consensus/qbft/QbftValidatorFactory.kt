@@ -51,7 +51,6 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
-import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
@@ -92,13 +91,9 @@ class QbftValidatorFactory(
   private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
   /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
   private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
-  /** Optional: called when the QBFT event loop starts block import. See [QbftBlockImporterAdapter.onImportStarted]. */
-  private val onImportStarted: ((blockNumber: Long) -> Unit)? = null,
   /** Optional: called when a block is committed by the QBFT consensus (mined). */
   private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
 ) : ProtocolFactory {
-  private val log = LogManager.getLogger(QbftValidatorFactory::class.java)
-
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
     val signatureAlgorithm = SecpCrypto.signatureAlgorithm
@@ -186,9 +181,7 @@ class QbftValidatorFactory(
     }
 
     val blockImporter =
-      QbftBlockImporterAdapter(sealedBeaconBlockImporter).also {
-        it.onImportStarted = onImportStarted
-      }
+      QbftBlockImporterAdapter(sealedBeaconBlockImporter)
 
     val blockCodec = QbftBlockCodecAdapter
     val blockInterface = QbftBlockInterfaceAdapter(stateTransition)
