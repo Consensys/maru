@@ -40,6 +40,8 @@ class MaruMultiValidatorTest {
   companion object {
     /** Number of consecutive round-0 blocks required to declare convergence / stable production. */
     private const val STABLE_BLOCKS = 5
+
+    private val multiValidatorSyncingConfig = MaruFactory.defaultValidatorSyncingConfig
   }
 
   private val key0 = "080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHex()
@@ -106,7 +108,7 @@ class MaruMultiValidatorTest {
         ethereumJsonRpcUrl = stack0.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = stack0.besuNode.engineRpcUrl().get(),
         dataDir = stack0.tmpDir,
-        syncingConfig = MaruFactory.defaultSyncingConfig,
+        syncingConfig = multiValidatorSyncingConfig,
         allowEmptyBlocks = true,
         initialValidators = initialValidators,
       )
@@ -118,7 +120,7 @@ class MaruMultiValidatorTest {
         ethereumJsonRpcUrl = stack1.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = stack1.besuNode.engineRpcUrl().get(),
         dataDir = stack1.tmpDir,
-        syncingConfig = MaruFactory.defaultSyncingConfig,
+        syncingConfig = multiValidatorSyncingConfig,
         allowEmptyBlocks = true,
         initialValidators = initialValidators,
       )
@@ -130,7 +132,7 @@ class MaruMultiValidatorTest {
         ethereumJsonRpcUrl = stack2.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = stack2.besuNode.engineRpcUrl().get(),
         dataDir = stack2.tmpDir,
-        syncingConfig = MaruFactory.defaultSyncingConfig,
+        syncingConfig = multiValidatorSyncingConfig,
         allowEmptyBlocks = true,
         initialValidators = initialValidators,
       )
@@ -142,7 +144,7 @@ class MaruMultiValidatorTest {
         ethereumJsonRpcUrl = stack3.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = stack3.besuNode.engineRpcUrl().get(),
         dataDir = stack3.tmpDir,
-        syncingConfig = MaruFactory.defaultSyncingConfig,
+        syncingConfig = multiValidatorSyncingConfig,
         allowEmptyBlocks = true,
         initialValidators = initialValidators,
       )
@@ -261,7 +263,7 @@ class MaruMultiValidatorTest {
         ethereumJsonRpcUrl = stack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = stack.besuNode.engineRpcUrl().get(),
         dataDir = stack.tmpDir,
-        syncingConfig = MaruFactory.defaultSyncingConfig,
+        syncingConfig = multiValidatorSyncingConfig,
         allowEmptyBlocks = true,
         initialValidators = initialValidators,
       )
