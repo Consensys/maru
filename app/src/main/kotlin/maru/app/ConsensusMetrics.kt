@@ -27,10 +27,22 @@ import org.hyperledger.besu.consensus.qbft.core.messagedata.QbftV1
  */
 class ConsensusMetrics(
   metricsFacade: MetricsFacade,
+  /**
+   * Returns the current chain head block number. Used to bound the [recordMessageReceived] window
+   * so that crafted far-future sequenceNumber values cannot cause unbounded map growth.
+   */
+  private val currentHeightProvider: () -> Long,
 ) {
   companion object {
     private const val ROLE_PROPOSER = "proposer"
     private const val ROLE_NON_PROPOSER = "non_proposer"
+
+    /**
+     * Maximum number of blocks ahead of the current chain head that we will track.
+     * Messages with sequenceNumber > currentHeight + MAX_FUTURE_BLOCKS are ignored.
+     * QBFT only legitimately looks one round ahead, so 2 gives comfortable headroom.
+     */
+    private const val MAX_FUTURE_BLOCKS = 2L
   }
 
   // ── per-block timestamp state (monotonic ns from System.nanoTime()) ─────────
@@ -113,6 +125,9 @@ class ConsensusMetrics(
     sequenceNumber: Long,
   ) {
     if (sequenceNumber <= 0) return
+    // Reject messages for blocks too far ahead of the current chain head to prevent
+    // unbounded memory growth from crafted large sequenceNumber values.
+    if (sequenceNumber > currentHeightProvider() + MAX_FUTURE_BLOCKS) return
     val now = System.nanoTime()
     when (msgCode) {
       QbftV1.PROPOSAL -> proposalTimes.putIfAbsent(sequenceNumber, now)

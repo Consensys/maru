@@ -34,6 +34,8 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.services.LongRunningService
 import maru.subscription.InOrderFanoutSubscriptionManager
+import maru.syncing.CLSyncStatus
+import maru.syncing.SyncController
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
@@ -62,7 +64,7 @@ class MaruApp(
   private val l2EthWeb3j: Web3j?,
   private val validatorELNodeEngineApiWeb3JClient: Web3JClient?,
   private val apiServer: ApiServer,
-  private val syncControllerManager: LongRunningService,
+  private val syncControllerManager: SyncController,
   private val timerFactory: TimerFactory,
 ) : LongRunningCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -73,7 +75,20 @@ class MaruApp(
    * Micrometer-based consensus metrics. Non-null when this node is a validator (config.qbft != null).
    * Records QBFT phase latencies as histograms, queryable via Prometheus in K8S or via MeterRegistry in tests.
    */
-  private val consensusMetrics: ConsensusMetrics? = if (config.qbft != null) ConsensusMetrics(metricsFacade) else null
+  private val consensusMetrics: ConsensusMetrics? =
+    if (config.qbft != null) {
+      ConsensusMetrics(
+        metricsFacade = metricsFacade,
+        currentHeightProvider = {
+          beaconChain
+            .getLatestBeaconState()
+            .beaconBlockHeader.number
+            .toLong()
+        },
+      )
+    } else {
+      null
+    }
 
   init {
     if (config.qbft == null) {
@@ -150,8 +165,11 @@ class MaruApp(
       start("Finalization Provider") { finalizationProvider.start().get() }
     }
     start("P2P Network") { p2pNetwork.start().get() }
+    syncControllerManager.onBeaconSyncComplete { protocolStarter.start() }
+    syncControllerManager.onClSyncStatusUpdate { status ->
+      if (status == CLSyncStatus.SYNCING) protocolStarter.pause()
+    }
     start("Sync Service") { syncControllerManager.start().get() }
-    start("Protocol") { protocolStarter.start() }
     start("Beacon Api") { apiServer.start().get() }
     // observability shall be the last to start because of liveness/readiness probe
     start("Observability Server") {
