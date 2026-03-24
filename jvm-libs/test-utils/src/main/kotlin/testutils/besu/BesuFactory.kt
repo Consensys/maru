@@ -37,16 +37,6 @@ object BesuFactory {
   fun buildTestBesu(
     genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS),
     validator: Boolean = true,
-    /**
-     * When true, enables fast block building (posBlockCreationRepetitionMinDuration = 15ms) and
-     * isMiningEnabled WITHOUT fixing the P2P node key to default-signer-key. Use this for
-     * multi-node tests where each node needs a unique enode identity while still benefiting from
-     * low-latency engine_getPayload responses.
-     *
-     * Note: [validator] = true already implies fast block building; this flag is only useful when
-     * [validator] = false but fast payloads are still needed (e.g. multi-validator test setups).
-     */
-    fastBlockBuilding: Boolean = false,
     engineRpcPort: Optional<Int> = Optional.empty(),
     jsonRpcPort: Optional<Int> = Optional.empty(),
     nodeName: String = "miner-${Random.nextBytes(4).encodeHex(false)}",
@@ -88,7 +78,8 @@ object BesuFactory {
             .build(),
         )
 
-      if (validator || fastBlockBuilding) {
+      if (validator) {
+        val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
         // Cap the inter-rebuild sleep so engine_getPayload's empty-block path
         // (awaitCurrentBuildCompletion) resolves within BLOCK_REBUILD_TIME (15 ms)
         // instead of Besu's default 500 ms.
@@ -107,15 +98,9 @@ object BesuFactory {
                 .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
                 .build(),
             ).build()
-        builder.miningConfiguration(miningConfiguration)
-      }
-
-      if (validator) {
-        // Fix the P2P node key so the node identity is stable and matches the genesis validator
-        // set. Only use for single-node tests; multi-node tests must use fastBlockBuilding=true
-        // with validator=false to keep unique enode IDs per node.
-        val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
-        builder.keyPair(defaultSigner)
+        builder
+          .miningConfiguration(miningConfiguration)
+          .keyPair(defaultSigner)
       } else {
         builder
       }
