@@ -65,6 +65,12 @@ chaos-experiment-workflow-and-wait:
 	@$(MAKE) wait-experiment-done experiment_name=linea-resilience
 	@$(MAKE) wait-all-running
 
+chaos-experiment-multi-validator-latency-%-and-wait:
+	-@kubectl delete -f experiments/workflow-multi-validator-latency-$*.yaml --wait=true >/dev/null 2>&1
+	@kubectl apply -f experiments/workflow-multi-validator-latency-$*.yaml
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) wait-experiment-done experiment_name=multi-validator-latency-$*
+	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) wait-all-running
+
 .PHONY: chaos-mesh-install-with-curl \
 	chaos-mesh-install \
 	chaos-mesh-uninstall \
