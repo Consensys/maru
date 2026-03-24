@@ -11,7 +11,6 @@ package maru.executionlayer.manager
 import java.util.concurrent.atomic.AtomicReference
 import maru.core.ExecutionPayload
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
-import maru.extensions.encodeHex
 import maru.mappers.Mappers.toDomain
 import maru.mappers.Mappers.toPayloadAttributesV1
 import org.apache.logging.log4j.LogManager
@@ -26,7 +25,6 @@ class JsonRpcExecutionLayerManager(
 ) : ExecutionLayerManager {
   private val log = LogManager.getLogger(this.javaClass)
 
-  private var payloadId = AtomicReference<ByteArray>()
   private var blockBuildingFuture = AtomicReference<SafeFuture<ByteArray>?>()
 
   override fun setHeadAndStartBlockBuilding(
@@ -59,12 +57,11 @@ class JsonRpcExecutionLayerManager(
           throw IllegalStateException("Unexpected FCU result. Payload ID is null! $it")
         } else {
           log.debug(
-            "setting payloadId={}, nextBlockTimestamp={}, fork={}",
-            it.payloadId?.encodeHex(),
+            "payloadId={}, nextBlockTimestamp={}, fork={}",
+            Bytes.wrap(it.payloadId!!).toHexString(),
             nextBlockTimestamp,
             executionLayerEngineApiClient.getFork(),
           )
-          payloadId.set(it.payloadId)
         }
       }
     blockBuildingFuture.set(fcuFuture.thenApply { it.payloadId })
