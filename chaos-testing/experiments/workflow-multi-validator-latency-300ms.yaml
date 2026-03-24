@@ -1,0 +1,55 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: multi-validator-latency-300ms
+  namespace: chaos-mesh
+  labels:
+    purpose: multi-validator-latency-test
+spec:
+  entry: serial-latency-test
+  templates:
+    - name: serial-latency-test
+      templateType: Serial
+      children:
+        - wait-for-steady-state
+        - inject-latency
+        - wait-recovery
+
+    - name: wait-for-steady-state
+      templateType: Suspend
+      deadline: 30s
+
+    - name: wait-recovery
+      templateType: Suspend
+      deadline: 30s
+
+    - name: inject-latency
+      templateType: NetworkChaos
+      deadline: 100m
+      networkChaos:
+        action: delay
+        mode: all
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app.kubernetes.io/component: maru
+            app.kubernetes.io/component-role: validator
+        target:
+          selector:
+            namespaces:
+              - default
+            labelSelectors:
+              app.kubernetes.io/component: maru
+              app.kubernetes.io/component-role: validator
+          mode: all
+        delay:
+          latency: "300ms"
+          correlation: "100"
+          jitter: "0ms"
+        direction: both
+
+# Usage:
+# kubectl apply -f workflow-multi-validator-latency-300ms.yaml
+# Observe with: kubectl describe workflows.chaos-mesh.org multi-validator-latency-300ms -n chaos-mesh
+# Or: make chaos-multi-validator-run-local-latency-300ms skip_initial_health_check=true
