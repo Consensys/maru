@@ -81,14 +81,7 @@ class MaruMultiValidatorTest {
         NetConditions(NetTransactions()),
         ThreadBesuNodeRunner(),
       )
-    // fastBlockBuilding=true enables isMiningEnabled and caps posBlockCreationRepetitionMinDuration
-    // to BLOCK_REBUILD_TIME (15 ms), so engine_getPayload returns in ≤15 ms instead of the default
-    // 500 ms. Without this, round-0 (1 s expiry) is too tight for EL block building + 4-way
-    // consensus messaging.
-    // validator=false keeps P2P node keys randomly generated per node so each has a unique enode
-    // ID — critical for Besu peer discovery. (validator=true fixes all nodes to the same
-    // default-signer-key, causing 0 peers as nodes reject connections to themselves.)
-    val besuBuilder = { BesuFactory.buildTestBesu(validator = false, fastBlockBuilding = true) }
+    val besuBuilder = { BesuFactory.buildTestBesu(validator = false) }
     stack0 = PeeringNodeNetworkStack(besuBuilder)
     stack1 = PeeringNodeNetworkStack(besuBuilder)
     stack2 = PeeringNodeNetworkStack(besuBuilder)
@@ -177,11 +170,6 @@ class MaruMultiValidatorTest {
     log.info("All 4 validators peered in full mesh")
   }
 
-  /**
-   * Waits until ALL of the given [beaconChains] have committed at least [targetHeight].
-   * Must be called before reading blocks from multiple validators to avoid
-   * IllegalStateException("Missing sealed beacon block …") in [checkAllValidatorBlocksAreTheSame].
-   */
   private fun waitForBlockHeight(
     vararg beaconChains: BeaconChain,
     targetHeight: ULong,
