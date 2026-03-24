@@ -31,15 +31,11 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.parallel.Execution
-import org.junit.jupiter.api.parallel.ExecutionMode
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
 
-// This test is particularly heavy, so we need to amortize its CPU usage
-@Execution(ExecutionMode.SAME_THREAD)
 class MaruMultiValidatorTest {
   companion object {
     /** Number of consecutive round-0 blocks required to declare convergence / stable production. */
@@ -164,9 +160,21 @@ class MaruMultiValidatorTest {
 
     // Wait for full mesh -- each validator should see exactly 3 peers
     app0.awaitTillMaruHasPeers(3u, pollingInterval = 500.milliseconds)
+    log.info(
+      "Validator 0 has 3 peers (height=${stack0.maruApp.beaconChain.getLatestBeaconState().beaconBlockHeader.number})",
+    )
     app1.awaitTillMaruHasPeers(3u, pollingInterval = 500.milliseconds)
+    log.info(
+      "Validator 1 has 3 peers (height=${stack1.maruApp.beaconChain.getLatestBeaconState().beaconBlockHeader.number})",
+    )
     app2.awaitTillMaruHasPeers(3u, pollingInterval = 500.milliseconds)
+    log.info(
+      "Validator 2 has 3 peers (height=${stack2.maruApp.beaconChain.getLatestBeaconState().beaconBlockHeader.number})",
+    )
     app3.awaitTillMaruHasPeers(3u, pollingInterval = 500.milliseconds)
+    log.info(
+      "Validator 3 has 3 peers (height=${stack3.maruApp.beaconChain.getLatestBeaconState().beaconBlockHeader.number})",
+    )
     log.info("All 4 validators peered in full mesh")
   }
 
@@ -209,12 +217,17 @@ class MaruMultiValidatorTest {
       .pollInterval(500.milliseconds.toJavaDuration())
       .until {
         val latestHeight = beaconChain.getLatestBeaconState().beaconBlockHeader.number
+        log.info(
+          "waitForConsecutiveRound0Blocks: polled height=$latestHeight, " +
+            "lastPolled=$lastPolled, consecutiveCount=$consecutiveCount",
+        )
         for (blockNum in (lastPolled + 1uL)..latestHeight) {
           val block = beaconChain.getSealedBeaconBlock(blockNum) ?: break
           val round = block.beaconBlock.beaconBlockHeader.round
           if (round == 0u) {
             consecutiveCount++
             lastStableBlock = blockNum
+            log.info("Block $blockNum: round=0 (consecutive=$consecutiveCount)")
           } else {
             log.info("Block $blockNum has round=$round — resetting consecutive count (was $consecutiveCount)")
             consecutiveCount = 0
