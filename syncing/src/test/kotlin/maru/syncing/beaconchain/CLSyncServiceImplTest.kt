@@ -179,8 +179,8 @@ class CLSyncServiceImplTest {
       )
 
     try {
-      targetP2pNetwork.start()
-      sourceP2pNetwork.start()
+      targetP2pNetwork.start().get()
+      sourceP2pNetwork.start().get()
       targetP2pNetwork.addStaticPeer(createPeerAddress(sourceNodePort))
 
       awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
