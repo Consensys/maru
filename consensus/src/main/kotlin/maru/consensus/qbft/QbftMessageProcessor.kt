@@ -69,16 +69,12 @@ class QbftMessageProcessor(
         metadata.roundNumber,
         metadata.author,
       )
-      val result = processMessage(qbftMessage, metadata)
-      // Only record timestamps for messages that passed validation (Valid result).
-      // Firing before processMessage would record rejected messages (unknown validators,
-      // old/stale rounds) and cause role misclassification in ConsensusMetrics —
-      // e.g. a stray invalid PROPOSAL hitting proposalTimes.putIfAbsent would make
-      // the actual proposer appear to be a non_proposer.
-      if (result == Valid) {
-        onMessageReceived?.invoke(metadata.messageCode, metadata.sequenceNumber)
-      }
-      SafeFuture.completedFuture(result)
+      // Fire as early as possible — before validation — to capture the true P2P arrival
+      // timestamp. Validation overhead would skew phase-latency measurements.
+      // Trade-off: rejected messages (unknown validators, old rounds) may record stale
+      // timestamps, but this is rare and preferable to systematically late measurements.
+      onMessageReceived?.invoke(metadata.messageCode, metadata.sequenceNumber)
+      SafeFuture.completedFuture(processMessage(qbftMessage, metadata))
     } catch (e: Exception) {
       SafeFuture.completedFuture(Invalid("Failed to decode or validate message: ${e.message}"))
     }
