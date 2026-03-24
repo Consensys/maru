@@ -32,7 +32,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
   const val MIN_BLOCK_TIME = 1L
-  const val BLOCK_REBUILD_TIME = 100L
+  const val BLOCK_REBUILD_TIME = 15L
 
   fun buildTestBesu(
     genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS),
@@ -78,6 +78,17 @@ object BesuFactory {
             .build(),
         )
 
+      // Always cap the inter-rebuild sleep to BLOCK_REBUILD_TIME (15 ms).
+      // Without this, non-validator nodes use the Besu default of 500 ms, which means
+      // engine_getPayload's empty-block path (awaitCurrentBuildCompletion) waits up to
+      // 500 ms for the current iteration to finish instead of up to 15 ms.
+      val unstableMiningConfig =
+        ImmutableMiningConfiguration.Unstable
+          .builder()
+          .posBlockFinalizationTimeoutMs(10)
+          .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
+          .build()
+
       if (validator) {
         val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
         val miningConfiguration =
@@ -89,17 +100,18 @@ object BesuFactory {
                 .coinbase(AddressHelpers.ofValue(1))
                 .isMiningEnabled(true)
                 .build(),
-            ).unstable(
-              ImmutableMiningConfiguration.Unstable
-                .builder()
-                .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
-                .build(),
-            ).build()
+            ).unstable(unstableMiningConfig)
+            .build()
         builder
           .miningConfiguration(miningConfiguration)
           .keyPair(defaultSigner)
       } else {
-        builder
+        val miningConfiguration =
+          ImmutableMiningConfiguration
+            .builder()
+            .unstable(unstableMiningConfig)
+            .build()
+        builder.miningConfiguration(miningConfiguration)
       }
     }
 

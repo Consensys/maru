@@ -340,7 +340,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
       validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
       apiServer = apiServer,
       syncControllerManager = syncControllerImpl,
-      syncStatusProvider = syncControllerImpl,
       timerFactory = timerFactory,
     )
   }
