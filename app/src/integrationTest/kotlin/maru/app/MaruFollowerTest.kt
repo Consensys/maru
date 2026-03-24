@@ -230,6 +230,9 @@ class MaruFollowerTest {
     )
     validatorStack.maruApp.start().get()
 
+    followerStack.maruApp.awaitTillMaruHasPeers(1u)
+    validatorStack.maruApp.awaitTillMaruHasPeers(1u)
+
     repeat(blocksToProduce) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(
