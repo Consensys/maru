@@ -245,7 +245,7 @@ class MaruApp(
         timerFactory = timerFactory,
       )
     val protocolStarter =
-      ProtocolStarter.create(
+      ProtocolStarter(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
           OmniProtocolFactory(
@@ -253,7 +253,6 @@ class MaruApp(
             difficultyAwareQbftFactory = difficultyAwareQbftFactory,
           ),
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
-        syncStatusProvider = syncStatusProvider,
         forkTransitionCheckInterval = config.forkTransition.protocolTransitionPollingInterval,
         forkTransitionNotifier = forkTransitionSubscriptionManager,
         clock = clock,
