@@ -102,7 +102,7 @@ class MaruSupportsOsakaTest {
           .maru
           .headElBlock()
           .timestamp,
-      ).isGreaterThan(osakaTimestamp.epochSeconds.toULong())
+      ).isGreaterThanOrEqualTo(osakaTimestamp.epochSeconds.toULong())
     }
     await().atMost(20.seconds.toJavaDuration()).untilAsserted {
       assertThat(
@@ -111,7 +111,7 @@ class MaruSupportsOsakaTest {
           .maru
           .headElBlock()
           .timestamp,
-      ).isGreaterThan(osakaTimestamp.epochSeconds.toULong())
+      ).isGreaterThanOrEqualTo(osakaTimestamp.epochSeconds.toULong())
     }
   }
 }

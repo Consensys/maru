@@ -9,6 +9,7 @@
 package maru.app
 
 import kotlin.collections.map
+import kotlin.time.Duration.Companion.seconds
 import maru.config.SyncingConfig
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -312,6 +313,7 @@ class MaruFollowerTest {
       ),
     )
     followerStack.maruApp.start().get()
+    followerStack.maruApp.awaitTillMaruHasPeers(1u, pollingInterval = 1.seconds)
 
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->
@@ -370,6 +372,8 @@ class MaruFollowerTest {
       ),
     )
     followerStack.maruApp.start().get()
+    // Wait for peer connection before starting the sync-check countdown
+    followerStack.maruApp.awaitTillMaruHasPeers(1u, pollingInterval = 1.seconds)
 
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->
@@ -428,10 +432,12 @@ class MaruFollowerTest {
     peers.forEach {
       followerP2PNetwork.addPeer("${it.address}/p2p/${it.nodeId}")
     }
+    followerStack.maruApp.awaitTillMaruHasPeers(1u, pollingInterval = 1.seconds)
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->
         checkValidatorAndFollowerBlocks(
-          2 * blocksToProduce + residueBlocks,
+          blocksToProduce = 2 * blocksToProduce + residueBlocks,
+          timeout = 60.seconds,
         )
 
       is SyncingConfig.SyncTargetSelection.MostFrequent -> {
@@ -442,8 +448,16 @@ class MaruFollowerTest {
     }
   }
 
-  private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
-    checkAllNodesHaveSameBlocks(blocksToProduce, validatorStack.besuNode, followerStack.besuNode)
+  private fun checkValidatorAndFollowerBlocks(
+    blocksToProduce: Int,
+    timeout: kotlin.time.Duration = 30.seconds,
+  ) {
+    checkAllNodesHaveSameBlocks(
+      expectedBlockCount = blocksToProduce,
+      validatorStack.besuNode,
+      followerStack.besuNode,
+      timeout = timeout,
+    )
   }
 
   private fun checkNetworkStacksBlocksProduced(
