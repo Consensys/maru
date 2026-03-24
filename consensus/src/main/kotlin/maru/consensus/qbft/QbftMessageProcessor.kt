@@ -62,7 +62,6 @@ class QbftMessageProcessor(
   override fun handleQbftMessage(qbftMessage: QbftMessage): SafeFuture<ValidationResult> =
     try {
       val metadata = messageDecoder.deserialize(qbftMessage)
-      onMessageReceived?.invoke(metadata.messageCode, metadata.sequenceNumber)
       log.debug(
         "P2P message received: type={} sequence={} round={} from={}",
         messageTypeName(metadata.messageCode),
@@ -70,7 +69,16 @@ class QbftMessageProcessor(
         metadata.roundNumber,
         metadata.author,
       )
-      SafeFuture.completedFuture(processMessage(qbftMessage, metadata))
+      val result = processMessage(qbftMessage, metadata)
+      // Only record timestamps for messages that passed validation (Valid result).
+      // Firing before processMessage would record rejected messages (unknown validators,
+      // old/stale rounds) and cause role misclassification in ConsensusMetrics —
+      // e.g. a stray invalid PROPOSAL hitting proposalTimes.putIfAbsent would make
+      // the actual proposer appear to be a non_proposer.
+      if (result == Valid) {
+        onMessageReceived?.invoke(metadata.messageCode, metadata.sequenceNumber)
+      }
+      SafeFuture.completedFuture(result)
     } catch (e: Exception) {
       SafeFuture.completedFuture(Invalid("Failed to decode or validate message: ${e.message}"))
     }

@@ -89,19 +89,6 @@ class SetHeadOnlyBlockImporter(
   private val finalizationStateProvider: FinalizationProvider,
   private val importerName: String,
 ) : NewBlockHandler<ValidationResult> {
-  companion object {
-    fun create(
-      executionLayerManager: ExecutionLayerManager,
-      finalizationStateProvider: FinalizationProvider,
-      importerName: String,
-    ): NewBlockHandler<ValidationResult> =
-      SetHeadOnlyBlockImporter(
-        executionLayerManager = executionLayerManager,
-        finalizationStateProvider = finalizationStateProvider,
-        importerName = importerName,
-      )
-  }
-
   private val log = LogManager.getLogger(this.javaClass)
 
   override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ValidationResult> {
