@@ -1,6 +1,7 @@
 include chaos-mesh.mk
 include helm.mk
 include k3s.mk
+include benchmark.mk
 
 .PHONY: chaos-full-reload \
 	chaos-mesh-install-with-curl \
@@ -126,3 +127,4 @@ chaos-multi-validator-health-check:
 	@$(MAKE) wait-all-running
 	@$(MAKE) port-forward-restart-all-linea
 	@cd .. && ./gradlew :chaos-testing:health-check:acceptanceTest
+

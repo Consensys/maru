@@ -44,6 +44,7 @@ chaos-experiment-workflow:
 	@kubectl apply -f experiments/workflow-linea-resilience.yaml
 
 experiment_name ?= linea-resilience
+experiment_duration ?= 100m
 wait-experiment-done:
 	@echo "Waiting for $(experiment_name) workflow to finish..."; \
 	timeout=$${WAIT_TIMEOUT_SECONDS:-3000}; interval=$${WAIT_INTERVAL_SECONDS:-10}; elapsed=0; \
@@ -66,8 +67,10 @@ chaos-experiment-workflow-and-wait:
 	@$(MAKE) wait-all-running
 
 chaos-experiment-multi-validator-latency-%-and-wait:
-	-@kubectl delete -f experiments/workflow-multi-validator-latency-$*.yaml --wait=true >/dev/null 2>&1
-	@kubectl apply -f experiments/workflow-multi-validator-latency-$*.yaml
+	-@kubectl --kubeconfig $(KUBECONFIG) delete workflows.chaos-mesh.org multi-validator-latency-$* -n chaos-mesh --wait=true >/dev/null 2>&1 || true
+	@sed 's/__LATENCY__/$*/g; s/__EXPERIMENT_DURATION__/$(experiment_duration)/g' \
+		experiments/workflow-multi-validator-latency.yaml \
+		| kubectl --kubeconfig $(KUBECONFIG) apply -f -
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) wait-experiment-done experiment_name=multi-validator-latency-$*
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) wait-all-running
 

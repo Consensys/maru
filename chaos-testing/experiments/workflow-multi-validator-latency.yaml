@@ -1,0 +1,84 @@
+# Parameterized template. Rendered by Makefile via sed before applying:
+#   __LATENCY__             → e.g. 100ms
+#   __EXPERIMENT_DURATION__ → e.g. 100m
+#
+# Usage (via Makefile):
+#   make chaos-multi-validator-latency-experiment-100ms [experiment_duration=10m]
+#   make chaos-multi-validator-local-latency-sweep      [experiment_duration=10m]
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: multi-validator-latency-__LATENCY__
+  namespace: chaos-mesh
+  labels:
+    purpose: multi-validator-latency-test
+spec:
+  entry: serial-latency-test
+  templates:
+    - name: serial-latency-test
+      templateType: Serial
+      children:
+        - parallel-inject-and-restart
+        - wait-recovery
+
+    # Inject latency and restart validators simultaneously.
+    # The NetworkChaos runs for __EXPERIMENT_DURATION__; the pod kill completes in seconds.
+    # Pods come back up under the already-active latency with fresh (zero) metrics.
+    - name: parallel-inject-and-restart
+      templateType: Parallel
+      children:
+        - inject-latency
+        - restart-validators
+
+    - name: restart-validators
+      templateType: Serial
+      children:
+        - kill-validators
+        - wait-pod-recovery
+
+    - name: kill-validators
+      templateType: PodChaos
+      deadline: 60s
+      podChaos:
+        action: pod-kill
+        mode: all
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app.kubernetes.io/component: maru
+            app.kubernetes.io/component-role: validator
+
+    - name: wait-pod-recovery
+      templateType: Suspend
+      deadline: 90s
+
+    - name: wait-recovery
+      templateType: Suspend
+      deadline: 30s
+
+    - name: inject-latency
+      templateType: NetworkChaos
+      deadline: __EXPERIMENT_DURATION__
+      networkChaos:
+        action: delay
+        mode: all
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app.kubernetes.io/component: maru
+            app.kubernetes.io/component-role: validator
+        target:
+          selector:
+            namespaces:
+              - default
+            labelSelectors:
+              app.kubernetes.io/component: maru
+              app.kubernetes.io/component-role: validator
+          mode: all
+        delay:
+          latency: "__LATENCY__"
+          correlation: "100"
+          jitter: "0ms"
+        direction: both
