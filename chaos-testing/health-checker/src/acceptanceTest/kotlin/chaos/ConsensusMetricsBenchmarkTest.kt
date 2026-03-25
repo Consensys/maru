@@ -106,7 +106,8 @@ class ConsensusMetricsBenchmarkTest {
       if (braceStart >= 0 && braceEnd > braceStart) {
         metricName = line.substring(0, braceStart).trim()
         labels =
-          labelRegex.findAll(line.substring(braceStart + 1, braceEnd))
+          labelRegex
+            .findAll(line.substring(braceStart + 1, braceEnd))
             .associate { it.groupValues[1] to it.groupValues[2] }
         valueStr = line.substring(braceEnd + 1).trim()
       } else {
@@ -205,12 +206,19 @@ class ConsensusMetricsBenchmarkTest {
           log.error("Non-2xx from {} ({}): status={}", nodeInfo.label, url, response.status)
         }
         val samples = parsePrometheusText(response.bodyString())
-        val consensusNames = samples.keys.map { it.first }.filter { it.startsWith("maru_consensus") }.toSortedSet()
+        val consensusNames =
+          samples.keys
+            .map { it.first }
+            .filter { it.startsWith("maru_consensus") }
+            .toSortedSet()
         if (consensusNames.isEmpty()) {
           log.warn(
             "No maru_consensus_* metrics found for pod {}. First 20 available: {}",
             nodeInfo.label,
-            samples.keys.map { it.first }.toSortedSet().take(20),
+            samples.keys
+              .map { it.first }
+              .toSortedSet()
+              .take(20),
           )
         } else {
           log.info("Pod {}: found consensus metrics: {}", nodeInfo.label, consensusNames)
@@ -254,9 +262,10 @@ class ConsensusMetricsBenchmarkTest {
   ) {
     for (role in listOf("proposer", "non_proposer")) {
       val perPodData =
-        podSamples.mapNotNull { (_, samples) ->
-          extractHistogram(samples, metric.promName, role)
-        }.filter { it.count > 0 }
+        podSamples
+          .mapNotNull { (_, samples) ->
+            extractHistogram(samples, metric.promName, role)
+          }.filter { it.count > 0 }
 
       if (perPodData.isEmpty()) continue
 

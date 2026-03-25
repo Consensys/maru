@@ -73,7 +73,9 @@ configFiles:
     snapsync-server-enabled=true
 
     # mining
-    Xpos-block-creation-repetition-min-duration=100
+    # NOTE: Xpos-block-creation-repetition-min-duration and Xpos-block-finalization-timeout-ms
+    # are experimental (X-prefixed) flags that Besu only accepts as CLI args, not in TOML.
+    # They are passed in statefulset.yaml command args instead.
   genesisJson: |
     {
       "@_WARNING": "THIS FILE IS FOR LOCAL DEVELOPMENT ONLY! DO NOT REUSE ELSEWHERE",
