@@ -28,6 +28,7 @@ chaos-latency-sweep-experiments:
 chaos-multi-validator-latency-experiment-%:
 	@$(MAKE) chaos-experiment-multi-validator-latency-$*-and-wait
 	@$(MAKE) chaos-collect-consensus-metrics experiment_latency=$*
+	-@kubectl --kubeconfig $(KUBECONFIG) delete networkchaos multi-validator-latency-$* -n chaos-mesh --wait=false >/dev/null 2>&1 || true
 
 # ── Sweep: assumes cluster already up ─────────────────────────────────────────
 
