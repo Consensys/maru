@@ -10,6 +10,7 @@ configFiles:
 
     [qbft]
     fee-recipient = "0x0000000000000000000000000000000000000000"
+    min-block-build-time = "200 milliseconds"
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://besu-validator-2-0.besu-validator-2:8550" }

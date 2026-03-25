@@ -46,7 +46,7 @@ chaos-health-check:
 	@echo "Running health check for chaos testing environment"
 	@$(MAKE) wait-all-running
 	@$(MAKE) port-forward-restart-all-linea
-	@cd .. && ./gradlew :chaos-testing:health-check:acceptanceTest
+	@cd .. && ./gradlew :chaos-testing:health-checker:acceptanceTest --tests "chaos.NodesSyncTest"
 
 chaos-redeploy-linea-and-run-experiment:
 	@$(MAKE) helm-redeploy-linea maru_image=$(if $(maru_image),$(maru_image))
@@ -126,5 +126,5 @@ chaos-multi-validator-health-check:
 	@echo "Running health check for multi-validator chaos testing environment"
 	@$(MAKE) wait-all-running
 	@$(MAKE) port-forward-restart-all-linea
-	@cd .. && ./gradlew :chaos-testing:health-check:acceptanceTest
+	@cd .. && ./gradlew :chaos-testing:health-checker:acceptanceTest --tests "chaos.NodesSyncTest"
 

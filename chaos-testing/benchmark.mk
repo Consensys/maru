@@ -9,17 +9,36 @@
 # Not meant to be called directly — use chaos-multi-validator-local-latency-sweep
 # or chaos-multi-validator-local-latency-sweep-fresh instead.
 chaos-latency-sweep-experiments:
+	@echo ""
+	@echo "================================================="
+	@echo " Baseline (no injected latency)"
+	@echo "================================================="
+	@$(MAKE) chaos-multi-validator-baseline-experiment experiment_duration=$${experiment_duration:-5m}
 	@for ms in 50 100 150 200 250 300 350 400; do \
 		echo ""; \
 		echo "================================================="; \
 		echo " Latency experiment: $${ms}ms"; \
 		echo "================================================="; \
-		$(MAKE) chaos-multi-validator-latency-experiment-$${ms}ms experiment_duration=$${experiment_duration:-100m}; \
+		$(MAKE) chaos-multi-validator-latency-experiment-$${ms}ms experiment_duration=$${experiment_duration:-5m}; \
 	done
 	@echo ""
-	@echo "=== Sweep complete: 50ms 100ms 150ms 200ms 250ms 300ms 350ms 400ms ==="
+	@echo "=== Sweep complete: baseline 50ms 100ms 150ms 200ms 250ms 300ms 350ms 400ms ==="
 
 # ── Single experiment ──────────────────────────────────────────────────────────
+
+# Run a baseline experiment (no injected latency) on an already-running cluster.
+# Validators are restarted to reset metrics, then blocks are produced at natural latency.
+# Usage: make chaos-multi-validator-baseline-experiment [experiment_duration=10m]
+chaos-multi-validator-baseline-experiment:
+	@kubectl --kubeconfig $(KUBECONFIG) -n $(NAMESPACE) delete pods \
+		-l app.kubernetes.io/component=maru,app.kubernetes.io/component-role=validator
+	@sleep 5
+	@kubectl --kubeconfig $(KUBECONFIG) -n $(NAMESPACE) wait pod \
+		-l app.kubernetes.io/component=maru,app.kubernetes.io/component-role=validator \
+		--for=condition=ready --timeout=90s
+	@echo "Baseline (no latency) — experiment window: $(experiment_duration) ($(experiment_duration_s)s)"
+	@sleep $(experiment_duration_s)
+	@$(MAKE) chaos-collect-consensus-metrics experiment_latency=baseline
 
 # Run a single latency experiment on an already-running cluster (no redeploy).
 # Validators are restarted by the chaos workflow at the start, resetting metrics to zero.

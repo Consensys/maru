@@ -34,6 +34,7 @@ configFiles:
     data-path="/opt/besu/data"
     host-allowlist=["*"]
     sync-mode="FULL"
+    sync-min-peers=1
     p2p-port=30303
 
     min-gas-price=0
@@ -73,9 +74,8 @@ configFiles:
     snapsync-server-enabled=true
 
     # mining
-    # NOTE: Xpos-block-creation-repetition-min-duration and Xpos-block-finalization-timeout-ms
-    # are experimental (X-prefixed) flags that Besu only accepts as CLI args, not in TOML.
-    # They are passed in statefulset.yaml command args instead.
+    Xpos-block-creation-repetition-min-duration=15
+    Xpos-block-finalization-timeout-ms=10
   genesisJson: |
     {
       "@_WARNING": "THIS FILE IS FOR LOCAL DEVELOPMENT ONLY! DO NOT REUSE ELSEWHERE",
