@@ -45,6 +45,13 @@ chaos-experiment-workflow:
 
 experiment_name ?= linea-resilience
 experiment_duration ?= 2m
+# Converts experiment_duration (2m / 120s / 120) to plain seconds for use with sleep.
+experiment_duration_s = $(shell d='$(experiment_duration)'; \
+    case "$$d" in \
+        *m) echo $$(( $${d%m} * 60 ));; \
+        *s) echo $${d%s};; \
+        *)  echo $$d;; \
+    esac)
 wait-experiment-done:
 	@echo "Waiting for $(experiment_name) workflow to finish..."; \
 	timeout=$${WAIT_TIMEOUT_SECONDS:-3000}; interval=$${WAIT_INTERVAL_SECONDS:-10}; elapsed=0; \
@@ -67,16 +74,23 @@ chaos-experiment-workflow-and-wait:
 	@$(MAKE) wait-all-running
 
 chaos-experiment-multi-validator-latency-%-and-wait:
-	-@kubectl --kubeconfig $(KUBECONFIG) delete networkchaos multi-validator-latency-$* -n chaos-mesh --wait=true >/dev/null 2>&1 || true
-	-@kubectl --kubeconfig $(KUBECONFIG) delete workflows.chaos-mesh.org multi-validator-latency-$* -n chaos-mesh --wait=true >/dev/null 2>&1 || true
-	@sed 's/__LATENCY__/$*/g' \
-		experiments/network-chaos-multi-validator-latency.yaml \
+	# Clean up any NetworkChaos left from a previous run
+	-@kubectl --kubeconfig $(KUBECONFIG) delete networkchaos multi-validator-latency-$* \
+		-n chaos-mesh --wait=true >/dev/null 2>&1 || true
+	# Kill validators to reset in-memory Micrometer metrics to zero
+	@kubectl --kubeconfig $(KUBECONFIG) -n $(NAMESPACE) delete pods \
+		-l app.kubernetes.io/component=maru,app.kubernetes.io/component-role=validator
+	# Allow StatefulSet controllers time to create replacement pods before waiting
+	@sleep 5
+	# Wait for all replacement validator pods to be Ready
+	@kubectl --kubeconfig $(KUBECONFIG) -n $(NAMESPACE) wait pod \
+		-l app.kubernetes.io/component=maru,app.kubernetes.io/component-role=validator \
+		--for=condition=ready --timeout=90s
+	# Apply NetworkChaos — remains active until deleted after metrics are collected
+	@sed 's/__LATENCY__/$*/g' experiments/network-chaos-multi-validator-latency.yaml \
 		| kubectl --kubeconfig $(KUBECONFIG) apply -f -
-	@sed 's/__LATENCY__/$*/g; s/__EXPERIMENT_DURATION__/$(experiment_duration)/g' \
-		experiments/workflow-multi-validator-latency.yaml \
-		| kubectl --kubeconfig $(KUBECONFIG) apply -f -
-	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) wait-experiment-done experiment_name=multi-validator-latency-$*
-	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) wait-all-running
+	@echo "Injecting $* latency — experiment window: $(experiment_duration) ($(experiment_duration_s)s)"
+	@sleep $(experiment_duration_s)
 
 .PHONY: chaos-mesh-install-with-curl \
 	chaos-mesh-install \

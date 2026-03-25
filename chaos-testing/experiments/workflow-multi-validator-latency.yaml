@@ -51,7 +51,7 @@ spec:
     # Wait for validators to restart and reach steady state.
     - name: wait-pod-recovery
       templateType: Suspend
-      deadline: 90s
+      deadline: 45s
 
     # Controls when the workflow completes and metrics collection begins.
     # All blocks committed during this window are under the injected latency.
