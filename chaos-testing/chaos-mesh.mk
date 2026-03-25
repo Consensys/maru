@@ -46,12 +46,7 @@ chaos-experiment-workflow:
 experiment_name ?= linea-resilience
 experiment_duration ?= 2m
 # Converts experiment_duration (2m / 120s / 120) to plain seconds for use with sleep.
-experiment_duration_s = $(shell d='$(experiment_duration)'; \
-    case "$$d" in \
-        *m) echo $$(( $${d%m} * 60 ));; \
-        *s) echo $${d%s};; \
-        *)  echo $$d;; \
-    esac)
+experiment_duration_s = $(shell d='$(experiment_duration)'; case "$$d" in *m) echo $$(( $${d%m} * 60 ));; *s) echo $${d%s};; *) echo $$d;; esac)
 wait-experiment-done:
 	@echo "Waiting for $(experiment_name) workflow to finish..."; \
 	timeout=$${WAIT_TIMEOUT_SECONDS:-3000}; interval=$${WAIT_INTERVAL_SECONDS:-10}; elapsed=0; \
