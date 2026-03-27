@@ -66,6 +66,8 @@ class ConsensusMetrics(
     name = name,
     description = description,
     tags = listOf(Tag("role", role)),
+    publishPercentileHistogram = true,
+    percentileBuckets = listOf(.5, .8, .95, .99),
   )
 
   // Total consensus latency: timer-fire to block committed (ms).
@@ -170,7 +172,7 @@ class ConsensusMetrics(
 
     // Phase: timer → PROPOSAL (non-proposer only)
     if (!isProposer) {
-      val duration = (proposalTime!! - timerFire) / 1_000_000.0
+      val duration = (proposalTime - timerFire) / 1_000_000.0
       if (duration >= 0.0) phaseProposal.record(duration)
     }
 
