@@ -13,6 +13,7 @@ import maru.p2p.P2PNetwork
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.datatypes.Address
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
 /**
@@ -35,15 +36,16 @@ class P2PValidatorMulticaster(
    * @param message The message to send.
    */
   override fun send(message: BesuMessageData) {
-    p2pNetwork
-      .broadcastMessage(message.toDomain())
-      .whenException { e ->
+    @Suppress("UNCHECKED_CAST")
+    (p2pNetwork.broadcastMessage(message.toDomain()) as SafeFuture<Any?>)
+      .exceptionally { e ->
         if (hasNoPeersCause(e)) {
           log.debug("No gossip peers subscribed to QBFT topic, message not delivered")
+          null
         } else {
-          log.error("Failed to broadcast QBFT message", e)
+          e
         }
-      }
+      }.get()
   }
 
   /**

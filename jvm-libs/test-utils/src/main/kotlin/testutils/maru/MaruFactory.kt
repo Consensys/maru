@@ -97,6 +97,7 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection = SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
+        // desyncTolerance intentionally uses the Config default (5 blocks) for followers.
         download = SyncingConfig.Download(),
       )
 
