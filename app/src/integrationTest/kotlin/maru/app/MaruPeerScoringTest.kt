@@ -85,7 +85,7 @@ class MaruPeerScoringTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          followerEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(15UL)
       }
   }
@@ -115,7 +115,7 @@ class MaruPeerScoringTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          followerEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(18UL)
       }
   }
@@ -231,7 +231,7 @@ class MaruPeerScoringTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          validatorEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(0UL)
       }
 
@@ -260,7 +260,7 @@ class MaruPeerScoringTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          validatorEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(10UL)
       }
 
@@ -281,7 +281,7 @@ class MaruPeerScoringTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          followerEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(0UL)
       }
     return MaruNodeSetup(validatorMaruApp = validatorMaruApp, followerMaruApp = followerMaruApp)
