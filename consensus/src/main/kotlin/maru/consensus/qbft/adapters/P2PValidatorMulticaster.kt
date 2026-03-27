@@ -43,7 +43,7 @@ class P2PValidatorMulticaster(
         } else {
           log.error("Failed to broadcast QBFT message", e)
         }
-      }
+      }.get()
   }
 
   /**
