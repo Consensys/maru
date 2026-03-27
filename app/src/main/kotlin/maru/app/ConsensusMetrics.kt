@@ -235,7 +235,7 @@ class ConsensusMetrics(
       firstCommitTimes,
       lastCommitTimes,
     ).forEach { map ->
-      map.keys.removeAll { it < threshold }
+      map.keys.removeAll { it <= threshold }
     }
   }
 }
