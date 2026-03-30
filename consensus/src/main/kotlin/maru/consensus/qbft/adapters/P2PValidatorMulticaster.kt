@@ -43,7 +43,7 @@ class P2PValidatorMulticaster(
           log.debug("No gossip peers subscribed to QBFT topic, message not delivered")
           null
         } else {
-          e
+          throw e
         }
       }.get()
   }
