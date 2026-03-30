@@ -69,8 +69,8 @@ chaos-experiment-workflow-and-wait:
 	@$(MAKE) wait-all-running
 
 chaos-experiment-multi-validator-latency-%-and-wait:
-	# Clean up any NetworkChaos left from a previous run
-	-@kubectl --kubeconfig $(KUBECONFIG) delete networkchaos multi-validator-latency-$* \
+	# Clean up ALL NetworkChaos resources left from any previous experiment
+	-@kubectl --kubeconfig $(KUBECONFIG) delete networkchaos --all \
 		-n chaos-mesh --wait=true >/dev/null 2>&1 || true
 	# Kill validators to reset in-memory Micrometer metrics to zero
 	@kubectl --kubeconfig $(KUBECONFIG) -n $(NAMESPACE) delete pods \

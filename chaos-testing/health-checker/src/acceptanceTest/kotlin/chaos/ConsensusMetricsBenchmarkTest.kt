@@ -65,21 +65,15 @@ class ConsensusMetricsBenchmarkTest {
     val count: Long,
     val sum: Double,
     val max: Double,
-    /** le → cumulative observation count (Prometheus histogram convention). */
-    val buckets: Map<Double, Long>,
+    /** Exact quantile values published by Micrometer (quantile label → value). */
+    val quantiles: Map<Double, Double>,
   ) {
     val mean: Double
       get() = if (count > 0) sum / count else 0.0
 
-    /** Estimates the [p]-th percentile from cumulative histogram buckets. */
+    /** Returns the exact [p]-th percentile from pre-computed quantile values. */
     fun percentile(p: Double): Double {
-      if (count == 0L || buckets.isEmpty()) return 0.0
-      val target = p * count
-      return buckets.entries
-        .sortedBy { it.key }
-        .filter { !it.key.isInfinite() }
-        .firstOrNull { it.value >= target }
-        ?.key ?: max
+      return quantiles[p] ?: 0.0
     }
   }
 
@@ -152,15 +146,15 @@ class ConsensusMetricsBenchmarkTest {
         .firstOrNull { (k, _) -> k.first == "${metricName}_max" && matchesRole(k.second) }
         ?.value ?: 0.0
 
-    val buckets =
+    val quantiles =
       samples.entries
-        .filter { (k, _) -> k.first == "${metricName}_bucket" && matchesRole(k.second) }
+        .filter { (k, _) -> k.first == metricName && matchesRole(k.second) && k.second.containsKey("quantile") }
         .associate { (k, v) ->
-          val le = k.second["le"]?.toDoubleOrNull() ?: Double.POSITIVE_INFINITY
-          le to v.toLong()
+          val quantile = k.second["quantile"]?.toDoubleOrNull() ?: 0.0
+          quantile to v
         }
 
-    return HistogramData(count = count, sum = sum, max = max, buckets = buckets)
+    return HistogramData(count = count, sum = sum, max = max, quantiles = quantiles)
   }
 
   // ── cross-pod aggregation ──────────────────────────────────────────────────
@@ -170,14 +164,29 @@ class ConsensusMetricsBenchmarkTest {
    * Counts/sums are summed; max is the global max;
    * histogram buckets are merged by summing cumulative counts at each le boundary.
    */
+  /**
+   * Merges per-pod [HistogramData] into a single aggregate.
+   * Counts/sums are summed; max is the global max;
+   * quantiles are averaged across pods (weighted by count).
+   */
   private fun mergeHistograms(data: List<HistogramData>): HistogramData? {
     if (data.isEmpty()) return null
     val totalCount = data.sumOf { it.count }
     val totalSum = data.sumOf { it.sum }
     val totalMax = data.maxOf { it.max }
-    val allLes = data.flatMap { it.buckets.keys }.toSortedSet()
-    val mergedBuckets = allLes.associateWith { le -> data.sumOf { it.buckets[le] ?: 0L } }
-    return HistogramData(count = totalCount, sum = totalSum, max = totalMax, buckets = mergedBuckets)
+    val allQuantileKeys = data.flatMap { it.quantiles.keys }.toSortedSet()
+    val mergedQuantiles =
+      allQuantileKeys.associateWith { q ->
+        data.filter { it.quantiles.containsKey(q) && it.count > 0 }
+          .let { pods ->
+            if (pods.isEmpty()) {
+              0.0
+            } else {
+              pods.sumOf { it.quantiles[q]!! * it.count } / pods.sumOf { it.count }
+            }
+          }
+      }
+    return HistogramData(count = totalCount, sum = totalSum, max = totalMax, quantiles = mergedQuantiles)
   }
 
   // ── test entry point ───────────────────────────────────────────────────────
@@ -271,14 +280,18 @@ class ConsensusMetricsBenchmarkTest {
 
       val merged = mergeHistograms(perPodData) ?: continue
 
+      val quantileStr =
+        merged.quantiles.entries
+          .sortedBy { it.key }
+          .joinToString(" ") { (q, v) -> "p${(q * 100).toInt()}=${"%.1fms".format(v)}" }
       log.info(
-        "  {} [{}] (n={}, pods={}): mean={} p95={} max={}",
+        "  {} [{}] (n={}, pods={}): mean={} {} max={}",
         metric.promName,
         role,
         merged.count,
         perPodData.size,
         "%.1fms".format(merged.mean),
-        "%.1fms".format(merged.percentile(0.95)),
+        quantileStr,
         "%.1fms".format(merged.max),
       )
     }

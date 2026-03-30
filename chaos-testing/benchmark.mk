@@ -49,22 +49,12 @@ chaos-multi-validator-latency-experiment-%:
 	@$(MAKE) chaos-collect-consensus-metrics experiment_latency=$*
 	-@kubectl --kubeconfig $(KUBECONFIG) delete networkchaos multi-validator-latency-$* -n chaos-mesh --wait=false >/dev/null 2>&1 || true
 
-# ── Sweep: assumes cluster already up ─────────────────────────────────────────
+# ── Sweep: idempotent, works from any state ───────────────────────────────────
 
-# Deploy local maru once, then run latency experiments from 50ms to 400ms (step 50ms).
-# Each experiment restarts validators (metric reset) then runs for experiment_duration.
-# K3S and chaos-mesh must already be running.
+# Full reset (K3S + chaos-mesh + local maru build + deploy), then run latency sweep.
+# Idempotent: creates K3S if missing, resets if already running.
 # Usage: make chaos-multi-validator-local-latency-sweep [experiment_duration=10m]
 chaos-multi-validator-local-latency-sweep:
-	@$(MAKE) chaos-multi-validator-deploy-local
-	@$(MAKE) chaos-latency-sweep-experiments
-
-# ── Sweep: full reset from scratch ────────────────────────────────────────────
-
-# Full reset (K3S + chaos-mesh + local maru build + deploy), then run the latency sweep.
-# Use this to start a series of experiments on a clean slate.
-# Usage: make chaos-multi-validator-local-latency-sweep-fresh [experiment_duration=10m]
-chaos-multi-validator-local-latency-sweep-fresh:
 	@$(MAKE) chaos-multi-validator-full-reload-local
 	@$(MAKE) chaos-latency-sweep-experiments
 
