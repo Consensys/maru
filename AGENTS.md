@@ -29,7 +29,7 @@ For every PR, update `CHANGELOG.md` under the appropriate section:
 - `### Breaking Changes` — for breaking changes (conventional commit `!` or `BREAKING CHANGE`)
 - `### Additions and Improvements` — for new features (`feat`)
 - `### Bug Fixes` — for bug fixes (`fix`)
-- Prefix chore/test-only changes with `chore:` and keep them brief
+- Omit chore, test, benchmark, and other non-production changes entirely
 
 Write from the user's perspective: describe the observable behavior change, not internal implementation details. Omit class names, method names, and internal wiring unless they are part of the public API or config surface.
 
