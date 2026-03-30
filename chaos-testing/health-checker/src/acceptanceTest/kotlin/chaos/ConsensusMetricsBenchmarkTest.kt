@@ -72,12 +72,8 @@ class ConsensusMetricsBenchmarkTest {
       get() = if (count > 0) sum / count else 0.0
 
     /** Returns the exact [p]-th percentile from pre-computed quantile values. */
-    fun percentile(p: Double): Double {
-      return quantiles[p] ?: 0.0
-    }
+    fun percentile(p: Double): Double = quantiles[p] ?: 0.0
   }
-
-  // ── Prometheus text-format parser ──────────────────────────────────────────
 
   /**
    * Parses Prometheus text exposition format into a flat map of (metricName, labelMap) → value.
@@ -164,11 +160,6 @@ class ConsensusMetricsBenchmarkTest {
    * Counts/sums are summed; max is the global max;
    * histogram buckets are merged by summing cumulative counts at each le boundary.
    */
-  /**
-   * Merges per-pod [HistogramData] into a single aggregate.
-   * Counts/sums are summed; max is the global max;
-   * quantiles are averaged across pods (weighted by count).
-   */
   private fun mergeHistograms(data: List<HistogramData>): HistogramData? {
     if (data.isEmpty()) return null
     val totalCount = data.sumOf { it.count }
@@ -177,7 +168,8 @@ class ConsensusMetricsBenchmarkTest {
     val allQuantileKeys = data.flatMap { it.quantiles.keys }.toSortedSet()
     val mergedQuantiles =
       allQuantileKeys.associateWith { q ->
-        data.filter { it.quantiles.containsKey(q) && it.count > 0 }
+        data
+          .filter { it.quantiles.containsKey(q) && it.count > 0 }
           .let { pods ->
             if (pods.isEmpty()) {
               0.0
