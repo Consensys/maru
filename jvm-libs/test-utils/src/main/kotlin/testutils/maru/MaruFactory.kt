@@ -232,7 +232,10 @@ class MaruFactory(
   ): MaruConfig {
     val lineaConfig =
       overridingLineaContractClient?.let {
-        val l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl!!).toURL())
+        requireNotNull(ethereumJsonRpcUrl) {
+          "ethereumJsonRpcUrl must not be null when overridingLineaContractClient is provided"
+        }
+        val l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL())
         LineaConfig(
           contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
           l1EthApiEndpoint = l2EthApiEndpoint, // Just a stub. Isn't actually used with the override
@@ -240,11 +243,14 @@ class MaruFactory(
           l2EthApiEndpoint = l2EthApiEndpoint,
         )
       } ?: l1EthApiEndpoint?.let {
+        requireNotNull(ethereumJsonRpcUrl) {
+          "ethereumJsonRpcUrl must not be null when l1EthApiEndpoint is provided"
+        }
         LineaConfig(
           contractAddress = ByteArray(20), // dummy address — fake L1 ignores it
           l1EthApiEndpoint = ApiEndpointConfig(URI.create(it).toURL()),
           l1PollingInterval = 100.milliseconds,
-          l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl!!).toURL()),
+          l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
         )
       }
 

@@ -9,7 +9,8 @@
 package testutils
 
 import io.javalin.Javalin
-import java.util.concurrent.atomic.AtomicLong
+import java.math.BigInteger
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Minimal fake L1 JSON-RPC server for integration tests.
@@ -25,9 +26,9 @@ class FakeL1JsonRpcServer {
     private val ID_REGEX = Regex(""""id"\s*:\s*(\w+)""")
   }
 
-  private val finalizedBlockNumber = AtomicLong(0)
+  private val finalizedBlockNumber = AtomicReference(0UL)
 
-  fun setFinalizedL2BlockNumber(n: ULong) = finalizedBlockNumber.set(n.toLong())
+  fun setFinalizedL2BlockNumber(n: ULong) = finalizedBlockNumber.set(n)
 
   private val javalin =
     Javalin
@@ -44,11 +45,11 @@ class FakeL1JsonRpcServer {
             }
 
             "eth_call" -> {
-              // ABI-encoded uint256: 32-byte big-endian
+              // ABI-encoded uint256: 32-byte big-endian.
+              // Use java.lang.Long.toUnsignedString to avoid sign-extension when the
+              // ULong value exceeds Long.MAX_VALUE.
               val hex =
-                finalizedBlockNumber
-                  .get()
-                  .toBigInteger()
+                BigInteger(java.lang.Long.toUnsignedString(finalizedBlockNumber.get().toLong()))
                   .toString(16)
                   .padStart(64, '0')
               """"0x$hex""""
