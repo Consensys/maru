@@ -8,6 +8,5 @@
 
 ### Bug Fixes
 
-- Fix for the #506 Upgraded Hyperledger Besu from 25.11.0 to 26.2.0 to fix `NoClassDefFoundError:
-org/web3j/abi/datatypes/CustomError`
+- Fixed #506: upgraded Hyperledger Besu from 25.11.0 to 26.2.0 to resolve `NoClassDefFoundError: org/web3j/abi/datatypes/CustomError`.
 
