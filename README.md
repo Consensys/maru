@@ -53,7 +53,7 @@ releasing a new version of Maru! ⚠️
   * fix = patch version update
 * MAJOR.MINOR.PATCH should be incremented manually. Changelog and conventional commits are aimed to help to make it easy
 * Tag the latest commit on main with the new version, like `git tag v2.0.1` or `v2.0.1-major-upgrade`
-* Push tag to main with git push --tags
+* Push tag to main with `git push --tags`
 * This will trigger a release draft with the distributive artifact created, and it will push a new docker image to
 Dockerhub. `-<date>-<commit-hash>` suffix is added to the actual docker image and archive distribution like
   `v2.0.1-betav4-20251027155452-cd25bfd`
