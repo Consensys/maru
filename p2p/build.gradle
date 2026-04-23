@@ -40,8 +40,8 @@ dependencies {
   implementation "org.hyperledger.besu.internal:besu-ethereum-p2p"
   implementation "org.hyperledger.besu.internal:besu-consensus-qbft-core"
 
-  implementation "io.tmio:tuweni-crypto"
-  implementation "io.tmio:tuweni-rlp"
+  implementation "io.consensys.tuweni:tuweni-crypto"
+  implementation "io.consensys.tuweni:tuweni-rlp"
 
   implementation "build.linea.internal:metrics"
   implementation "build.linea.internal:futures"
