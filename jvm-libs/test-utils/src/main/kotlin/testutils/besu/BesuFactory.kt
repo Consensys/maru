@@ -13,6 +13,7 @@ import java.util.Optional
 import kotlin.jvm.optionals.getOrDefault
 import kotlin.random.Random
 import linea.kotlin.encodeHex
+import org.hyperledger.besu.consensus.qbft.QbftExtraDataCodec
 import org.hyperledger.besu.crypto.KeyPairUtil
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration
 import org.hyperledger.besu.ethereum.core.AddressHelpers
@@ -31,8 +32,14 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
+  private const val QBFT_LONDON_GENESIS = "/qbft/qbft-london.json"
   const val MIN_BLOCK_TIME = 1L
   const val BLOCK_REBUILD_TIME = 15L
+
+  private val qbftLondonGenesisTemplate: String by lazy {
+    BesuFactory::class.java.getResourceAsStream(QBFT_LONDON_GENESIS)?.use { it.reader().readText() }
+      ?: error("Missing resource $QBFT_LONDON_GENESIS (from Besu acceptance tests)")
+  }
 
   fun buildTestBesu(
     genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS),
@@ -104,6 +111,80 @@ object BesuFactory {
         builder
           .miningConfiguration(miningConfigBuilder.build())
           .keyPair(defaultSigner)
+      } else {
+        builder.miningConfiguration(miningConfigBuilder.build())
+      }
+    }
+
+  /**
+   * In-process Besu nodes using QBFT consensus with a genesis built from
+   * [GenesisConfigurationFactory.createQbftLondonGenesisConfig] once all cluster nodes are known.
+   * Besu 26.3+ no longer seals Clique blocks; QBFT is used for multi-node EL tests instead.
+   */
+  fun buildTestBesuQbftCluster(
+    nodeName: String,
+    miningEnabled: Boolean = true,
+    engineRpcPort: Optional<Int> = Optional.empty(),
+    jsonRpcPort: Optional<Int> = Optional.empty(),
+  ): BesuNode =
+    BesuNodeFactory().createNode(nodeName) { builder: BesuNodeConfigurationBuilder ->
+      val persistentStorageFactory: KeyValueStorageFactory =
+        RocksDBKeyValueStorageFactory(
+          RocksDBCLIOptions.create()::toDomainObject,
+          KeyValueSegmentIdentifier.entries,
+          RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS,
+        )
+
+      val engineRpcConfig = JsonRpcConfiguration.createEngineDefault()
+      engineRpcConfig.setEnabled(true)
+      engineRpcConfig.setPort(engineRpcPort.getOrDefault(0))
+      engineRpcConfig.host = "127.0.0.1"
+      engineRpcConfig.setHostsAllowlist(singletonList("*"))
+      engineRpcConfig.setAuthenticationEnabled(false)
+
+      val jsonRpcConfig = JsonRpcConfiguration.createDefault()
+      jsonRpcConfig.setEnabled(true)
+      jsonRpcConfig.setPort(jsonRpcPort.getOrDefault(0))
+      jsonRpcConfig.setHostsAllowlist(singletonList("*"))
+
+      builder
+        .storageImplementation(persistentStorageFactory)
+        .genesisConfigProvider { nodes ->
+          val sorted = nodes.sortedBy { it.name }
+          val addresses = sorted.map { it.address }
+          val extraData = QbftExtraDataCodec.createGenesisExtraDataString(addresses)
+          Optional.of(qbftLondonGenesisTemplate.replace("%extraData%", extraData))
+        }.devMode(false)
+        .discoveryEnabled(true)
+        .engineJsonRpcConfiguration(engineRpcConfig)
+        .jsonRpcConfiguration(jsonRpcConfig)
+        .synchronizerConfiguration(
+          SynchronizerConfiguration
+            .builder()
+            .syncMinimumPeerCount(1)
+            .build(),
+        )
+
+      val miningConfigBuilder =
+        ImmutableMiningConfiguration
+          .builder()
+          .unstable(
+            ImmutableMiningConfiguration.Unstable
+              .builder()
+              .posBlockFinalizationTimeoutMs(10)
+              .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
+              .build(),
+          )
+
+      if (miningEnabled) {
+        miningConfigBuilder.mutableInitValues(
+          MutableInitValues
+            .builder()
+            .coinbase(AddressHelpers.ofValue(1))
+            .isMiningEnabled(true)
+            .build(),
+        )
+        builder.miningConfiguration(miningConfigBuilder.build())
       } else {
         builder.miningConfiguration(miningConfigBuilder.build())
       }
