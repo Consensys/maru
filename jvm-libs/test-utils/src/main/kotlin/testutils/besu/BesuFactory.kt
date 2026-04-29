@@ -17,6 +17,7 @@ import org.hyperledger.besu.consensus.qbft.QbftExtraDataCodec
 import org.hyperledger.besu.crypto.KeyPairUtil
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration
 import org.hyperledger.besu.ethereum.core.AddressHelpers
+import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration.MutableInitValues
 import org.hyperledger.besu.ethereum.eth.sync.SynchronizerConfiguration
@@ -33,6 +34,12 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
   private const val QBFT_LONDON_GENESIS = "/qbft/qbft-london.json"
+
+  private val elPragueCliqueConsensusJson: Regex =
+    Regex(
+      """"clique"\s*:\s*\{\s*"createemptyblocks"\s*:\s*false\s*,\s*"blockperiodseconds"\s*:\s*1\s*,\s*"epochlength"\s*:\s*1\s*\}""",
+    )
+
   const val MIN_BLOCK_TIME = 1L
   const val BLOCK_REBUILD_TIME = 15L
 
@@ -47,6 +54,7 @@ object BesuFactory {
     engineRpcPort: Optional<Int> = Optional.empty(),
     jsonRpcPort: Optional<Int> = Optional.empty(),
     nodeName: String = "miner-${Random.nextBytes(4).encodeHex(false)}",
+    syncMinimumPeerCount: Int = 1,
   ): BesuNode =
     BesuNodeFactory().createNode(nodeName) { builder: BesuNodeConfigurationBuilder ->
       val persistentStorageFactory: KeyValueStorageFactory =
@@ -81,7 +89,7 @@ object BesuFactory {
         .synchronizerConfiguration(
           SynchronizerConfiguration
             .builder()
-            .syncMinimumPeerCount(1)
+            .syncMinimumPeerCount(syncMinimumPeerCount)
             .build(),
         )
 
@@ -189,6 +197,61 @@ object BesuFactory {
         builder.miningConfiguration(miningConfigBuilder.build())
       }
     }
+
+  /**
+   * Merge-ready Prague genesis with **QBFT** pre-merge consensus (same fork timestamps / TTD wiring as
+   * [buildSwitchableBesu]); genesis `extraData` lists the default test signer as the sole QBFT validator,
+   * matching [buildTestBesu] when `validator` is true.
+   */
+  fun buildSwitchableBesuQbft(
+    pragueTimestamp: ULong = 0UL,
+    cancunTimestamp: ULong = pragueTimestamp,
+    shanghaiTimestamp: ULong = cancunTimestamp,
+    ttd: ULong = 0UL,
+    validator: Boolean,
+  ): BesuNode {
+    val genesisContent =
+      BesuFactory::class.java
+        .getResourceAsStream(PRAGUE_GENESIS)
+        ?.bufferedReader()
+        ?.use { it.readText() }
+        ?: throw IllegalStateException("Could not read genesis file: $PRAGUE_GENESIS")
+
+    val qbftConsensusBlock =
+      """
+          "qbft": {
+            "blockperiodseconds": 1,
+            "epochlength": 30000,
+            "requesttimeoutseconds": 5,
+            "blockreward": "5000000000000000000"
+          }
+      """.trimIndent()
+
+    val withQbft =
+      genesisContent
+        .replace(elPragueCliqueConsensusJson, qbftConsensusBlock)
+        .replace(Regex(""""extraData"\s*:\s*"0x[0-9a-fA-F]+""""), """"extraData": "%extraData%"""")
+    require(withQbft.contains("\"qbft\"")) { "Clique→QBFT genesis rewrite failed: missing qbft config" }
+    require(!withQbft.contains("\"clique\"")) { "Clique→QBFT genesis rewrite failed: clique still present" }
+
+    val genesisWithForks =
+      withQbft
+        .replace("\"shanghaiTime\": 0", "\"shanghaiTime\": $shanghaiTimestamp")
+        .replace("\"cancunTime\": 0", "\"cancunTime\": $cancunTimestamp")
+        .replace("\"pragueTime\": 0", "\"pragueTime\": $pragueTimestamp")
+        .replace("\"terminalTotalDifficulty\": 0", "\"terminalTotalDifficulty\": $ttd")
+
+    val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
+    val validatorAddress = Util.publicKeyToAddress(defaultSigner.publicKey)
+    val extraDataHex = QbftExtraDataCodec.createGenesisExtraDataString(listOf(validatorAddress))
+    val genesisFile = genesisWithForks.replace("%extraData%", extraDataHex)
+
+    return buildTestBesu(
+      genesisFile = genesisFile,
+      validator = validator,
+      syncMinimumPeerCount = 0,
+    )
+  }
 
   fun buildSwitchableBesu(
     pragueTimestamp: ULong = 0UL,
