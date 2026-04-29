@@ -17,9 +17,9 @@ import org.hyperledger.besu.consensus.qbft.QbftExtraDataCodec
 import org.hyperledger.besu.crypto.KeyPairUtil
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration
 import org.hyperledger.besu.ethereum.core.AddressHelpers
-import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration.MutableInitValues
+import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.ethereum.eth.sync.SynchronizerConfiguration
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorageFactory
@@ -219,12 +219,12 @@ object BesuFactory {
 
     val qbftConsensusBlock =
       """
-          "qbft": {
-            "blockperiodseconds": 1,
-            "epochlength": 30000,
-            "requesttimeoutseconds": 5,
-            "blockreward": "5000000000000000000"
-          }
+      "qbft": {
+        "blockperiodseconds": 1,
+        "epochlength": 30000,
+        "requesttimeoutseconds": 5,
+        "blockreward": "5000000000000000000"
+      }
       """.trimIndent()
 
     val withQbft =
