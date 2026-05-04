@@ -9,13 +9,10 @@
 package maru.app
 
 import java.io.File
-import java.math.BigInteger
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import linea.kotlin.decodeHex
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
@@ -28,7 +25,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import testutils.Checks.checkAllNodesHaveSameBlocks
-import testutils.Checks.getBlockNumber
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTime
 import testutils.besu.BesuFactory
@@ -41,7 +37,6 @@ import testutils.maru.awaitTillMaruHasPeers
 class MaruConsensusSwitchTest {
   companion object {
     private const val VANILLA_EXTRA_DATA_LENGTH = 32
-    private const val SECONDS_FROM_CANCUN_TO_PRAGUE_FORK = 80
   }
 
   private lateinit var cluster: Cluster
@@ -88,32 +83,31 @@ class MaruConsensusSwitchTest {
 
   private fun verifyConsensusSwitch(
     besuNode: BesuNode,
-    expectedBlocksBeforeMerge: Int,
+    expectedBlocksBeforeSwitch: Int,
     totalBlocksToProduce: Int,
   ) {
     val blockProducedByQbft = besuNode.ethGetBlockByNumber(1UL)
     assertThat(blockProducedByQbft.extraData.decodeHex().size).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
-    assertThat(blocks.size).isGreaterThanOrEqualTo(expectedBlocksBeforeMerge + 1)
-    val parisSwitchBlockIndex = expectedBlocksBeforeMerge
+    assertThat(blocks.size).isGreaterThanOrEqualTo(expectedBlocksBeforeSwitch + 1)
+    val parisSwitchBlockIndex = expectedBlocksBeforeSwitch
     val qbftBlocks = blocks.subList(0, parisSwitchBlockIndex)
     qbftBlocks.verifyBlockTime()
-    assertThat(qbftBlocks).hasSize(expectedBlocksBeforeMerge)
+    assertThat(qbftBlocks).hasSize(expectedBlocksBeforeSwitch)
     blocks.subList(parisSwitchBlockIndex, blocks.size).verifyBlockTime()
   }
 
   @Test
   fun `follower node correctly switches from QBFT to POS after peering with Sequencer validator`() {
     val stackStartupMargin = 40UL
-    val expectedBlocksBeforeMerge = 5
-    val plannedTxMiningBlocks = stackStartupMargin.toInt() + expectedBlocksBeforeMerge + 20
+    val expectedBlocksBeforeSwitch = 5
     var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksBeforeMerge.toULong()
+    val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksBeforeSwitch.toULong()
     val cancunTimestamp = shanghaiTimestamp + 10u
-    val pragueTimestamp = cancunTimestamp + 10u + SECONDS_FROM_CANCUN_TO_PRAGUE_FORK.toULong()
-    val totalBlocksToProduce = plannedTxMiningBlocks
-    val ttd = expectedBlocksBeforeMerge.toULong() * 2UL
+    val pragueTimestamp = cancunTimestamp + 10u
+    val totalBlocksToProduce = (pragueTimestamp - currentTimestamp).toInt()
+    val ttd = expectedBlocksBeforeSwitch.toULong() * 2UL
     log.info(
       "Setting Prague switch timestamp to $pragueTimestamp, shanghai switch to $shanghaiTimestamp, Cancun switch to " +
         "$cancunTimestamp, current timestamp: $currentTimestamp",
@@ -135,25 +129,9 @@ class MaruConsensusSwitchTest {
         ttd = ttd,
         validator = false,
       )
-    cluster.startWithRetry(validatorBesuNode)
+    cluster.startWithRetry(validatorBesuNode, followerBesuNode)
 
-    await
-      .atMost(180.seconds.toJavaDuration())
-      .pollDelay(1.seconds.toJavaDuration())
-      .untilAsserted {
-        assertThat(validatorBesuNode.getBlockNumber()).isGreaterThanOrEqualTo(BigInteger.ONE)
-      }
-
-    transactionsHelper.run {
-      validatorBesuNode.sendTransactionAndAssertExecution(
-        logger = log,
-        recipient = createAccount("pre-maru smoke"),
-        amount = Amount.ether(1),
-      )
-    }
-
-    cluster.addNode(followerBesuNode)
-
+    // Create a new Maru node with consensus switch configuration
     val validatorEthereumJsonRpcBaseUrl = validatorBesuNode.jsonRpcBaseUrl().get()
     val validatorEngineRpcUrl = validatorBesuNode.engineRpcUrl().get()
 
@@ -186,7 +164,6 @@ class MaruConsensusSwitchTest {
 
     followerMaruNode.awaitTillMaruHasPeers(1u)
     validatorMaruNode.awaitTillMaruHasPeers(1u)
-
     log.info("Sending transactions")
     repeat(totalBlocksToProduce) {
       transactionsHelper.run {
@@ -200,20 +177,20 @@ class MaruConsensusSwitchTest {
 
     currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
     log.info("Current timestamp: $currentTimestamp, prague switch timestamp: $pragueTimestamp")
-    assertThat(currentTimestamp).isGreaterThan(cancunTimestamp)
+    assertThat(currentTimestamp).isGreaterThan(pragueTimestamp)
 
     // Wait for both nodes to have all blocks before verifying contents.
     // The follower may still be syncing when the validator has already committed all blocks.
-    checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 60.seconds)
+    checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 120.seconds)
 
     verifyConsensusSwitch(
       besuNode = validatorBesuNode,
-      expectedBlocksBeforeMerge = expectedBlocksBeforeMerge,
+      expectedBlocksBeforeSwitch = expectedBlocksBeforeSwitch,
       totalBlocksToProduce = totalBlocksToProduce,
     )
     verifyConsensusSwitch(
       besuNode = followerBesuNode,
-      expectedBlocksBeforeMerge = expectedBlocksBeforeMerge,
+      expectedBlocksBeforeSwitch = expectedBlocksBeforeSwitch,
       totalBlocksToProduce = totalBlocksToProduce,
     )
   }

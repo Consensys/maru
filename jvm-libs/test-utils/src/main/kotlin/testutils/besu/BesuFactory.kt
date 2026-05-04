@@ -35,11 +35,6 @@ object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
   private const val QBFT_LONDON_GENESIS = "/qbft/qbft-london.json"
 
-  private val elPragueCliqueConsensusJson: Regex =
-    Regex(
-      """"clique"\s*:\s*\{\s*"createemptyblocks"\s*:\s*false\s*,\s*"blockperiodseconds"\s*:\s*1\s*,\s*"epochlength"\s*:\s*1\s*\}""",
-    )
-
   const val MIN_BLOCK_TIME = 1L
   const val BLOCK_REBUILD_TIME = 15L
 
@@ -198,6 +193,11 @@ object BesuFactory {
       }
     }
 
+  private val elPragueCliqueConsensusJson: Regex =
+    Regex(
+      """"clique"\s*:\s*\{\s*"createemptyblocks"\s*:\s*false\s*,\s*"blockperiodseconds"\s*:\s*1\s*,\s*"epochlength"\s*:\s*1\s*\}""",
+    )
+
   /**
    * Merge-ready Prague genesis with **QBFT** pre-merge consensus (same fork timestamps / TTD wiring as
    * [buildSwitchableBesu]); genesis `extraData` lists the default test signer as the sole QBFT validator,
@@ -211,12 +211,7 @@ object BesuFactory {
     validator: Boolean,
   ): BesuNode {
     val genesisContent =
-      BesuFactory::class.java
-        .getResourceAsStream(PRAGUE_GENESIS)
-        ?.bufferedReader()
-        ?.use { it.readText() }
-        ?: throw IllegalStateException("Could not read genesis file: $PRAGUE_GENESIS")
-
+      GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS)
     val qbftConsensusBlock =
       """
       "qbft": {
@@ -251,28 +246,5 @@ object BesuFactory {
       validator = validator,
       syncMinimumPeerCount = 0,
     )
-  }
-
-  fun buildSwitchableBesu(
-    pragueTimestamp: ULong = 0UL,
-    cancunTimestamp: ULong = pragueTimestamp,
-    shanghaiTimestamp: ULong = cancunTimestamp,
-    ttd: ULong = 0UL,
-    validator: Boolean,
-  ): BesuNode {
-    val genesisContent =
-      BesuFactory::class.java
-        .getResourceAsStream(PRAGUE_GENESIS)
-        ?.bufferedReader()
-        ?.use { it.readText() }
-        ?: throw IllegalStateException("Could not read genesis file: $PRAGUE_GENESIS")
-
-    val genesisFile =
-      genesisContent
-        .replace("\"shanghaiTime\": 0", "\"shanghaiTime\": $shanghaiTimestamp")
-        .replace("\"cancunTime\": 0", "\"cancunTime\": $cancunTimestamp")
-        .replace("\"pragueTime\": 0", "\"pragueTime\": $pragueTimestamp")
-        .replace("\"terminalTotalDifficulty\": 0", "\"terminalTotalDifficulty\": $ttd")
-    return buildTestBesu(genesisFile = genesisFile, validator = validator)
   }
 }

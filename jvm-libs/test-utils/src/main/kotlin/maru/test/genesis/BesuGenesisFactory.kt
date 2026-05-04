@@ -24,6 +24,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 class BesuGenesisFactory(
   val genesisTemplate: String = genesisTemplateLondonWithoutConsensus,
   val blockPeriodSeconds: UInt = 1u,
+  val createEmptyBlocks: Boolean = true,
 ) {
   private var forkSchedule: ForksSchedule? = null
 
@@ -39,6 +40,7 @@ class BesuGenesisFactory(
     return createGenesisWithQBFT(
       genesisTemplate,
       blockPeriodSeconds,
+      createEmptyBlocks,
       forkSchedule!!,
     )
   }
@@ -48,15 +50,12 @@ class BesuGenesisFactory(
       GenesisConfigurationFactory.readGenesisFile("/besu-genesis-template.json")
     private val jsonObjectMapper: ObjectMapper = jacksonObjectMapper()
 
-    /**
-     * Builds EL genesis JSON with **QBFT** consensus: `config.qbft`, merge/fork fields as supplied,
-     * and `extraData` for the default test signer (same key as [testutils.besu.BesuFactory] validators).
-     */
     fun createGenesisWithQBFT(
       genesisTemplate: String = genesisTemplateLondonWithoutConsensus,
       chainId: ULong,
       blockPeriodSeconds: UInt,
       terminalTotalDifficulty: ULong? = null,
+      createEmptyBlocks: Boolean = true,
       shanghaiTimestamp: ULong? = null,
       cancunTimestamp: ULong? = null,
       pragueTimestamp: ULong? = null,
@@ -65,7 +64,7 @@ class BesuGenesisFactory(
       require(blockPeriodSeconds in 1u..60u) { "blockPeriodSeconds must be between 1 and 60 seconds" }
       var updatedGenesis = genesisTemplate
       updatedGenesis = setGenesisConfigProperty(updatedGenesis, "chainId", chainId)
-      updatedGenesis = applyQbftConsensusToGenesisJson(updatedGenesis, blockPeriodSeconds)
+      updatedGenesis = applyQbftConsensusToGenesisJson(updatedGenesis, blockPeriodSeconds, createEmptyBlocks)
 
       if (terminalTotalDifficulty != null) {
         updatedGenesis = setGenesisConfigProperty(updatedGenesis, "terminalTotalDifficulty", terminalTotalDifficulty)
@@ -91,6 +90,7 @@ class BesuGenesisFactory(
     fun createGenesisWithQBFT(
       genesisTemplate: String = genesisTemplateLondonWithoutConsensus,
       blockPeriodSeconds: UInt,
+      createEmptyBlocks: Boolean = true,
       forks: ForksSchedule,
     ): String {
       val terminalTotalDifficulty: ULong =
@@ -131,7 +131,7 @@ class BesuGenesisFactory(
               shanghaiTimestamp = forkSpec.timestampSeconds
             }
 
-            ElFork.Paris -> {}
+            ElFork.Paris -> {} // nothing to do, terminalTotalDifficulty already set
           }
         }
 
@@ -140,6 +140,7 @@ class BesuGenesisFactory(
         forks.chainId.toULong(),
         blockPeriodSeconds,
         terminalTotalDifficulty,
+        createEmptyBlocks,
         shanghaiTimestamp,
         cancunTimestamp,
         pragueTimestamp,
@@ -168,6 +169,7 @@ class BesuGenesisFactory(
       val nextFork =
         forks
           .firstOrNull { it.configuration.fork.elFork.version > elFork.version }
+      // when not explicitly set, is in between explicitly set forks, shall be same as the next fork
       if (nextFork != null && prevFork != null) {
         return nextFork.timestampSeconds
       }
@@ -178,6 +180,7 @@ class BesuGenesisFactory(
     private fun applyQbftConsensusToGenesisJson(
       genesis: String,
       blockPeriodSeconds: UInt,
+      createEmptyBlocks: Boolean,
     ): String {
       val rootNode = jsonObjectMapper.readTree(genesis) as ObjectNode
       val configNode = rootNode.get("config") as ObjectNode
@@ -187,6 +190,7 @@ class BesuGenesisFactory(
       qbftNode.put("epochlength", 30000L)
       qbftNode.put("requesttimeoutseconds", 5L)
       qbftNode.put("blockreward", "5000000000000000000")
+      qbftNode.put("xemptyblockperiodseconds", if (createEmptyBlocks) 0 else 10000)
       configNode.set<ObjectNode>("qbft", qbftNode)
       val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
       val validatorAddress = Util.publicKeyToAddress(defaultSigner.publicKey)

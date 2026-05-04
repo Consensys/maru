@@ -50,9 +50,9 @@ class BesuClusterTest {
     cluster =
       BesuCluster()
         .apply {
-          addNode(createBesu("besu-0", miningEnabled = true))
+          addNode(createBesu("besu-0"))
           addNode(createBesu("besu-1", miningEnabled = true))
-          addNode(createBesu("besu-2", miningEnabled = true))
+          addNode(createBesu("besu-2"))
           start(false)
         }
 
@@ -64,10 +64,11 @@ class BesuClusterTest {
 
     val node2 = cluster.nodes["besu-2"]!!
     cluster.stopNode("besu-2")
+    // it should throw if node was effectively stopped
     assertThrows<ConnectException> { node2.latestBlockNumber() }
 
-    val newBesu = createBesu("besu-new-0", miningEnabled = false)
-    cluster.addNodeAndStart(newBesu, awaitPeerDiscovery = false)
+    val newBesu = createBesu("besu-new-0")
+    cluster.addNodeAndStart(newBesu, awaitPeerDiscovery = true)
     await
       .atMost(120.seconds.toJavaDuration())
       .untilAsserted {
@@ -80,9 +81,9 @@ class BesuClusterTest {
     cluster =
       BesuCluster()
         .apply {
-          addNode(createBesu("besu-0", miningEnabled = true))
+          addNode(createBesu("besu-0"))
           addNode(createBesu("besu-1", miningEnabled = true))
-          addNode(createBesu("besu-2", miningEnabled = true))
+          addNode(createBesu("besu-2"))
           start(false)
         }
 
@@ -106,7 +107,7 @@ class BesuClusterTest {
     cluster =
       BesuCluster().apply {
         addNode(createBesu("sequencer", miningEnabled = true))
-        addNode(createBesu("follower-1", miningEnabled = true))
+        addNode(createBesu("follower-1"))
         start(false)
       }
 
@@ -120,6 +121,7 @@ class BesuClusterTest {
     val lastMinedBlock = sequencer.latestBlockNumber()
     cluster.stopNode("sequencer")
 
+    // it should throw if node was effectively stopped
     assertThrows<ConnectException> { sequencer.latestBlockNumber() }
     cluster.addNodeAndStart(sequencer)
 
