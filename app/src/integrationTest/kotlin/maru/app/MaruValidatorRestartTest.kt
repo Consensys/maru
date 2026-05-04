@@ -59,13 +59,7 @@ class MaruValidatorRestartTest {
     followerStack.maruApp.close()
     validatorStack.maruApp.stop().get()
     validatorStack.maruApp.close()
-    runCatching { cluster.close() }
-      .onFailure {
-        log.warn(
-          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-          it,
-        )
-      }
+    cluster.close()
   }
 
   @Test

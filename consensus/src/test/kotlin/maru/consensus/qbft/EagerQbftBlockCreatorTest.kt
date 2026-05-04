@@ -260,8 +260,10 @@ class EagerQbftBlockCreatorTest {
     val acceptedBlockTimestamp = (clock.millis() / 1000)
     eagerQbftBlockCreator.createBlock(acceptedBlockTimestamp, parentHeader)
 
-    // Verify that getLatestBlockHash() was called since parent block number is 0 (genesis)
-    verify(spyExecutionLayerManager).getLatestBlockHash()
+    // Verify that getLatestBlockMetadata() was called since parent block number is 0 (genesis):
+    // EagerQbftBlockCreator needs both the EL head hash and its timestamp to clamp
+    // payloadAttrs.timestamp strictly above the EL head's timestamp.
+    verify(spyExecutionLayerManager).getLatestBlockMetadata()
     verify(spyExecutionLayerManager).setHeadAndStartBlockBuilding(
       headHash = eq(latestExecutionLayerBlock.blockHash),
       safeHash = any(),

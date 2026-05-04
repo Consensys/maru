@@ -20,7 +20,7 @@
     "withdrawalRequestContractAddress": "0x0000000000000000000000000000000000009999",
     "consolidationRequestContractAddress": "0x0000000000000000000000000000000000009999",
     "qbft": {
-      "xemptyblockperiodseconds": 10000,
+      "xemptyblockperiodseconds": 2147483647,
       "blockperiodseconds": 1,
       "epochlength": 30000,
       "requesttimeoutseconds": 5,

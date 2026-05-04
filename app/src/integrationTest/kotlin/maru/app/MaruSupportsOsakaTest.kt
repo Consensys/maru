@@ -21,7 +21,6 @@ import maru.test.cluster.configureLoggers
 import maru.test.extensions.headBeaconBlockNumber
 import maru.test.extensions.headElBlock
 import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterEach
@@ -30,7 +29,6 @@ import org.junit.jupiter.api.Test
 
 class MaruSupportsOsakaTest {
   private lateinit var cluster: MaruCluster
-  private val log = LogManager.getLogger(this.javaClass)
 
   @BeforeEach
   fun beforeEach() {
@@ -47,13 +45,7 @@ class MaruSupportsOsakaTest {
   @AfterEach
   fun afterEach() {
     if (::cluster.isInitialized) {
-      runCatching { cluster.stop() }
-        .onFailure {
-          log.warn(
-            "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-            it,
-          )
-        }
+      cluster.stop()
     }
   }
 

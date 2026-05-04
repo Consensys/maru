@@ -104,13 +104,7 @@ class MaruValidatorTest {
     validatorStack.maruApp.stop().get()
     followerStack.maruApp.close()
     validatorStack.maruApp.close()
-    runCatching { cluster.close() }
-      .onFailure {
-        log.warn(
-          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-          it,
-        )
-      }
+    cluster.close()
   }
 
   @Test
@@ -134,13 +128,7 @@ class MaruValidatorTest {
     val engineRpcPort = oldBesuSequencer.engineJsonRpcPort
     val jsonRpcPort = oldBesuSequencer.jsonRpcPort
     println("Old sequencer jsonRpcPort=$jsonRpcPort, engineRpcPort=$engineRpcPort")
-    runCatching { cluster.stopNode(oldBesuSequencer) }
-      .onFailure {
-        log.warn(
-          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-          it,
-        )
-      }
+    cluster.stopNode(oldBesuSequencer)
     oldBesuSequencer.stop()
     oldBesuSequencer.close()
 
@@ -195,13 +183,7 @@ class MaruValidatorTest {
     val engineRpcPort = oldBesuSequencer.engineJsonRpcPort
     val jsonRpcPort = oldBesuSequencer.jsonRpcPort
     println("Old sequencer jsonRpcPort=$jsonRpcPort, engineRpcPort=$engineRpcPort")
-    runCatching { cluster.stopNode(oldBesuSequencer) }
-      .onFailure {
-        log.warn(
-          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-          it,
-        )
-      }
+    cluster.stopNode(oldBesuSequencer)
     oldBesuSequencer.stop()
     oldBesuSequencer.close()
 

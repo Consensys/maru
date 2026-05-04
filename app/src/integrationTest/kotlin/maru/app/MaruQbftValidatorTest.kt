@@ -77,13 +77,7 @@ class MaruQbftValidatorTest {
   fun tearDown() {
     networkParticipantStack.maruApp.stop().get()
     networkParticipantStack.maruApp.close()
-    runCatching { cluster.close() }
-      .onFailure {
-        log.warn(
-          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-          it,
-        )
-      }
+    cluster.close()
   }
 
   @Test
@@ -198,13 +192,7 @@ class MaruQbftValidatorTest {
         )
       }
     }
-    runCatching { cluster.stop() }
-      .onFailure {
-        log.warn(
-          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-          it,
-        )
-      }
+    cluster.stop()
     Thread.sleep(3000)
     cluster.startWithRetry(networkParticipantStack.besuNode)
 

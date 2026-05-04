@@ -190,7 +190,7 @@ class BesuGenesisFactory(
       qbftNode.put("epochlength", 30000L)
       qbftNode.put("requesttimeoutseconds", 5L)
       qbftNode.put("blockreward", "5000000000000000000")
-      qbftNode.put("xemptyblockperiodseconds", if (createEmptyBlocks) 0 else 10000)
+      qbftNode.put("xemptyblockperiodseconds", if (createEmptyBlocks) 0 else Int.MAX_VALUE)
       configNode.set<ObjectNode>("qbft", qbftNode)
       val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
       val validatorAddress = Util.publicKeyToAddress(defaultSigner.publicKey)

@@ -24,6 +24,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.Checks.checkAllNodesHaveSameBlocks
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTime
@@ -72,13 +73,7 @@ class MaruConsensusSwitchTest {
     validatorMaruNode.stop().get()
     followerMaruNode.close()
     validatorMaruNode.close()
-    runCatching { cluster.close() }
-      .onFailure {
-        log.warn(
-          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-          it,
-        )
-      }
+    cluster.close()
   }
 
   private fun verifyConsensusSwitch(
@@ -91,10 +86,13 @@ class MaruConsensusSwitchTest {
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
     assertThat(blocks.size).isGreaterThanOrEqualTo(expectedBlocksBeforeSwitch + 1)
-    val parisSwitchBlockIndex = expectedBlocksBeforeSwitch
-    val qbftBlocks = blocks.subList(0, parisSwitchBlockIndex)
-    qbftBlocks.verifyBlockTime()
-    assertThat(qbftBlocks).hasSize(expectedBlocksBeforeSwitch)
+
+    val parisSwitchBlockIndex =
+      blocks.findSwitchBlock()
+        ?: error("Could not find a PoS block (difficulty=0) in the mined block list")
+    assertThat(parisSwitchBlockIndex).isEqualTo(expectedBlocksBeforeSwitch)
+
+    blocks.subList(0, parisSwitchBlockIndex).verifyBlockTime()
     blocks.subList(parisSwitchBlockIndex, blocks.size).verifyBlockTime()
   }
 
@@ -106,8 +104,16 @@ class MaruConsensusSwitchTest {
     val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksBeforeSwitch.toULong()
     val cancunTimestamp = shanghaiTimestamp + 10u
     val pragueTimestamp = cancunTimestamp + 10u
-    val totalBlocksToProduce = (pragueTimestamp - currentTimestamp).toInt()
-    val ttd = expectedBlocksBeforeSwitch.toULong() * 2UL
+
+    // Send one tx per ~1s block from now until shortly past pragueTimestamp so the chain actually
+    // traverses QBFT -> Paris -> Shanghai -> Cancun -> Prague during the test run.
+    val postPragueBuffer = 10UL
+    val totalBlocksToProduce = (pragueTimestamp + postPragueBuffer - currentTimestamp).toInt()
+
+    // QBFT genesis TD = 1 and each QBFT block adds difficulty 1, so block #N has TD = N + 1.
+    // Setting TTD = expectedBlocksBeforeSwitch + 1 makes that block the terminal PoW block,
+    // and the next block is the first PoS block driven by Maru.
+    val ttd = expectedBlocksBeforeSwitch.toULong() + 1UL
     log.info(
       "Setting Prague switch timestamp to $pragueTimestamp, shanghai switch to $shanghaiTimestamp, Cancun switch to " +
         "$cancunTimestamp, current timestamp: $currentTimestamp",
@@ -194,4 +200,10 @@ class MaruConsensusSwitchTest {
       totalBlocksToProduce = totalBlocksToProduce,
     )
   }
+
+  private fun List<EthBlock.Block>.findSwitchBlock(): Int? =
+    this
+      .indexOfFirst {
+        it.difficulty.toInt() == 0
+      }.takeIf { it != -1 }
 }

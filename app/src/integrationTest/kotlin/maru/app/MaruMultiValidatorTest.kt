@@ -97,13 +97,7 @@ class MaruMultiValidatorTest {
     runCatching { stack2.maruApp.close() }
     runCatching { stack1.maruApp.close() }
     runCatching { stack0.maruApp.close() }
-    runCatching { cluster.close() }
-      .onFailure {
-        log.warn(
-          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-          it,
-        )
-      }
+    cluster.close()
   }
 
   // -- Helper methods ---------------------------------------------------------

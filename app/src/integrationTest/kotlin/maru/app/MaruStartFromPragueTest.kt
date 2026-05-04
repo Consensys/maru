@@ -56,13 +56,7 @@ class MaruStartFromPragueTest {
 
   @AfterEach
   fun tearDown() {
-    runCatching { cluster.close() }
-      .onFailure {
-        log.warn(
-          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
-          it,
-        )
-      }
+    cluster.close()
     maruNode.stop().get()
     maruNode.close()
   }

@@ -10,4 +10,6 @@
 ### Bug Fixes
 
 - Fixed #506: upgraded Hyperledger Besu from 25.11.0 to 26.2.0 to resolve `NoClassDefFoundError: org/web3j/abi/datatypes/CustomError`.
+- Fixed an intermittent failure during the QBFT-to-PoS handover where the first post-merge `engine_forkchoiceUpdated` could be rejected by the execution client with `INVALID_PAYLOAD_ATTRIBUTES` (or `INVALID_WITHDRAWALS_PARAMS` on the V1 endpoint). The proposed `payloadAttributes.timestamp`, derived from `Math.round(wallClockMillis / 1000)`, could tie with the execution head's timestamp depending on sub-second wall-clock alignment. The next block's timestamp is now clamped to be strictly greater than the execution layer head's timestamp.
+- Picked up a Besu fix (consumed via the `26.3.0-RC0-0676100-patched2` build) that makes `BftExecutors.awaitStop` tolerant of the IDLE state. Previously, shutting down a Besu node whose genesis declared QBFT/IBFT but ran PoS from block 0 (`terminalTotalDifficulty=0`) would NPE inside `BftMiningCoordinator.awaitStop` because the BFT timer/processor executors were never started. The NPE surfaced as `Error shutting down node …` and could leave the in-JVM Besu plugin context in an unrecoverable state for subsequent restarts.
 
