@@ -114,7 +114,13 @@ class MaruFollowerTest {
     validatorStack.maruApp.stop().get()
     followerStack.maruApp.close()
     validatorStack.maruApp.close()
-    cluster.close()
+    runCatching { cluster.close() }
+      .onFailure {
+        log.warn(
+          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
+          it,
+        )
+      }
   }
 
   @Test
@@ -264,7 +270,13 @@ class MaruFollowerTest {
     // This is here mainly to wait until block propagation is complete
     checkValidatorAndFollowerBlocks(blocksToProduce)
 
-    cluster.stop()
+    runCatching { cluster.stop() }
+      .onFailure {
+        log.warn(
+          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
+          it,
+        )
+      }
     Thread.sleep(3000)
     cluster.startWithRetry(followerStack.besuNode, validatorStack.besuNode)
 

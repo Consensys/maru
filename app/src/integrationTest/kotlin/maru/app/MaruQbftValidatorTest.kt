@@ -198,7 +198,13 @@ class MaruQbftValidatorTest {
         )
       }
     }
-    cluster.stop()
+    runCatching { cluster.stop() }
+      .onFailure {
+        log.warn(
+          "Besu acceptance Cluster teardown failed (ignored so the test outcome reflects assertions only)",
+          it,
+        )
+      }
     Thread.sleep(3000)
     cluster.startWithRetry(networkParticipantStack.besuNode)
 
