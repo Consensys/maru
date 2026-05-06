@@ -230,6 +230,12 @@ class P2PNetworkImpl(
           description = "Number of peers connected to the P2P network",
           measurementSupplier = { peerCount.toLong() },
         )
+        metricsFacade.createGauge(
+          category = MaruMetricsCategory.P2P_NETWORK,
+          name = "peer.limit",
+          description = "Configured maximum number of peers (p2p.max-peers)",
+          measurementSupplier = { p2pConfig.maxPeers.toLong() },
+        )
         nodeRecords().forEach(::logEnr)
       }
 
