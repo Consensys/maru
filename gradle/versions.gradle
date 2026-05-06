@@ -135,10 +135,12 @@ dependencyManagement {
       entry 'wiremock'
     }
 
-    dependency('tech.pegasys.discovery:discovery:25.4.0') {
+    dependency('io.consensys.protocols:discovery:26.3.0') {
       exclude group: 'io.consensys.tuweni', name: 'tuweni-bytes'
       exclude group: 'io.consensys.tuweni', name: 'tuweni-crypto'
       exclude group: 'io.consensys.tuweni', name: 'tuweni-units'
+      exclude group: 'io.consensys.tuweni', name: 'tuweni-rlp'
+
     }
 
     dependencySet(group: 'tech.pegasys.teku.internal', version: '25.12.0') {
@@ -164,7 +166,7 @@ dependencyManagement {
       entry 'log4j-slf4j2-impl'
     }
 
-    def besuVersion = "26.3.0-RC0-0676100-patched2"
+    def besuVersion = "26.5.0-36cda4f"
 
     imports {
       mavenBom "org.hyperledger.besu:bom:$besuVersion"

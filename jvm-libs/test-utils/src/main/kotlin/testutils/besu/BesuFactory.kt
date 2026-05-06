@@ -76,6 +76,7 @@ object BesuFactory {
           )
         }.devMode(false)
         .discoveryEnabled(true)
+        .discoveryV5Enabled(false)
         .engineJsonRpcConfiguration(engineRpcConfig)
         .jsonRpcConfiguration(jsonRpcConfig)
         .synchronizerConfiguration(
