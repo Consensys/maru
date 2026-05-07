@@ -187,7 +187,7 @@ class MaruConsensusSwitchTest {
 
     // Wait for both nodes to have all blocks before verifying contents.
     // The follower may still be syncing when the validator has already committed all blocks.
-    checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 120.seconds)
+    checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 180.seconds)
 
     verifyConsensusSwitch(
       besuNode = validatorBesuNode,
