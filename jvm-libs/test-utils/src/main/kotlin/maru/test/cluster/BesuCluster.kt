@@ -120,11 +120,13 @@ class BesuCluster(
 
     if (node.configuration.genesisConfig.isEmpty) {
       val genesisJson =
-        clusterGenesisJson
-          ?: node.configuration.genesisConfigProvider
-            .create(nodes.values)
-            .orElseThrow()
-            .also { clusterGenesisJson = it }
+        synchronized(this) {
+          clusterGenesisJson
+            ?: node.configuration.genesisConfigProvider
+              .create(nodes.values)
+              .orElseThrow()
+              .also { clusterGenesisJson = it }
+        }
       node.configuration.setGenesisConfig(genesisJson)
     }
     runNodeStart(node)

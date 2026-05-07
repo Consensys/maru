@@ -32,6 +32,7 @@ import maru.database.BeaconChain
 import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
+import maru.executionlayer.manager.LatestBlockMetadata
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
@@ -228,6 +229,60 @@ class EagerQbftBlockCreatorTest {
     )
     assertThat(createdBlockBody.executionPayload.timestamp).isEqualTo(acceptedBlockTimestamp.toULong())
     assertThat(createdBlockBody.executionPayload.transactions).isNotEmpty
+  }
+
+  @Test
+  fun `clamps next block timestamp strictly above EL head timestamp on genesis parent`() {
+    val latestExecutionLayerBlock =
+      ethApiClient.eth1Web3j
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("latest"),
+          true,
+        ).send()
+        .block
+        .toDomain()
+    val genesisBeaconBlock =
+      BeaconBlock(
+        beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(0U),
+        beaconBlockBody =
+          DataGenerators
+            .randomBeaconBlockBody()
+            .copy(executionPayload = GENESIS_EXECUTION_PAYLOAD),
+      )
+    val sealedGenesisBeaconBlock = SealedBeaconBlock(genesisBeaconBlock, emptySet())
+    val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
+
+    val spyExecutionLayerManager = Mockito.spy(executionLayerManager)
+    val mainBlockCreator = createDelayedBlockCreator(round = 0, manager = spyExecutionLayerManager)
+    val eagerQbftBlockCreator =
+      setup(spyExecutionLayerManager, sealedGenesisBeaconBlock, mainBlockCreator, sequence = 1, round = 0)
+
+    setNextSecondMillis(0)
+    val proposedTimestamp = clock.millis() / 1000
+    Mockito
+      .doReturn(
+        completedFuture(
+          LatestBlockMetadata(
+            blockHash = latestExecutionLayerBlock.blockHash,
+            timestamp = proposedTimestamp.toULong(),
+          ),
+        ),
+      ).whenever(spyExecutionLayerManager)
+      .getLatestBlockMetadata()
+
+    val acceptedBlock = eagerQbftBlockCreator.createBlock(proposedTimestamp, parentHeader)
+    val acceptedHeader = acceptedBlock.block().toBeaconBlock().beaconBlockHeader
+
+    val expectedClampedTimestamp = (proposedTimestamp + 1).toULong()
+    assertThat(acceptedHeader.timestamp).isEqualTo(expectedClampedTimestamp)
+    verify(spyExecutionLayerManager).setHeadAndStartBlockBuilding(
+      headHash = eq(latestExecutionLayerBlock.blockHash),
+      safeHash = any(),
+      finalizedHash = any(),
+      nextBlockTimestamp = any(),
+      feeRecipient = any(),
+      prevRandao = any(),
+    )
   }
 
   @Test
