@@ -42,7 +42,6 @@ import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
 import testutils.maru.MaruFactory
-import java.lang.Thread.sleep
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
