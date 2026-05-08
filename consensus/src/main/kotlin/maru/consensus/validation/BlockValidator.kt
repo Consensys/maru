@@ -12,6 +12,7 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.mapError
+import java.util.concurrent.atomic.AtomicBoolean
 import maru.consensus.qbft.ProposerSelector
 import maru.consensus.qbft.toConsensusRoundIdentifier
 import maru.consensus.state.StateTransition
@@ -26,6 +27,7 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.extensions.encodeHex
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
+import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface BlockValidator {
@@ -248,8 +250,20 @@ class ExecutionPayloadValidator(
 }
 
 object EmptyBlockValidator : BlockValidator {
-  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    SafeFuture.completedFuture(
+  private val log = LogManager.getLogger(EmptyBlockValidator::class.java)
+  private val firstInvocationLogged = AtomicBoolean(false)
+
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+    if (firstInvocationLogged.compareAndSet(false, true)) {
+      log.info(
+        "[debug/allowEmptyBlocks] EmptyBlockValidator.validateBlock invoked for the first time. " +
+          "blockNumber={} txCount={} stack:",
+        block.beaconBlockHeader.number,
+        block.beaconBlockBody.executionPayload.transactions.size,
+        Throwable("EmptyBlockValidator first-invocation stack trace"),
+      )
+    }
+    return SafeFuture.completedFuture(
       BlockValidator.require(
         block.beaconBlockBody.executionPayload.transactions
           .isNotEmpty(),
@@ -259,4 +273,5 @@ object EmptyBlockValidator : BlockValidator {
           "hash=${block.beaconBlockHeader.hash.encodeHex()}"
       },
     )
+  }
 }

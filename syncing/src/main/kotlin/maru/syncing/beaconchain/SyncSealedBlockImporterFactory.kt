@@ -29,14 +29,23 @@ import maru.consensus.validation.TimestampValidator
 import maru.core.BeaconBlockHeader
 import maru.database.BeaconChain
 import maru.p2p.ValidationResult
+import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class SyncSealedBlockImporterFactory {
+  private val log = LogManager.getLogger(SyncSealedBlockImporterFactory::class.java)
+
   fun create(
     beaconChain: BeaconChain,
     validatorProvider: ValidatorProvider,
     allowEmptyBlocks: Boolean = false,
   ): SealedBeaconBlockImporter<ValidationResult> {
+    log.info(
+      "[debug/allowEmptyBlocks] SyncSealedBlockImporterFactory.create called allowEmptyBlocks={} " +
+        "emptyBlockValidatorIncluded={}",
+      allowEmptyBlocks,
+      !allowEmptyBlocks,
+    )
     val stateTransition = StateTransitionImpl(validatorProvider)
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())
 

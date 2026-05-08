@@ -13,6 +13,7 @@ import maru.consensus.state.StateTransition
 import maru.core.BeaconBlockHeader
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import org.apache.logging.log4j.LogManager
 
 fun interface BeaconBlockValidatorFactory {
   fun createValidatorForBlock(beaconBlockHeader: BeaconBlockHeader): BlockValidator
@@ -25,6 +26,17 @@ class BeaconBlockValidatorFactoryImpl(
   executionLayerManager: ExecutionLayerManager?,
   val allowEmptyBlocks: Boolean,
 ) : BeaconBlockValidatorFactory {
+  init {
+    LogManager
+      .getLogger(BeaconBlockValidatorFactoryImpl::class.java)
+      .info(
+        "[debug/allowEmptyBlocks] BeaconBlockValidatorFactoryImpl constructed allowEmptyBlocks={} " +
+          "emptyBlockValidatorIncluded={}",
+        allowEmptyBlocks,
+        !allowEmptyBlocks,
+      )
+  }
+
   private val stateRootValidator = StateRootValidator(stateTransition)
   private val bodyRootValidator = BodyRootValidator()
   private val executionPayloadValidator =
