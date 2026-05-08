@@ -37,4 +37,7 @@ dependencies {
   testFixturesImplementation(project(":observability"))
   testFixturesImplementation(project(":p2p"))
   testFixturesImplementation(project(":crypto"))
+  testFixturesImplementation platform("org.junit:junit-bom")
+  testFixturesImplementation "org.junit.jupiter:junit-jupiter"
+  testFixturesImplementation "org.assertj:assertj-core"
 }
