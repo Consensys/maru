@@ -109,7 +109,17 @@ task integrationTest(type: Test) {
   classpath = sourceSets.integrationTest.runtimeClasspath
   testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-  // To make room for Besu threads
+  // Run integration test classes one at a time within the JVM. The root build.gradle enables
+  // junit.jupiter.execution.parallel.mode.classes.default = "concurrent" globally for unit tests;
+  // for integration tests we override it to "same_thread" so each test class fully executes
+  // (including its BesuCluster + MaruApp lifecycle) before the next one starts. This eliminates
+  // log-bleed between sibling test classes' stdout into each other's HTML reports and removes a
+  // major source of CI flakiness from CPU/port/peer contention between concurrently running heavy
+  // integration tests. Methods within a single test class still run sequentially (default).
+  systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "same_thread"
+  systemProperties["junit.jupiter.execution.parallel.mode.default"] = "same_thread"
+  // Limit JUnit's parallel pool to 1 to make the same_thread setting unambiguous on JVMs that
+  // may otherwise pre-allocate workers from the parallel pool.
   systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
   int maxThreads = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
   systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"] = maxThreads
@@ -117,8 +127,8 @@ task integrationTest(type: Test) {
 
   testLogging {
     events TestLogEvent.FAILED,
-        TestLogEvent.SKIPPED,
-        TestLogEvent.STANDARD_ERROR
+      TestLogEvent.SKIPPED,
+      TestLogEvent.STANDARD_ERROR
     // TestLogEvent.STARTED,
     // TestLogEvent.PASSED
     exceptionFormat TestExceptionFormat.FULL
