@@ -127,7 +127,7 @@ task integrationTest(type: Test) {
   def maxForksOverride = System.getProperty("maru.integrationTest.maxParallelForks")
   maxParallelForks = (maxForksOverride != null)
       ? maxForksOverride.toInteger()
-      : Math.max(2, Runtime.runtime.availableProcessors().intdiv(4))
+      : Math.max(2, Runtime.runtime.availableProcessors().intdiv(2))
 
   // Within a single class methods run sequentially (each class is already in its own JVM, so
   // we don't need additional intra-class parallelism — and many of our test classes share
@@ -137,9 +137,8 @@ task integrationTest(type: Test) {
   // Limit JUnit's parallel pool to 1 to make the same_thread setting unambiguous on JVMs that
   // may otherwise pre-allocate workers from the parallel pool.
   systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
-  int maxThreads = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
-  systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"] = maxThreads
-  systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"] = maxThreads
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"] = 1
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"] = 1
 
   testLogging {
     events TestLogEvent.FAILED,
