@@ -109,36 +109,11 @@ task integrationTest(type: Test) {
   classpath = sourceSets.integrationTest.runtimeClasspath
   testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-  // Run each integration test class in its own JVM fork (forkEvery = 1). Combined with
-  // maxParallelForks > 1, multiple test classes execute concurrently but each in an isolated
-  // JVM, so:
-  //   - stdout/stderr is captured per fork and attributed to the right test class (no log bleed
-  //     between sibling classes in HTML reports — the issue with the prior in-JVM
-  //     parallel-classes mode);
-  //   - static singletons (e.g. SignatureAlgorithmFactory, log4j context, Besu's plugin
-  //     registry) don't leak between tests;
-  //   - port/peer/process contention is bounded by the parallelism factor rather than the JVM
-  //     thread count.
-  // The default forks-per-process count is conservative: heavy integration tests spin up
-  // multiple BesuCluster + MaruApp instances each, so we cap at availableProcessors / 4 (with
-  // a minimum of 2 so we still get some parallelism even on tiny runners). Override locally
-  // with `-Dmaru.integrationTest.maxParallelForks=N` if you want to tune.
-  forkEvery = 1
-  def maxForksOverride = System.getProperty("maru.integrationTest.maxParallelForks")
-  maxParallelForks = (maxForksOverride != null)
-      ? maxForksOverride.toInteger()
-      : Math.max(2, Runtime.runtime.availableProcessors().intdiv(2))
-
-  // Within a single class methods run sequentially (each class is already in its own JVM, so
-  // we don't need additional intra-class parallelism — and many of our test classes share
-  // mutable state across @Test methods).
-  systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "same_thread"
-  systemProperties["junit.jupiter.execution.parallel.mode.default"] = "same_thread"
-  // Limit JUnit's parallel pool to 1 to make the same_thread setting unambiguous on JVMs that
-  // may otherwise pre-allocate workers from the parallel pool.
+  // To make room for Besu threads
   systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
-  systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"] = 1
-  systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"] = 1
+  int maxThreads = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"] = maxThreads
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"] = maxThreads
 
   testLogging {
     events TestLogEvent.FAILED,
